@@ -32,7 +32,7 @@ function DiagJac{T}(::Type{T}, blocksize::Integer, nblock::Integer)
   return DiagJac{T}(A)
 end
 
-import Base: length, size, getindex, setindex!
+import Base: length, size, getindex, setindex!, show
 
 """
   Returns the length of the array *as if it were a dense matrix*
@@ -68,7 +68,8 @@ end
    * i2block: 3rd index in 3D array
 """
 function computeIndex(A::DiagJac, i::Integer, j::Integer)
-# internal function for c
+# internal function for computing indices
+
   blocksize, blocksize, nblock = size(A.A)
 
   i2 = ((i-1) % blocksize ) + 1
@@ -111,6 +112,47 @@ function setindex!(A::DiagJac, v, i::Integer, j::Integer)
   return A.A[i2, j2, i2block] = v
 end
 
+function show(io::IO, A::DiagJac)
+
+  m, n = size(A)
+  println("DiagJac: $m x $n block diagonal matrix with block size: $(size( A.A, 1)), number of blocks: $(size(A.A, 3))")
+  for i=1:size(A.A, 3)
+    println("block ", i, " = ")
+    println(A.A[:, :, i])
+  end
+
+  return nothing
+end
+
+"""
+  Matrix-vector multiplication function for [`DiagJac`](@ref)
+
+  **Inputs**
+
+   * A: a `DiagJac`
+   * x: vector to multiply against
+
+  **Inputs/Outputs**
+
+   * b: vector to be overwritten with the result
+"""
+function diagMatVec(A::DiagJac, x::AbstractVector, b::AbstractVector)
+
+
+  blocksize, blocksize, nblock = size(A.A)
+
+  for i=1:nblock
+    idx = ((i-1)*blocksize + 1):(i*blocksize)
+
+    A_ii = sview(A.A, :, :, i)
+    x_ii = sview(x, idx)
+    b_ii = sview(b, idx)
+
+    smallmatvec!(A_ii, x_ii, b_ii)
+  end
+
+  return nothing
+end
 #------------------------------------------------------------------------------
 # New AssembleElementData type for getting the diagonal only
 

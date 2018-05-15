@@ -182,7 +182,7 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
-#=
+
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -207,7 +207,7 @@ function test_jac_terms_long()
   
     opts4["preallocate_jacobian_coloring"] = true
     test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true, set_prealloc=false)
-=#
+
     println("testing mode 9")
     test_jac_general(mesh9, sbp9, eqn9, opts9)
     test_diagjac(mesh9, sbp9, eqn9, opts9)
@@ -705,21 +705,42 @@ function test_diagjac(mesh, sbp, eqn, opts)
 #  println("jac1 = \n", jac1)
 
   nblocks = mesh.numNodesPerElement*mesh.numEl
-  println("nblocks = ", nblocks)
 
   for block=1:nblocks
-    println("block = ", block)
     boffset = (block-1)*mesh.numDofPerNode
     for i=1:mesh.numDofPerNode
-      println("i = ", i)
       for j=1:mesh.numDofPerNode
-        println("j = ", j)
-        println("jac2 = ", jac2_full[boffset + i, boffset + j])
-        println("jac1 = ", real(jac1.A[i, j, block]))
         @fact abs(jac2_full[boffset + i, boffset + j] - jac1.A[i, j, block]) --> roughly(0.0, atol=1e-13)
       end
     end
   end
+
+  # zero out the off diagonal parts of jac2_full
+  tmp = zeros(mesh.numDofPerNode, mesh.numDofPerNode, nblocks)
+  for i=1:nblocks
+    idx = ((i-1)*mesh.numDofPerNode + 1):(i*mesh.numDofPerNode)
+    tmp[:, :, i] = jac2_full[idx, idx]
+  end
+
+  fill!(jac2_full, 0.0)
+
+  for i=1:nblocks
+    idx = ((i-1)*mesh.numDofPerNode + 1):(i*mesh.numDofPerNode)
+    jac2_full[idx, idx] = tmp[:, :, i]
+  end
+
+
+  # test multiplication
+  for i=1:10
+    x = rand(mesh.numDof)
+    b = zeros(Complex128, mesh.numDof)
+    
+    NonlinearSolvers.diagMatVec(jac1, x, b)
+    b2 = jac2_full * x
+
+    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
+  end
+
 
   return nothing
 end
