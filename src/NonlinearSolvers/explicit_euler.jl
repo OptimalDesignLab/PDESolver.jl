@@ -109,16 +109,11 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   @mpi_master println(f_drag, 1, " ", drag)
   @mpi_master flush(f_drag)
   if opts["perturb_Ma"]
-    finaliter_setby_tmax = (t_steps + 1)
-    finaliter_setby_itermax = itermax
-    if finaliter_setby_tmax <= finaliter_setby_itermax
-      finaliter = finaliter_setby_tmax
-    else
-      finaliter = finaliter_setby_itermax
-    end
 
     # this is the IC, so it gets the first time step's quad_weight
-    quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+    i = 1       # note that timestep loop below starts at i = 2
+    finaliter = calcFinalIter(t_steps, itermax)
+    quad_weight = calcQuadWeight(i, delta_t, finaliter)
 
     v_vec = zeros(q_vec)      # direct sensitivity vector
     for v_ix = 1:length(v_vec)
@@ -160,33 +155,9 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     println(" >>> top of time step")
 
     if opts["perturb_Ma"]
-      finaliter_setby_tmax = (t_steps + 1)
-      finaliter_setby_itermax = (itermax + 1)
-      if finaliter_setby_tmax <= finaliter_setby_itermax
-        finaliter = finaliter_setby_tmax
-        println(" >>> setting finaliter with t_max, finaliter: $finaliter")
-      else
-        finaliter = finaliter_setby_itermax
-        println(" >>> setting finaliter with itermax, finaliter: $finaliter")
-      end
 
-      # the first time steps' 1/2 quad weight is set above, at the IC. all that needs 
-      #   to be handled here is the final iter.
-      if i == finaliter
-        println(" >>> 1")
-        quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
-      else
-        println(" >>> 2")
-        quad_weight = delta_t                 # all other timesteps
-      end
-
-      if finaliter < 2        # if 1 or 2 timesteps, shift to regular rectangular rule. 
-                              # this check is against 2, not 3, because the IC is not counted in this sequence of i's
-        println(" >>> 3")
-        quad_weight = delta_t/2.0
-        println("  small maxiter; quad_weight = dt/2")
-      end
-
+      finaliter = calcFinalIter(t_steps, itermax)
+      quad_weight = calcQuadWeight(i, delta_t, finaliter)
       println(" >> in time stepping loop-  i: $i  quad_weight: $quad_weight")
 
     end   # end if opts["perturb_Ma"]
@@ -365,6 +336,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     println(" eqn.params.Ma: ", eqn.params.Ma)
 
     # D calculations
+    finaliter = calcFinalIter(t_steps, itermax)
     D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     term23 = term23 * 1.0/t     # final step of time average: divide by total time
     total_dDdM = dDdM + term23
@@ -467,39 +439,34 @@ function explicit_euler(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         return t
 end
 
-function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
+function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver)
 
   dt = delta_t
 
   Ma = eqn.params.Ma
   data = readdlm("drag.dat")
 
-  maxiter = size(data, 1)
-  if maxiter > (maxiter_nlsolver + 1)
+  itermax_fromdata = size(data, 1)
+  if itermax_fromdata > (itermax_fromnlsolver + 1)
     error("You forgot to delete drag.dat, or there's some problem with finaliter")
   end
 
-  iter = round(Int64, data[1:maxiter, 1])
-  drag = data[1:maxiter, 2]
+  itermax = itermax_fromdata
+
+  iter = round(Int64, data[1:itermax, 1])
+  drag = data[1:itermax, 2]
 
   # iter = iter - 1     # because iter starts at 2      ---- Now commented out bc of IC inclusion
 
   drag_timeavg = 0.0
-  maxtime = dt*maxiter - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
+  maxtime = dt*itermax - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
 
   println("Calculating time-averaged drag from drag.dat")
 
   # trapezoid rule
-  for i = 1:maxiter
-    if (i == 1 || i == maxiter) 
-      quad_weight = dt/2.0
-    else
-      quad_weight = dt
-    end
-    if maxiter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
-      quad_weight = dt/2.0
-      println("  small maxiter; quad_weight = dt/2")
-    end
+  for i = 1:itermax
+
+    quad_weight = calcQuadWeight(i, delta_t, itermax)
 
     println(" (in calcDragTimeAverage) i: $i   quad_weight: $quad_weight   drag[i]: ", drag[i])
     drag_timeavg += quad_weight * drag[i]
@@ -510,7 +477,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
   println(" ")
   println(" drag_timeavg: ", drag_timeavg)
   println(" maxtime: ", maxtime)
-  println(" maxiter: ", maxiter)
+  println(" itermax: ", itermax)
 
   # D calculations (instead of Cd. trying as a debugging step)
   D = drag_timeavg
@@ -531,5 +498,49 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
   return Cd, dCddM
   =#
 
+end
 
+"""
+t_steps:  max number of time steps, set by tmax
+itermax:  max number of time steps, set by user option itermax
+"""
+function calcFinalIter(t_steps, itermax)
+
+  finaliter_setby_tmax = (t_steps + 1)
+  finaliter_setby_itermax = (itermax + 1)
+  if finaliter_setby_tmax <= finaliter_setby_itermax
+    finaliter = finaliter_setby_tmax
+    println(" >>> setting finaliter with t_max, finaliter: $finaliter")
+  else
+    finaliter = finaliter_setby_itermax
+    println(" >>> setting finaliter with itermax, finaliter: $finaliter")
+  end
+
+  return finaliter
+
+end
+
+"""
+i:        iter number to calculate quadrature weight at
+delta_t:  time step size
+itermax:  max number of time steps. This version is agnostic to where that number comes from
+"""
+function calcQuadWeight(i, delta_t, finaliter)
+
+  if (i == 1 || i == finaliter)
+    quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+    println(" (in cQW), #1")
+  else
+    quad_weight = delta_t                 # all other timesteps
+    println(" (in cQW), #2")
+  end
+
+  if finaliter < 2        # if 1 or 2 timesteps, shift to regular rectangular rule. 
+                          # this check is against 2, not 3, because the IC is not counted in this sequence of i's
+    quad_weight = delta_t/2.0
+    println("  small finaliter; quad_weight = dt/2")
+  end
+  println(" (in calcQuadWeight) i: $i  quad_weight: $i")
+
+  return quad_weight
 end
