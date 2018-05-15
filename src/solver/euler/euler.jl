@@ -229,12 +229,12 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
                                sbp::AbstractSBP,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
 
-#  println("Performing major Iteration Callback")
+  # println("Performing major Iteration Callback")
 
   myrank = mesh.myrank
   output_freq = opts["output_freq"]::Int
 
-#  println("eqn.q = \n", eqn.q)
+  # println("eqn.q = \n", eqn.q)
 
   if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
@@ -257,7 +257,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     writeVisFiles(mesh, fname)
 
 
-#=
+    #=
     # DEBUGGING: write error to file
     q_exact = zeros(eqn.q_vec)
     ex_func = ICDict[opts["IC_name"]]
@@ -266,7 +266,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     saveSolutionToMesh(mesh, q_err)
     fname = string("error_", itr)
     writeVisFiles(mesh, fname)
-=#
+    =#
   end
 
   if opts["callback_write_qvec"]

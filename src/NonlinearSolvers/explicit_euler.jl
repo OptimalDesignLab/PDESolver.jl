@@ -101,7 +101,58 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   #   This will be adjusted within the loop for the first & final time steps
 
   #------------------------------------------------------------------------------
-  DUMPDATA = false
+  # capture direct sensitivity at the IC
+  # v is the direct sensitivity, du/dM
+  # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+  objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+  drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+  @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+  @mpi_master println(f_drag, 1, " ", drag)
+  @mpi_master flush(f_drag)
+  if opts["perturb_Ma"]
+    finaliter_setby_tmax = (t_steps + 1)
+    finaliter_setby_itermax = itermax
+    if finaliter_setby_tmax <= finaliter_setby_itermax
+      finaliter = finaliter_setby_tmax
+    else
+      finaliter = finaliter_setby_itermax
+    end
+
+    # this is the IC, so it gets the first time step's quad_weight
+    quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+
+    if finaliter < 3        # if 1 or 2 timesteps, shift to regular rectangular rule
+      quad_weight = delta_t
+      println("small maxiter; quad_weight = dt")
+    end
+
+    v_vec = zeros(q_vec)      # direct sensitivity vector
+    for v_ix = 1:length(v_vec)
+      v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
+    end
+    term2 = zeros(eqn.q)
+    # evalFunctional calls disassembleSolution, which puts q_vec into q
+    # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
+    EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+
+    # do the dot product of the two terms, and save
+    term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+    assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
+
+    new_contrib = 0.0
+    for v_ix = 1:length(v_vec)
+      # this accumulation occurs across all dofs and all time steps.
+      new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
+      term23 += new_contrib
+    end
+
+    writedlm("term23_IC.dat", term23)
+    println("quad_weight_IC.dat", quad_weight)
+
+  end   # end if opts["perturb_Ma"]
+
+  #------------------------------------------------------------------------------
+  DUMPDATA = true
 
   flush(BSTDOUT)
   #------------------------------------------------------------------------------
@@ -122,7 +173,9 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
         finaliter = finaliter_setby_itermax
       end
 
-      if i == istart || i == finaliter
+      # the first time steps' 1/2 quad weight is set above, at the IC. all that needs 
+      #   to be handled here is the final iter.
+      if i == finaliter
         quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
       else
         quad_weight = delta_t                 # all other timesteps
@@ -217,56 +270,34 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       println(" norm(imag(q_vec)): ", norm(imag(q_vec)))
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
-      #=
-      # this is what needs to be adapted for fwd mode
-      term2 = zeros(q)
-      calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, term2)    # term2 is func_deriv_arr
-      =#
-
       term2 = zeros(eqn.q)
       # evalFunctional calls disassembleSolution, which puts q_vec into q
       # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
       objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
-      # EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+      # drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
       # do the dot product of the two terms, and save
-      # term2_vec = reshape(term2, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl, 1)    # no difference btwn these
       term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
       assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
-
-      println(" length(term2_vec): ", length(term2_vec))
-      println(" length(term2): ", length(term2))
-      println(" size(term2): ", size(term2))
       new_contrib = 0.0
       for v_ix = 1:length(v_vec)
-        new_contrib = quad_weight * term2[v_ix] * v_vec[v_ix]     # this accumulation occurs across all dofs and all time steps.
+        # this accumulation occurs across all dofs and all time steps.
+        new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
         term23 += new_contrib
       end
       println("   i: ", i,"  quad_weight: ", quad_weight,"  Ma_pert: ", Ma_pert)
       println("   norm(term2_vec): ",norm(term2_vec),"  norm(v_vec): ", norm(v_vec))
       println("   mean(term2_vec): ",mean(term2_vec),"  mean(v_vec): ", mean(v_vec))
       println("   new_contrib: ", new_contrib)
-      # print out term23 here?
 
-      #------------------------------------------------------------------------------
-      # writing all terms to disk
-      # writedlm("DS-term2_vec.dat", term2_vec)
-
+      println("quad_weight_IC.dat", quad_weight)
       if DUMPDATA == true
         println(" ~~~~~~ writing v_vec to disk ~~~~~")
         filename = string("DS-v_vec-",i,".dat")               # THIS is for the DS-FD comparo. uncomment for 'run 1'
         writedlm(filename, v_vec)                             # THIS is for the DS-FD comparo. uncomment for 'run 1'
       end
-
-      # filename = string("DS-new_contrib-",i,".dat")
-      # writedlm(filename, new_contrib)
-
-      # writedlm("term2_vec-CS.dat", term2_vec)
-
-
 
     end   # end if opts["perturb_Ma"]
 
@@ -373,6 +404,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   # THIS is for the DS-FD comparo. uncomment for saving vtu files to disk that show 
   #     dudM for each method and the difference btwn the two.
 
+  #=
   diff_dudM_tmp = readdlm("diff_btwn_v_and_FD-2.dat")
   diff_dudM = zeros(q_vec)
   diff_dudM = diff_dudM_tmp[:,1]
@@ -388,7 +420,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   DS_v_vec = DS_v_vec_tmp[:,1]
   saveSolutionToMesh(mesh, DS_v_vec)
   writeVisFiles(mesh, "DS-v_vec-2")
-  #=
   =#
 
 
@@ -441,7 +472,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, maxiter_nlsolver)
   data = readdlm("drag.dat")
 
   maxiter = size(data, 1)
-  if maxiter > maxiter_nlsolver
+  if maxiter > (maxiter_nlsolver + 1)
     error("You forgot to delete drag.dat, or there's some problem with finaliter")
   end
 
