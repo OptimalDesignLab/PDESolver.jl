@@ -1,3 +1,7 @@
+# functions for computing the jacobian
+
+include("jacobian_diag.jl")
+
 """
   This function computes the Jacobian of an evalResidual-like function.
   Specifically, it computes \\partial (eqn.q_vec)/ \\partial (eqn.res_vec).
