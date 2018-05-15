@@ -174,6 +174,15 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
 
+    # SBPOmega, SparseMatrixCSC
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 2
+    opts_tmp["operator_type"] = "SBPOmega"
+    make_input(opts_tmp, fname4)
+    mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
+
+#=
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -198,13 +207,17 @@ function test_jac_terms_long()
   
     opts4["preallocate_jacobian_coloring"] = true
     test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true, set_prealloc=false)
+=#
+    println("testing mode 9")
+    test_jac_general(mesh9, sbp9, eqn9, opts9)
+    test_diagjac(mesh9, sbp9, eqn9, opts9)
 
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 function test_pressure{Tdim}(params::AbstractParamType{Tdim})
@@ -534,7 +547,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-11)
   end
 
   A = getBaseLO(lo2).A
@@ -647,5 +660,66 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   free(pc2)
 
   println("finished testing Homotopy operators")
+  return nothing
+end
+
+function test_diagjac(mesh, sbp, eqn, opts)
+# compare the diagonal Jacobian with the diagonal of an explicitly computed
+# jacobian
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+
+
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  #----------------------------------------------------------------------------
+  # construct the matrices/assemblers
+  opts["calc_jac_explicit"] = true
+
+  jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
+  assem1 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac1)
+
+
+  opts["preallocate_jacobian_coloring"] = false
+  pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  jac2 = getBaseLO(lo2).A
+
+  assem2 = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+
+ 
+  evalJacobian(mesh, sbp, eqn, opts, assem1)
+  evalJacobian(mesh, sbp, eqn, opts, assem2)
+
+  # compare the matrices themselves
+  # zero out off block-diagonal part of jac2
+
+  jac2_full = full(jac2)
+#  println("jac2_full = \n", jac2_full)
+#  println("jac1 = \n", jac1)
+
+  nblocks = mesh.numNodesPerElement*mesh.numEl
+  println("nblocks = ", nblocks)
+
+  for block=1:nblocks
+    println("block = ", block)
+    boffset = (block-1)*mesh.numDofPerNode
+    for i=1:mesh.numDofPerNode
+      println("i = ", i)
+      for j=1:mesh.numDofPerNode
+        println("j = ", j)
+        println("jac2 = ", jac2_full[boffset + i, boffset + j])
+        println("jac1 = ", real(jac1.A[i, j, block]))
+        @fact abs(jac2_full[boffset + i, boffset + j] - jac1.A[i, j, block]) --> roughly(0.0, atol=1e-13)
+      end
+    end
+  end
+
   return nothing
 end

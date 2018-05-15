@@ -41,15 +41,19 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #    println("stabilizing @time printed above")
   end
 
+
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("face integral @time printed above")
   end
 
+
+
   time.t_sharedface_diff += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("evalSharedFaceIntegrals @time printed above")
   end
+
 
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
 #  println("source integral @time printed above")

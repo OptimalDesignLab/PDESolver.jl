@@ -112,7 +112,7 @@ end  # end do
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST, TAG_TMP])
+add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])
 
 function test_homotopy_convergence()
 
