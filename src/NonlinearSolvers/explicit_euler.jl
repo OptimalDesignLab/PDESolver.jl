@@ -86,9 +86,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   if opts["perturb_Ma"]
     term23 = 0.0
     Ma_pert_mag = opts["perturb_Ma_magnitude"]
-    println(" > assigning Ma_pert, locally. not changing eqn.params.Ma.")
     Ma_pert = complex(0, Ma_pert_mag)
-    println(" > assigning Ma_pert, locally. not changing eqn.params.Ma. -> DONE")
 
   end   # end if opts["perturb_Ma"]
   # (mesh, sbp, eqn) = ctx...
@@ -135,30 +133,19 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       term23 += new_contrib
     end
 
-    writedlm("term23-IC.dat", term23)
-    writedlm("quad_weight-IC.dat", quad_weight)
-
   end   # end if opts["perturb_Ma"]
-
-  #------------------------------------------------------------------------------
-  DUMPDATA = true
 
   flush(BSTDOUT)
   #------------------------------------------------------------------------------
   # Main timestepping loop
   finaliter = 0
-  @mpi_master f_Ma_atlserkstart = open("Ma_atlserkstart.dat", "w")
-  @mpi_master println(f_Ma_atlserkstart, eqn.params.Ma)
-  @mpi_master close(f_Ma_atlserkstart)
   println("---- Ma @ EE start: ", eqn.params.Ma, " ----")
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
-    println(" >>> top of time step")
 
     if opts["perturb_Ma"]
 
       finaliter = calcFinalIter(t_steps, itermax)
       quad_weight = calcQuadWeight(i, delta_t, finaliter)
-      println(" >> in time stepping loop-  i: $i  quad_weight: $quad_weight")
 
     end   # end if opts["perturb_Ma"]
 
@@ -239,15 +226,12 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       for v_ix = 1:length(v_vec)
         v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
       end
-      println(" norm(real(q_vec)): ", norm(real(q_vec)))
-      println(" norm(imag(q_vec)): ", norm(imag(q_vec)))
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
       term2 = zeros(eqn.q)
       # evalFunctional calls disassembleSolution, which puts q_vec into q
       # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
       objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-      # drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
       # do the dot product of the two terms, and save
@@ -260,46 +244,8 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
         new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
         term23 += new_contrib
       end
-      println("   i: ", i,"  quad_weight: ", quad_weight,"  Ma_pert: ", Ma_pert)
-      println("   norm(term2_vec): ",norm(term2_vec),"  norm(v_vec): ", norm(v_vec))
-      println("   mean(term2_vec): ",mean(term2_vec),"  mean(v_vec): ", mean(v_vec))
-      println("   new_contrib: ", new_contrib)
-
-      writedlm(string("new_contrib-",i,".dat"), new_contrib)
-      writedlm(string("term23-",i,".dat"), term23)
-      writedlm(string("quad_weight-", i, ".dat"), quad_weight)
-
-      println(" (in timestep, accumulating into new_contrib) i: $i   quad_weight: $quad_weight")
-
-      if DUMPDATA == true
-        println(" ~~~~~~ writing v_vec to disk ~~~~~")
-        filename = string("DS-v_vec-",i,".dat")               # THIS is for the DS-FD comparo. uncomment for 'run 1'
-        writedlm(filename, v_vec)                             # THIS is for the DS-FD comparo. uncomment for 'run 1'
-      end
 
     end   # end if opts["perturb_Ma"]
-
-
-    if DUMPDATA == true
-      if imag(eqn.params.Ma) > 0.0 
-        println(" ~~~~~ complex Ma detected, not writing q_vec ~~~~~")
-      else
-        if (eqn.params.Ma < (0.25 + 1e-10))
-          println(" ~~~~~~ writing q_vec to disk for unpert FD ~~~~~")
-          filename = string("DS-forFD-BASE-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 2'
-          writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 2'
-        elseif (eqn.params.Ma > (0.25 + 1e-10))
-          println(" ~~~~~~ writing q_vec to disk for pert FD ~~~~~")
-          filename = string("DS-forFD-PERT-q_vec-",i,".dat")          # THIS is for the DS-FD comparo. uncomment for 'run 3'
-          writedlm(filename, q_vec)                                   # THIS is for the DS-FD comparo. uncomment for 'run 3'
-        else
-          error("problem w/ writing q_vec")
-        end
-      end
-    end   # end if DUMPDATA == true
-
-
-
 
     # 201805
     # moved after the q_vec update part of lserk - needed to handle itermax == 1 case. 
@@ -365,38 +311,12 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     =#
 
   end   # end if opts["perturb_Ma"]
-  # @mpi_master f_Ma = open("DS-Ma.dat", "w")
   @mpi_master f_Ma = open("Ma.dat", "w")
   @mpi_master println(f_Ma, eqn.params.Ma)
   @mpi_master close(f_Ma)
   @mpi_master f_dt = open("delta_t.dat", "w")
   @mpi_master println(f_dt, delta_t)
   @mpi_master close(f_dt)
-
-  #------------------------------------------------------------------------------
-  #
-  # loading difference between dirsense dudM and FD dudM, then plotting on mesh
-  # THIS is for the DS-FD comparo. uncomment for saving vtu files to disk that show 
-  #     dudM for each method and the difference btwn the two.
-
-  #=
-  diff_dudM_tmp = readdlm("diff_btwn_v_and_FD-2.dat")
-  diff_dudM = zeros(q_vec)
-  diff_dudM = diff_dudM_tmp[:,1]
-  saveSolutionToMesh(mesh, diff_dudM)
-  writeVisFiles(mesh, "diff_btwn_v_and_FD-2")
-  dqdM_via_FD_tmp = readdlm("dqdM_via_FD-2.dat")
-  dqdM_via_FD = zeros(q_vec)
-  dqdM_via_FD = dqdM_via_FD_tmp[:,1]
-  saveSolutionToMesh(mesh, dqdM_via_FD)
-  writeVisFiles(mesh, "dqdM_via_FD-2")
-  DS_v_vec_tmp = readdlm("DS-v_vec-2.dat")
-  DS_v_vec = zeros(q_vec)
-  DS_v_vec = DS_v_vec_tmp[:,1]
-  saveSolutionToMesh(mesh, DS_v_vec)
-  writeVisFiles(mesh, "DS-v_vec-2")
-  =#
-
 
   println(" ")
   println(" run parameters that were used:")
@@ -468,7 +388,6 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
 
     quad_weight = calcQuadWeight(i, delta_t, itermax)
 
-    println(" (in calcDragTimeAverage) i: $i   quad_weight: $quad_weight   drag[i]: ", drag[i])
     drag_timeavg += quad_weight * drag[i]
   end
 
@@ -510,10 +429,8 @@ function calcFinalIter(t_steps, itermax)
   finaliter_setby_itermax = (itermax + 1)
   if finaliter_setby_tmax <= finaliter_setby_itermax
     finaliter = finaliter_setby_tmax
-    println(" >>> setting finaliter with t_max, finaliter: $finaliter")
   else
     finaliter = finaliter_setby_itermax
-    println(" >>> setting finaliter with itermax, finaliter: $finaliter")
   end
 
   return finaliter
@@ -529,18 +446,14 @@ function calcQuadWeight(i, delta_t, finaliter)
 
   if (i == 1 || i == finaliter)
     quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
-    println(" (in cQW), #1")
   else
     quad_weight = delta_t                 # all other timesteps
-    println(" (in cQW), #2")
   end
 
   if finaliter < 2        # if 1 or 2 timesteps, shift to regular rectangular rule. 
                           # this check is against 2, not 3, because the IC is not counted in this sequence of i's
     quad_weight = delta_t/2.0
-    println("  small finaliter; quad_weight = dt/2")
   end
-  println(" (in calcQuadWeight) i: $i  quad_weight: $i")
 
   return quad_weight
 end
