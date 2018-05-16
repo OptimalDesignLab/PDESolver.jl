@@ -788,34 +788,47 @@ function test_strongdiagjac(mesh, sbp, eqn, opts)
   opts["calc_jac_explicit"] = true
 
   jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
-  assem1 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac1)
 
   jac2 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
   assem2 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac2)
 
-  evalJacobian(mesh, sbp, eqn, opts, assem1)
   evalJacobianStrongDiag(mesh, sbp, eqn, opts, assem2)
 
-  println("block 1:")
-  println("jac1 = ", real(jac1.A[:, :, 1]))
-  println("jac2 = ", real(jac2.A[:, :, 1]))
-  println("q = ", real(eqn.q[:, :, 1]))
-#=
+  # compute first jacobian by complex step
+  opts2 = copy(opts)
+  opts2["addBoundaryIntegrals"] = false
+  opts2["addStabilization"] = false
+  opts2["addFaceIntegrals"] = false
+  opts2["Q_transpose"] = false
 
-  for i=1:10
-    println("i = ", i)
-    x = rand(mesh.numDof)
-    b = zeros(Complex128, mesh.numDof)
-    b2 = zeros(b)
-    
-    NonlinearSolvers.diagMatVec(jac1, x, b)
-    NonlinearSolvers.diagMatVec(jac2, x, b2)
-    println("b = \n", b)
-    println("b2 = \n", b2)
+  h = 1e-20
+  pert = Complex128(0, h)
 
-    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+        dof = mesh.dofs[k, j, i]
+        idx = (((dof - 1) % mesh.numDofPerNode) + 1)
+        block = div(dof - 1, mesh.numDofPerNode) + 1
+
+        eqn.q_vec[dof] += pert
+        disassembleSolution(mesh, sbp, eqn, opts2, eqn.q, eqn.q_vec)
+
+        evalResidual(mesh, sbp, eqn, opts2)
+        for p=1:mesh.numDofPerNode
+          jac1.A[p, k, block] = imag(eqn.res[p, j, i])/h
+        end
+
+        eqn.q_vec[dof] -= pert
+      end
+    end
   end
-=#
+
+  nblocks = mesh.numNodesPerElement*mesh.numEl
+  for i=1:nblocks
+    @fact norm(jac1.A[:, :, i] - jac2.A[:, :, i]) --> roughly(0.0, atol=1e-13)
+  end
+
   return nothing
 end
 

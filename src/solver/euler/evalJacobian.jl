@@ -42,6 +42,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
+
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("face integral @time printed above")
@@ -55,7 +56,9 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
+
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
+
 #  println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
