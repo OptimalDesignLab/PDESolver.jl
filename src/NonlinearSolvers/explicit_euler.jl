@@ -39,7 +39,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 #  MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
-    println(BSTDOUT, "\nEntered lserk54")
+    println(BSTDOUT, "\nEntered explicit_euler")
     println(BSTDOUT, "res_tol = ", res_tol)
   end
 #  flush(BSTDOUT)
@@ -281,27 +281,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     @mpi_master println(" pert removed from Ma")
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
 
-    # D calculations
-    #=
-    finaliter = calcFinalIter(t_steps, itermax)
-    D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
-    term23 = term23 * 1.0/t     # final step of time average: divide by total time
-    global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
-    total_dDdM = dDdM + global_term23
-
-    @mpi_master f_total_dDdM = open("total_dDdM.dat", "w")
-    @mpi_master println(f_total_dDdM, " dD/dM: ", dDdM)
-    @mpi_master println(f_total_dDdM, " term23: ", term23)
-    @mpi_master println(f_total_dDdM, " total dD/dM: ", total_dDdM)
-    @mpi_master flush(f_total_dDdM)
-    @mpi_master close(f_total_dDdM)
-    @mpi_master println(" ")
-    @mpi_master println(" dD/dM: ", dDdM)
-    @mpi_master println(" term23: ", term23)
-    @mpi_master println(" total dD/dM: ", total_dDdM)
-    @mpi_master println(" ")
-    =#
-
     finaliter = calcFinalIter(t_steps, itermax)
     Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     term23 = term23 * 1.0/t     # final step of time average: divide by total time
@@ -349,7 +328,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   flush(BSTDOUT)
 
   return t
-end  # end lserk54
+end  # end explicit_euler
 
 """
   See rk4 method with same signature
@@ -391,37 +370,20 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   drag_timeavg = 0.0
   maxtime = dt*itermax - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
 
-  # println("Calculating time-averaged drag from drag.dat")
-
   # trapezoid rule
   for i = 1:itermax
-
     quad_weight = calcQuadWeight(i, delta_t, itermax)
-
     drag_timeavg += quad_weight * drag[i]
   end
 
   drag_timeavg = drag_timeavg * 1.0/maxtime
-
-  #=
-  println(" ")
-  println(" drag_timeavg: ", drag_timeavg)
-  println(" maxtime: ", maxtime)
-  println(" itermax: ", itermax)
-  =#
-
-  # D calculations (instead of Cd. trying as a debugging step)
-  # D = drag_timeavg
-  # println(" D = <D> = ", D)
-  # dDdM = 0.0
-  # return D, dDdM
 
   # Cd calculations
   Cd = drag_timeavg/(0.5*Ma^2)
   println(" Cd = <D>/(0.5*M^2) = ", Cd)
 
   dCddM = (-4.0*drag_timeavg)/(Ma^3)
-  # println(" dCddM = (-2<D>)/(0.5*M^3) = ", dCddM)
+  # comes from dCd/dM = (-2<D>)/(0.5*M^3)
   println(" dCddM = (-4<D>)/(M^3) = ", dCddM)
 
   return Cd, dCddM
