@@ -113,6 +113,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   # NOTE: TODO make this more procedural- change from dDdM -> dCddM.
   #   - new drag_coefficient objective
   #---------------------------------------------------------------------------
+  # won't run in finite difference of Ma, but that's ok since that doesn't need dJdu
   if opts["perturb_Ma"]
     fac = (2.0/(eqn.params.Ma)^2)
     for i = 1:length(func_deriv_arr)

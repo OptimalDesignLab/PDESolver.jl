@@ -309,7 +309,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     total_dCddM = dCddM + global_term23
 
     # Cd calculations
-    total_dCddM = dCddM + term23
     @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
     @mpi_master println(f_total_dCddM, " dCd/dM: ", dCddM)
     @mpi_master println(f_total_dCddM, " global_term23: ", global_term23)
