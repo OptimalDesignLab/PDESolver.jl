@@ -118,19 +118,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   sbp = ctx[2]   # fastest way to grab mesh from ctx?
   eqn = ctx[3]   # fastest way to grab mesh from ctx?
 
-  # Initialize quadrature weight for trapezoidal rule
-  #   This will be adjusted within the loop for the first & final time steps
-
-
   #------------------------------------------------------------------------------
   # capture direct sensitivity at the IC
   # v is the direct sensitivity, du/dM
   # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
-  objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-  drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
-  @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
-  @mpi_master println(f_drag, 1, " ", drag)
-  @mpi_master flush(f_drag)
+  if opts["write_drag"]
+    objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+    @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+    @mpi_master println(f_drag, 1, " ", drag)
+    @mpi_master flush(f_drag)
+  end
+  if opts["write_L2vnorm"]
+    @mpi_master f_L2vnorm = eqn.file_dict[opts["write_L2vnorm_fname"]]
+  end
 
   if opts["perturb_Ma"]
 
@@ -158,6 +159,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
       term23 += new_contrib
     end
+
+    # v_arr = zeros(eqn.q)
+    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
+    # disassembleSolution(mesh, sbp, eqn, opts, v_arr, v_vec)
+    L2_v_norm = 0.0
+    L2_v_norm = calcNorm(eqn, v_vec)
+    @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
 
   end   # end if opts["perturb_Ma"]
 
@@ -273,7 +281,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
       @mpi_master println(f_drag, i, " ", drag)
-      @mpi_master flush(f_drag)
+      @mpi_master if (i % opts["output_freq"]) == 0
+        flush(f_drag)
+      end
+
     end
 
     #------------------------------------------------------------------------------
@@ -305,6 +316,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         term23 += new_contrib
       end
 
+      #------------------------------------------------------------------------------
+      # here is where we should be calculating the 'energy' to show that it is increasing over time
+      #   'energy' = L2 norm of the solution
+      # JEH: So, at each time step, evaluate: sum_{i,j,k} q[i,j,k]*q[i,j,k]*sbp.w[j]*jac[j,k]  
+      #      (here I assume jac is proportional to the element volume)
+      if opts["write_L2vnorm"]
+        L2_v_norm = 0.0
+        L2_v_norm = calcNorm(eqn, v_vec)
+        @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+
+        @mpi_master if (i % opts["output_freq"]) == 0
+          flush(f_L2vnorm)
+        end
+      end
 
     end   # end if opts["perturb_Ma"]
 
@@ -337,6 +362,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   @mpi_master println("---------------------------------------------")
 
   if opts["perturb_Ma"]
+    @mpi_master flush(f_drag)
+    @mpi_master close(f_drag)
 
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
     @mpi_master println(" Ma_pert: ", Ma_pert)
@@ -383,6 +410,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   @mpi_master println("    mesh.coord_order: ", mesh.coord_order)
   @mpi_master println(" ")
 
+  if opts["write_L2vnorm"]
+    @mpi_master flush(f_L2vnorm)
+    @mpi_master close(f_L2vnorm)
+  end
 
 
   if myrank == 0

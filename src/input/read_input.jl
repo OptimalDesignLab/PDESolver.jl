@@ -296,6 +296,11 @@ get!(arg_dict, "write_drag", false)
 get!(arg_dict, "write_drag_fname", "drag.dat")
 get!(arg_dict, "write_drag_freq", 1)
 
+# L2 v norm
+get!(arg_dict, "write_L2vnorm", false)
+get!(arg_dict, "write_L2vnorm_fname", "L2_v_norm.dat")
+get!(arg_dict, "write_L2vnorm_freq", 1)
+
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
 
