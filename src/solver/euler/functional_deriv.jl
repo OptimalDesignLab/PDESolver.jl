@@ -109,6 +109,18 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, integrand, func_deriv_arr)
 
+  #---------------------------------------------------------------------------
+  # NOTE: TODO make this more procedural- change from dDdM -> dCddM.
+  #   - new drag_coefficient objective
+  #---------------------------------------------------------------------------
+  if opts["perturb_Ma"]
+    fac = (2.0/(eqn.params.Ma)^2)
+    for i = 1:length(func_deriv_arr)
+      func_deriv_arr[i] = fac*func_deriv_arr[i]
+    end
+  end
+
+
   return nothing
 end  # End function calcFunctionalDeriv
 

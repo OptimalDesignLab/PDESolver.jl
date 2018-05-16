@@ -282,6 +282,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
 
     # D calculations
+    #=
     finaliter = calcFinalIter(t_steps, itermax)
     D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     term23 = term23 * 1.0/t     # final step of time average: divide by total time
@@ -299,18 +300,25 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     @mpi_master println(" term23: ", term23)
     @mpi_master println(" total dD/dM: ", total_dDdM)
     @mpi_master println(" ")
+    =#
+
+    finaliter = calcFinalIter(t_steps, itermax)
+    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
+    term23 = term23 * 1.0/t     # final step of time average: divide by total time
+    global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
+    total_dCddM = dCddM + global_term23
 
     # Cd calculations
-    #=
-    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
     total_dCddM = dCddM + term23
     @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
     @mpi_master println(f_total_dCddM, " dCd/dM: ", dCddM)
-    @mpi_master println(f_total_dCddM, " term23: ", term23)
+    @mpi_master println(f_total_dCddM, " global_term23: ", global_term23)
     @mpi_master println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
     @mpi_master flush(f_total_dCddM)
     @mpi_master close(f_total_dCddM)
-    =#
+    @mpi_master println(" dCd/dM: ", dCddM)
+    @mpi_master println(" global_term23: ", global_term23)
+    @mpi_master println(" total dCd/dM: ", total_dCddM)
 
   end   # end if opts["perturb_Ma"]
   @mpi_master f_Ma = open("Ma.dat", "w")
@@ -404,23 +412,20 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   =#
 
   # D calculations (instead of Cd. trying as a debugging step)
-  D = drag_timeavg
-  println(" D = <D> = ", D)
-
-  dDdM = 0.0
-
-  return D, dDdM
+  # D = drag_timeavg
+  # println(" D = <D> = ", D)
+  # dDdM = 0.0
+  # return D, dDdM
 
   # Cd calculations
-  #=
   Cd = drag_timeavg/(0.5*Ma^2)
   println(" Cd = <D>/(0.5*M^2) = ", Cd)
 
-  dCddM = (-2.0*drag_timeavg)/(0.5*Ma^3)
-  println(" dCddM = (-2<D>)/(0.5*M^3) = ", dCddM)
+  dCddM = (-4.0*drag_timeavg)/(Ma^3)
+  # println(" dCddM = (-2<D>)/(0.5*M^3) = ", dCddM)
+  println(" dCddM = (-4<D>)/(M^3) = ", dCddM)
 
   return Cd, dCddM
-  =#
 
 end
 
