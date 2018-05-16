@@ -196,6 +196,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     # callback and logging
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT) # dirsens note: here is where drag is written
 
+
     # logging
     @mpi_master if i % 1 == 0
       println(f1, i, " ", sol_norm)
@@ -264,7 +265,7 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
 
 
   #------------------------------------------------------------------------------
-  # LSERK end of time step stuff
+  # EE end of time step stuff
 
   # final update
   t += delta_t
@@ -388,7 +389,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
 
   return Cd, dCddM
 
-end
+end     # end function calcDragTimeAverage
 
 """
 t_steps:  max number of time steps, set by tmax
@@ -406,7 +407,7 @@ function calcFinalIter(t_steps, itermax)
 
   return finaliter
 
-end
+end     # end function calcFinalIter
 
 """
 i:        iter number to calculate quadrature weight at
@@ -427,4 +428,4 @@ function calcQuadWeight(i, delta_t, finaliter)
   end
 
   return quad_weight
-end
+end     # end function calcQuadWeight

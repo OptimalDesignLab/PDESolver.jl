@@ -421,6 +421,7 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
     end
   end
 
+  #=
   if opts["write_drag"]
     @mpi_master f = eqn.file_dict[opts["write_drag_fname"]]
 
@@ -434,6 +435,8 @@ function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
       flush(f)
     end
   end
+  =#
+  # 20180516: writing drag outside of majorIterCallback now.
 
   #=
   #DEBUGGING: write q_vec to file
