@@ -211,6 +211,7 @@ function test_jac_terms_long()
     println("testing mode 9")
     test_jac_general(mesh9, sbp9, eqn9, opts9)
     test_diagjac(mesh9, sbp9, eqn9, opts9)
+    test_strongdiagjac(mesh9, sbp9, eqn9, opts9)
 
   end
 
@@ -744,3 +745,50 @@ function test_diagjac(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+function test_strongdiagjac(mesh, sbp, eqn, opts)
+# for a uniform flow (and BCs), the strong form and weak form should be
+# equivalent
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  #----------------------------------------------------------------------------
+  # construct the matrices/assemblers
+  opts["calc_jac_explicit"] = true
+
+  jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
+  assem1 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac1)
+
+  jac2 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
+  assem2 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac2)
+
+  evalJacobian(mesh, sbp, eqn, opts, assem1)
+  evalJacobianStrongDiag(mesh, sbp, eqn, opts, assem2)
+
+
+  for i=1:10
+    println("i = ", i)
+    x = rand(mesh.numDof)
+    b = zeros(Complex128, mesh.numDof)
+    b2 = zeros(b)
+    
+    NonlinearSolvers.diagMatVec(jac1, x, b)
+    NonlinearSolvers.diagMatVec(jac2, x, b2)
+    println("b = \n", b)
+    println("b2 = \n", b2)
+
+    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
+  end
+
+  return nothing
+end
+
