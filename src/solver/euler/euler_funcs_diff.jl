@@ -66,7 +66,6 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
         end
       end
     end
-    
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
