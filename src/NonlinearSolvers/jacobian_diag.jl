@@ -299,7 +299,7 @@ end
    * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
         have the unstable modes removed.
 """
-function filterDiagJac{T}(A::DiagJac{T}, q_vec::AbstractVector{T2})
+function filterDiagJac{T, T2}(A::DiagJac{T}, q_vec::AbstractVector{T2})
 
   blocksize, blocksize, nblock = size(A.A)
   T3 = promote_type(T, T2)
@@ -355,8 +355,8 @@ end
 
    * `Jac`: matrix being modified
 """
-function removeUnstableModes!{T}(Jac::AbstractMatrix
-                                 u::AbstractVector
+function removeUnstableModes!{T}(Jac::AbstractMatrix,
+                                 u::AbstractVector,
                                  A::AbstractVector{T})
   @assert( size(Jac,1) == size(Jac,2) == length(u) )
   n = size(Jac,1)
