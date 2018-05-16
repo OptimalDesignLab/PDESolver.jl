@@ -282,4 +282,113 @@ function assembleBoundary{T}(helper::AssembleDiagJacData, sbpface::DenseFace,
   return nothing
 end
 
+#------------------------------------------------------------------------------
+# apply the stabilization to the diagonal Jacobian
+
+"""
+  This function takes the block-diagonal Jacobian `A` and a solution
+  vector `q_vec` and removes the unstable modes using
+  [`removeUnstalbeModes!`](@ref).
+
+  **Inputs**
+
+   * q_vec: solution vector (the local part)
+
+  **Inputs/Outputs**
+
+   * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
+        have the unstable modes removed.
+"""
+function filterDiagJac{T}(A::DiagJac{T}, q_vec::AbstractVector{T2})
+
+  blocksize, blocksize, nblock = size(A.A)
+  T3 = promote_type(T, T2)
+
+  @assert blocksize == mesh.numDofPerNode
+
+  workvec = zeros(T3, mesh.numDofPerNode)  # work array for inner function
+  Ablock = zeros(T, blocksize, blocksize)  # copy array into this to negate it
+
+  for k=1:nblock
+    # because the inner function assumes the residual is defined as
+    # du/dt + R(u) = 0, but Ticon writes it as du/dt = R(u), we have to
+    # multiply the Jacobian by -1 to make the unstable modes the negative
+    # eigenvalues
+    for j=1:blocksize
+      for i=1:blocksize
+        Ablock[i, j] = -A.A[i, j, k]
+      end
+    end
+
+    blockidx = ((k-1)*blocksize + 1):(k*blocksize)
+    u_k = sview(q_vec, blockidx)
+
+    removeUnstableModes!(Ablock, u_k)
+
+    # copy back
+    for j=1:blocksize
+      for i=1:blocksize
+        A.A[i, j, k] = Ablock[i, j]
+      end
+    end
+
+  end  # end loop k
+
+  return nothing
+end
+
+
+
+
+
+"""
+  modifies matrix `Jac` such that `u.'*sym(Jac)*u` is strictly positive
+
+  **Inputs**
+
+   * `u`: an given vector whose dimensions are consistent with `Jac`
+   * `A`: a work vector needed by this function (overwritten).  The
+          element type should be the "maximum" type of the element types
+          of `u` and `Jac`
+
+  **Inputs/Outputs**
+
+   * `Jac`: matrix being modified
+"""
+function removeUnstableModes!{T}(Jac::AbstractMatrix
+                                 u::AbstractVector
+                                 A::AbstractVector{T})
+  @assert( size(Jac,1) == size(Jac,2) == length(u) )
+  n = size(Jac,1)
+  # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
+  prod = zero(T)
+  for i = 1:n
+    for j = 1:n
+      prod += 0.5*(Jac[i,j] + Jac[j,i])*u[i]*u[j]
+    end
+  end
+  if prod > 0
+    # nothing to do
+    return
+  end
+  # array A stores the entries in the contraint Jacobian
+#  A = zeros(div(n*(n+1),2))
+  for i = 1:n
+    A[div(i*(i-1),2)+i] = u[i]*u[i]
+    for j = 1:(i-1)
+      A[div(i*(i-1),2)+j] = 2.0*u[i]*u[j]
+    end
+  end
+  scale!(A, -prod/dot(A,A))
+#  A *= -prod/dot(A,A)
+  for i = 1:n
+    Jac[i,i] += A[div(i*(i-1),2)+i]
+    for j = 1:(i-1)
+      Jac[i,j] += A[div(i*(i-1),2)+j]
+      Jac[j,i] += A[div(i*(i-1),2)+j]
+    end
+  end
+
+  return nothing
+end
 
