@@ -20,12 +20,13 @@
   by other parts of the solver, particularly the NonlinearSolvers.  See
   interfaces.md for details
 
-  Inputs:
-    mesh: an AbstractMesh describing the mesh on which to solve the physics
-    sbp: an SBP operator
-    eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
-    opts: the options dictionary
-    t: the current time value, defaults to 0.0
+  **Inputs**
+
+   * mesh: an AbstractMesh describing the mesh on which to solve the physics
+   * sbp: an SBP operator
+   * eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
+   * opts: the options dictionary
+   * t: the current time value, defaults to 0.0
 
   #TODO: list required options keys
 """
@@ -124,6 +125,41 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 end
 
 """
+  This function evaluates the mesh.numDofPerNode x mesh.numDofPerNode block
+  diagonal of the Jacobian of the strong form of the sptail residual.  Note that
+  the residual is written
+
+  du/dt = -(Q * f) + SAT
+
+  Note the negative sign.
+
+  Currently this function neglects the SAT terms (both interface and boundary
+  conditions)
+
+  This function is most useful with [`AssembleDiagJacData`](@ref), but
+  can be used with any [`AssembleElementData`](@ref).
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * eqn: AbstractSolutionData (physics modules should specialize this
+          argument)
+   * opts: options dictionary
+   * assembler: object that must be passed to `assembleElement` and 
+                `assembleInterface`
+"""
+function evalJacobianStrongDiag(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::AbstractSolutionData, opts::Dict, 
+                      assembler::AssembleElementData, t=0.0;
+                      start_comm=false)
+
+
+  throw(ErrorException("Generic fallback evalJacobianStrongDiag reached: did you forget to extend evalJacobian() with a new method for your AbstractSolutionData?"))
+
+
+
+"""
   Creates a functional object.
 
   Each physics modules should extend this function with a new method,
@@ -155,7 +191,6 @@ function createFunctional{I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
   error("generic fallback for createFunctional() reached.  Did you forget to extend createFunctional() with a new method for your AbstractSolutionData?")
 
 end
-
 
 
 """
