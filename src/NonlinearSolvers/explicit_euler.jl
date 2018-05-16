@@ -132,7 +132,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
       term23 += new_contrib
     end
-    println(" i: ", i,"  myrank: ", mesh.myrank, "  new_contrib: ", new_contrib, "  term23: ", term23)
 
   end   # end if opts["perturb_Ma"]
 
@@ -245,7 +244,6 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
         new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
         term23 += new_contrib
       end
-      println(" i: ", i,"  myrank: ", mesh.myrank, "  new_contrib: ", new_contrib, "  term23: ", term23)
 
     end   # end if opts["perturb_Ma"]
 
@@ -286,13 +284,9 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
     # D calculations
     finaliter = calcFinalIter(t_steps, itermax)
     D, dDdM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
-    println(" (before time div) i: ", i,"  myrank: ", mesh.myrank, "  new_contrib: ", new_contrib, "  term23: ", term23)
     term23 = term23 * 1.0/t     # final step of time average: divide by total time
-    println(" (after time div) i: ", i,"  myrank: ", mesh.myrank, "  new_contrib: ", new_contrib, "  term23: ", term23)
     global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
-    # total_dDdM = dDdM + term23
     total_dDdM = dDdM + global_term23
-    println(" myrank: ", mesh.myrank, "  total_dDdM: ", total_dDdM, "  dDdM: ", dDdM, "  term23: ", term23, "  global_term23: ", global_term23)
 
     @mpi_master f_total_dDdM = open("total_dDdM.dat", "w")
     @mpi_master println(f_total_dDdM, " dD/dM: ", dDdM)
