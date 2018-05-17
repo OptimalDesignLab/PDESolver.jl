@@ -124,6 +124,12 @@ function show(io::IO, A::DiagJac)
   return nothing
 end
 
+import PETSc2.MatZeroEntries
+function MatZeroEntries(A::DiagJac)
+
+  fill!(A.A, 0.0)
+end
+
 """
   Matrix-vector multiplication function for [`DiagJac`](@ref)
 
