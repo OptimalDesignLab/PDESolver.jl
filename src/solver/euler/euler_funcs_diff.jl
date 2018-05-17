@@ -95,7 +95,7 @@ end  # end function
                 Jacobian
   
 """
-function calcVolumeIntegralsStrongDiag_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+function calcVolumeIntegralsStrong_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
                                    mesh::AbstractMesh{Tmsh},
                                    sbp::AbstractSBP,
                                    eqn::EulerData{Tsol, Tres, Tdim},
@@ -106,13 +106,12 @@ function calcVolumeIntegralsStrongDiag_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
   @assert eqn.params.use_Minv != 1  # use_Minv not supported
 
   # flux jacobian at every node in each direction
-#  flux_jac = eqn.params.flux_jac
+  flux_jac = eqn.params.flux_jac
   res_jac = eqn.params.res_jac; fill!(res_jac, 0.0)
 #  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
 #  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
   nrm = eqn.params.nrm  # vector in parametric direction
 
-  fluxjac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
@@ -120,22 +119,35 @@ function calcVolumeIntegralsStrongDiag_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
 
       # compute dF/dq
       for k=1:Tdim
+        fluxjac_k = sview(flux_jac, :, :, j, k)
 
         # get the direction vector
         for p=1:Tdim
           nrm[p] = mesh.dxidx[k, p, j, i]
         end
-        calcEulerFlux_diff(eqn.params, q_j, aux_vars_j, nrm, fluxjac)
-
-        # compute diagonal contribution to jacobian
-        @simd for m=1:mesh.numDofPerNode
-          @simd for n=1:mesh.numDofPerNode
-            res_jac[n, m, j, j] += -sbp.Q[j, j, k]*fluxjac[n, m]
-          end
-        end
-
+        calcEulerFlux_diff(eqn.params, q_j, aux_vars_j, nrm, fluxjac_k)
       end  # end loop k
     end  # end loop j
+
+    # compute dR/dq
+    for k=1:Tdim
+      weakDifferentiateElement_jac!(sbp, k, sview(flux_jac, :, :, :, k), res_jac, SummationByParts.Subtract(), false)
+    end
+
+    
+    if eqn.params.use_Minv == 1
+      # multiply by Minv if needed
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jac[n, m, p, q] *= val
+            end
+          end
+        end
+      end
+    end
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
@@ -146,9 +158,6 @@ function calcVolumeIntegralsStrongDiag_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
 
   return nothing
 end  # end function
-
-
-
 
 
 """

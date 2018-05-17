@@ -125,9 +125,8 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 end
 
 """
-  This function evaluates the mesh.numDofPerNode x mesh.numDofPerNode block
-  diagonal of the Jacobian of the strong form of the sptail residual.  Note that
-  the residual is written
+  This function evaluates the Jacobian of the strong form of the spatial
+  residual.  Note that the residual is written
 
   du/dt = -(Q * f) + SAT
 
@@ -135,9 +134,6 @@ end
 
   Currently this function neglects the SAT terms (both interface and boundary
   conditions)
-
-  This function is most useful with [`AssembleDiagJacData`](@ref), but
-  can be used with any [`AssembleElementData`](@ref).
 
   **Inputs**
 
@@ -149,7 +145,7 @@ end
    * assembler: object that must be passed to `assembleElement` and 
                 `assembleInterface`
 """
-function evalJacobianStrongDiag(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
                       eqn::AbstractSolutionData, opts::Dict, 
                       assembler::AssembleElementData, t=0.0;
                       start_comm=false)
