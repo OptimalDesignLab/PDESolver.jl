@@ -130,6 +130,7 @@ end
   **Inputs**
 
    * A: a `DiagJac`
+   * mesh: the mesh object for the discretiztaion where `A` was evaluated
    * x: vector to multiply against
 
   **Inputs/Outputs**
@@ -184,8 +185,7 @@ function AssembleDiagJacData{T}(mesh, sbp, eqn, opts, jac::DiagJac{T})
 end
 
 """
-  Assembles the block diagonal part of the volume integral contribution only.
-  The off diagonal part of `jac` is never touched.
+  Assembles the volume integral contribution.
 """
 function assembleElement{T}(helper::AssembleDiagJacData, mesh::AbstractMesh,
                             elnum::Integer, jac::AbstractArray{T, 4})
@@ -214,6 +214,10 @@ function assembleElement{T}(helper::AssembleDiagJacData, mesh::AbstractMesh,
   return nothing
 end
 
+"""
+  Assembles contributions into an element-block matrix.  `jacLR` and `jacRL`
+  are not used.
+"""
 function assembleInterface{T}(helper::AssembleDiagJacData,
                               sbpface::DenseFace,
                               mesh::AbstractMesh, iface::Interface,
@@ -254,6 +258,10 @@ function assembleInterface{T}(helper::AssembleDiagJacData,
   return nothing
 end
 
+"""
+  Assembles contribution of the shared face terms into the element-block
+  matrix.  `jacLR` is not used.
+"""
 function assembleSharedFace{T}(helper::AssembleDiagJacData, sbpface::DenseFace,
                                mesh::AbstractMesh,
                                iface::Interface,
@@ -284,6 +292,9 @@ function assembleSharedFace{T}(helper::AssembleDiagJacData, sbpface::DenseFace,
   return nothing
 end
 
+"""
+  Assembles the boundary terms into an element-block matrix.
+"""
 function assembleBoundary{T}(helper::AssembleDiagJacData, sbpface::DenseFace,
                                mesh::AbstractMesh,
                                bndry::Boundary,
@@ -321,10 +332,11 @@ end
 """
   This function takes the block-diagonal Jacobian `A` and a solution
   vector `q_vec` and removes the unstable modes using
-  [`removeUnstalbeModes!`](@ref).
+  [`findStablePerturbation!`](@ref).
 
   **Inputs**
 
+   * mesh: the mesh that was used in the computation of `A`
    * q_vec: solution vector (the local part)
 
   **Inputs/Outputs**
@@ -332,16 +344,17 @@ end
    * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
         have the unstable modes removed.
 """
-function filterDiagJac{T, T2}(A::DiagJac{T}, q_vec::AbstractVector{T2})
+function filterDiagJac{T, T2}(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJac{T})
 
   blocksize, blocksize, nblock = size(A.A)
   T3 = promote_type(T, T2)
 
-  @assert blocksize == mesh.numDofPerNode
-
-  workvec = zeros(T3, mesh.numDofPerNode)  # work array for inner function
+  @assert blocksize == mesh.numDofPerNode*mesh.numNodesPerElement
+  nwork = div(blocksize*(blocksize+1),2)
+  workvec = zeros(T3, nwork)  # work array for inner function
   Ablock = zeros(T, blocksize, blocksize)  # copy array into this to negate it
-
+  Ablock2 = zeros(T, blocksize, blocksize)
+  ublock = zeros(T2, blocksize)
   for k=1:nblock
     # because the inner function assumes the residual is defined as
     # du/dt + R(u) = 0, but Ticon writes it as du/dt = R(u), we have to
@@ -353,15 +366,22 @@ function filterDiagJac{T, T2}(A::DiagJac{T}, q_vec::AbstractVector{T2})
       end
     end
 
-    blockidx = ((k-1)*blocksize + 1):(k*blocksize)
-    u_k = sview(q_vec, blockidx)
+    # get the entries of q_vec
+    idx = 1
+    for j=1:mesh.numNodesPerElement
+      for i=1:mesh.numDofPerNode
+        ublock[idx] = q_vec[mesh.dofs[i, j, k]]
+        idx += 1
+      end
+    end
 
-    removeUnstableModes!(Ablock, u_k)
+    findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
+#    removeUnstableModes!(Ablock, u_k)
 
     # copy back
     for j=1:blocksize
       for i=1:blocksize
-        A.A[i, j, k] = Ablock[i, j]
+        A.A[i, j, k] = Ablock2[i, j]
       end
     end
 
@@ -425,3 +445,57 @@ function removeUnstableModes!{T}(Jac::AbstractMatrix,
   return nothing
 end
 
+"""
+  returns matrix `Jacpert` such that `u.'*sym(Jac + Jacpert)*u` is strictly
+  positive
+
+  **Inputs**
+
+   * `u`: an given vector whose dimensions are consistent with `Jac`
+   * `Jac`: matrix that needs to be perturbed
+   * `A`: a work vector needed by this function (overwritten).  The
+          element type should be the "maximum" type of the element types
+          of `u` and `Jac`
+
+
+  **Inputs/Outputs**
+
+   * `Jacpert`: matrix perturbation
+"""
+function findStablePerturbation!{T}(Jac::AbstractMatrix,
+                                    u::AbstractVector,
+                                    A::AbstractVector{T},
+                                    Jacpert::AbstractMatrix)
+  @assert( size(Jac,1) == size(Jac,2) == size(Jacpert,1) == size(Jacpert,2)
+           == length(u) )
+  n = size(Jac,1)
+  # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
+  prod = zero(T)
+  for i = 1:n
+    for j = 1:n
+      prod += 0.5*(Jac[i,j] + Jac[j,i])*u[i]*u[j]
+    end
+  end
+  if prod > 0
+    # nothing to do
+    return
+  end
+  # array A stores the entries in the contraint Jacobian
+#  A = zeros(div(n*(n+1),2))
+  for i = 1:n
+    A[div(i*(i-1),2)+i] = u[i]*u[i]
+    for j = 1:(i-1)
+      A[div(i*(i-1),2)+j] = 2.0*u[i]*u[j]
+    end
+  end
+#  A *= -prod/dot(A,A)
+  scale!(A, -prod/dot(A, A))
+  fill!(Jacpert, 0.0)
+  for i = 1:n
+    Jacpert[i,i] += A[div(i*(i-1),2)+i]
+    for j = 1:(i-1)
+      Jacpert[i,j] += A[div(i*(i-1),2)+j]
+      Jacpert[j,i] += A[div(i*(i-1),2)+j]
+    end
+  end
+end
