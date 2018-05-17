@@ -682,9 +682,13 @@ function test_diagjac(mesh, sbp, eqn, opts)
 
   #----------------------------------------------------------------------------
   # construct the matrices/assemblers
+  nblocks = mesh.numEl
+  blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
+
+
   opts["calc_jac_explicit"] = true
 
-  jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
+  jac1 = NonlinearSolvers.DiagJac(Complex128, blocksize, mesh.numEl)
   assem1 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac1)
 
 
@@ -705,29 +709,26 @@ function test_diagjac(mesh, sbp, eqn, opts)
 #  println("jac2_full = \n", jac2_full)
 #  println("jac1 = \n", jac1)
 
-  nblocks = mesh.numNodesPerElement*mesh.numEl
-
+  # because of the format of DiagJac, it isn't generally true that the blocks
+  # are in the same order as in the real Jacobian, but it works for the simple
+  # order where each node of each element is numbered 1:n
   for block=1:nblocks
-    boffset = (block-1)*mesh.numDofPerNode
-    for i=1:mesh.numDofPerNode
-      for j=1:mesh.numDofPerNode
-        @fact abs(jac2_full[boffset + i, boffset + j] - jac1.A[i, j, block]) --> roughly(0.0, atol=1e-13)
-      end
-    end
+    idx = ((block - 1)*blocksize + 1):(block*blocksize)
+    @fact norm(jac2_full[idx, idx] - jac1.A[:, :, block]) --> roughly(0.0, atol=1e-13)
   end
 
   # zero out the off diagonal parts of jac2_full
-  tmp = zeros(mesh.numDofPerNode, mesh.numDofPerNode, nblocks)
-  for i=1:nblocks
-    idx = ((i-1)*mesh.numDofPerNode + 1):(i*mesh.numDofPerNode)
-    tmp[:, :, i] = jac2_full[idx, idx]
+  tmp = zeros(blocksize, blocksize, nblocks)
+  for block=1:nblocks
+    idx = ((block - 1)*blocksize + 1):(block*blocksize)
+    tmp[:, :, block] = jac2_full[idx, idx]
   end
 
   fill!(jac2_full, 0.0)
 
-  for i=1:nblocks
-    idx = ((i-1)*mesh.numDofPerNode + 1):(i*mesh.numDofPerNode)
-    jac2_full[idx, idx] = tmp[:, :, i]
+  for block=1:nblocks
+    idx = ((block - 1)*blocksize + 1):(block*blocksize)
+    jac2_full[idx, idx] = tmp[:, :, block]
   end
 
 
@@ -736,7 +737,7 @@ function test_diagjac(mesh, sbp, eqn, opts)
     x = rand(mesh.numDof)
     b = zeros(Complex128, mesh.numDof)
     
-    NonlinearSolvers.diagMatVec(jac1, x, b)
+    NonlinearSolvers.diagMatVec(jac1, mesh, x, b)
     b2 = jac2_full * x
 
     @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
@@ -746,9 +747,11 @@ function test_diagjac(mesh, sbp, eqn, opts)
   return nothing
 end
 
-function test_strongdiagjac(mesh, sbp, eqn, opts)
+function test_strongdiagjac(mesh, sbp, eqn, _opts)
 # for a uniform flow (and BCs), the strong form and weak form should be
 # equivalent
+
+  opts = copy(_opts)  # dont modify the original
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
@@ -763,49 +766,39 @@ function test_strongdiagjac(mesh, sbp, eqn, opts)
 
   #----------------------------------------------------------------------------
   # construct the matrices/assemblers
+  nblocks = mesh.numEl
+  blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
+
+  opts["addBoundaryIntegrals"] = false
+  opts["addStabilization"] = false
+  opts["addFaceIntegrals"] = false
+  opts["Q_transpose"] = false
+
+  # complex step jacobian (coloring)
+  opts["calc_jac_explicit"] = false
+  opts["preallocate_jacobian_coloring"] = true
+  pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  jac1 = getBaseLO(lo1).A
+  ctx_residual = (evalResidual,)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+
+  # diagonal jacobian
   opts["calc_jac_explicit"] = true
+  jac2 = NonlinearSolvers.DiagJac(Complex128, blocksize, nblocks)
+  assem2 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac2) 
+  evalJacobianStrong(mesh, sbp, eqn, opts, assem2)
 
-  jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
+  # test multiplication
+  for i=1:10
+    x = rand(mesh.numDof)
+    b2 = zeros(Complex128, mesh.numDof)
+    
+    b = jac1 * x
+    NonlinearSolvers.diagMatVec(jac2, mesh, x, b2)
 
-  jac2 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
-  assem2 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac2)
-
-  evalJacobianStrongDiag(mesh, sbp, eqn, opts, assem2)
-
-  # compute first jacobian by complex step
-  opts2 = copy(opts)
-  opts2["addBoundaryIntegrals"] = false
-  opts2["addStabilization"] = false
-  opts2["addFaceIntegrals"] = false
-  opts2["Q_transpose"] = false
-
-  h = 1e-20
-  pert = Complex128(0, h)
-
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        dof = mesh.dofs[k, j, i]
-        idx = (((dof - 1) % mesh.numDofPerNode) + 1)
-        block = div(dof - 1, mesh.numDofPerNode) + 1
-
-        eqn.q_vec[dof] += pert
-        disassembleSolution(mesh, sbp, eqn, opts2, eqn.q, eqn.q_vec)
-
-        evalResidual(mesh, sbp, eqn, opts2)
-        for p=1:mesh.numDofPerNode
-          jac1.A[p, k, block] = imag(eqn.res[p, j, i])/h
-        end
-
-        eqn.q_vec[dof] -= pert
-      end
-    end
+    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
   end
 
-  nblocks = mesh.numNodesPerElement*mesh.numEl
-  for i=1:nblocks
-    @fact norm(jac1.A[:, :, i] - jac2.A[:, :, i]) --> roughly(0.0, atol=1e-13)
-  end
 
   return nothing
 end
