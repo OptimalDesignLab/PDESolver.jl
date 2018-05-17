@@ -55,12 +55,9 @@ function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   else
     A = createPetscMat(mesh, sbp, eqn, opts)
     is_setup = Bool[false]
-    is_shared = false
+    is_shared = true
     nassemblies = Int[0]
   end
-
-  # update the PC so it knows if the LO used its matrix or not
-  getBasePC(pc).is_shared = is_shared
 
   if typeof(pc2) <: PetscMatPC  # if pc2 has Petsc vectors inside it
     xtmp = pc2.xtmp

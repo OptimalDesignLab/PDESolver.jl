@@ -202,34 +202,6 @@ i
   return nothing
 end
 
-function test_norms(mesh, sbp, eqn, opts)
-
-  u = ones(mesh.numDof)
-  v = ones(mesh.numDof)
-
-  # mesh is [0, 4] x [0, 4]
-  @fact calcNorm(eqn, u) --> roughly(sqrt(mesh.numDofPerNode*16), atol=1e-13)
-  
-  # test linear
-  u_arr = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      x = mesh.coords[1, j, i]
-      y = mesh.coords[2, j, i]
-      dof = mesh.dofs[1, j, i]
-      u[dof] = x + 2*y + 1
-    end
-  end
-
-
-#  @fact calcNorm(eqn, u) --> roughly(112, atol=1e-13)
-
-  # check inner product
-  @fact calcL2InnerProduct(eqn, u, v) --> roughly(112, atol=1e-13)
-  @fact calcL2InnerProduct(eqn, v, u) --> roughly(112, atol=1e-13)
-
-  return nothing
-end
 
 
 function test_utils2(mesh, sbp, eqn, opts)
@@ -237,7 +209,6 @@ function test_utils2(mesh, sbp, eqn, opts)
   facts("----- Testing Utils 2D -----") do
 
     test_calcBCNormal(mesh, eqn)
-    test_norms(mesh, sbp, eqn, opts)
 
     #TODO: test other things too
   end
@@ -258,4 +229,4 @@ end
 
 add_func2!(AdvectionTests, test_utils3, test_3d_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])
 # it doesn't matter what mesh is loaded, so reuse the test_lowlevel one
-add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST, TAG_TMP])
+add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])

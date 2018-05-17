@@ -16,8 +16,6 @@ the final pages describe the Newton implementation used by them.
   Pages = [ "steady.md"
             "unsteady.md"
             "newton.md"
-            "jacobian.md"
-            "jac_recalc.md"
             "matrix.md"
             "newton_inner.md"
           ]

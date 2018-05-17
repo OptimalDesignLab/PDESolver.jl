@@ -60,16 +60,12 @@ function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
 
   ctx = C_NULL  # this gets set later
   is_shared = false
-
   is_finalized = false
   nsolves = 0
   ntsolves = 0
   comm = eqn.comm
   myrank = eqn.myrank
   commsize = eqn.commsize
-
-  # update the PC so it knows if the LO used its matrix or not
-  getBasePC(pc).is_shared = is_shared
 
 
   return PetscMatFreeLO(A, xtmp, btmp, ctx, is_shared, is_finalized, nsolves,

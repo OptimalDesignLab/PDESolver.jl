@@ -43,7 +43,6 @@ calcLinearOperator
 applyLinearOperator
 applyLinearOperatorTranspose
 getBaseLO
-getBaseObject
 free(::AbstractLO)
 ```
 

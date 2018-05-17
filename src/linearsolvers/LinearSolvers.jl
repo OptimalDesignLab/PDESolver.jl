@@ -10,7 +10,7 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        linearSolve, linearSolveTranspose, 
        isLOMatFree, isPCMatFree, setTolerances, free,  # utility functions
        applyLinearOperator, applyLinearOperatorTranspose,  # LO functions
-       getBaseLO, getBasePC, getBaseObject,
+       getBaseLO, getBasePC,
        PCNone, PetscMatPC, PetscMatFreePC,  # PC types
        DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO,  # LO types
        AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
@@ -246,7 +246,7 @@ end
    * mesh
    * sbp
    * eqn: this argument should generally not be used because all the solution
-          related data should be stored in the pc object by [`calcPC`](@ref)
+          related data should be stored in the pc ovject by [`calcPC`](@ref)
    * opts
    * t: current time
    * b: a AbstractVector representing the local part of the solution (ie
@@ -302,42 +302,6 @@ function getBasePC(pc::AbstractPC)
   # itself
   return getBasePC(pc.pc_inner)
 end
-
-"""
-  This function allows extracting a specific type of pc_inner.
-
-  Note: this is not type-stable in julia 0.4, but can be rewritten to be so
-        in later version of Julia
-
-  **Inputs**
-
-   * pc: a PC
-   * T2: a (possibly abstract) type that is contained as an inner PC somewhere
-         inside pc.
-
-  **Outputs**
-
-   * pc2: a PC that is a subtype of PC2
-"""
-function getInnerPC{T1 <: AbstractPC, T2 <: AbstractPC}(pc::T1, ::Type{T2})
-  if T1 <: T2
-    return pc
-  else
-    getInnerPC(pc.pc_inner, T2)
-  end
-  return pc
-end
-
-# This can be rewritten in future version of Julia as:
-#=
-function getInnerPC(pc::T1, ::Type{T2}) where {T1 <: T2, T2 <: AbstractPC}
-  return pc
-end
-
-function getInnerPC(pc::T1, ::Type{T2}) where {T1 <:AbstractPC, T2 <: AbstractPC}
-  return getInnerPC(pc.pc_inner, T2)
-end
-=#
 
 """
   Returns `true` if `calcPC` needs parallel communication started before
@@ -547,28 +511,6 @@ function getBaseLO(lo::AbstractLO)
 
   # this will recurse down to the underlying linear operator
   return getBaseLO(lo.lo_inner)
-end
-
-"""
-  This function calls either [`getBasePC`](@ref) or [`getBaseLO`](@ref)
-  depending on the type of its argument.
-
-  **Inputs**
-
-   * lo: either an `AbstractLO` or `AbstractPC` object
-
-  **Outputs**
-
-   * the base PC or LO object
-"""
-function getBaseObject(lo::AbstractLO)
-
-  return getBaseLO(lo)
-end
-
-function getBaseObject(pc::AbstractPC)
-  
-  return getBasePC(pc)
 end
 
 """

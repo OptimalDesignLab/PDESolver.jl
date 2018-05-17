@@ -112,7 +112,7 @@ end
    * ctx_residual: extra data required by rhs_func
 
 
-  The user must supply two functions, one to calculate the residual vector
+  The user must supply tow functions, one to calculate the residual vector
   (referred to as rhs_vec), and another to compute the Jacobian.
 
   rhs_func should compute (eqn.q_vec) -> (rhs_vec) and have the signature
@@ -126,9 +126,6 @@ end
 
   The same ctx_residual passed into newtonInner is passed directly to
   [`calcLinearOperator`](@ref)..
-
-  This function supports jacobian/preconditioner freezing using the
-  prefix "newton".
 
   Aliasing restrictions: None.  In particular, rhs_vec *can* alias eqn.res_vec,
                          and this leads so some efficiency because it avoids
@@ -155,7 +152,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   jac_method = opts["jac_method"]::Int  # finite difference or complex step
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
   epsilon = opts["epsilon"]::Float64
-#  recalc_prec_freq = opts["recalc_prec_freq"]::Int
+  recalc_prec_freq = opts["recalc_prec_freq"]::Int
 
   @assert opts["parallel_type"] == 2
 
@@ -213,26 +210,11 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     @verbose5 @mpi_master println(BSTDOUT, "===== newton iteration: ", i)
     newton_data.itr = i
 
-    # recalculate PC and Jacobian if needed
-    doRecalculation(newton_data.recalc_policy, i,
-                    ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    #=             
-    recalc_type = decideRecalculation(newton_data.recalc_policy, i)
-    if recalc_type == RECALC_BOTH
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_PC
-      calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_LO
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =# 
-    #=
     if ((i % recalc_prec_freq)) == 0 || i == 1
       calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     else  # only recalculate the linear operator
       calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     end
-    =#
 
     # compute eigs, condition number, etc.
     doMatrixCalculations(newton_data, opts)
@@ -264,6 +246,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     res_0_norm = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
     recordResNorm(newton_data, res_0_norm)
     
+
     # extract real component to res_0
     for j=1:m
       res_0[j] = real(rhs_vec[j])
@@ -293,7 +276,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     println(BSTDOUT, "  Final step size: ", newton_data.step_norm_i)
     println(BSTDOUT, "  Final residual: ", res_0_norm)
     println(BSTDOUT, "  Final relative residual: ", res_0_norm/newton_data.res_norm_rel)
-    @verbose5 close(newton_data.fconv); 
+    @verbose5 close(fconv); 
   end
   flush(BSTDOUT)
 

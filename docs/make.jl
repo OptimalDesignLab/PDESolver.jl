@@ -111,7 +111,6 @@ makedocs(
                     ]
                   "Newton's Method" => "NonlinearSolvers/newton.md"
                   "Jacobian Calculation" => "NonlinearSolvers/jacobian.md"
-                  "Jacobian Freezing" => "NonlinearSolvers/jac_recalc.md"
                   "Residual Evalution" => "NonlinearSolvers/residual_evaluation.md"
                   "Matrix Interface" => "NonlinearSolvers/matrix.md"
                   "Newton Inner" => "NonlinearSolvers/newton_inner.md"

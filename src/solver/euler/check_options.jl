@@ -26,11 +26,11 @@ function checkOptions(opts)
     if opts["volume_integral_type"] != 2
       error("cannot use staggered grids with non entropy stable volume integrals")
     end
-#=
+
     if opts["face_integral_type"] != 2
       error("cannot use staggered grids with non entropy stable face integrals")
     end
-=#
+
     if opts["operator_type2"] == "SBPNone"
       error("must specify a real SBP operator for staggered grid")
     end
@@ -39,10 +39,7 @@ function checkOptions(opts)
 
   run_type = opts["run_type"]
   #TODO: what to do for jac_type 4?
-  if opts["use_DG"] && opts["face_integral_type"] == 1 && 
-     opts["Flux_name"] in keys(FluxDict_diff) && 
-     (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 #&& 
-#     !opts["use_src_term"]
+  if opts["use_DG"] && opts["face_integral_type"] == 1 && opts["Flux_name"] == "RoeFlux" && (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 && !opts["use_src_term"]
     get!(opts, "calc_jac_explicit", true)
   else
     get!(opts, "calc_jac_explicit", false)

@@ -32,23 +32,16 @@ function test_jac_terms()
     nrm2 = -nrm
 
     println("testing all positive eigenvalues")
-    func = EulerEquationMod.RoeSolver
-    func_diff = EulerEquationMod.RoeSolver_diff
-    func2 = EulerEquationMod.calcLFFlux
-    func2_diff = EulerEquationMod.calcLFFlux_diff
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
-    test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
+    test_ad_inner(eqn.params, q, qg, nrm)
     test_lambda(eqn.params, q, nrm)
     test_lambdasimple(eqn.params, q, qg, nrm)
-    test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
-    # make sure arrays are zerod out
-    test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
-    test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn.params, q, qg, nrm2)
     test_lambda(eqn.params, q, nrm2)
     test_lambdasimple(eqn.params, q, qg, nrm2)
 
@@ -56,19 +49,19 @@ function test_jac_terms()
     println("testing lambda1 entropy fix")
     q = Complex128[1.1, 0.47, 0.53, 2.2]
     qg = q + 1
-    test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
+    test_ad_inner(eqn.params, q, qg, nrm)
    
     println("testing lambda2 entropy fix")
     q = Complex128[1.1, -1.32, -1.34, 2.2] 
     qg = q + 1
-    test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
-    test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn.params, q, qg, nrm)
+    test_ad_inner(eqn.params, q, qg, nrm2)
 
     println("testing lambda3 entropy fix")
     q = Complex128[1.1, -0.42, -0.45, 2.2]
     qg = q + 1
-    test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
-    test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn.params, q, qg, nrm)
+    test_ad_inner(eqn.params, q, qg, nrm2)
 
 
     nrm = [0.45, 0.55, 0.65]
@@ -77,14 +70,14 @@ function test_jac_terms()
     println("testing all positive eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
-    test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
+    test_ad_inner(eqn3.params, q, qg, nrm)
     test_lambda(eqn3.params, q, nrm)
     test_lambdasimple(eqn3.params, q, qg, nrm)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
-    test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
     test_lambda(eqn3.params, q, nrm2)
     test_lambdasimple(eqn3.params, q, qg, nrm2)
 
@@ -93,22 +86,22 @@ function test_jac_terms()
     # lambda1 entropy fix active
     q = Complex128[1.05, -1.1, -1.2, -1.3, 2.5] 
     qg = q + 1
-    test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
-    test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn3.params, q, qg, nrm)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
 
     println("testing lambda2 entropy fix")
     # lambda1 entropy fix active
     q = Complex128[1.05, 0.9, 1.2, -1.3, 2.5]
     qg = q + 1
-    test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
-    test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn3.params, q, qg, nrm)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
 
     println("testing lambda3 entropy fix")
     # lambda3 entropy fix active
     q = Complex128[1.05, -0.52, -0.47, -0.36, 8.5]
     qg = q + 1
-    test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
-    test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
+    test_ad_inner(eqn3.params, q, qg, nrm)
+    test_ad_inner(eqn3.params, q, qg, nrm2)
 
     
     println("\ntesting jac assembly 2d")
@@ -181,15 +174,6 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh8, sbp8, eqn8, opts8 = run_solver(fname4)
 
-    # SBPOmega, SparseMatrixCSC
-    fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname3)
-    opts_tmp["jac_type"] = 2
-    opts_tmp["operator_type"] = "SBPOmega"
-    make_input(opts_tmp, fname4)
-    mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
-
-
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -215,17 +199,12 @@ function test_jac_terms_long()
     opts4["preallocate_jacobian_coloring"] = true
     test_jac_general(mesh8, sbp8, eqn8, opts8, is_prealloc_exact=true, set_prealloc=false)
 
-    println("testing mode 9")
-    test_jac_general(mesh9, sbp9, eqn9, opts9)
-    test_diagjac(mesh9, sbp9, eqn9, opts9)
-    test_strongdiagjac(mesh9, sbp9, eqn9, opts9)
-
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 function test_pressure{Tdim}(params::AbstractParamType{Tdim})
@@ -353,21 +332,8 @@ end
 
 
 
-"""
-  Test a differentiated numerical flux function via complex step of the
-  original function
 
-  **Inputs**
-
-   * params: a Params object
-   * qL: left state
-   * qR: right state
-   * nrm: normal vector
-   * func: the original function
-   * func_diff: the differentiated version
-"""
-function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm,
-                             func, func_diff, output=false)
+function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm)
 
   # compute jacobian with complex step and AD, compare results
 
@@ -382,7 +348,7 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm,
   pert = Complex128(0, h)
   for j=1:numDofPerNode
     qL[j] += pert
-    func(params, qL, qR, aux_vars, nrm, F)
+    EulerEquationMod.RoeSolver(params, qL, qR, aux_vars, nrm, F)
 
     for k=1:numDofPerNode
       resL[k, j] = imag(F[k])/h
@@ -393,7 +359,7 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm,
 
   for j=1:numDofPerNode
     qR[j] += pert
-    func(params, qL, qR, aux_vars, nrm, F)
+    EulerEquationMod.RoeSolver(params, qL, qR, aux_vars, nrm, F)
 
     for k=1:numDofPerNode
       resR[k, j] = imag(F[k])/h
@@ -406,22 +372,20 @@ function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm,
   resL2 = zeros(resL)
   resR2 = zeros(resR)
 
-  func_diff(params, qL, qR, aux_vars, nrm, resL2, resR2)
+  EulerEquationMod.RoeSolver_diff(params, qL, qR, aux_vars, nrm, resL2, resR2)
+#=
+  println("\n----- Comparing left results -----")
+  println("resL = \n", resL)
+  println("resL2 = \n", resL2)
+  println("diff = \n", resL - resL2)
+  println("diffnorm = \n", vecnorm(resL - resL2))
 
-  if output
-    println("\n----- Comparing left results -----")
-    println("resL = \n", resL)
-    println("resL2 = \n", resL2)
-    println("diff = \n", resL - resL2)
-    println("diffnorm = \n", vecnorm(resL - resL2))
-
-    println("\n----- Comparing right results -----")
-    println("resR = \n", resR)
-    println("resR2 = \n", resR2)
-    println("diff = \n", resR - resR2)
-    println("diffnorm = \n", vecnorm(resR - resR2))
-  end
-
+  println("\n----- Comparing right results -----")
+  println("resR = \n", resR)
+  println("resR2 = \n", resR2)
+  println("diff = \n", resR - resR2)
+  println("diffnorm = \n", vecnorm(resR - resR2))
+=#
 
   @fact maximum(abs(resL - resL2)) --> roughly(0.0, atol=1e-14)
   @fact maximum(abs(resR - resR2)) --> roughly(0.0, atol=1e-14)
@@ -570,7 +534,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-11)
+    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
   end
 
   A = getBaseLO(lo2).A
@@ -685,150 +649,3 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   println("finished testing Homotopy operators")
   return nothing
 end
-
-function test_diagjac(mesh, sbp, eqn, opts)
-# compare the diagonal Jacobian with the diagonal of an explicitly computed
-# jacobian
-
-  # use a spatially varying solution
-  icfunc = EulerEquationMod.ICDict["ICExp"]
-  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
-  # get the correct differentiated flux function (this is needed because the
-  # input file set calc_jac_explicit = false
-  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
-
-
-  startSolutionExchange(mesh, sbp, eqn, opts)
-
-  #----------------------------------------------------------------------------
-  # construct the matrices/assemblers
-  opts["calc_jac_explicit"] = true
-
-  jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
-  assem1 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac1)
-
-
-  opts["preallocate_jacobian_coloring"] = false
-  pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
-  jac2 = getBaseLO(lo2).A
-
-  assem2 = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
-
- 
-  evalJacobian(mesh, sbp, eqn, opts, assem1)
-  evalJacobian(mesh, sbp, eqn, opts, assem2)
-
-  # compare the matrices themselves
-  # zero out off block-diagonal part of jac2
-
-  jac2_full = full(jac2)
-#  println("jac2_full = \n", jac2_full)
-#  println("jac1 = \n", jac1)
-
-  nblocks = mesh.numNodesPerElement*mesh.numEl
-
-  for block=1:nblocks
-    boffset = (block-1)*mesh.numDofPerNode
-    for i=1:mesh.numDofPerNode
-      for j=1:mesh.numDofPerNode
-        @fact abs(jac2_full[boffset + i, boffset + j] - jac1.A[i, j, block]) --> roughly(0.0, atol=1e-13)
-      end
-    end
-  end
-
-  # zero out the off diagonal parts of jac2_full
-  tmp = zeros(mesh.numDofPerNode, mesh.numDofPerNode, nblocks)
-  for i=1:nblocks
-    idx = ((i-1)*mesh.numDofPerNode + 1):(i*mesh.numDofPerNode)
-    tmp[:, :, i] = jac2_full[idx, idx]
-  end
-
-  fill!(jac2_full, 0.0)
-
-  for i=1:nblocks
-    idx = ((i-1)*mesh.numDofPerNode + 1):(i*mesh.numDofPerNode)
-    jac2_full[idx, idx] = tmp[:, :, i]
-  end
-
-
-  # test multiplication
-  for i=1:10
-    x = rand(mesh.numDof)
-    b = zeros(Complex128, mesh.numDof)
-    
-    NonlinearSolvers.diagMatVec(jac1, x, b)
-    b2 = jac2_full * x
-
-    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
-  end
-
-
-  return nothing
-end
-
-function test_strongdiagjac(mesh, sbp, eqn, opts)
-# for a uniform flow (and BCs), the strong form and weak form should be
-# equivalent
-
-  # use a spatially varying solution
-  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
-  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-
-  # get the correct differentiated flux function (this is needed because the
-  # input file set calc_jac_explicit = false
-  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
-
-  startSolutionExchange(mesh, sbp, eqn, opts)
-
-  #----------------------------------------------------------------------------
-  # construct the matrices/assemblers
-  opts["calc_jac_explicit"] = true
-
-  jac1 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
-
-  jac2 = NonlinearSolvers.DiagJac(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement*mesh.numEl)
-  assem2 = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, jac2)
-
-  evalJacobianStrongDiag(mesh, sbp, eqn, opts, assem2)
-
-  # compute first jacobian by complex step
-  opts2 = copy(opts)
-  opts2["addBoundaryIntegrals"] = false
-  opts2["addStabilization"] = false
-  opts2["addFaceIntegrals"] = false
-  opts2["Q_transpose"] = false
-
-  h = 1e-20
-  pert = Complex128(0, h)
-
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        dof = mesh.dofs[k, j, i]
-        idx = (((dof - 1) % mesh.numDofPerNode) + 1)
-        block = div(dof - 1, mesh.numDofPerNode) + 1
-
-        eqn.q_vec[dof] += pert
-        disassembleSolution(mesh, sbp, eqn, opts2, eqn.q, eqn.q_vec)
-
-        evalResidual(mesh, sbp, eqn, opts2)
-        for p=1:mesh.numDofPerNode
-          jac1.A[p, k, block] = imag(eqn.res[p, j, i])/h
-        end
-
-        eqn.q_vec[dof] -= pert
-      end
-    end
-  end
-
-  nblocks = mesh.numNodesPerElement*mesh.numEl
-  for i=1:nblocks
-    @fact norm(jac1.A[:, :, i] - jac2.A[:, :, i]) --> roughly(0.0, atol=1e-13)
-  end
-
-  return nothing
-end
-

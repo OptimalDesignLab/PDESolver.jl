@@ -12,8 +12,8 @@ using MPI
 using SummationByParts
 using PdePumiInterface
 
-# from common.jl
-export createMeshAndOperator, loadRestartState, call_nlsolver, getDataTypes
+# from initialization.jl
+export createMeshAndOperator, loadRestartState, call_nlsolver
 
 include("common.jl")
 

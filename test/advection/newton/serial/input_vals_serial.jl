@@ -96,6 +96,7 @@ arg_dict = Dict{ASCIIString,Any}(
 "jac_method" => 2,
 "use_DG" => true,
 "calc_havg" => false,
+"recalc_prec_freq" => 1,
 "mesh_size" => 1.0,
 "check_density" => true,
 "write_qic" => false,

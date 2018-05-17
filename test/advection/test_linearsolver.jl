@@ -402,9 +402,7 @@ function test_petscmat_matfree(mesh, sbp, eqn, opts)
   # set petsc options
   petsc_opts = opts["petsc_options"]
   petsc_opts["-pc_type"] = "jacobi"
-  println("petsc_opts = ", petsc_opts)
   PetscSetOptions(petsc_opts)
-  PetscOptionsView()
 
   pc = TestMatPC(mesh, sbp, eqn, opts)
   lo = TestMatFreeLO(pc, mesh, sbp, eqn, opts)
@@ -623,6 +621,6 @@ end
 
 
 
-add_func1!(AdvectionTests, test_linearsolver, [TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_linearsolver, [TAG_TMP, TAG_SHORTTEST])
 
 

@@ -110,9 +110,6 @@ end
   The physics module must have an associative container called `ICDict` that
   accepts ASCIIStrings as keys and functions as values.
 
-  It is an error to register two functions under the same name or to register
-  one function under two different names.
-
   Inputs:
 
     mod: physics module to register the function with
@@ -164,38 +161,28 @@ end
   signature, so the user should take care to ensure it is correct for the
   physics module.
 
-  It is an error to register two functors with the same name or the same
-  functor under two different names.  An exception is made for "reanalysisBC",
-  because it is special.
+  Inputs:
 
-  **Inputs**
+    mod: module to register the the functor with
+    fname: the name associated with this function, used as the value for any
+           key in the options dictionary that specifies a boundary condition,
+           for example `BC1_name`
+    func: the functor itself
 
-   * mod: module to register the the functor with
-   * fname: the name associated with this function, used as the value for any
-            key in the options dictionary that specifies a boundary condition,
-            for example `BC1_name`
-   * func: the functor itself
-
-  **Outputs**
+  Outputs:
 
     none
-
-  **Notes For Implementers**
-
-  This function works by utilizing `mod.BCDict`, which must be an associative
-  collection mapping BC names to functors.
 """
 function registerBC(mod::Module, fname::ASCIIString, func::BCType)
 
   # check if name is already registered
-  # special case for reanalysisBC because it is special
-  if haskey(mod.BCDict, fname) && fname != "reanalysisBC"
+  if haskey(mod.BCDict, fname)
     throw(ErrorException("BC name $fname is already registered with physics module $mod"))
   end
 
   # check if function is already registered
   for (key, val) in mod.BCDict
-    if val == func && key != "reanalysisBC"
+    if val == func
       throw(ErrorException("BC functor $func is already registered with physics module $mod"))
     end
   end
@@ -204,5 +191,3 @@ function registerBC(mod::Module, fname::ASCIIString, func::BCType)
 
   return nothing
 end
-
-#TODO: add method to register source terms

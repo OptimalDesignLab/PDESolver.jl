@@ -466,11 +466,11 @@ end
    * lambda_dotL: derivative of lambda wrt. qL
    * lambda_dotR: derivative of lambda wrt. qR
 """
-function getLambdaMaxSimple_diff{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim}, 
+function getLambdaMaxSimple_diff{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
                       dir::AbstractVector{Tmsh},
-                      lambda_dotL::AbstractVector{Tres},
-                      lambda_dotR::AbstractVector{Tres})
+                      lambda_dotL::AbstractVector{Tsol},
+                      lambda_dotR::AbstractVector{Tsol})
 
   q_avg = params.q_vals3
 

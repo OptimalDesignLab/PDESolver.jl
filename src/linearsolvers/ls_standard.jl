@@ -114,8 +114,6 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                      start_comm=false)
 
 
-  #TODO: why is wait=true here? shouldn't the physics module wait if it hasn't
-  #      been done yet?
   if typeof(ls.pc) <: PCNone
     if start_comm && needParallelData(ls.lo)
       startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
@@ -224,7 +222,7 @@ function linearSolve(ls::StandardLinearSolver, b::AbstractVector,
 end
 
 """
-  Similar to [`linearSolve`](@ref), but solves A.'x = b.  See that function
+  Similar to [`linearSolver]`(@ref), but solves A.'x = b.  See that function
   for details.
 """
 function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
@@ -326,9 +324,9 @@ function _linearSolve{Tlo <: PetscLO , Tpc}(
     setupPC(pc2)
   end
 
+
   # do the solve
   ksp = ls.ksp
-  println("doing solve, setting reltol = ", ls.reltol, ", abstol = ", ls.abstol)
   SetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
   if trans

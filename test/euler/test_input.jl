@@ -21,19 +21,6 @@ function test_input()
 
     @fact_throws Inputs.checkBCOptions(arg_dict)
 
-    # pick another random input file
-    opts = Input.read_input("input_vals_channel.jl")
-
-    # verify that supplying default values is idempotent
-    opts_orig = copy(opts)
-    Input.read_input(opts)
-
-    for (key, val) in opts
-      @fact val --> opts_orig[key]
-    end
-    
-
-
   end
 end
 
