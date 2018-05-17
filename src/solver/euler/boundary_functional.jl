@@ -492,20 +492,29 @@ function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamTyp
   normal_momentum_dot4 = 0.0  # wrt q4
 
   qg = params.qg
-  qg_temp = zeros(params.qg)
-  qg_temp_diff = zeros(Tsol, length(qg), length(qg))
+  qg_intermediate = params.tmp_qg_intermediate    # now alloc'd in params, was 'qg_temp = zeros(params.qg)'
+  # qg_temp_diff = zeros(Tsol, length(qg), length(qg))
   for i=1:length(q)
-    qg_temp[i] = q[i]
+    # qg_temp[i] = q[i]
+    qg_intermediate[i] = q[i]
 
-    qg_temp_diff[i,i] = 1.0
+    # qg_temp_diff[i,i] = 1.0       # qg_temp_diff is actually not used; its values are hardcoded below.
+                                    # See the comment above setting qg_diff.
   end
 
+  #=
   qg[1] = qg_temp[1]
   qg[2] = qg_temp[2] - nx*normal_momentum
   qg[3] = qg_temp[3] - ny*normal_momentum
   qg[4] = qg_temp[4]
+  =#
+  qg[1] = qg_intermediate[1]
+  qg[2] = qg_intermediate[2] - nx*normal_momentum
+  qg[3] = qg_intermediate[3] - ny*normal_momentum
+  qg[4] = qg_intermediate[4]
 
-  qg_diff = zeros(Tsol, length(qg), length(qg))
+  qg_diff = params.tmp_qg_diff    # now allocated in params, was qg_diff = zeros(Tsol, length(qg), length(qg))
+  fill!(qg_diff, 0.0)
 
   # This 4x4 array is d(qg)/d(q)
   # 1st dimension is qg element
@@ -554,7 +563,10 @@ function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamTyp
   qg_diff[4,4] = 1.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q4) , and d(qgt4)/dq4 = 1.0
 
   # euler_flux_Jac is the derivative of the euler flux wrt qg. so 4x4
-  euler_flux_Jac = zeros(Tres, length(euler_flux), length(euler_flux))
+  euler_flux_Jac = params.tmp_euler_flux_Jac    # now allocated in params, was
+                                                # 'euler_flux_Jac = zeros(Tres, length(euler_flux), length(euler_flux))'
+  fill!(euler_flux_Jac, 0.0)
+
   calcEulerFlux_diff(params, qg, aux_vars, nrm, euler_flux_Jac)
 
   # val[:] = euler_flux[2:3]
@@ -562,23 +574,35 @@ function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamTyp
   # val_diff is passed in. Size: zeros(Tres, 2, 4)
 
   # EF: Euler Flux
-  dEF_dq1 = euler_flux_Jac*qg_diff[:,1]       # deriv wrt q1, so qg_diff is indexed as row 1
+  # now using smallmatvec from ODLCommonTools because it's faster
+  # TODO: probably can be further optimized by doing smallmatmat here. need to do some math on it though
+  # TODO: slices to sviews when setting val_diff
+  # TODO: don't even need dEF_dq* values, they're just intermediate. later
+  # dEF_dq1 = euler_flux_Jac*qg_diff[:,1]       # deriv wrt q1, so qg_diff is indexed as row 1
                                               # dEF_dq1 is a 4x1, 4 elements for each of the EF, 1 for d wrt q1
+  # dEF_dq1 = smallmatvec(euler_flux_Jac, qg_diff[:,1])
+  dEF_dq1 = smallmatvec(euler_flux_Jac, sview(qg_diff, :, 1))
 
   val_diff[:,1] = dEF_dq1[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q1
 
-  dEF_dq2 = euler_flux_Jac*qg_diff[:,2]       # deriv wrt q2, so qg_diff is indexed as row 2
+  # dEF_dq2 = euler_flux_Jac*qg_diff[:,2]       # deriv wrt q2, so qg_diff is indexed as row 2
                                               # dEF_dq2 is a 4x1, 4 elements for each of the EF, 1 for d wrt q2
+  # dEF_dq2 = smallmatvec(euler_flux_Jac, qg_diff[:,2])
+  dEF_dq2 = smallmatvec(euler_flux_Jac, sview(qg_diff, :, 2))
 
   val_diff[:,2] = dEF_dq2[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q2
 
-  dEF_dq3 = euler_flux_Jac*qg_diff[:,3]       # deriv wrt q3, so qg_diff is indexed as row 3
+  # dEF_dq3 = euler_flux_Jac*qg_diff[:,3]       # deriv wrt q3, so qg_diff is indexed as row 3
                                               # dEF_dq3 is a 4x1, 4 elements for each of the EF, 1 for d wrt q3
+  # dEF_dq3 = smallmatvec(euler_flux_Jac, qg_diff[:,3])
+  dEF_dq3 = smallmatvec(euler_flux_Jac, sview(qg_diff, :, 3))
 
   val_diff[:,3] = dEF_dq3[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q3
 
-  dEF_dq4 = euler_flux_Jac*qg_diff[:,4]       # deriv wrt q4, so qg_diff is indexed as row 4
+  # dEF_dq4 = euler_flux_Jac*qg_diff[:,4]       # deriv wrt q4, so qg_diff is indexed as row 4
                                               # dEF_dq4 is a 4x1, 4 elements for each of the EF, 1 for d wrt q4
+  # dEF_dq4 = smallmatvec(euler_flux_Jac, qg_diff[:,4])
+  dEF_dq4 = smallmatvec(euler_flux_Jac, sview(qg_diff, :, 4))
 
   val_diff[:,4] = dEF_dq4[2:3]                # We want to pick only the momentum terms off the deriv of the EF wrt q4
 

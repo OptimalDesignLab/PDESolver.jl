@@ -58,6 +58,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   v_vals2::Array{Tsol, 1}
   Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
 
+  # temporary storage for calcBoundaryFunctionalIntegrand_diff
+  tmp_qg_intermediate::Array{Tsol, 1}     # this is qg_temp, before rename
+  tmp_qg_diff::Array{Tsol, 2}
+  tmp_euler_flux_Jac::Array{Tsol, 2}
+
   # temporary storage for element level solution
   q_el1::Array{Tsol, 2}
   q_el2::Array{Tsol, 2}
@@ -248,6 +253,11 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     v_vals2 = zeros(Tsol, Tdim + 2)
     Lambda = zeros(Tsol, Tdim + 2)
 
+    # temporary storage for calcBoundaryFunctionalIntegrand_diff
+    tmp_qg_intermediate = zeros(Tsol, Tdim + 2)
+    tmp_qg_diff = zeros(Tsol, Tdim + 2, Tdim + 2)
+    tmp_euler_flux_Jac = zeros(Tsol, Tdim + 2, Tdim + 2)
+
     q_el1 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
     q_el2 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
     q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
@@ -414,7 +424,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
 
     time = Timings()
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
+               Lambda, 
+               tmp_qg_intermediate, tmp_qg_diff, tmp_euler_flux_Jac,
+               q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
                res_el1, res_el2,
                qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
@@ -435,7 +447,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                vortex_strength,
                krylov_itr, krylov_type,
                Rprime, A, B, iperm,
-               S, x_design,  time)
+               S, x_design, time)
 
     end   # end of ParamType function
 
