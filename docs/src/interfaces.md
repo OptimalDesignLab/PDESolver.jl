@@ -79,10 +79,9 @@ The required fields of an `AbstractSolutionData` are:
   shared_data::AbstractArray{SharedFaceData{Tsol}, 1}
   res::AbstractArray{Tres, 3}
   res_vec::AbstractArray{Tres, 1}
+  res_edge::AbstractArray{Tres, 4}
   M::AbstractArray{Float64, 1}
   Minv::AbstractArray{Float64, 1}
-  disassembleSolution::Function
-  assembleSolution::Function
   multiplyA0inv::Function
   majorIterationCallback::Function
   params{Tsol..., Tdim}::AbstractParamType{Tdim}
@@ -135,25 +134,14 @@ and [`Utils.assembleSolution`](@ref).
            For continuous Galerkin discretizations, the corresponding "scatter"
            (ie. `res_vec` -> res`) may not exist.
 
+`res_edge`: a 4 dimensional array sometimes used for edge-based data structure.
+            This feature does not work.  This array must exist and should be
+            of size 0.
 `M`:  The mass matrix of the entire mesh.  Because SBP operators have diagonal
       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where
       numNodes is the number of nodes in the entire mesh).
 
 `Minv`:  The inverse of the mass matrix.
-
-`disassembleSolution`:  Function that takes the a vector such as `q_vec` and
-                        scatters it to an array such as `q`.
-                        This function must have the signature:
-                        `disassembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, q_arr:AbstractArray{T, 3}, q_vec::AbstractArray{T, 1})`
-                        Because this variable is a field of a type, it will be dynamically dispatched.
-                        Although this is slower than compile-time dispatch, the cost is insignificant compared to the cost of evaluating the residual, so the added flexibility of having this function as a field is worth the cost.
-
-`assembleSolution`:  Function that takes an array such as `res` and performs an additive reduction to a vector such as `res_vec`.
-                     This function must have the signature:
-                     `assembleSolution(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{T, 3}, res_vec::AbstractArray{T, 1}, zero_resvec=true)`
-                     The argument `zero_resvec` determines whether `res_vec` is zeroed before the reduction is performed.
-                     Because it is an additive reduction, elements of the vector are only added to, never overwritten, so forgetting to zero out the vector could cause strange results.
-                     Thus the default is true.
 
 `multiplyA0inv`:  Multiplies the solution values at each node in an array such as `res` by the inverse of the coefficient matrix of the time term of the equation.
                   This function is used by time marching methods.
@@ -183,13 +171,17 @@ AbstractParamType
 
 The purpose of this type is to store any variables that need to be quickly accessed or updated.
 The only required fields are:
-* `t::Float64`: hold the current time value
-* `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
-* `x_design`: vector of design variables that don't fit into any other catagory
+
+ * `t::Float64`: hold the current time value
+ * `order`: order of accuracy of the discretization (same as `AbstractMesh.order`)
+ * `x_design`: vector of design variables that don't fit into any other catagory
               (ie. shape variables or other aerodynamic variables like angle of
               attack)
-*  `time::Timings`: an object to record how long different parts of the code take,
+ *  `time::Timings`: an object to record how long different parts of the code take,
   defined in the Utils module.
+ * `f`: a file handle that prints to the file `log_myrank.dat`, where `myrank`
+        is the MPI rank of the current process, but only in debug mode.  In
+        non-debug mode, this file should not be opened.
 
 `file_dict`: dictionary that maps from the file name to a file handle.  This
              field is not required, but if it is present, all copies of the
@@ -249,17 +241,23 @@ the mesh variable in the future.
   dxidx::AbstractArray{Tmsh, 4}
   jac::AbstractArray{Tmsh, 2}
 
-  # interpolated data
+  # boundary data
   coords_bndry::Array{Tmsh, 3}
   dxidx_bndry::Array{Tmsh, 4}
-  jac_bndry::Array{T1, 2}
+  jac_bndry::Array{Tmsh, 2}
+  nrm_bndry::Array{Tmsh, 3}
+
+  # interior face data
+  coords_interface::Array{Tmsh, 3}
   dxidx_face::Array{Tmsh, 4}
   jac_face::Array{Tmsh, 2}
+  nrm_face::Array{Tmsh, 3}
 
   # parallel data
   coords_sharedface::Array{Array{Tmsh, 3}, 1}
   dxidx_sharedface::Array{Array{Tmsh, 4}, 1}
   jac_sharedface::Array{Array{Tmsh, 2}, 1}  
+  nrm_sharedface::Array{Array{Tmsh, 3}, 1}
 
   # boundary condition data
   numBC::Integer
@@ -358,23 +356,44 @@ the parametric coordinates, `x` are the physical (x,y,z) coordinates, and
 `jac`  : `numNodesPerElement` x `numEl` array, holding the determinant of the
          mapping jacobian `dxi/dx` at each node of each element.
 
-#### Interpolated Data
+#### Boundary Data
 This data is used for interpolated mesh only.
 
 `coords_bndry`: coordinates of nodes on the boundary of the mesh,
                 2 x `numFaceNodes` x `numBoundaryEdges`
 
 `dxidx_bndry`: 2 x 2 x `numFaceNodes` x `numBoundary edges array of `dxidx`
-               interpolated to the boundary of the mesh
+               interpolated to the boundary of the mesh.  This fields is
+               deprecated, use `nrm_bndry` instead.
 
 `jac_bndry`: `numFaceNodes` x `numBoundaryEdges` array of `jac` interpolated
-              to the boundary
+              to the boundary.  This fields is deprecated, use `nrm_bndry`
+              instead.
+
+`nrm_bndry`: `dim` x `numNodesPerFace` x `numBoundaryFaces` array containing the
+             scaled face normal vector at each face node of each boundary face.
+             The scaling factor is believed to be `1/|J|`, where `|J|` is the
+             determinant of the mapping jacobian, however this needs to be
+             verified.  The normal vector is oriented outwards.
+
+#### Interior Face Data
+
+`coords_face`: a `mesh.dim` x `mesh.numNodesPerFace` x `mesh.numInterfaces`
+               array containing he coordinates at each face node of each
+               interface.
 
 `dxidx_face`: 2 x 2 x `numFaceNodes` x `numInterfaces` array of `dxidx`
-              interpolated to the face shared between two elements
+              interpolated to the face shared between two elements.
 
 `jac_face`: `numNodesPerFace` x `numInterfaces` array of `jac` interpolated
              to the face shared between two element
+
+`nrm_face`: `dim` x `numNodesPerFace` x `numInterfaces` containing the scaled
+            face normal vector at each face node as each interface.  The scaling
+            factor is believed to be `1/|J|` where `|J|` is the determinant of 
+            the mapping jacobian, however this needs to be verified.  The normal
+            vector is oriented outwards from the perspective of `elementL` of
+            the corresponding entry of `interfaces`.
 
 #### Parallel Data
 This data is required for parallelizing interpolated DG meshes
@@ -387,10 +406,19 @@ This data is required for parallelizing interpolated DG meshes
 `dxidx_sharedface`: similar to `coords_sharedface`, `dxidx` interpolated to
                     faces between elements in different processes, each
                     array is 2 x 2 x `numFaceNodes` x number of faces shared
-                    with this process.
+                    with this process.  This field is deprecated, use 
+                    nrm_sharedface` instead.
+
 `jac_sharedface`: similar to `coords_sharedface`, `jac` interpolated to faces
                   between a local element and a non-local element. Each array
                   is `numFaceNodes` x number of faces shared with this process.
+                  This field is deprecated, use `nrm_sharedface`.
+
+`nrm_sharedface`; similar to `coords_sharedface`, the inner array contains the
+                  scaled normal vector at each node of each shared face.  Each
+                  inner array is `dim` x `numNodesPerFace` x number of faces 
+                  shared with this process.  The normal vector is oriented
+                  outward from the perspective of the *local* element.
 
 #### Boundary Condition Data
 The mesh object stores data related to applying boundary conditions.

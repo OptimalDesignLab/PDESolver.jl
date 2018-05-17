@@ -95,6 +95,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   flux_vals2::Array{Tres, 1}  # reusable storage for flux values
   flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
 
+  lambda_dotL::Array{Tres, 1}
+  lambda_dotR::Array{Tres, 1}
+
   # Roe solver storage
   sat_vals::Array{Tres, 1}  # reusable storage for SAT term
   euler_fluxjac::Array{Tres, 2}  # euler flux jacobian
@@ -163,7 +166,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   Re::Float64  # free stream Reynolds number
 
   # these quantities are dimensional (ie. used for non-dimensionalization)
-  aoa::Tsol  # angle of attack
+  aoa::Tsol  # angle of attack (radians)
   rho_free::Float64  # free stream density
   p_free::Float64  # free stream pressure
   T_free::Float64 # free stream temperature
@@ -286,6 +289,9 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     flux_vals2 = zeros(Tres, Tdim + 2)
     flux_valsD = zeros(Tres, Tdim + 2, Tdim)
 
+    lambda_dotL = zeros(Tres, Tdim + 2)
+    lambda_dotR = zeros(Tres, Tdim + 2)
+
     # Roe solver storage
     sat_vals = zeros(Tres, Tdim + 2)
     euler_fluxjac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
@@ -347,9 +353,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
     end
 
     Re = opts[ "Re"]
-    aoa = opts["aoa"]*pi/180      # This conversion was formerly done in read_input.jl,
-                                  #   but that resulted in converting every time there 
-                                  #   was a restart, which is incorrect.
+    aoa = opts[ "aoa"]*pi/180
     rho_free = 1.0
     p_free = opts["p_free"]
     T_free = opts["T_free"]
@@ -431,7 +435,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
                qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
                res_vals2, res_vals3,  flux_vals1, 
-               flux_vals2, flux_valsD,
+               flux_vals2, flux_valsD, lambda_dotL, lambda_dotR,
                sat_vals, euler_fluxjac, p_dot, roe_vars, roe_vars_dot,
                A0, A0inv, A1, A2, S2, 
                A_mats, Rmat1, Rmat2, P,
@@ -987,3 +991,23 @@ function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{T
 
   return tuple
 end
+
+
+import PDESolver.updateMetricDependents
+
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+                                 eqn::EulerData, opts)
+
+  #TODO: don't reallocate the arrays, update in place
+  eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
+  eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
+  eqn.M = calcMassMatrix(mesh, sbp, eqn)
+
+
+  if eqn.params.use_edgestab
+    calcEdgeStabAlpha(mesh, sbp, eqn)
+  end
+
+  return nothing
+end
+

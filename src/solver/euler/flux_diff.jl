@@ -185,6 +185,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
     for k=1:mesh.numNodesPerFace
       qL_k = ro_sview(q_faceL, :, k)
       qR_k = ro_sview(q_faceR, :, k)
+
       aux_vars = ro_sview(aux_vars_arr, :, k, j)
       nrm_xy = ro_sview(nrm_arr, :, k, j)
 #      flux_k = sview(flux_face, :, k)
@@ -241,7 +242,6 @@ end
 """
   Calls the [`RoeSolver_diff`](@ref)
 """
-
 type RoeFlux_diff <: FluxType_diff
 end
 
@@ -256,6 +256,25 @@ function call{Tsol, Tres, Tmsh}(obj::RoeFlux_diff, params::ParamType,
   RoeSolver_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
   return nothing
 end
+
+
+type LFFlux_diff <: FluxType_diff
+end
+
+function call{Tsol, Tres, Tmsh}(obj::LFFlux_diff, params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F_dotL::AbstractMatrix{Tres},
+              F_dotR::AbstractMatrix{Tres})
+
+  calcLFFlux_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
+
+  return nothing
+end
+
+
 
 type ErrorFlux_diff <: FluxType_diff
 end
@@ -279,6 +298,7 @@ end
 """
 global const FluxDict_diff = Dict{ASCIIString, FluxType_diff}(
 "RoeFlux" => RoeFlux_diff(),
+"LFFlux" => LFFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),
 )
 

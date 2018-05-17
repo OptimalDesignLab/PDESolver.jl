@@ -1,4 +1,4 @@
-import PDESolver: evalJacobian
+import PDESolver: evalJacobian, evalJacobianStrongDiag
 
 """
   Euler implementation of `evalJacobian`.  Currently only supports the
@@ -41,17 +41,24 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #    println("stabilizing @time printed above")
   end
 
+
+
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("face integral @time printed above")
   end
+
+
 
   time.t_sharedface_diff += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("evalSharedFaceIntegrals @time printed above")
   end
 
+
+
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
+
 #  println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
@@ -63,6 +70,28 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   return nothing
 end
+
+
+
+function evalJacobianStrongDiag(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::EulerData, 
+                      opts::Dict, assembler::AssembleElementData, t=0.0;
+                      start_comm=false)
+# currently this function neglects the SAT terms (including boundary conditions)
+
+  time = eqn.params.time
+  eqn.params.t = t  # record t to params
+  myrank = mesh.myrank
+
+
+  time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
+    calcVolumeIntegralsStrongDiag_nopre_diff(mesh, sbp, eqn, opts, assembler)
+#    println("volume integral @time printed above")
+  end
+
+  return nothing
+end
+
 
 
 """
@@ -104,13 +133,13 @@ function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 #  println("  getAuxVars @time printed above")
 
   if opts["check_density"]
-    checkDensity(eqn)
+    checkDensity(eqn, mesh)
 #    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
 #    throw(ErrorException("I'm done"))
-    checkPressure(eqn)
+    checkPressure(eqn, mesh)
 #    println("  checkPressure @time printed above")
   end
 
@@ -323,12 +352,15 @@ function evalSourceTerm_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                      opts, assembler::AssembleElementData)
 
 
+  # source terms are not a function of q, so they don't affect the Jacobian
+
+  #=
   # placeholder for multiple source term functionality (similar to how
   # boundary conditions are done)
   if opts["use_src_term"]
     error("source terms not supported by evalJacobian()")
   end
-
+  =#
   return nothing
 end  # end function
 

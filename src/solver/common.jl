@@ -90,11 +90,18 @@ end
     Tsbp
     Tsol
     Tres
+
+  **Options Keys**
+
+   * run_type
+   * jac_method
+   * force_solution_complex
+   * force_mesh_complex
 """
 function getDataTypes(opts::Dict)
 
   flag = opts["run_type"]
-  if haskey(opts, "jac_method")
+  if haskey(opts, "jac_method")  #TODO: this should be handled in read_input()
     jac_method = opts["jac_method"]
   end
 
@@ -209,6 +216,10 @@ function getDataTypes(opts::Dict)
   if opts["force_solution_complex"]
     Tsol = Complex128
     Tres = Complex128
+  end
+
+  if opts["force_mesh_complex"]
+    Tmsh = Complex128
   end
 
   return Tmsh, Tsbp, Tsol, Tres

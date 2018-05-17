@@ -126,6 +126,28 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 end  # End function calcFunctionalDeriv
 
 
+"""
+  Method for LiftCoefficient, which delegates most of the computation to the
+  Lift functional.
+"""
+function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol}, opts,
+                           functionalData::LiftCoefficient,
+                           func_deriv_arr::Abstract3DArray)
+
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData.lift, func_deriv_arr)
+
+  Ma = eqn.params.Ma
+  fac = 0.5*eqn.params.rho_free*Ma*Ma
+
+  scale!(func_deriv_arr, 1./fac)
+
+  return nothing
+end
+
+
+
 @doc """
 ### EulerEquationMod.calcIntegrandDeriv
 

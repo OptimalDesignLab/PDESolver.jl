@@ -2194,4 +2194,38 @@ end  # End function calcSAT
 
 
 
+function calcLFFlux_diff{Tmsh, Tsol, Tres, Tdim}(
+                      params::ParamType{Tdim, :conservative},
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tsol, 1},
+                      dir::AbstractArray{Tmsh, 1},
+                      F_dotL::AbstractMatrix{Tres}, F_dotR::AbstractMatrix{Tres})
+
+  numDofPerNode = length(qL)
+#  lambda_dotL = zeros(Tres, numDofPerNode)
+#  lambda_dotR = zeros(Tres, numDofPerNode)
+
+  lambda_dotL = params.lambda_dotL
+  lambda_dotR = params.lambda_dotR
+
+  calcEulerFlux_diff(params, qL, aux_vars, dir, F_dotL)
+  calcEulerFlux_diff(params, qR, aux_vars, dir, F_dotR)
+
+  lambda_max = getLambdaMaxSimple_diff(params, qL, qR, dir, lambda_dotL, lambda_dotR)
+
+  for j=1:numDofPerNode
+    F_dotL[j, j] += lambda_max
+    F_dotR[j, j] -= lambda_max
+
+    for i=1:numDofPerNode
+      F_dotL[i, j] -=  qR[i]*lambda_dotL[j] - qL[i]*lambda_dotL[j]
+      F_dotR[i, j] -= -qL[i]*lambda_dotR[j] + qR[i]*lambda_dotR[j]
+      F_dotL[i, j] *= 0.5
+      F_dotR[i, j] *= 0.5
+    end
+  end
+
+  return nothing
+end
+
 

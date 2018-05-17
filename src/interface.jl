@@ -18,12 +18,13 @@
   by other parts of the solver, particularly the NonlinearSolvers.  See
   interfaces.md for details
 
-  Inputs:
-    mesh: an AbstractMesh describing the mesh on which to solve the physics
-    sbp: an SBP operator
-    eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
-    opts: the options dictionary
-    t: the current time value, defaults to 0.0
+  **Inputs**
+
+   * mesh: an AbstractMesh describing the mesh on which to solve the physics
+   * sbp: an SBP operator
+   * eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
+   * opts: the options dictionary
+   * t: the current time value, defaults to 0.0
 
   #TODO: list required options keys
 """
@@ -122,6 +123,42 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 end
 
 """
+  This function evaluates the mesh.numDofPerNode x mesh.numDofPerNode block
+  diagonal of the Jacobian of the strong form of the sptail residual.  Note that
+  the residual is written
+
+  du/dt = -(Q * f) + SAT
+
+  Note the negative sign.
+
+  Currently this function neglects the SAT terms (both interface and boundary
+  conditions)
+
+  This function is most useful with [`AssembleDiagJacData`](@ref), but
+  can be used with any [`AssembleElementData`](@ref).
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * eqn: AbstractSolutionData (physics modules should specialize this
+          argument)
+   * opts: options dictionary
+   * assembler: object that must be passed to `assembleElement` and 
+                `assembleInterface`
+"""
+function evalJacobianStrongDiag(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::AbstractSolutionData, opts::Dict, 
+                      assembler::AssembleElementData, t=0.0;
+                      start_comm=false)
+
+
+  throw(ErrorException("Generic fallback evalJacobianStrongDiag reached: did you forget to extend evalJacobian() with a new method for your AbstractSolutionData?"))
+
+end
+
+
+"""
   High level function that evaluates the given functional
   This function is agnostic to the type of the functional being
   computed and calls a mid level functional-type specific function for the 
@@ -178,4 +215,31 @@ function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
 
   error("Generic fallback for evalFunctionalDeriv() reached: did you forget to extend evalFunctionalDeriv() with a new method for you AbstractSolutionData")
 
+end
+
+"""
+  This function recalculates all quantities that depend on the mesh metrics.
+  This function handles changes in the metric *values* only (not changed in
+  mesh topology).
+
+  This function should be called after the mesh is warped (ie. using mesh
+  movement).
+
+  Every physics module should extend this function with a new method
+  specializing the `eqn` argument type.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+                                 eqn::AbstractSolutionData, opts)
+
+
+  error("Generic fallback for updateMetricDependents() reached: did you forget to extend updateMetricDependents() with a new method for you AbstractSolutionData")
+
+  return nothing
 end
