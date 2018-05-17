@@ -1,4 +1,4 @@
-import PDESolver: evalJacobian, evalJacobianStrongDiag
+import PDESolver: evalJacobian, evalJacobianStrong
 
 """
   Euler implementation of `evalJacobian`.  Currently only supports the
@@ -73,7 +73,7 @@ end
 
 
 
-function evalJacobianStrongDiag(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
                       eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
@@ -85,7 +85,7 @@ function evalJacobianStrongDiag(mesh::AbstractMesh, sbp::AbstractSBP,
 
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
-    calcVolumeIntegralsStrongDiag_nopre_diff(mesh, sbp, eqn, opts, assembler)
+    calcVolumeIntegralsStrong_nopre_diff(mesh, sbp, eqn, opts, assembler)
 #    println("volume integral @time printed above")
   end
 
