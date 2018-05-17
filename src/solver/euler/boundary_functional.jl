@@ -512,11 +512,11 @@ function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamTyp
   # 2nd dimension is the q element that deriv is with respect to
   # Note: this is skipping the use of qg_temp_diff. It's like d(gqt2)/d(q3) = qg_temp_diff[2,3], if you wanted to use it
   qg_diff[1,1] = 1.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q1) , and d(qgt1)/dq1 = 1.0    (note, qgt1 is qg_temp[1])
-  qg_diff[1,2] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q2) , and d(qgt1)/dq2 = 0.0    (note, qgt1 is qg_temp[1])
-  qg_diff[1,3] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q3) , and d(qgt1)/dq3 = 0.0    (note, qgt1 is qg_temp[1])
-  qg_diff[1,4] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q4) , and d(qgt1)/dq4 = 0.0    (note, qgt1 is qg_temp[1])
+  # qg_diff[1,2] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q2) , and d(qgt1)/dq2 = 0.0    (note, qgt1 is qg_temp[1])
+  # qg_diff[1,3] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q3) , and d(qgt1)/dq3 = 0.0    (note, qgt1 is qg_temp[1])
+  # qg_diff[1,4] = 0.0      # = d(qg1)/d(qgt1)*d(qgt1)/d(q4) , and d(qgt1)/dq4 = 0.0    (note, qgt1 is qg_temp[1])
 
-  qg_diff[2,1] = 0.0      # = d(qg2)/d(qgt2)*d(qgt2)/d(q1) , and d(qgt2)/d(q1) = 0.0
+  # qg_diff[2,1] = 0.0      # = d(qg2)/d(qgt2)*d(qgt2)/d(q1) , and d(qgt2)/d(q1) = 0.0
   qg_diff[2,2] = 1.0 - normal_momentum_dot2*nx
                           # = d(qg2)/d(qgt2)*d(qgt2)/d(q2) - d(nx*normmom)/d(q2)
                           # = d(qg2)/d(qgt2)*d(qgt2)/d(q2) - [ d(nx)/d(q2)*(normmom) + d(normmom)/d(q2)*(nx) ]
@@ -530,9 +530,9 @@ function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamTyp
                           #    and d(qgt2)/d(q3) = 0.0
                           #    and d(nx)/d(q3) = 0.0   (from def)
                           #    and d(normmom)/d(q3) = normal_momentum_dot3
-  qg_diff[2,4] = 0.0      # = d(qg2)/d(qgt2)*d(qgt2)/d(q4) , and d(qgt2)/d(q4) = 0.0
+  # qg_diff[2,4] = 0.0      # = d(qg2)/d(qgt2)*d(qgt2)/d(q4) , and d(qgt2)/d(q4) = 0.0
 
-  qg_diff[3,1] = 0.0      # = d(qg3)/d(qgt3)*d(qgt3)/d(q1) , and d(qgt3)/d(q1) = 0.0
+  # qg_diff[3,1] = 0.0      # = d(qg3)/d(qgt3)*d(qgt3)/d(q1) , and d(qgt3)/d(q1) = 0.0
   qg_diff[3,2] = 0.0 - normal_momentum_dot2*ny
                           # = d(qg3)/d(qgt3)*d(qgt3)/d(q2) - d(ny*normmom)/d(q2)
                           # = d(qg3)/d(qgt3)*d(qgt3)/d(q2) - [ d(ny)/d(q2)*(normmom) + d(normmom)/d(q2)*(nx) ]
@@ -546,11 +546,11 @@ function calcBoundaryFunctionalIntegrand_diff{Tsol, Tres, Tmsh}(params::ParamTyp
                           #    and d(qgt3)/d(q3) = 1.0
                           #    and d(ny)/d(q3) = 0.0   (from def)
                           #    and d(normmom)/d(q3) = normal_momentum_dot3
-  qg_diff[3,4] = 0.0      # = d(qg3)/d(qgt3)*d(qgt3)/d(q4) , and d(qgt3)/d(q4) = 0.0
+  # qg_diff[3,4] = 0.0      # = d(qg3)/d(qgt3)*d(qgt3)/d(q4) , and d(qgt3)/d(q4) = 0.0
 
-  qg_diff[4,1] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q1) , and d(qgt4)/dq1 = 0.0
-  qg_diff[4,2] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q2) , and d(qgt4)/dq2 = 0.0
-  qg_diff[4,3] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q3) , and d(qgt4)/dq3 = 0.0
+  # qg_diff[4,1] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q1) , and d(qgt4)/dq1 = 0.0
+  # qg_diff[4,2] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q2) , and d(qgt4)/dq2 = 0.0
+  # qg_diff[4,3] = 0.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q3) , and d(qgt4)/dq3 = 0.0
   qg_diff[4,4] = 1.0      # = d(qg4)/d(qgt4)*d(qgt4)/d(q4) , and d(qgt4)/dq4 = 1.0
 
   # euler_flux_Jac is the derivative of the euler flux wrt qg. so 4x4

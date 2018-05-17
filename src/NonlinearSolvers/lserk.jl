@@ -106,17 +106,23 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   istart = chkpointdata.i
 
   #------------------------------------------------------------------------------
-  # direct sensitivity of Cd wrt M : setup
-  if opts["perturb_Ma"]
-    term23 = 0.0
-    Ma_pert_mag = opts["perturb_Ma_magnitude"]
-    Ma_pert = complex(0, Ma_pert_mag)
-  end   # end if opts["perturb_Ma"]
-
+  # splat ctx to get mesh, sbp, eqn
   # (mesh, sbp, eqn) = ctx...
   mesh = ctx[1]   # fastest way to grab mesh from ctx?
   sbp = ctx[2]   # fastest way to grab mesh from ctx?
   eqn = ctx[3]   # fastest way to grab mesh from ctx?
+
+  #------------------------------------------------------------------------------
+  # direct sensitivity of Cd wrt M : setup
+  if opts["perturb_Ma"]
+    term23 = zero(eqn.params.Ma)      # type stable version of 'term23 = 0.0'
+    Ma_pert_mag = opts["perturb_Ma_magnitude"]
+    Ma_pert = complex(0, Ma_pert_mag)
+
+    term2 = zeros(eqn.q)
+    term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+    @mpi_master println("Direct sensitivity setup done.")
+  end   # end if opts["perturb_Ma"]
 
   #------------------------------------------------------------------------------
   # capture direct sensitivity at the IC
@@ -153,17 +159,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
     assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
-    new_contrib = 0.0
     for v_ix = 1:length(v_vec)
       # this accumulation occurs across all dofs and all time steps.
-      new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
-      term23 += new_contrib
+      # new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]
+      # term23 += new_contrib                     # don't need new_contrib SLOW
+      term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
     end
 
-    # v_arr = zeros(eqn.q)
-    # disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
-    # disassembleSolution(mesh, sbp, eqn, opts, v_arr, v_vec)
-    L2_v_norm = 0.0
     L2_v_norm = calcNorm(eqn, v_vec)
     @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
 
@@ -173,12 +175,12 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   #------------------------------------------------------------------------------
   # Main timestepping loop
-  finaliter = 0
-  println("---- Ma @ LSERK start: ", eqn.params.Ma, " ----")
+  # finaliter = 0
+  @mpi_master println("---- Ma @ LSERK start: ", eqn.params.Ma, " ----")
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
-      finaliter = calcFinalIter(t_steps, itermax)
+      # finaliter = calcFinalIter(t_steps, itermax)                   # SLOW
       quad_weight = calcQuadWeight(i, delta_t, finaliter)
     end   # end if opts["perturb_Ma"]
 
@@ -277,7 +279,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # -----> after this point, majorIterCallback needs to be called (or at least where drag needs to be written)
 
     if opts["write_drag"]
-      objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      # objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)        # SLOW
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
       @mpi_master println(f_drag, i, " ", drag)
@@ -293,27 +295,27 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       # v is the direct sensitivity, du/dM
       # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
-      v_vec = zeros(q_vec)      # direct sensitivity vector
+      # v_vec = zeros(q_vec)      # direct sensitivity vector     # SLOW
       for v_ix = 1:length(v_vec)
         v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
       end
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
-      term2 = zeros(eqn.q)
+      fill!(term2, 0.0)     # initialized before timestepping loop
       # evalFunctional calls disassembleSolution, which puts q_vec into q
       # should be calling evalFunctional, not calcFunctional. 
       #     disassemble isn't getting called. but it shouldn't matter b/c DG
       EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
       # do the dot product of the two terms, and save
-      term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+      fill!(term2_vec, 0.0)     # not sure this is necessary
       assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
-      new_contrib = 0.0
       for v_ix = 1:length(v_vec)
         # this accumulation occurs across all dofs and all time steps.
-        new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]     
-        term23 += new_contrib
+        # new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]
+        # term23 += new_contrib                       # SKIPPING new_contrib, slow
+        term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
       end
 
       #------------------------------------------------------------------------------
@@ -322,7 +324,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       # JEH: So, at each time step, evaluate: sum_{i,j,k} q[i,j,k]*q[i,j,k]*sbp.w[j]*jac[j,k]  
       #      (here I assume jac is proportional to the element volume)
       if opts["write_L2vnorm"]
-        L2_v_norm = 0.0
         L2_v_norm = calcNorm(eqn, v_vec)
         @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
 
@@ -357,12 +358,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   # final update
   t += delta_t
 
-  @mpi_master println("---------------------------------------------")
-  @mpi_master println("   LSERK: final time step reached. t = $t")
-  @mpi_master println("---------------------------------------------")
+  @mpi_master begin
+    println("---------------------------------------------")
+    println("   LSERK: final time step reached. t = $t")
+    println("---------------------------------------------")
+  end
 
   if opts["perturb_Ma"]
-    @mpi_master flush(f_drag)
+    # @mpi_master flush(f_drag)
     @mpi_master close(f_drag)
 
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
@@ -378,40 +381,45 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     total_dCddM = dCddM + global_term23
 
     # Cd calculations
-    @mpi_master f_total_dCddM = open("total_dCddM.dat", "w")
-    @mpi_master println(f_total_dCddM, " dCd/dM: ", dCddM)
-    @mpi_master println(f_total_dCddM, " global_term23: ", global_term23)
-    @mpi_master println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
-    @mpi_master flush(f_total_dCddM)
-    @mpi_master close(f_total_dCddM)
-    @mpi_master println(" dCd/dM: ", dCddM)
-    @mpi_master println(" global_term23: ", global_term23)
-    @mpi_master println(" total dCd/dM: ", total_dCddM)
+    @mpi_master begin
+      f_total_dCddM = open("total_dCddM.dat", "w")
+      println(f_total_dCddM, " dCd/dM: ", dCddM)
+      println(f_total_dCddM, " global_term23: ", global_term23)
+      println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
+      flush(f_total_dCddM)
+      close(f_total_dCddM)
+      println(" dCd/dM: ", dCddM)
+      println(" global_term23: ", global_term23)
+      println(" total dCd/dM: ", total_dCddM)
+    end
 
   end   # end if opts["perturb_Ma"]
-  @mpi_master f_Ma = open("Ma.dat", "w")
-  @mpi_master println(f_Ma, eqn.params.Ma)
-  @mpi_master close(f_Ma)
-  @mpi_master f_dt = open("delta_t.dat", "w")
-  @mpi_master println(f_dt, delta_t)
-  @mpi_master close(f_dt)
 
-  @mpi_master println(" ")
-  @mpi_master println(" run parameters that were used:")
-  if opts["perturb_Ma"] 
-    @mpi_master println("    Ma: ", eqn.params.Ma + Ma_pert)
-  else
-    @mpi_master println("    Ma: ", eqn.params.Ma)
+  @mpi_master begin
+    f_Ma = open("Ma.dat", "w")
+    println(f_Ma, eqn.params.Ma)
+    close(f_Ma)
+    f_dt = open("delta_t.dat", "w")
+    println(f_dt, delta_t)
+    close(f_dt)
+
+    println(" ")
+    println(" run parameters that were used:")
+    if opts["perturb_Ma"] 
+      println("    Ma: ", eqn.params.Ma + Ma_pert)
+    else
+      println("    Ma: ", eqn.params.Ma)
+    end
+    println("    delta_t: ", delta_t)
+    println("    a_inf: ", eqn.params.a_free)
+    println("    rho_inf: ", eqn.params.rho_free)
+    println("    c: ", 1.0)
+    println("    mesh.coord_order: ", mesh.coord_order)
+    println(" ")
   end
-  @mpi_master println("    delta_t: ", delta_t)
-  @mpi_master println("    a_inf: ", eqn.params.a_free)
-  @mpi_master println("    rho_inf: ", eqn.params.rho_free)
-  @mpi_master println("    c: ", 1.0)
-  @mpi_master println("    mesh.coord_order: ", mesh.coord_order)
-  @mpi_master println(" ")
 
   if opts["write_L2vnorm"]
-    @mpi_master flush(f_L2vnorm)
+    # @mpi_master flush(f_L2vnorm)
     @mpi_master close(f_L2vnorm)
   end
 
