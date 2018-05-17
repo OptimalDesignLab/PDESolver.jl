@@ -161,8 +161,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     for v_ix = 1:length(v_vec)
       # this accumulation occurs across all dofs and all time steps.
-      # new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]
-      # term23 += new_contrib                     # don't need new_contrib SLOW
       term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
     end
 
@@ -175,12 +173,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   #------------------------------------------------------------------------------
   # Main timestepping loop
-  # finaliter = 0
   @mpi_master println("---- Ma @ LSERK start: ", eqn.params.Ma, " ----")
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
-      # finaliter = calcFinalIter(t_steps, itermax)                   # SLOW
       quad_weight = calcQuadWeight(i, delta_t, finaliter)
     end   # end if opts["perturb_Ma"]
 
@@ -214,7 +210,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     #--------------------------------------------------------------------------
     # stage 1
-#    f(params, u, F_vals, t_i)
+    # f(params, u, F_vals, t_i)
 
     pre_func(ctx..., opts)
     if real_time treal = t end
@@ -279,7 +275,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # -----> after this point, majorIterCallback needs to be called (or at least where drag needs to be written)
 
     if opts["write_drag"]
-      # objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)        # SLOW
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
       @mpi_master println(f_drag, i, " ", drag)
@@ -295,9 +290,8 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       # v is the direct sensitivity, du/dM
       # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
-      # v_vec = zeros(q_vec)      # direct sensitivity vector     # SLOW
       for v_ix = 1:length(v_vec)
-        v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
+        v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)         # v_vec alloc'd outside timestep loop
       end
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
@@ -313,8 +307,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       for v_ix = 1:length(v_vec)
         # this accumulation occurs across all dofs and all time steps.
-        # new_contrib = quad_weight * term2_vec[v_ix] * v_vec[v_ix]
-        # term23 += new_contrib                       # SKIPPING new_contrib, slow
         term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
       end
 
@@ -365,7 +357,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   end
 
   if opts["perturb_Ma"]
-    # @mpi_master flush(f_drag)
     @mpi_master close(f_drag)
 
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
@@ -419,7 +410,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   end
 
   if opts["write_L2vnorm"]
-    # @mpi_master flush(f_L2vnorm)
     @mpi_master close(f_L2vnorm)
   end
 
