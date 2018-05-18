@@ -146,6 +146,21 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     finaliter = calcFinalIter(t_steps, itermax)
     quad_weight = calcQuadWeight(i, delta_t, finaliter)
 
+    #------------------------------------------------------------------------------
+    # allocation of objects for stabilization routine
+    stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
+    stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
+    # Bv = zeros(Float64, length(q_vec), )
+    Bv = zeros(Complex128, length(q_vec), )
+    dqimag_vec = zeros(Bv)
+
+    #------------------------------------------------------------------------------
+    # stabilize q_vec (this only affects the imaginary part of q_vec)
+    # calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+    # should we be doing this at the IC??? 
+    #   I don't think so, no evalResidual yet, and hasn't entered the time-stepper yet
+    #   so no appropriate scaling factors like delta_t or fac or anything
+
     v_vec = zeros(q_vec)      # direct sensitivity vector
     for v_ix = 1:length(v_vec)
       v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
@@ -166,6 +181,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     L2_v_norm = calcNorm(eqn, v_vec)
     @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+
 
   end   # end if opts["perturb_Ma"]
 
@@ -244,17 +260,30 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
-    #--------------------------------------------------------------------------
-    # remaining stages
+    #------------------------------------------------------------------------------
 
-    # stage 1 update
-
+    # Stage 1 update
     fac = b_coeffs[1]
     for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
       q_vec[j] += fac*dq_vec[j]
     end
 
+    # Stage 1: get B*v
+    calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+
+    # Stage 1: stabilize q_vec (this only affects the imaginary part of q_vec)
+    # The below is doing this:
+    #     imag(q) -= fac*delta_t*Bv
+    #   or
+    #     imag(q) -= fac*delta_t*B*imag(q)
+    for j = 1:length(q_vec)
+      dqimag_vec[j] = delta_t*Bv[j]
+      # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac*dqimag_vec[j]) 
+      q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j])) 
+    end
+    
+    #--------------------------------------------------------------------------
     # loop over remaining stages
     for stage=2:5
       pre_func(ctx..., opts) 
@@ -264,13 +293,30 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       timing.t_func += @elapsed f( ctx..., opts, treal)           # evalResidual call
       post_func(ctx..., opts, calc_norm=false)
 
-      # update
+      # LSERK solution update
       fac = a_coeffs[stage]
       fac2 = b_coeffs[stage]
       for j=1:length(q_vec)
         dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
         q_vec[j] += fac2*dq_vec[j]
       end
+
+      # Stages 2-5: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+
+      # Stages 2-5: stabilize q_vec (this only affects the imaginary part of q_vec)
+      # This is doing a -= on the imaginary part of q_vec.
+      # The steps for doing this are the same as the full update on q_vec above as part
+      #   of LSERK. The difference here is that the update is with (B*v) instead of 
+      #   res_vec, and with a separate holding vector for the previous stage update.
+      for j = 1:length(q_vec)
+        dqimag_vec[j] = fac*dqimag_vec[j] + delta_t*Bv[j]
+        # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac2*dqimag_vec[j])
+        q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac2*dqimag_vec[j]))
+      end
+
+
+
     end  # end loop over stages
     # -----> after this point, majorIterCallback needs to be called (or at least where drag needs to be written)
 
@@ -521,3 +567,37 @@ function calcQuadWeight(i, delta_t, finaliter)
 
   return quad_weight
 end     # end function calcQuadWeight
+
+"""
+Provides a stabilized version of the imaginary component of q_vec.
+
+t: make sure to use treal here.
+q_vec: the q_vec to be stabilized. This should be the actual q_vec - only the imaginary component
+       of q_vec is used here, because we don't want to affect the solution in any way,
+       just the direct sensitivity. This will not be modified here
+Bv: just an array that is prealloc'd. size of q_vec. Real.
+    In the formulation, this is B*v = B*imag(q_vec)
+"""
+function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
+                                stab_assembler, t, q_vec, Bv)
+                         # q_vec::AbstractArray{Tsol, 1},
+                         # Bv::AbstractArray{Tsol, 1})
+                         # stab_A::DiagJac,
+                         # stab_assembler::AssembleDiagJacData,
+  MatZeroEntries(stab_A)
+  evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
+  filterDiagJac(mesh, q_vec, stab_A)        # stab_A is now B in the derivation
+
+  # don't think this is required; see diagMatVec code. Bv is assigned straight into, no += or anything
+  # fill!(Bv, 0.0)
+
+  # does Bv = B*imag(q_vec)
+  diagMatVec(stab_A, mesh, imag(q_vec), Bv)
+
+  # Bv = fac*delta_t*Bv     # scale() doesn't seem to make a difference in time
+  # q_vec = complex(real(q_vec), Bv)
+  # No. Do the reform into q_vec outside, where you can take advantage of existing LSERK code
+
+  return nothing
+
+end
