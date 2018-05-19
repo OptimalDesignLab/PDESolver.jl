@@ -252,7 +252,7 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
   if opts["use_DG"]
     if opts["operator_type$suffix"] == "SBPOmega"
       if dim == 2
-        sbp = getTriSBPOmega0(degree=order, Tsbp=Tsbp)
+        sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
       else
         sbp = getTetSBPOmega(degree=order, Tsbp=Tsbp)
       end

@@ -57,15 +57,13 @@ function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
     end_index = mesh.bndry_offsets[i+1]
     idx_range = start_index:(end_index - 1)
     bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-#=
+
     if opts["use_staggered_grid"]
 
       calcBoundaryFlux_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, functor_i,
                              idx_range, bndry_facenums_i)
       
-    else
-=#
-    if opts["precompute_boundary_flux"]
+    elseif opts["precompute_boundary_flux"]
       bndryflux_i = sview(eqn.bndryflux, :, :, start_index:(end_index - 1))
 
       # call the function that calculates the flux for this boundary condition
