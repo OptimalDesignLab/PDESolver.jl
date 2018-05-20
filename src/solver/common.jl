@@ -224,23 +224,42 @@ end
   the shape_type that PumiInterface uses to describe the SBP operator to
   Pumi.
 
-  Inputs:
-    opts: the options dictionary
-    Tsbp: the DataType specifying the Tsbp passed to the SBP operator
+  **Inputs**
+
+   * opts: the options dictionary
+   * Tsbp: the DataType specifying the Tsbp passed to the SBP operator
           constructor
-    suffix: this suffix is added to all keys accessed in the options dictionary.
+   * suffix: this suffix is added to all keys accessed in the options dictionary.
             Usually the suffix is either the empty string or an integer.  This
             provides a convenient way for the input file to specify several
             different SBP operator and have this operator construct them.
             Default value is the empty string.
 
-  Outputs:
-    sbp: the SBP operator
-    sbpface: the SBP face operator
-    shape_type: an integer passed to the mesh constructor to describe the
-                operator
-    topo: in the 3D DG case, an ElementTopology describing the SBP reference
-          element, otherwise the integer 0.
+  **Outputs**
+
+   * sbp: the SBP operator
+   * sbpface: the SBP face operator
+   * shape_type: an integer passed to the mesh constructor to describe the
+                 operator
+   * topo: in the 3D DG case, an ElementTopology describing the SBP reference
+           element, otherwise the integer 0.
+
+  **DG Operator Names**
+
+   * SBPOmega: nodes on the interior of the element only
+   * SBPGamma: nodes on the faces of the element and the interior (similar
+               to Lagrange finite elements)
+   * SBPDiagonalE: operator with diagonal E matrix, with nodes on vertices,
+                   faces, and interior (similar to Lagrange FE)
+   * SBPDiagonalE2: operator with diagonal E matrix, with nodes on faces
+                    (but not vertices)
+   * SBPOmega2: attempt at optimized SBP Omega-type operators, probably not
+                working
+
+  **CG Operator Names**
+
+   * SBPGamma: see above, this operator can be used to CG as well
+
 """
 function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
   # construct SBP operator and figure out shape_type needed by Pumi

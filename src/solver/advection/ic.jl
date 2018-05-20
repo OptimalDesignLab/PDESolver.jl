@@ -233,11 +233,6 @@ function ICp0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
   	  dofnums_j = sview(mesh.dofs, :, j, i)
-  	  x = mesh.coords[1,j,i]
-  	  y = mesh.coords[2,j,i]
-          alpha_x = eqn.params.alpha_x
-          alpha_y, = eqn.params.alpha_y
-
   	  u0[dofnums_j] = calc_p0(eqn.params, mesh.coords[:, j, i], eqn.t)
   	end
   end
@@ -253,11 +248,6 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
       dofnums_j = sview(mesh.dofs, :, j, i)
-      x = mesh.coords[1,j,i]
-      y = mesh.coords[2,j,i]
-          alpha_x = eqn.params.alpha_x
-          alpha_y, = eqn.params.alpha_y
-
       u0[dofnums_j] = calc_p1(eqn.params, mesh.coords[:, j, i], eqn.t)
     end
   end

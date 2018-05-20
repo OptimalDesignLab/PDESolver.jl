@@ -712,7 +712,7 @@ function getBCFunctors{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::Abstract
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    println("BCDict[val] = ", BCDict[val])
+#    println("BCDict[val] = ", BCDict[val])
     mesh.bndry_funcs[i] = BCDict[val]
   end
 

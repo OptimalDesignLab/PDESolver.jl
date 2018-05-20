@@ -132,7 +132,7 @@ end
 """
   calculates and returns a degree 0 polynomial (ie. a constant)
 """
-function calc_p0{Tmsh}(params::ParamType2, coords::AbstractArray{Tmsh}, t)
+function calc_p0{Tmsh}(params::ParamTypes, coords::AbstractArray{Tmsh}, t)
 
   return 1
 end
