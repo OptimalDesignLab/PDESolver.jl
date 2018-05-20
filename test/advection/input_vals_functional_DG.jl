@@ -47,10 +47,6 @@ arg_dict = Dict{Any, Any}(
 "functional_bcs1" => [2,3],
 # "analytical_functional_val" => 3.0,
 
-# Compute the objective function
-"objective_function" => "qflux",
-"objective_bcs" => [2,3],
-
 # Compute adjoint vector
 "calc_adjoint" => false,
 "writeq" => false,

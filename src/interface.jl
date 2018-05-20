@@ -1,4 +1,6 @@
 # functions that each physics module must implement
+
+
 """
   This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)
   at some state q.  The state is stored in eqn.q, and eqn.res is populated with
@@ -122,6 +124,41 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 end
 
 """
+  Creates a functional object.
+
+  Each physics modules should extend this function with a new method,
+  specializing the `eqn` argument.
+
+  **Inputs**
+
+  * `mesh` : Abstract PUMI mesh
+  * `sbp`  : Summation-by-parts operator
+  * `eqn`  : AbstractSolutionData object
+  * `opts` : Options dictionary
+  * `functional_name`: the name of the functional
+  * `functional_bcs`: the boundary condition numbers the functional is
+                      computed on.
+
+  **Outputs**
+
+   * functional: an [`AbstractFunctional`](@ref).  Usually an
+                 [`AbstractIntegralFunctional`](@ref), although this is not
+                 required.
+"""
+function createFunctional{I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                    eqn::AbstractSolutionData, opts,
+                                    functional_name::AbstractString,
+                                    functional_bcs::Vector{I})
+
+
+
+  error("generic fallback for createFunctional() reached.  Did you forget to extend createFunctional() with a new method for your AbstractSolutionData?")
+
+end
+
+
+
+"""
   High level function that evaluates the given functional
   This function is agnostic to the type of the functional being
   computed and calls a mid level functional-type specific function for the 
@@ -206,3 +243,56 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
+"""
+  This function takes fully initialzed objects and solves the partial
+  differential equation.
+
+  Every physics should extend this function with a new method, specialzing the
+  `eqn` argument type.
+
+  Objects can be created with the [`createObjects`](@ref) function.
+
+  The functions in the `SolverCommon` module are helpful in writing
+  this function.
+
+  **Inputs**
+  
+   * mesh: an AbstractMesh
+   * sbp: an SBP Operator
+   * eqn: an AbstractSolutionData
+   * opts: the options dictionary
+   * pmesh: mesh for preconditioning (optional)
+
+  **Outputs**
+
+   * mesh
+   * sbp
+   * eqn: on exit, eqn.q_vec should have the converged solution in it.
+   * opts
+
+  **Options Keys**
+
+   * Relfunc_name: also writes vtk files called "solution_relfunc"
+                  if key not present, ignored
+                   TODO: fix that
+   * IC_name
+   * calc_error: also write vtk files called "solution_error"
+   * calc_trunc_error
+   * perturb_ic
+   * calc_dt
+
+    For options like calc_dt and Relfunc_name, it is very important that
+    the computed quantity be saved to the options dictionary for use later
+    in the code (ie. and not passed directly to another function).  The
+    code won't restart correctly if this happens.
+
+
+"""
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                  opts::Dict, pmesh::AbstractMesh=mesh)
+
+  error("Generic fallback for solvePDE() reaches: did you forget to extend solvePDE with a new method for your AbstractSolutionData?")
+
+end
+

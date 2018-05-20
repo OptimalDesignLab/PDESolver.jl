@@ -4,4 +4,4 @@
 using PDESolver
 using EulerEquationMod
 
-mesh, sbp, eqn, opts = run_euler(ARGS[1])
+mesh, sbp, eqn, opts = run_solver(ARGS[1])

@@ -17,14 +17,14 @@ function test_adjoint()
   facts("--- Testing Functional Computation On a Boundary ---") do
 
     ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-    mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(ARGS[1])
+    mesh, sbp, eqn, opts, pmesh = createObjects(ARGS[1])
     @assert mesh.isDG == true
     @assert opts["jac_method"] == 2
     @assert opts["run_type"] == 5
 
     context("Checking Functional Object Creation") do
 
-      lift = EulerEquationMod.createFunctionalData(mesh, sbp, eqn, opts,
+      lift = createFunctional(mesh, sbp, eqn, opts,
                                                    opts["num_functionals"])
       @fact lift.bcnums --> [4]
       @fact lift.ndof --> 2
@@ -36,7 +36,7 @@ function test_adjoint()
 
     end # End context("Checking Functional Object Creation")
 
-    drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = createFunctional(mesh, sbp, eqn, opts, "drag", [4])
 
     context("Checking Objective Functional Object Creation") do
 
@@ -75,8 +75,8 @@ function test_adjoint()
     end  # context Checking Functional Computation Before Solve
 
 
-    EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, pmesh)
-    EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
+    solvePDE(mesh, sbp, eqn, opts, pmesh)
+    evalFunctional(mesh, sbp, eqn, opts, drag)
 
     context("Checking Functional Computation") do
 
@@ -92,10 +92,11 @@ function test_adjoint()
     # println("testing adjoint functions\n")
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
-    include("../../src/solver/euler/startup.jl")  #TODO: use run_euler
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#    include("../../src/solver/euler/startup.jl")  #TODO: use solvePDE
     @assert opts["aoa"] == 2.0
 
-    lift = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    lift = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
 
     context("Checking functional derivative w.r.t angle of attack") do
@@ -170,8 +171,8 @@ function test_adjoint()
       # Check complete derivatives w.r.t alpha using finite difference
       pert = 1e-6
       eqn.params.aoa += pert
-      EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, mesh)
-      EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
+      solvePDE(mesh, sbp, eqn, opts, mesh)
+      evalFunctional(mesh, sbp, eqn, opts, lift)
       lift_pert = lift.lift_val
       eqn.params.aoa -= pert
 

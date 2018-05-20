@@ -38,3 +38,10 @@ getFaceL
 show(::IO, ::Boundary)
 show(::IO, ::Interface)
 ```
+
+## Functionals
+
+```@docs
+AbstractFunctional
+AbstractIntegralFunctional
+```

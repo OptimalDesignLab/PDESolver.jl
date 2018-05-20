@@ -52,8 +52,8 @@ arg_dict = Dict{Any, Any}(
 "calc_functional" => false,
 "force_solution_complex" => true,
 
-"objective_function" => "lift",
-"objective_bcs" => [2],
+"functional_name1" => "lift",
+"functional_bcs1" => [2],
 "num_functionals" => 1,
 "need_adjoint" => false, # Necessary for reverse mode
 

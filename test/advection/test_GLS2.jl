@@ -53,7 +53,7 @@ function test_GLS2_term()
   facts("----- Testing GLS2 -----") do
 
     ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     eqn.params.alpha_x = 2.0
     eqn.params.alpha_y = 1.0
@@ -96,14 +96,14 @@ function test_GLS2_term()
     # now do complex step
     println("----- Doing Complex Step -----")
     ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     arg_dict["run_type"] = 5  # complex step run
     arg_dict["jac_method"] = 2  # complex step run
     f = open("input_vals_GLS2c.jl", "w")
     println(f, arg_dict)
     close(f)
     ARGS[1] = "input_vals_GLS2c.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     # set q to something interesting
     for i=1:mesh.numEl
@@ -130,7 +130,7 @@ function test_GLS2_jac()
   facts("----- Performing GLS2 Finite Difference Checks -----") do
 
     ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     eqn.src_func = AdvectionEquationMod.SRCDict["SRC0"]
     eqn.params.alpha_x = 2.0
     eqn.params.alpha_y = 1.0
@@ -175,14 +175,14 @@ function test_GLS2_jac()
     # now do complex step
     println("----- Doing Complex Step -----")
     ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     arg_dict["run_type"] = 5  # complex step run
     arg_dict["jac_method"] = 2
     f = open("input_vals_GLS2c.jl", "w")
     println(f, arg_dict)
     close(f)
     ARGS[1] = "input_vals_GLS2c.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     # set q to something interesting
     for i=1:mesh.numEl

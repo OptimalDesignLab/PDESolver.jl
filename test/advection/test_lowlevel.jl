@@ -257,7 +257,7 @@ function test_lowlevel_volumeintegrals()
 
     # use the 8 element mesh
     ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     println("precompute_boundary_flux = ", opts["precompute_boundary_flux"])
     Tmsh = eltype(mesh.dxidx)
@@ -367,7 +367,7 @@ function test_lowlevel_volumeintegrals()
 
 
     ARGS[1] = "input_vals_8el_large.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     println("----- Checking q=2*x^2 + 5 case on large grid -----")
     
     x1 = zeros(Tmsh, 3)
@@ -392,7 +392,7 @@ function test_lowlevel_volumeintegrals()
 
     # back to the original mesh
     ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     println("----- Checking sinwave case -----")
     x1 = zeros(Tmsh, 3)
@@ -422,7 +422,7 @@ function test_lowlevel_volumeintegrals()
 #TODO: uncomment when SBP boundaryintegrate is fixed
 #= 
     ARGS[1] = "input_vals_channel_verylarge.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     println("----- Checking sinwave case on very large mesh -----")
     x1 = zeros(Tmsh, 3)

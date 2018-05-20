@@ -1,5 +1,7 @@
 # functional definitions
 
+import PDESolver.createFunctional
+
 @doc """
 ###AdvectionEquationMod.QfluxData
 
@@ -55,73 +57,17 @@ function IntegralQDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
-@doc """
-###AdvectionEquationMod.createObjectiveFunctionalData
-
-Function for creating an object for functional and adjoint computation where the
-functional is an objective function in an optimization.
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Advection equation object
-* `opts` : Options dictionary
-
-"""->
-
-function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                             eqn::AdvectionData{Tsol}, opts)
-
-  functional_name = opts["objective_function"]
-  functional_bcs = opts["objective_bcs"]
-#  functional_regions = opts["geom_regions_objective"]
-  func_constructor = FunctionalDict[functional_name]
-  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
-
-  #=
-  if opts["objective_function"] == "qflux"
-    objective = QfluxData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
-  end
-  =#
-  return objective
-end
-
-@doc """
-###AdvectionEquationMod.createFunctionalData
-
-Creates an object for functional computation. This function needs to be called
-the same number of times as the number of functionals EXCLUDING the objective
-function are being computed
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Advection equation object
-* `opts` : Options dictionary
-* `functional_number` : Which functional object is being generated. Default = 1
-
-"""->
-
-function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
+"""
+  See the generic method for docs.
+"""
+function createFunctional{Tsol, I<:Integer}(mesh::AbstractMesh,
+                                    sbp::AbstractSBP,
                                     eqn::AdvectionData{Tsol}, opts,
-                                    functional_number::Int=1)
+                                    functional_name::AbstractString,
+                                    functional_bcs::Vector{I})
 
-  dict_key = string("functional_name", functional_number)
-  key = string("functional_bcs", functional_number)
-  func_name = opts[dict_key]
-  functional_faces = opts[key]
-
-  func_constructor = FunctionalDict[func_name]
-  functional = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_faces)
-#=
-  if func_name == "qflux"
-    functional = QfluxData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
-  elseif func_name "integralq"
-    functional = IntegralQData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
-  end
-=#
+  func_constructor = FunctionalDict[functional_name]
+  functional = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
 
   return functional
 end

@@ -15,15 +15,16 @@ function test_frontend()
   facts("----- Testing PDESolver Module frontend -----") do
     physics_name = "Advection"
     @fact haskey(PDESolver.PhysicsModDict, physics_name) --> true
-    mod, func = retrieve_physics(physics_name)
+    mod, _createObjects, _checkOptions = retrieve_physics(physics_name)
     # FactCheck doesn't compare functions correctly, so use == instead
     @fact mod == AdvectionEquationMod --> true
-    @fact func == run_advection --> true
+    @fact _createObjects == AdvectionEquationMod.createObjects --> true
+    @fact _checkOptions == AdvectionEquationMod.checkOptions --> true
 
 
     # test run_solver()
     fname = "input_vals_channel.jl"
-    mesh, sbp, eqn, opts = run_advection(fname)
+    mesh, sbp, eqn, opts = solvePDE(fname)
     mesh, sbp, eqn2, opts = run_solver(fname)
 
     @fact eqn.q_vec --> roughly(eqn2.q_vec, atol=1e-13)

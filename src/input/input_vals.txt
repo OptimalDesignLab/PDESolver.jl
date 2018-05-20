@@ -309,9 +309,10 @@ Note that any values associated with these options are shared with the regular
                         eigdecomp_realvecs$i.dat - real parts of eigenvectors
                         eigdecomp_imagvecs$i.dat - complex parts of eigenvectors
 "output_freq" : write paraview files every this many iterations, subject to write_vis, (Integer), default 1
-"recalc_prec_freq" : recalculate the preconditioner matrix every this many
-                     iterations, if doing an interative solve, (Integer),
-                     default 1
+
+"newton_recalculation_policy": how often to recalculate the jacobian during
+                               Newton's method, (ASCIIString), default
+                               every iteration.
 "cleansheet_CN_newton" : use the Newton's method internal to CN. Only for debugging - it supports dense FD Jacs only
 
 # Newton's Method options

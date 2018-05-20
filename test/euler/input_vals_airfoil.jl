@@ -40,9 +40,9 @@ arg_dict = Dict{Any, Any}(
 "do_postproc" => true,
 "force_solution_complex" => true,
 
-# Objective functional options
-"objective_function" => "lift",
-"objective_bcs" => [2],
+# functional options
+"functional_name1" => "lift",
+"functional_bcs1" => [2],
 
 "exact_soln_func" => "ICFreeStream",
 )

@@ -11,7 +11,8 @@ function test_reversemode()
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
-  include("../../src/solver/euler/startup.jl")
+  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#  include("../../src/solver/euler/startup.jl")
   Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 
 
@@ -133,7 +134,7 @@ function test_reversemode()
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
 
     # Create functional object
-    drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = createFunctional(mesh, sbp, eqn, opts, 2)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
 
     context("Checking Boundary Functional Integrand w.r.t nrm") do

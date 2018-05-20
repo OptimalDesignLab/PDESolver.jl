@@ -1,5 +1,7 @@
 # Description: startup function for solving an equation
 
+import PDESolver.solvePDE
+#=
 """
   This function invokes the solver for the Euler equations, using the
   specified input file
@@ -23,13 +25,13 @@ function run_euler(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
-
+=#
 
 """
   This function creates and initializes the mesh, sbp, eqn, and opts objects
 
   Inputs:
-    file_name: input file name
+    opts: options dictionary
 
   Outputs:
     mesh: an AbstractMesh.  The concrete type is determined by the options
@@ -40,11 +42,7 @@ end
     opts: the options dictionary
     pmesh: mesh used for preconditioning, can be same object as mesh
 """
-function createObjects(input_file::AbstractString)
-
-  opts = read_input(input_file)  # read input file and get default values
-  checkOptions(opts)  # physics specific options checking
-  #opts = read_input("input_vals_channel2.jl")
+function createObjects(opts::Dict)
 
   Tdim = opts["dimensions"]
   dofpernode = Tdim + 2
@@ -85,8 +83,6 @@ end
 """
 function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
 
-  read_input(opts)  # get default values
-  checkOptions(opts)
   var_type = opts["variable_type"]
 
   Tdim = mesh.dim
@@ -118,24 +114,8 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
-  Options Keys:
-    Relfunc_name: also writes vtk files called "solution_relfunc"
-                  if key not present, ignored
-                   TODO: fix that
-    IC_name
-    calc_error: also write vtk files called "solution_error"
-    calc_trunc_error
-    perturb_ic
-    calc_dt
-    finalize_mpi
-
-    For options like calc_dt and Relfunc_name, it is very important that
-    the computed quantity be saved to the options dictionary for use later
-    in the code (ie. and not passed directly to another function).  The
-    code won't restart correctly if this happens.
-
 """
-function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts::Dict, pmesh::AbstractMesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
   myrank = mesh.myrank

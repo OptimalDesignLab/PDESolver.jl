@@ -39,7 +39,7 @@ function runtests_parallel()
     start_dir = pwd()
     cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -50,7 +50,7 @@ function runtests_parallel()
 
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -60,7 +60,7 @@ function runtests_parallel()
 
     cd("./rk4_3d/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -70,7 +70,7 @@ function runtests_parallel()
 
     cd("./newton_3d/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
     @fact datas[1] --> roughly(datap[1], atol=1e-13)
@@ -92,7 +92,7 @@ function test_precompute()
     cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel_runp.jl"
     #TODO: set opts["solve"] = false before doing this
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     fill!(eqn.res, 0.0)
     evalResidual(mesh, sbp, eqn, opts)
@@ -108,7 +108,7 @@ function test_precompute()
     cd(start_dir)
     cd("./newton/parallel")
     ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     fill!(eqn.res, 0.0)
     evalResidual(mesh, sbp, eqn, opts)
@@ -135,10 +135,10 @@ function test_adjoint_parallel()
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_functional_DG_parallel.jl"
     # include(STARTUP_PATH)
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
-    objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-    AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    objective = createFunctional(mesh, sbp, eqn, opts, 1)
+    evalFunctional(mesh, sbp, eqn, opts, objective)
     pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
     ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
@@ -169,7 +169,7 @@ facts("----- Running Advection 2 processor tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, run_advection, tags)
+  run_testlist(AdvectionTests, solvePDE, tags)
 end
 
 #------------------------------------------------------------------------------

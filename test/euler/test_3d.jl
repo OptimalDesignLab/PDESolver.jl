@@ -243,7 +243,7 @@ function test_3d_secondary_quantities()
     opts["order"] = p
     fname = "input_vals_3d_p$p"
     make_input(opts, fname)
-    mesh, sbp, eqn, opts = run_euler(fname*".jl")
+    mesh, sbp, eqn, opts = solvePDE(fname*".jl")
 
     coords = mesh.coords[:, :, 1]
     dxidx = mesh.dxidx[:, :, :, 1]
@@ -306,7 +306,7 @@ function test_3d_secondary_quantities()
     opts["order"] = pprime
     fname = "input_vals_3d_p$p"
     make_input(opts, fname)
-    mesh, sbp, eqn, opts = run_euler(fname*".jl")
+    mesh, sbp, eqn, opts = solvePDE(fname*".jl")
 
     ufunc = (x, y, z) -> 2*x^p + y^p + z^p + 1
     vfunc = (x, y, z) -> x^p + 2*y^p + z^p + 1

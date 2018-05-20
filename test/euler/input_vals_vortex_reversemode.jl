@@ -33,14 +33,14 @@ arg_dict = Dict{ASCIIString, Any}(
 "step_tol" => 1e-10,
 "itermax" => 30, # 30
 
-"num_functionals" => 1,
+"num_functionals" => 2,
 "functional_name1" => "lift",
 "functional_bcs1" => [4],
 # "analytical_functional_val" => -1/1.4,
 
-# Objective Functional computation keys
-"objective_function" => "drag",
-"objective_bcs" => [4],
+#Functional computation keys
+"functional_name2" => "drag",
+"functional_bcs2" => [4],
 
 # Adjoint computation keys
 "need_adjoint" => true,

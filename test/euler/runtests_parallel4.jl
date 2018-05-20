@@ -46,7 +46,7 @@ facts("----- Running Euler 4 process tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(EulerTests, run_euler, tags)
+  run_testlist(EulerTests, solvePDE, tags)
 end
 
 #------------------------------------------------------------------------------

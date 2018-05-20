@@ -115,7 +115,7 @@ add_func2!(EulerTests, test_dg_boundary, test_dg_inputfile, [TAG_BC, TAG_SHORTTE
 function test_dg_uniform(mesh, sbp, eqn, opts)
 
   # reset eqn
-  mesh, sbp, eqn, opts = run_euler(ARGS[1])
+  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
   facts("----- Testing Uniform Channel -----") do
 

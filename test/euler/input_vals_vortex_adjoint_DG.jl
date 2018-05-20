@@ -42,10 +42,6 @@ arg_dict = Dict{ASCIIString, Any}(
 "functional_bcs1" => [4],
 # "analytical_functional_val" => -1/1.4,
 
-# Objective Functional computation keys
-"objective_function" => "drag",
-"objective_bcs" => [4],
-
 # Adjoint computation keys
 "calc_adjoint" => false,
 "writeq" => false,

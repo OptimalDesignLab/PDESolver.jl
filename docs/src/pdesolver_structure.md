@@ -11,74 +11,55 @@ together the physics modules and the Nonlinear solvers.
   Pages = ["src/startup_func.jl", "src/initialization.jl"]
 ```
 
-
-## Physics Module Startup
-
-Each physics module is required to do some of the setup work needed to
-start a simulation.
-The functions above facilitate doing so.
-In particular, the physics module must
+To run a simulation, the following steps must be done
 
   * read the input dictionary
-  * create an `AbstractMesh` and `AbstractSBP`
-  * create an `AbstractSolutionData`
+  * create an `AbstractMesh` and `AbstractSBP`, and `AbstractSolutionData`
   * Load an initial condition
   * Calculate various quantities
   * Invoke a NonlinearSolver
   * Do postprocessing
 
-```@meta
-  CurrentModule = EulerEquationMod
-```
+Some of these steps are handled by the `PDESolver` module, and a few are
+handled by the physics module.
 
 
-Physics modules should define a function called `run_physics` (ex. [`run_euler`](@ref)) that does all these operations (by calling other functions within the
-physics module) and returns the mesh, sbp, eqn, and opts objects.
 
 ### Input Dictionary
 
-The first thing a physics module must do is read the input file.  
+The first step is to read the input file.  
 Reading input files is split into two parts.  The first part is done by the
 [Input](@ref) module, which loads the file from disk and supplies default
 values.
-The section part is done by the physics function that verifies the physics
+The second part is done by the physics-specific registered with [`register_physics`](@ref).
+this  function that verifies the physics
 module supports the given options (especially checking for combinations of
+```@meta
+  CurrentModule = EulerEquationMod
+```
 options that might not be supported).  See, for example, [`checkOptions`](@ref EulerEquationMod.checkOptions).
-
-### Creating Mesh and Operator
-
 ```@meta
   CurrentModule = PDESolver
 ```
 
 
-The next thing the physics module needs to do is create `AbstractSBP` and [`AbstractMesh`](@ref) objects.
-The function [`createMeshAndOperator`](@ref) should be used by all physics modules to
-do this.
+### Creating Objects
 
-### Create an Equation Object
 
-Next, the physics module must create its [`AbstractSolutionData`](@ref) object.
+The next thing the physics module needs to do is create `AbstractSBP` and [`AbstractMesh`](@ref), and [`AbstractSolutionData`](@ref)  objects.
+The function [`createMeshAndOperator`](@ref) should be used by all physics modules to create the first two.
+
+The `AbstractSolutionData` is created by the physics module itself.
 The details of how to do this are left up to the physics module, but the
 return values of [`createMeshAndOperator`](@ref) should be used for static
 parameter values.
 
-```@meta
-  CurrentModule = EulerEquationMod
-```
-
-
-The creation of the mesh, sbp, and equation object are usually combined into
-a single function called [`createObjects`](@ref).
+These creation of all three objects are performed by the `_createObjects` functions provided to
+[`register_physics`](@ref).
 
 ### Load an initial condition
 
-A function called `solve_physics` (ex. [`solve_euler`](@ref)) is created by
-the physics module do the operations described in this section and the next two.
-
-```@meta
-  CurrentModule = PDESolver
-```
+The function [`solvePDE`](@ref) is extended by each physics module to is do the remaining operations.
 
 
 The details of how to load an initial condition are left up to the physics
@@ -92,13 +73,8 @@ IC.  See [`registerIC`](@ref) for further description.
 
 ### Various calculations
 
-```@meta
-  CurrentModule = EulerEquationMod
-```
-
-
 After loading the IC, the options dictionary may require the calculation of
-a few quantities.  See [`solve_euler`](@ref) for the list of options keys
+a few quantities.  See [`solvePDE`](@ref) for the list of options keys
 that must be supported.
 
 ### Invoke a NonlinearSolver
@@ -127,5 +103,5 @@ Each physics module usually defines a function to do this.
 See [`postproc`](@ref) for an example.
 
 ```@meta
-  CurrentModule = EulerEquationMod
+  CurrentModule = PDESolver
 ```

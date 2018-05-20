@@ -1,5 +1,7 @@
 # functional definitions
 
+import PDESolver.createFunctional
+
 @doc """
 ###EulerEquationMod.BoundaryForceData
 
@@ -103,80 +105,29 @@ function MassFlowDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
-@doc """
-###EulerEquationMod.createObjectiveFunctionalData
-
-Function for create an object for functional and adjoint computation where the
-functional is an objective function in an optimization.
+"""
+  Creates a functional object.
 
 **Arguments**
 
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Euler equation object
-* `opts` : Options dictionary
-
-"""->
-function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                             eqn::EulerData{Tsol}, opts)
-
-  functional_name = opts["objective_function"]
-  functional_bcs = opts["objective_bcs"]
-  func_constructor = FunctionalDict[functional_name]
-  objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
-
-  return objective
-#=
-  if opts["objective_function"] == "lift"
-    objective = BoundaryForceData{Tsol, :lift}(mesh, sbp, eqn, opts, functional_faces)
-  elseif opts["objective_function"] == "drag"
-    objective = BoundaryForceData{Tsol, :drag}(mesh, sbp, eqn, opts, functional_faces)
-  end # End if opts["objective_function"]
-
-  return objective
-=#
-end # End function createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-
-@doc """
-###EulerEquationMod.createFunctionalData
-
-Creates an object for functional computation. This function needs to be called
-the same number of times as the number of functionals EXCLUDING the objective
-function are being computed
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Euler equation object
-* `opts` : Options dictionary
-* `functional_number` : Which functional object is being generated. Default = 1
-
-"""->
-
-function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
+ * `mesh` : Abstract PUMI mesh
+ * `sbp`  : Summation-by-parts operator
+ * `eqn`  : Euler equation object
+ * `opts` : Options dictionary
+ * `functional_name`: the name of the functional (in [`FunctionalDict`](@ref)
+ * `functional_bcs`: the boundary condition numbers the functional is
+                     computed on.
+"""
+function createFunctional{Tsol, I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
                                     eqn::EulerData{Tsol}, opts,
-                                    functional_number::Int=1)
+                                    functional_name::AbstractString,
+                                    functional_bcs::Vector{I})
 
-  dict_val = string("functional_name", functional_number)
-  key = string("functional_bcs", functional_number)
-  functional_name = opts[dict_val]
-  functional_bcs = opts[key]
   func_constructor = FunctionalDict[functional_name]
   objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
 
   return objective
-#=
-  if opts[dict_val] == "lift"
-    functional = BoundaryForceData{Tsol, :lift}(mesh, sbp, eqn, opts, functional_faces)
-  elseif opts[dict_val] == "drag"
-    functional = BoundaryForceData{Tsol, :drag}(mesh, sbp, eqn, opts, functional_faces)
-  end
-
-  return functional
-=#
 end
-
 
 """
   Maps functional names to their outer constructors.

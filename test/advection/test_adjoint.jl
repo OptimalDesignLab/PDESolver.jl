@@ -2,10 +2,9 @@
 @doc """
 Advection Equation -- test_adjoint
 
-The function tests for the correctness of objective and non-objective functional
+The function tests for the correctness functional
 computation and then tests if the adjoint vector is being computed correctly.
-Adjoint vector computation is based on an objective function. This is a serial
-test and uses the input file called
+This is a serial test and uses the input file called
 
 `input_vals_functional_DG.jl`
 
@@ -37,16 +36,17 @@ function test_adjoint()
   facts("--- Testing Boundary Functional & Adjoint Computation On DG Mesh ---") do
 
     ARGS[1] = "input_vals_functional_DG.jl"
-    mesh, sbp, eqn, opts, pmesh = AdvectionEquationMod.createObjects(ARGS[1])
+    mesh, sbp, eqn, opts, pmesh = createObjects(ARGS[1])
 
     @assert mesh.isDG == true
     @assert opts["jac_method"] == 2
     @assert opts["run_type"] == 5
 
-    context("Checking Functional Object Creation") do
+    functional = createFunctional(mesh, sbp, eqn,
+                                  opts, opts["num_functionals"])
 
-      functional = AdvectionEquationMod.createFunctionalData(mesh, sbp, eqn,
-                   opts, opts["num_functionals"])
+
+    context("Checking Functional Object Creation") do
 
       @fact functional.bcnums --> [2,3]
       @fact functional.val --> zero(Complex{Float64})
@@ -54,23 +54,13 @@ function test_adjoint()
 
     end # End context("Checking Functional Object Creation")
 
-    objective = AdvectionEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-
-    context("Checking Objective Functional Object Creation") do
-
-      @fact objective.bcnums --> [2,3]
-      @fact objective.val --> zero(Complex{Float64})
-      @fact objective.target_qflux --> zero(Complex{Float64})
-
-    end # End context("Checking Objective Functional Object Creation")
-
-    AdvectionEquationMod.solve_advection(mesh, sbp, eqn, opts, pmesh)
-    AdvectionEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
+    solvePDE(mesh, sbp, eqn, opts, pmesh)
+    evalFunctional(mesh, sbp, eqn, opts, functional)
 
     context("Checking Functional Computation") do
 
       analytical_val = 3.0
-      functional_error = norm(real(objective.val) - analytical_val,2)
+      functional_error = norm(real(functional.val) - analytical_val,2)
       @fact functional_error --> roughly(0.0, atol=1e-12)
 
       # test another functional
@@ -86,7 +76,7 @@ function test_adjoint()
       adjoint_vec = zeros(Complex{Float64}, mesh.numDof)
       pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
       ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
-      calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
+      calcAdjoint(mesh, sbp, eqn, opts, ls, functional, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
       for i = 1:length(adjoint_vec)
         @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
