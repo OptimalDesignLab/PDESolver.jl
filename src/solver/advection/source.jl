@@ -11,7 +11,7 @@
 type SRC0 <: SRCType
 end
 
-function call(obj::SRC0, params::ParamType2, coords::AbstractVector, t)
+function call(obj::SRC0, params::ParamTypes, coords::AbstractVector, t)
   return 0
 end
 
@@ -383,6 +383,6 @@ function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # currently we only allow 1 source functor
   eqn.src_func = SRCDict[opts["SRCname"]]
-  println("using source term functor ", eqn.src_func)
+#  println("using source term functor ", eqn.src_func)
   return nothing
 end
