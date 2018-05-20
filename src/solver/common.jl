@@ -255,6 +255,9 @@ end
                     (but not vertices)
    * SBPOmega2: attempt at optimized SBP Omega-type operators, probably not
                 working
+   * SBPOmega3: SBP Omega-type operator with degree 2p cubature rule for
+                all degree operators (p=1 and 2 are the same as SBPOmega),
+                unlike `SBPOmega2`, not optimized
 
   **CG Operator Names**
 
@@ -304,6 +307,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
         sbp = getTriSBPOmega2(degree=order, Tsbp=Tsbp)
       else
         throw(ArgumentError("3D SBPOmega2 not supported"))
+      end
+    elseif opts["operator_type$suffix"] == "SBPOmega3"
+      shape_type = 7
+      if dim == 2
+        sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
+      else
+        throw(ArgumentError("3D SBPOmega3 not supported"))
       end
     else
       op_type = opts["operator_type$suffix"]

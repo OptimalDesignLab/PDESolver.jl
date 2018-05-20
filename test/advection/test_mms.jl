@@ -74,8 +74,10 @@ function test_mms()
     # test 2d DG
     println("  ----- Testing 2d -----")
     opts0 = read_input_file("input_vals_mms.jl")
-    operator_names = ["SBPOmega", "SBPGamma", "SBPDiagonalE", "SBPDiagonalE2"]
-    max_degree =     [         4,          4,              4,              2 ]
+    operator_names = ["SBPOmega", "SBPGamma", "SBPDiagonalE", "SBPDiagonalE2",
+                      "SBPOmega3"]
+    max_degree =     [         4,          4,              4,              2, 
+                               4,]
 
     for i=1:length(operator_names)
       for degree=1:max_degree[i]
