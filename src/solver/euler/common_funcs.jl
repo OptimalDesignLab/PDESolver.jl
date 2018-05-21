@@ -196,7 +196,7 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
   Ma = params.Ma
 
   sol[2] = rho*Ma*cos(params.aoa)
-  sol[3] = -rho*Ma*sin(params.aoa)
+  sol[3] = rho*Ma*sin(params.aoa)
 
   # 201805 These lines were for debugging the Mach perturbation direct sens
   # basically ensuring that the first term, partial Cd / partial M 
@@ -224,7 +224,7 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType3,
 
   sol[2] = rho*Ma*cos(params.aoa)
   sol[3] = 0.0
-  sol[4] = -rho*Ma*sin(params.aoa)
+  sol[4] = rho*Ma*sin(params.aoa)
 
   return nothing
 end
