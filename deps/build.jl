@@ -39,9 +39,9 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [
               "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "v0.3";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_v0.1";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "v0.7";
               "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.4"
               ]
 

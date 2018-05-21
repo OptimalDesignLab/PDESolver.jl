@@ -53,6 +53,11 @@ After installation it is recommended to run the test suite.
 To do so, run the following commands in the terminal:
 
 ```
+  # need to configure environment before using PumiInterface
+  cd /path/to/PumiInterface/src # for example ~/.julia/v0.4/PumiInterface/src)
+  source ./use_julialib.sh
+  
+  # run the PDESolver tests
   cd /path/to/pdesolver # (for example ~/.julia/v0.4/PDESolver)
   cd ./test
   ./runtests_fast.sh

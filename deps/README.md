@@ -66,3 +66,25 @@ checkout process, including error information if a build fails.
 Because `Pkg.build` swallows errors, failures inside `Pkg.build` are not logged.
 
 
+## Known Issues
+
+On Intel Skylake, there is a problem with reusing the symbolic factorization
+when using the sparse direct linar solver.  The error message looks like:
+
+```
+*** stack smashing detected ***: julia terminated
+```
+
+An excerpt of the stack trace is:
+
+```
+umfdl_local_search at /mnt/scratch/common/julia/0.4/bin/../lib/julia/libumfpack.so (unknown line)
+umfdl_kernel at /mnt/scratch/common/julia/0.4/bin/../lib/julia/libumfpack.so (unknown line)
+umfpack_dl_numeric at /mnt/scratch/common/julia/0.4/bin/../lib/julia/libumfpack.so (unknown line)
+umfpack_numeric! at sparse/umfpack.jl:168
+_linearSolve at /home/creanj/pkgtest/v0.4/PDESolver/src/linearsolvers/ls_standard.jl:292
+linearSolve at /home/creanj/pkgtest/v0.4/PDESolver/src/Utils/parallel.jl:312
+newtonInner at util.jl:179
+```
+
+To avoid this problem, see the `SKYLAKE_STACKSMASH` the `src/linearsolver/ls_standard.jl` file.
