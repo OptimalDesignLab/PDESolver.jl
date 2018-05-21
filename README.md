@@ -77,6 +77,9 @@ introduced AbstractLinearOperator, AbstractPreconditioner, LinearSolver abstract
 
 Changed MPI initialization/finalization (PETSc too)
 
+v0.5: add checkpointing, Linear solver/operator/preconditioner abstraction, explicit jacobian calculation,
+      more reliable MPI/PETSc initialization and finalization
+
 Master branch:
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg?branch=master)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 
