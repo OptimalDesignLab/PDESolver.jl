@@ -117,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Building PDESolver",
     "title": "PDESolver Installation",
     "category": "section",
-    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.After installing the system System Dependencies, run the following Julia commands to install the Julia dependencies and and PDESolver itself:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file and\n                          # build PDESolverThis will install PDESolver and all Julia dependencies into the directory specified by the JULIA_PKGDIR environmental variable. If this variable is not specified, it will install to ~/.julia/v0.4/PDESolver.If there are errors building any Julia dependencies, see the Installation page for methods of installing particular versions of the dependencies.After installation it is recommended to run the test suite. To do so, run the following commands in the terminal:  cd /path/to/pdesolver # (for example ~/.julia/v0.4/PDESolver)\n  cd ./test\n  ./runtests_fast.shIf the tests complete without error, then the package is properly installed.TODO: link to examples page"
+    "text": "PDESolver is not listed in Julia's METADATA, so you will have to clone the repository and then build the code.After installing the system System Dependencies, run the following Julia commands to install the Julia dependencies and and PDESolver itself:  Pkg.clone(\"https://github.com/OptimalDesignLab/PDESolver.jl.git\")\n  Pkg.resolve()  # install all packages in PDESolvers REQUIRE file\n  Pkg.build(\"PDESolver\")  # install all packages not in REQUIRE file and\n                          # build PDESolverThis will install PDESolver and all Julia dependencies into the directory specified by the JULIA_PKGDIR environmental variable. If this variable is not specified, it will install to ~/.julia/v0.4/PDESolver.If there are errors building any Julia dependencies, see the Installation page for methods of installing particular versions of the dependencies.After installation it is recommended to run the test suite. To do so, run the following commands in the terminal:  # need to configure environment before using PumiInterface\n  cd /path/to/PumiInterface/src # for example ~/.julia/v0.4/PumiInterface/src)\n  source ./use_julialib.sh\n  \n  # run the PDESolver tests\n  cd /path/to/pdesolver # (for example ~/.julia/v0.4/PDESolver)\n  cd ./test\n  ./runtests_fast.shIf the tests complete without error, then the package is properly installed.TODO: link to examples page"
 },
 
 {
@@ -185,6 +185,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "deps_readme.html#Known-Issues-1",
+    "page": "Build Options",
+    "title": "Known Issues",
+    "category": "section",
+    "text": "On Intel Skylake, there is a problem with reusing the symbolic factorization when using the sparse direct linar solver.  The error message looks like:*** stack smashing detected ***: julia terminatedAn excerpt of the stack trace is:umfdl_local_search at /mnt/scratch/common/julia/0.4/bin/../lib/julia/libumfpack.so (unknown line)\numfdl_kernel at /mnt/scratch/common/julia/0.4/bin/../lib/julia/libumfpack.so (unknown line)\numfpack_dl_numeric at /mnt/scratch/common/julia/0.4/bin/../lib/julia/libumfpack.so (unknown line)\numfpack_numeric! at sparse/umfpack.jl:168\n_linearSolve at /home/creanj/pkgtest/v0.4/PDESolver/src/linearsolvers/ls_standard.jl:292\nlinearSolve at /home/creanj/pkgtest/v0.4/PDESolver/src/Utils/parallel.jl:312\nnewtonInner at util.jl:179To avoid this problem, see the SKYLAKE_STACKSMASH the src/linearsolver/ls_standard.jl file."
+},
+
+{
     "location": "interfaces.html#",
     "page": "Code Interfaces",
     "title": "Code Interfaces",
@@ -205,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractSolutionData",
     "category": "Type",
-    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters:\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all the objects that store the    solution data. Every physics module should implement its own subtype.\n\nStatic parameters\n\nTsol: datatype of solution variables\nTres: datatype of the mesh variables\n\nSee the AbstractSolutionData for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -221,7 +229,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Required Fields",
     "category": "section",
-    "text": "The required fields of an AbstractSolutionData are:  q::AbstractArray{Tsol, 3}\n  q_vec::AbstractArray{Tsol, 1}\n  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}\n  res::AbstractArray{Tres, 3}\n  res_vec::AbstractArray{Tres, 1}\n  M::AbstractArray{Float64, 1}\n  Minv::AbstractArray{Float64, 1}\n  multiplyA0inv::Function\n  majorIterationCallback::Function\n  params{Tsol..., Tdim}::AbstractParamType{Tdim}"
+    "text": "The required fields of an AbstractSolutionData are:  q::AbstractArray{Tsol, 3}\n  q_vec::AbstractArray{Tsol, 1}\n  shared_data::AbstractArray{SharedFaceData{Tsol}, 1}\n  res::AbstractArray{Tres, 3}\n  res_vec::AbstractArray{Tres, 1}\n  res_edge::AbstractArray{Tres, 4}\n  M::AbstractArray{Float64, 1}\n  Minv::AbstractArray{Float64, 1}\n  multiplyA0inv::Function\n  majorIterationCallback::Function\n  params{Tsol..., Tdim}::AbstractParamType{Tdim}"
 },
 
 {
@@ -245,7 +253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Field Meanings",
     "category": "section",
-    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res`) may not exist.M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are: * t::Float64: hold the current time value * order: order of accuracy of the discretization (same as AbstractMesh.order) * x_design: vector of design variables that don't fit into any other catagory               (ie. shape variables or other aerodynamic variables like angle of               attack) *  time::Timings: an object to record how long different parts of the code take,   defined in the Utils module.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
+    "text": "  CurrentModule = UtilsThe purpose of these fields are:q: to hold the solution variables in an element-based array.      This array should be numDofPerNode x numNodesPerElement x numEl.      The residual evaluation only uses q, never q_vecq_vec: to hold the solution variables as a vector, used for any linear algebra operations and time stepping. This array should have a length equal to the total number of degrees of freedom in the mesh. Even though this vector is not used by the residual evaluation, it is needed for many other operations, so it is allocated here so the memory can be reused. There are functions to facilitate the scattering of values from q_vec to q. Note that for Continuous Galerkin type discretization (as opposed to Discontinuous Galerkin discretizations), there is not a corresponding \"gather\" operation (ie. q -> q_vec).  See Utils.disassembleSolution  and Utils.assembleSolution.shared_data is a vector of length npeers.  Each element contains the data               needed send and receive the q variables to/from other               the corresponding MPI rank listed in mesh.peer_parts.               The precise contents of SharedFaceData is documented in the               Utils module, however they do include the send and receive               buffers.res: similar to q, except that the residual evaluation function populates        it with the residual values.          As with q, the residual evaluation function only interacts with this array,        never with res_vec.res_vec: similar to q_vec.  Unlike q_vec there are functions to perform an            additive reduction (basically a \"gather\") of res to res_vec.              For continuous Galerkin discretizations, the corresponding \"scatter\"            (ie. res_vec -> res) may not exist.res_edge: a 4 dimensional array sometimes used for edge-based data structure.             This feature does not work.  This array must exist and should be             of size 0. M:  The mass matrix of the entire mesh.  Because SBP operators have diagonal       mass matrices, this is a vector.  Length numDofPerNode x numNodes (where       numNodes is the number of nodes in the entire mesh).Minv:  The inverse of the mass matrix.multiplyA0inv:  Multiplies the solution values at each node in an array such as res by the inverse of the coefficient matrix of the time term of the equation.                   This function is used by time marching methods.                   For some equations, this matrix is the identity matrix, so it can be a no-op, while for others might not be.                   The function must have the signature:multiplyA0inv(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts, res_arr::AbstractArray{Tsol, 3})majorIterationCallback:  function called before every step of Newton's method or stage of an explicit time marching scheme. This function is used to do output and logging. The function must have the signature:function majorIterationCallback(itr, mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts)params:  user defined type that inherits from AbstractParamType:  CurrentModule = ODLCommonToolsAbstractParamTypeThe purpose of this type is to store any variables that need to be quickly accessed or updated. The only required fields are:t::Float64\n: hold the current time value\norder\n: order of accuracy of the discretization (same as \nAbstractMesh.order\n)\nx_design\n: vector of design variables that don't fit into any other catagory               (ie. shape variables or other aerodynamic variables like angle of               attack)\n \ntime::Timings\n: an object to record how long different parts of the code take,   defined in the Utils module.\nf\n: a file handle that prints to the file \nlog_myrank.dat\n, where \nmyrank\n         is the MPI rank of the current process, but only in debug mode.  In         non-debug mode, this file should not be opened.file_dict: dictionary that maps from the file name to a file handle.  This              field is not required, but if it is present, all copies of the              equation object must share the same dictionary (to avoid problems              with buffering)."
 },
 
 {
@@ -253,7 +261,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractMesh",
     "category": "Type",
-    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters:\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric\n      space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
+    "text": "This abstract type is the supertype for all mesh objects.  Every interface to   a mesh software should define its own implementation.\n\nStatic parameters\n\nTmsh: datatype of the mesh data (coordinates, mapping to/from parametric           space, mapping jacobian).\n\nSee the AbstractMesh for the description of everything this   type must implement.\n\n\n\n"
 },
 
 {
@@ -397,7 +405,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "ODLCommonTools.AbstractDGMesh",
     "category": "Type",
-    "text": "ODLCommonTools.AbstractDGGMesh\n\nThe abstrac type is the supertype of all discontinuous Galerkin meshes\n\n\n\n"
+    "text": "ODLCommonTools.AbstractDGGMesh\n\nThe abstract type is the supertype of all discontinuous Galerkin meshes\n\n\n\n"
 },
 
 {
@@ -445,7 +453,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Code Interfaces",
     "title": "Functional Programming",
     "category": "section",
-    "text": "An important aspect of the use of the mesh, sbp, eqn, and opts to define interfaces is that the physics modules and nonlinear solvers are written in a purely functional programming style, which is to say that the behavior of every function is determined entirely by the arguments to the function, and the only effects of the function are to modify an argument or return a value.This property is important for writing generic, reusable code. For example, when using iterative solvers, a preconditioner is usually required, and constructing the preconditioner requires doing residual evaluations. In some cases, the preconditioner will use a different mesh or a different mesh coloring. Because the physics modules are written in a functional style, they can be used to evaluate the residual on a different mesh simply by passing the residual evaluation function a different mesh object.A critical aspect of function programming is that there is no global state. The state of the solver is determined entirely by the state of the objects that are passed around.##Variable Naming Conventions In an attempt to make code more uniform and readable, certain variable names are reserved for certain uses.mesh\n:  object that implements \nAbstractMesh\npmesh\n:  mesh used for preconditioning\nsbp\n:  Summation-by-Parts object\neqn\n:  object that implements \nAbstractSolutionData\nopts\n: options dictionary\nparams\n: parameter object (used for values that might be in \nopts\n but need to be accessed quickly)\nx\n: the first real coordinate direction\ny\n: the second real coordinate direction\nxi\n: the first parametric coordinate direction\neta\n: the second parametric coordinate direction\nh\n:  mesh spacing\nhx\n: mesh spacing in x direction\nhy\n: mesh spacing in y direction\np\n: pressure at a node\na\n; speed of sound at a node\ns\n: entropy at a node\ngamma\n: specific heat ratio\ngamma_1\n: \ngamma\n - 1\nR\n: specific gas constant in ideal gas law (units J/(Kg * K) in SI)\ndelta_t\n: time step\nt\n: current time\nnrm\n: a normal vector of some kind\nA0\n: the coefficient matrix of the time term at a node\nAxi\n: the flux jacobian at a node in the \nxi\n direction\nAeta\n: the flux jacobian at a node in the \neta\n direction\nAx\n: the flux jacobian in the \nx\n direction at a node\nAy\n: the flux jacobian in the \ny\n direction at a node"
+    "text": "An important aspect of the use of the mesh, sbp, eqn, and opts to define interfaces is that the physics modules and nonlinear solvers are written in a purely functional programming style, which is to say that the behavior of every function is determined entirely by the arguments to the function, and the only effects of the function are to modify an argument or return a value.This property is important for writing generic, reusable code. For example, when using iterative solvers, a preconditioner is usually required, and constructing the preconditioner requires doing residual evaluations. In some cases, the preconditioner will use a different mesh or a different mesh coloring. Because the physics modules are written in a functional style, they can be used to evaluate the residual on a different mesh simply by passing the residual evaluation function a different mesh object.A critical aspect of function programming is that there is no global state. The state of the solver is determined entirely by the state of the objects that are passed around."
+},
+
+{
+    "location": "interfaces.html#Variable-Naming-Conventions-1",
+    "page": "Code Interfaces",
+    "title": "Variable Naming Conventions",
+    "category": "section",
+    "text": "In an attempt to make code more uniform and readable, certain variable names are reserved for certain uses.mesh\n:  object that implements \nAbstractMesh\npmesh\n:  mesh used for preconditioning\nsbp\n:  Summation-by-Parts object\neqn\n:  object that implements \nAbstractSolutionData\nopts\n: options dictionary\nparams\n: parameter object (used for values that might be in \nopts\n but need to be accessed quickly)\nx\n: the first real coordinate direction\ny\n: the second real coordinate direction\nxi\n: the first parametric coordinate direction\neta\n: the second parametric coordinate direction\nh\n:  mesh spacing\nhx\n: mesh spacing in x direction\nhy\n: mesh spacing in y direction\np\n: pressure at a node\na\n; speed of sound at a node\ns\n: entropy at a node\ngamma\n: specific heat ratio\ngamma_1\n: \ngamma\n - 1\nR\n: specific gas constant in ideal gas law (units J/(Kg * K) in SI)\ndelta_t\n: time step\nt\n: current time\nnrm\n: a normal vector of some kind\nA0\n: the coefficient matrix of the time term at a node\nAxi\n: the flux jacobian at a node in the \nxi\n direction\nAeta\n: the flux jacobian at a node in the \neta\n direction\nAx\n: the flux jacobian in the \nx\n direction at a node\nAy\n: the flux jacobian in the \ny\n direction at a node"
 },
 
 {
@@ -549,7 +565,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver User Interface",
     "title": "PDESolver.run_solver",
     "category": "Function",
-    "text": "This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.   This requires loading the input file twice, once to figure out the physics,   and a second time when the physics-specific startup function is called\n\nThe physics module must have already been registered using register_physics\n\nInputs:\n\ninput_file: an AbstractString specifying the path to the input file\n\nOutputs:\n\nmesh: the AbstractMesh object used during the solve\nsbp: the SBP operator used by the solver\neqn: the AbstractSolutionData object during the solve.  At exit,\n     eqn.q_vec should have the final solution in it\nopts: the options dictionary\n\n\n\n"
+    "text": "This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.\n\nThe physics module must have already been registered using register_physics\n\nThis function is equivalent to solvePDE, it is maintained here   for legacy purposes only.\n\nInputs\n\ninput_file: an AbstractString specifying the path to the input file\n\nOutputs\n\nmesh: the AbstractMesh object used during the solve\nsbp: the SBP operator used by the solver\neqn: the AbstractSolutionData object during the solve.  At exit,           eqn.q_vec should have the final solution in it\nopts: the options dictionary\n\n\n\n"
 },
 
 {
@@ -565,7 +581,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver User Interface",
     "title": "PDESolver.registerIC",
     "category": "Function",
-    "text": "This function registers a new initial condition function with the specified   physics module.  The function must have the signature:\n\n```    ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},                 opts:Dict, q_vec::AbstractVector{Tsol})   ```\n\nwhere q_vec is a vector of length numDof that will be populated with the   initial condition.  If the function is used to provide the exact solution   for an unsteady problem (for calculating the error via the exact_soln_func   key in the options dictionary), then it should use eqn.params.t as the   current time value.\n\nThis function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.\n\nThe physics module must have an associative container called ICDict that   accepts ASCIIStrings as keys and functions as values.\n\nInputs:\n\nmod: physics module to register the function with\nfname: name associated with the function, used as the value for the\n       for any key in the options dictionary that specifies an initial\n       condition function\nfunc: the function itself\n\nOutputs:\n\nnone\n\n\n\n"
+    "text": "This function registers a new initial condition function with the specified   physics module.  The function must have the signature:\n\n```    ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},                 opts:Dict, q_vec::AbstractVector{Tsol})   ```\n\nwhere q_vec is a vector of length numDof that will be populated with the   initial condition.  If the function is used to provide the exact solution   for an unsteady problem (for calculating the error via the exact_soln_func   key in the options dictionary), then it should use eqn.params.t as the   current time value.\n\nThis function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.\n\nThe physics module must have an associative container called ICDict that   accepts ASCIIStrings as keys and functions as values.\n\nIt is an error to register two functions under the same name or to register   one function under two different names.\n\nInputs:\n\nmod: physics module to register the function with\nfname: name associated with the function, used as the value for the\n       for any key in the options dictionary that specifies an initial\n       condition function\nfunc: the function itself\n\nOutputs:\n\nnone\n\n\n\n"
 },
 
 {
@@ -573,7 +589,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver User Interface",
     "title": "PDESolver.registerBC",
     "category": "Function",
-    "text": "This function registers a new boundary condition functor with the specified   physics module.  The exact signature of the functor varies by physics module.   The purpose of the functor is to calculate the flux across a boundary at   a particular node. It usually takes in the solution values at that node, as   well as the coordinates and mapping jacobian.  The params type is typically   used to dispatch to different methods for 2D or 3D, if needed.  Generally,   this functor will calculate the boundary state and then call a numerical   flux function of some kind to compute the flux.\n\nThis function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.\n\nInputs:\n\nmod: module to register the the functor with\nfname: the name associated with this function, used as the value for any\n       key in the options dictionary that specifies a boundary condition,\n       for example `BC1_name`\nfunc: the functor itself\n\nOutputs:\n\nnone\n\n\n\n"
+    "text": "This function registers a new boundary condition functor with the specified   physics module.  The exact signature of the functor varies by physics module.   The purpose of the functor is to calculate the flux across a boundary at   a particular node. It usually takes in the solution values at that node, as   well as the coordinates and mapping jacobian.  The params type is typically   used to dispatch to different methods for 2D or 3D, if needed.  Generally,   this functor will calculate the boundary state and then call a numerical   flux function of some kind to compute the flux.\n\nThis function does not attempt to verify that the functor has the correct   signature, so the user should take care to ensure it is correct for the   physics module.\n\nIt is an error to register two functors with the same name or the same   functor under two different names.  An exception is made for \"reanalysisBC\",   because it is special.\n\nInputs\n\nmod: module to register the the functor with\nfname: the name associated with this function, used as the value for any             key in the options dictionary that specifies a boundary condition,             for example \nBC1_name\nfunc: the functor itself\n\nOutputs\n\nnone\n\nNotes For Implementers\n\nThis function works by utilizing mod.BCDict, which must be an associative   collection mapping BC names to functors.\n\n\n\n"
 },
 
 {
@@ -629,23 +645,39 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Physics Interface",
     "title": "Documentation of the PDESolver Physics Module Interface",
     "category": "section",
-    "text": "CurrentModule = PDESolverThe PDESolver Module provides some structure for physics modules to plug into. See Interfaces in PDESolver for details. Each physics module should extend evalResidual with a new method to which takes the AbstractSolutionData defined by the physics module as an argument. This structure allows evalResidual to be visible to the NonlinearSolver module while being defined by the physics modules."
+    "text": "CurrentModule = PDESolverThe PDESolver Module provides some structure for physics modules to plug into. See Interfaces in PDESolver for details. Each physics module should create a new subtype of AbstractSolutionData. This physics module should then extend the required methods, specializing one of the arguments with the new (physics-specific) type. This structure allows the API for the physics module to be visible to other parts of the code (such as NonlinearSolvers), while being defined  within the physics module.One exception to this pattern of defining generic functions and then specializing one argument is the initialization functions. These functions run before the AbstractSolutionData object is created, so they can not dispatch to different methods. Instead, each physics module has to register itself and provide the required initialization functions. See the Registration Functions section."
 },
 
 {
-    "location": "pdesolver_physics.html#PDESolver.evalResidual",
+    "location": "pdesolver_physics.html#PDESolver.createFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,AbstractString,Array{I<:Integer,1}}",
     "page": "PDESolver Physics Interface",
-    "title": "PDESolver.evalResidual",
-    "category": "Function",
-    "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n#TODO: list required options keys\n\n\n\nAdvectionEquationMod.evalResidual\n\nThis function evaluates the Advection equation.\n\nInputs\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Advection equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nEffectively updates eqn.res – not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec\n\nOutputs\n\n None\n\n\n\nEulerEquationMod.evalResidual\n\nThis function drives the evaluation of the EulerEquations.   It is agnostic to the dimension of the equation. and the types the arguments   are paramaterized on.\n\nThe function calls only high level functions, all of which take the same   four arguments.  Mid level function also take the same arguments.\n\nThe input/output variables are eqn.q and eqn.res, respectively.   eqn.q_vec and eqn.res_vec exist for reusable storage outside the residual   evaluation.  They should never be used inside the residual evaluation.\n\nThe function disassembleSolution takes q_vec and puts it into eqn.q   The function assembleSolution takes eqn.res and puts it into res_vec\n\nArguments:     * mesh  : a mesh object     * sbp   : SBP operator object     * eqn   : an EulerData object     * opts  : options dictionary\n\nThe optional time argument is used for unsteady equations\n\n\n\nSimpleODEMod.evalResidual\n\nThis function evaluates the simple ODE equation.\n\n** Inputs **\n\n \nmesh\n : Abstract mesh object\n \nsbp\n  : Summation-by-parts operator\n \neqn\n  : Simple ODE equation object\n \nopts\n : Options dictionary\n \nt\n    :\n\nOutputs\n\n None\n\n\n\n"
+    "title": "PDESolver.createFunctional",
+    "category": "Method",
+    "text": "Creates a functional object.\n\nEach physics modules should extend this function with a new method,   specializing the eqn argument.\n\nInputs\n\nmesh\n : Abstract PUMI mesh\nsbp\n  : Summation-by-parts operator\neqn\n  : AbstractSolutionData object\nopts\n : Options dictionary\nfunctional_name\n: the name of the functional\nfunctional_bcs\n: the boundary condition numbers the functional is                       computed on.\n\nOutputs\n\nfunctional: an \nAbstractFunctional\n.  Usually an                  \nAbstractIntegralFunctional\n, although this is not                  required.\n\n\n\n"
 },
 
 {
-    "location": "pdesolver_physics.html#PDESolver.evalHomotopy",
+    "location": "pdesolver_physics.html#PDESolver.evalFunctional-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,ODLCommonTools.AbstractFunctional{Topt}}",
     "page": "PDESolver Physics Interface",
-    "title": "PDESolver.evalHomotopy",
-    "category": "Function",
-    "text": "This function calls the appropriate homotopy function for the Euler module.\n\n\n\n"
+    "title": "PDESolver.evalFunctional",
+    "category": "Method",
+    "text": "High level function that evaluates the given functional   This function is agnostic to the type of the functional being   computed and calls a mid level functional-type specific function for the    actual evaluation.\n\nThe functional is evaluated at the state in eqn.q_vec.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : AbstractSolutionData object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractFunctional.                          This type determines the functional being computed and                         holds all the relevant data.\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.evalFunctionalDeriv-Tuple{ODLCommonTools.AbstractDGMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any,ODLCommonTools.AbstractIntegralFunctional{Topt},AbstractArray{T,3}}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.evalFunctionalDeriv",
+    "category": "Method",
+    "text": "Computes a 3D array of hte derivative of a functional wrt eqn.q.\n\nThe derivative is evaluated at the state in eqn.q_vec.\n\nInputs\n\nmesh\nsbp\neqn\nopts\nfunctionalData: AbstractIntegralFunctional to evaluate\n\nInputs/Outputs\n\nfunc_deriv_arr: array to hold derivative of function wrt eqn.q, same                      size as equation.q\n\nOptions Keys\n\nThis funciton is not compatible with precompute_q_bndry = false\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.evalHomotopyJacobian-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Dict{K,V},PDESolver.AssembleElementData,Number}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.evalHomotopyJacobian",
+    "category": "Method",
+    "text": "Evaluates the Jacobian of the evalHomotopy multiplied by the   homotopy parameter lambda.  Conceptually similar to evalJacobian.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an AbstractSBP\neqn: an AbstractSolutionData (physics modules should specialize this           argument)\nopts: options dictionary\nassembler: an object used to assemble contributions into the Jacobian\nlambda: the homotopy parameter\n\n\n\n"
 },
 
 {
@@ -653,23 +685,87 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Physics Interface",
     "title": "PDESolver.evalJacobian",
     "category": "Function",
-    "text": "Similar function to evalResidual, but instead of computing the   residual, it computes and assembles the Jacobian of the residual with   respect to eqn.q into the system matrix.\n\nThe functions assembleElement and assembleInterface   in NonlinearSolvers should be used to assembles the Jacobians of   individual elements and interfaces into the system matrix.\n\nPhysics modules that can compute element Jacobians directly   should extend this function with a new method, otherwise the coloring   algorithm with be used with evalResidual to compute the   system matrix.  For physics modules that support multiple formuations,   this function should throw an exception if called with an unsupported   formulation.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an SBP operator\neqn: AbstractSolutionData (physics modules should specialize this           argument)\nopts: options dictionary\nassembler: object that must be passed to \nassembleElement\n and                  \nassembleInterface\n\nKeyword Arguments\n\nstart_comm: whether or not to start parallel communication,                  default false because the functions Nonlinear solvers                  have already done parallel communication when this                  function gets called.\n\nOptions Keys\n\nTODO: describe the key that controls whether this function gets called         or not.\n\n\n\nEuler implementation of evalJacobian.  Currently only supports the   Roe scheme.\n\n\n\n"
+    "text": "Similar function to evalResidual, but instead of computing the   residual, it computes and assembles the Jacobian of the residual with   respect to eqn.q into the system matrix.\n\nThe functions assembleElement and assembleInterface   in NonlinearSolvers should be used to assembles the Jacobians of   individual elements and interfaces into the system matrix.\n\nPhysics modules that can compute element Jacobians directly   should extend this function with a new method, otherwise the coloring   algorithm with be used with evalResidual to compute the   system matrix.  For physics modules that support multiple formuations,   this function should throw an exception if called with an unsupported   formulation.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an SBP operator\neqn: AbstractSolutionData (physics modules should specialize this           argument)\nopts: options dictionary\nassembler: object that must be passed to \nassembleElement\n and                  \nassembleInterface\n\nKeyword Arguments\n\nstart_comm: whether or not to start parallel communication,                  default false because the functions Nonlinear solvers                  have already done parallel communication when this                  function gets called.\n\nOptions Keys\n\nTODO: describe the key that controls whether this function gets called         or not.\n\n\n\n"
 },
 
 {
-    "location": "pdesolver_physics.html#PDESolver.evalHomotopyJacobian",
+    "location": "pdesolver_physics.html#PDESolver.evalResidual",
     "page": "PDESolver Physics Interface",
-    "title": "PDESolver.evalHomotopyJacobian",
+    "title": "PDESolver.evalResidual",
     "category": "Function",
-    "text": "Evaluates the Jacobian of the evalHomotopy multiplied by the   homotopy parameter lambda.  Conceptually similar to evalJacobian.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an AbstractSBP\neqn: an AbstractSolutionData (physics modules should specialize this           argument)\nopts: options dictionary\nassembler: an object used to assemble contributions into the Jacobian\nlambda: the homotopy parameter\n\n\n\n"
+    "text": "This function evalutes dq/dt = R(q).  For steady problems it evalutes R(q)   at some state q.  The state is stored in eqn.q, and eqn.res is populated with   R(q).  Note that these are 3 dimensional arrays.  The physics modules only   interact with the 3 dimensional arrays, never the vectors eqn.q_vec and   eqn.res_vec.  Each physics module must implement this function for its   own subtype of AbstractSolutionData (ie. with a more specific type for   the eqn argument and equallty specific types for the other arguments).   This is important because evalResidual is common to all physics modules,   so a user or some other part of the code can call evalResidual(mesh, sbp   eqn, opts), and Julia's multiple dispatch will figure out the right method   to call based on the type of the eqn argument.\n\nThe evaluation of the residual R(q) should depend only on the data stored in   mesh, sbp, eqn, and opts, and any data that depend on q should be recalculated   every time the function is called.  This function is used as a building block   by other parts of the solver, particularly the NonlinearSolvers.  See   interfaces.md for details\n\nInputs:     mesh: an AbstractMesh describing the mesh on which to solve the physics     sbp: an SBP operator     eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module     opts: the options dictionary     t: the current time value, defaults to 0.0\n\n#TODO: list required options keys\n\n\n\n"
 },
 
 {
-    "location": "pdesolver_physics.html#Evaluating-the-Physics-1",
+    "location": "pdesolver_physics.html#PDESolver.solvePDE",
     "page": "PDESolver Physics Interface",
-    "title": "Evaluating the Physics",
+    "title": "PDESolver.solvePDE",
+    "category": "Function",
+    "text": "This function takes fully initialzed objects and solves the partial   differential equation.\n\nEvery physics should extend this function with a new method, specialzing the   eqn argument type.\n\nObjects can be created with the createObjects function.\n\nThe functions in the SolverCommon module are helpful in writing   this function.\n\nInputs\n\nmesh: an AbstractMesh\nsbp: an SBP Operator\neqn: an AbstractSolutionData\nopts: the options dictionary\npmesh: mesh for preconditioning (optional)\n\nOutputs\n\nmesh\nsbp\neqn: on exit, eqn.q_vec should have the converged solution in it.\nopts\n\nOptions Keys\n\nRelfunc_name: also writes vtk files called \"solution_relfunc\"                   if key not present, ignored                    TODO: fix that\nIC_name\ncalc_error: also write vtk files called \"solution_error\"\ncalc_trunc_error\nperturb_ic\ncalc_dt\n\nFor options like calc_dt and Relfunc_name, it is very important that\nthe computed quantity be saved to the options dictionary for use later\nin the code (ie. and not passed directly to another function).  The\ncode won't restart correctly if this happens.\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.updateMetricDependents-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},ODLCommonTools.AbstractSolutionData{Tsol,Tres},Any}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.updateMetricDependents",
+    "category": "Method",
+    "text": "This function recalculates all quantities that depend on the mesh metrics.   This function handles changes in the metric values only (not changed in   mesh topology).\n\nThis function should be called after the mesh is warped (ie. using mesh   movement).\n\nEvery physics module should extend this function with a new method   specializing the eqn argument type.\n\nInputs\n\nmesh\nsbp\neqn\nopts\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#Functions-to-be-Extended-1",
+    "page": "PDESolver Physics Interface",
+    "title": "Functions to be Extended",
     "category": "section",
-    "text": "evalResidual\nevalHomotopy\nevalJacobian\nevalHomotopyJacobian"
+    "text": "All the functions in this section should be extended by each physics module with a new method, specializing the type of the eqn argument.Modules = [PDESolver]\nPages = [\"src/interface.jl\"]"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.createFunctional",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.createFunctional",
+    "category": "Function",
+    "text": "Creates a functional object, using the data described in the options   dictionary\n\nArguments\n\nmesh\n : Abstract PUMI mesh\nsbp\n  : Summation-by-parts operator\neqn\n  : AbstractSolutionData\nopts\n : Options dictionary\nfunctional_number\n : which functional (of the functionals described                           in the options dictionary) to create\n\nOutputs\n\nsame as other method\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.createObjects-Tuple{AbstractString}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.createObjects",
+    "category": "Method",
+    "text": "This function returns the fully initialized objects needed to solve an   equations.\n\nInputs\n\nfname: input file name\n\nOutputs\n\nmesh: an AbstractMesh of some kind (depending on input file)\nsbp: an SBP operator of some kind (depending on input file)\neqn: an AbstractSolutionData of some kind (depending on input file)\nopts: options dictionary\npmesh: mesh for computing preconditioning, may be the same object as \nmesh\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.createObjects-Tuple{Dict{K,V}}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.createObjects",
+    "category": "Method",
+    "text": "Method for creating objects from an options dictionary\n\nInputs\n\nopts: the options dictionary\n\nOutputs\n\nsee other method\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.createObjects-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{T<:Number},Dict{K,V}}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.createObjects",
+    "category": "Method",
+    "text": "This method constructs a new equation object for the given mesh, sbp   and opts.\n\nThis is useful for solving on a submesh.\n\nInputs\n\nmesh: an \nAbstractMesh\nsbp: an \nAbstractSBP\nopts: options dictionary\n\nOutputs\n\nsame as other method\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#PDESolver.solvePDE-Tuple{Union{AbstractString,Dict{K,V}}}",
+    "page": "PDESolver Physics Interface",
+    "title": "PDESolver.solvePDE",
+    "category": "Method",
+    "text": "Additional methods for solvePDE, allows solving the PDE starting   with either a file name or options dictionary.\n\nSee the other method for details\n\nInputs\n\nopts: either a file name to load an options dictionary from or the            options dictionary itself\n\nOutputs\n\nsame as other method\n\n\n\n"
+},
+
+{
+    "location": "pdesolver_physics.html#Additional-Functions-1",
+    "page": "PDESolver Physics Interface",
+    "title": "Additional Functions",
+    "category": "section",
+    "text": "These functions are available for all physics module, but do not need to be extended with a new method. They usually boil down to calling one of the functions in the previous section.Modules = [PDESolver]\nPages = [\"src/interface2.jl\"]"
 },
 
 {
@@ -677,7 +773,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Physics Interface",
     "title": "PDESolver.register_physics",
     "category": "Function",
-    "text": "This function registered a new physics module with the global list of all   known physics modules.  Every physics module should do this as part of   module initialization.  The name, the module, and the startup function must   be unique (ie. they must not already exist in the list).  This function   throws and exception if they are not.\n\nInputs:\n\nmodname:  an ASCIIString name for this entry in the list.  It is used\n          to retrieve the module and startup function in the \n          retrieve_physics function. Typically the name is capitalized.\nmod:  the Module itself\nstartup_func: the function for running the physics.  It must have signature\n              startup_func(fname::ASCIIString), where fname is the name of\n              an input file\n\nOutputs:\n\nnone\n\n\n\n"
+    "text": "This function registered a new physics module with the global list of all   known physics modules.  Every physics module should do this as part of   module initialization.  The name, the module, and the startup function must   be unique (ie. they must not already exist in the list).  This function   throws and exception if they are not.\n\nInputs\n\nmodname:  an ASCIIString name for this entry in the list.  It is used                 to retrieve the module and startup function in the                  retrieve_physics function. Typically the name is capitalized.\nmod:  the Module itself\n\n_createObjects: function that creates the mesh, sbp, eqn, and opts                       objects. Must have a method with signature                       \n_createObjects(opt::Dict)\n                                              If this physics modules supports solving on a submesh,                       this function should also have a method                       \n_createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)\n                       to create a new equation object.  See \ncreateObjects\n.       \n_checkOptions: physics-specific function for supplying default options and                    checking options.  Note that most of the input option                    processing is done in \nread_input\n,                    \n_checkOptions\n need only do the physics-specific part.                    This function must have signature \n_checkOptions(opts::Dict)\n.\n\nOutputs\n\nnone\n\n\n\n"
 },
 
 {
@@ -685,7 +781,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Physics Interface",
     "title": "PDESolver.retrieve_physics",
     "category": "Function",
-    "text": "Retrieves the physics module and function registered using register_physics\n\nInput:\n\nmodname: an ASCIIString containing the name of the module supplied to\n         `register_physics`\n\nOutputs:\n\nmod: the physics Module\nfunc: the function to evaluate the physics\n\n\n\n"
+    "text": "Retrieves the physics module and function registered using register_physics\n\nInput\n\nmodname: an ASCIIString containing the name of the module supplied to              \nregister_physics\n\nOutputs\n\nmod: the physics Module\n_createObjects: function that creates the solver objects\n_checkOptions: the options checking function\n\n\n\n"
 },
 
 {
@@ -709,7 +805,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "PDESolver.run_solver",
     "category": "Method",
-    "text": "This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.   This requires loading the input file twice, once to figure out the physics,   and a second time when the physics-specific startup function is called\n\nThe physics module must have already been registered using register_physics\n\nInputs:\n\ninput_file: an AbstractString specifying the path to the input file\n\nOutputs:\n\nmesh: the AbstractMesh object used during the solve\nsbp: the SBP operator used by the solver\neqn: the AbstractSolutionData object during the solve.  At exit,\n     eqn.q_vec should have the final solution in it\nopts: the options dictionary\n\n\n\n"
+    "text": "This function provides a way to invoke any physics solver based on the   specification of the physics in the input file.\n\nThe physics module must have already been registered using register_physics\n\nThis function is equivalent to solvePDE, it is maintained here   for legacy purposes only.\n\nInputs\n\ninput_file: an AbstractString specifying the path to the input file\n\nOutputs\n\nmesh: the AbstractMesh object used during the solve\nsbp: the SBP operator used by the solver\neqn: the AbstractSolutionData object during the solve.  At exit,           eqn.q_vec should have the final solution in it\nopts: the options dictionary\n\n\n\n"
 },
 
 {
@@ -717,15 +813,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Starting a Simulation",
     "category": "section",
-    "text": "  CurrentModule = PDESolverThis page describes functions located in the PDESolver module that tie together the physics modules and the Nonlinear solvers.    Modules = [PDESolver]\n  Pages = [\"src/startup_func.jl\", \"src/initialization.jl\"]"
-},
-
-{
-    "location": "pdesolver_structure.html#Physics-Module-Startup-1",
-    "page": "PDESolver Structure",
-    "title": "Physics Module Startup",
-    "category": "section",
-    "text": "Each physics module is required to do some of the setup work needed to start a simulation. The functions above facilitate doing so. In particular, the physics module mustread the input dictionary\ncreate an \nAbstractMesh\n and \nAbstractSBP\ncreate an \nAbstractSolutionData\nLoad an initial condition\nCalculate various quantities\nInvoke a NonlinearSolver\nDo postprocessing  CurrentModule = EulerEquationModPhysics modules should define a function called run_physics (ex. run_euler) that does all these operations (by calling other functions within the physics module) and returns the mesh, sbp, eqn, and opts objects."
+    "text": "  CurrentModule = PDESolverThis page describes functions located in the PDESolver module that tie together the physics modules and the Nonlinear solvers.    Modules = [PDESolver]\n  Pages = [\"src/startup_func.jl\", \"src/initialization.jl\"]To run a simulation, the following steps must be doneread the input dictionary\ncreate an \nAbstractMesh\n and \nAbstractSBP\n, and \nAbstractSolutionData\nLoad an initial condition\nCalculate various quantities\nInvoke a NonlinearSolver\nDo postprocessingSome of these steps are handled by the PDESolver module, and a few are handled by the physics module."
 },
 
 {
@@ -733,23 +821,15 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Input Dictionary",
     "category": "section",
-    "text": "The first thing a physics module must do is read the input file.   Reading input files is split into two parts.  The first part is done by the Input module, which loads the file from disk and supplies default values. The section part is done by the physics function that verifies the physics module supports the given options (especially checking for combinations of options that might not be supported).  See, for example, checkOptions."
+    "text": "The first step is to read the input file.   Reading input files is split into two parts.  The first part is done by the Input module, which loads the file from disk and supplies default values. The second part is done by the physics-specific registered with register_physics. this  function that verifies the physics module supports the given options (especially checking for combinations of  CurrentModule = EulerEquationModoptions that might not be supported).  See, for example, checkOptions.  CurrentModule = PDESolver"
 },
 
 {
-    "location": "pdesolver_structure.html#Creating-Mesh-and-Operator-1",
+    "location": "pdesolver_structure.html#Creating-Objects-1",
     "page": "PDESolver Structure",
-    "title": "Creating Mesh and Operator",
+    "title": "Creating Objects",
     "category": "section",
-    "text": "  CurrentModule = PDESolverThe next thing the physics module needs to do is create AbstractSBP and AbstractMesh objects. The function createMeshAndOperator should be used by all physics modules to do this."
-},
-
-{
-    "location": "pdesolver_structure.html#Create-an-Equation-Object-1",
-    "page": "PDESolver Structure",
-    "title": "Create an Equation Object",
-    "category": "section",
-    "text": "Next, the physics module must create its AbstractSolutionData object. The details of how to do this are left up to the physics module, but the return values of createMeshAndOperator should be used for static parameter values.  CurrentModule = EulerEquationModThe creation of the mesh, sbp, and equation object are usually combined into a single function called createObjects."
+    "text": "The next thing the physics module needs to do is create AbstractSBP and AbstractMesh, and AbstractSolutionData  objects. The function createMeshAndOperator should be used by all physics modules to create the first two.The AbstractSolutionData is created by the physics module itself. The details of how to do this are left up to the physics module, but the return values of createMeshAndOperator should be used for static parameter values.These creation of all three objects are performed by the _createObjects functions provided to register_physics."
 },
 
 {
@@ -757,7 +837,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Load an initial condition",
     "category": "section",
-    "text": "A function called solve_physics (ex. solve_euler) is created by the physics module do the operations described in this section and the next two.  CurrentModule = PDESolverThe details of how to load an initial condition are left up to the physics module, but the end result must be the initial condition is present in eqn.q_vec.Physics modules generally use a Dictionary to map IC names (which is how  ICs are referred to in the input file) to the function that applies the IC.  See registerIC for further description."
+    "text": "The function solvePDE is extended by each physics module to is do the remaining operations.The details of how to load an initial condition are left up to the physics module, but the end result must be the initial condition is present in eqn.q_vec.Physics modules generally use a Dictionary to map IC names (which is how  ICs are referred to in the input file) to the function that applies the IC.  See registerIC for further description."
 },
 
 {
@@ -765,7 +845,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Various calculations",
     "category": "section",
-    "text": "  CurrentModule = EulerEquationModAfter loading the IC, the options dictionary may require the calculation of a few quantities.  See solve_euler for the list of options keys that must be supported."
+    "text": "After loading the IC, the options dictionary may require the calculation of a few quantities.  See solvePDE for the list of options keys that must be supported."
 },
 
 {
@@ -781,7 +861,7 @@ var documenterSearchIndex = {"docs": [
     "page": "PDESolver Structure",
     "title": "Do Postprocessing",
     "category": "section",
-    "text": "  CurrentModule = EulerEquationModThe options dictionary may require post-processing be done, for example calculating the solution error when the analytical solution is known. Each physics module usually defines a function to do this. See postproc for an example.  CurrentModule = EulerEquationMod"
+    "text": "  CurrentModule = EulerEquationModThe options dictionary may require post-processing be done, for example calculating the solution error when the analytical solution is known. Each physics module usually defines a function to do this. See postproc for an example.  CurrentModule = PDESolver"
 },
 
 {
@@ -1081,6 +1161,30 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/misc.html#ODLCommonTools.AbstractFunctional",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.AbstractFunctional",
+    "category": "Type",
+    "text": "ODLCommonTools.AbstractFunctional\n\nAbstract datatype for optimization related data structures. All data types corresponding to optimization problems should be a subtype of this.\n\nStatic Parameters\n\nTopt\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#ODLCommonTools.AbstractIntegralFunctional",
+    "page": "Assorted Function and Types",
+    "title": "ODLCommonTools.AbstractIntegralFunctional",
+    "category": "Type",
+    "text": "Abstract type for integral objective functions.  Any integral objective   function should be a subtype of this, which is a subtype ofi   AbstractFunctional.\n\nStatic Parameters\n\nTopt\n\n\n\n"
+},
+
+{
+    "location": "solver/misc.html#Functionals-1",
+    "page": "Assorted Function and Types",
+    "title": "Functionals",
+    "category": "section",
+    "text": "AbstractFunctional\nAbstractIntegralFunctional"
+},
+
+{
     "location": "solver/SolverCommon.html#",
     "page": "Solver Common",
     "title": "Solver Common",
@@ -1109,7 +1213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solver Common",
     "title": "SolverCommon.getDataTypes",
     "category": "Method",
-    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\n\n\n"
+    "text": "This function determines the datatypes of the elements of the arrays of the   mesh quantities, sbp operator, solution variables and residual.\n\nIf the datatypes cannot be determined, an error is thrown.\n\nInputs:     opts: the options dictionary\n\nOutputs     Tmsh     Tsbp     Tsol     Tres\n\nOptions Keys\n\nrun_type\njac_method\nforce_solution_complex\nforce_mesh_complex\n\n\n\n"
 },
 
 {
@@ -1133,7 +1237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solver Common",
     "title": "SolverCommon.createSBPOperator",
     "category": "Function",
-    "text": "This function constructs the SBP operator and the associated SBP face   operator, as specified by the options dictionary.  It also determines   the shape_type that PumiInterface uses to describe the SBP operator to   Pumi.\n\nInputs:     opts: the options dictionary     Tsbp: the DataType specifying the Tsbp passed to the SBP operator           constructor     suffix: this suffix is added to all keys accessed in the options dictionary.             Usually the suffix is either the empty string or an integer.  This             provides a convenient way for the input file to specify several             different SBP operator and have this operator construct them.             Default value is the empty string.\n\nOutputs:     sbp: the SBP operator     sbpface: the SBP face operator     shape_type: an integer passed to the mesh constructor to describe the                 operator     topo: in the 3D DG case, an ElementTopology describing the SBP reference           element, otherwise the integer 0.\n\n\n\n"
+    "text": "This function constructs the SBP operator and the associated SBP face   operator, as specified by the options dictionary.  It also determines   the shape_type that PumiInterface uses to describe the SBP operator to   Pumi.\n\nInputs\n\nopts: the options dictionary\nTsbp: the DataType specifying the Tsbp passed to the SBP operator           constructor\nsuffix: this suffix is added to all keys accessed in the options dictionary.             Usually the suffix is either the empty string or an integer.  This             provides a convenient way for the input file to specify several             different SBP operator and have this operator construct them.             Default value is the empty string.\n\nOutputs\n\nsbp: the SBP operator\nsbpface: the SBP face operator\nshape_type: an integer passed to the mesh constructor to describe the                  operator\ntopo: in the 3D DG case, an ElementTopology describing the SBP reference            element, otherwise the integer 0.\n\nDG Operator Names\n\nSBPOmega: nodes on the interior of the element only\nSBPGamma: nodes on the faces of the element and the interior (similar                to Lagrange finite elements)\nSBPDiagonalE: operator with diagonal E matrix, with nodes on vertices,                    faces, and interior (similar to Lagrange FE)\nSBPDiagonalE2: operator with diagonal E matrix, with nodes on faces                     (but not vertices)\nSBPOmega2: attempt at optimized SBP Omega-type operators, probably not                 working\nSBPOmega3: SBP Omega-type operator with degree 2p cubature rule for                 all degree operators (p=1 and 2 are the same as SBPOmega),                 unlike \nSBPOmega2\n, not optimized\n\nCG Operator Names\n\nSBPGamma: see above, this operator can be used to CG as well\n\n\n\n"
 },
 
 {
@@ -1945,7 +2049,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p0-Tuple{AdvectionEquationMod.ParamType{Tsol,Tres,2},AbstractArray{Tmsh,N},Any}",
+    "location": "solver/advection/common.html#AdvectionEquationMod.calc_p0-Tuple{Union{AdvectionEquationMod.ParamType{Tsol,Tres,2},AdvectionEquationMod.ParamType{Tsol,Tres,3}},AbstractArray{Tmsh,N},Any}",
     "page": "Common Functions",
     "title": "AdvectionEquationMod.calc_p0",
     "category": "Method",
@@ -3385,6 +3489,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "solver/euler/ic.html#EulerEquationMod.ICFreeStream0-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,1}}",
+    "page": "Initial Conditions",
+    "title": "EulerEquationMod.ICFreeStream0",
+    "category": "Method",
+    "text": "Like calcFreeStream, but uses calcFreeStream0 instead of   calcFreeStream.\n\n\n\n"
+},
+
+{
     "location": "solver/euler/ic.html#EulerEquationMod.ICInvChannel-Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP{Tsbp},EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type},Any,AbstractArray{Tsol,N}}",
     "page": "Initial Conditions",
     "title": "EulerEquationMod.ICInvChannel",
@@ -3646,6 +3758,14 @@ var documenterSearchIndex = {"docs": [
     "title": "EulerEquationMod.calcFreeStream",
     "category": "Method",
     "text": "EulerEquationMod.calcFreeStream\n\nThis function calculates the free stream solution for an airfoil problem   based on the angle of attack and Mach number in nondimensionalized variables.\n\nDensity and energy are set to params.rho_free (usually 1.0) and params.E_free,   (usually 1/(gammagamma_1) + 0.5Ma*Ma), and the x and y momenta as\n\nrhoMacos(angle of attack)  and rhoMasin(angle of attack).\n\nThe angle of attack must be in radians.\n\nThis function uses conservative variables regardless of the static parameter   of params.\n\nInputs:     coords: a vector of length 2 containing the x and y coordinates of the point     params: the params object.\n\nInputs/Outputs:     sol: vector of length 4 to be populated with the solution\n\nAliasing restrictions: none\n\n\n\n"
+},
+
+{
+    "location": "solver/euler/common.html#EulerEquationMod.calcFreeStream0-Tuple{EulerEquationMod.ParamType{2,var_type,Tsol,Tres,Tmsh},AbstractArray{Tmsh,1},AbstractArray{Tsol,1}}",
+    "page": "Common Functions",
+    "title": "EulerEquationMod.calcFreeStream0",
+    "category": "Method",
+    "text": "Like calcFreeStream, but assumes zero angle of attack, regardless   of what the options dictionary says.\n\n\n\n"
 },
 
 {
@@ -4301,7 +4421,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Functional",
     "title": "PDESolver.evalFunctional",
     "category": "Method",
-    "text": "EulerEquationMod.evalFunctional\n\nHight level function that evaluates all the functionals specified over various edges. This function is agnostic to the type of the functional being computed and calls a mid level functional-type specific function for the actual evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractFunctional. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n\nOutputs\n\nval: functional value\n\n\n\n"
+    "text": "EulerEquationMod.evalFunctional\n\nHigh level function that evaluates all the functionals specified over various edges. This function is agnostic to the type of the functional being computed and calls a mid level functional-type specific function for the actual evaluation.\n\nArguments\n\n \nmesh\n :  Abstract mesh object\n \nsbp\n  : Summation-By-Parts operator\n \neqn\n  : Euler equation object\n \nopts\n : Options dictionary\n \nfunctionalData\n : Object of type AbstractFunctional. This is type is associated                       with the functional being computed and holds all the                       relevant data.\n\nOutputs\n\nval: functional value\n\n\n\n"
 },
 
 {
@@ -4833,19 +4953,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/startup.html#EulerEquationMod.run_euler-Tuple{AbstractString}",
-    "page": "Startup",
-    "title": "EulerEquationMod.run_euler",
-    "category": "Method",
-    "text": "This function invokes the solver for the Euler equations, using the   specified input file\n\nInputs:     input_file: a string containing the path to an input file, or just a file                 name.  If it is just a file name, it is taken to be in the                 users pwd.\n\nOutputs:     mesh: an AbstractMesh object     sbp: the SBP operator used in solving the equation     eqn: the AbstractSolutionData object used to solve the equation     opts: the options dictonary\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/startup.html#EulerEquationMod.createObjects-Tuple{AbstractString}",
+    "location": "solver/euler/startup.html#EulerEquationMod.createObjects-Tuple{Dict{K,V}}",
     "page": "Startup",
     "title": "EulerEquationMod.createObjects",
     "category": "Method",
-    "text": "This function creates and initializes the mesh, sbp, eqn, and opts objects\n\nInputs:     file_name: input file name\n\nOutputs:     mesh: an AbstractMesh.  The concrete type is determined by the options           dictionary     sbp: an AbstractSBP.  The concrete type is determined by the options          dictionary     eqn: an EulerData object     opts: the options dictionary     pmesh: mesh used for preconditioning, can be same object as mesh\n\n\n\n"
+    "text": "This function creates and initializes the mesh, sbp, eqn, and opts objects\n\nInputs:     opts: options dictionary\n\nOutputs:     mesh: an AbstractMesh.  The concrete type is determined by the options           dictionary     sbp: an AbstractSBP.  The concrete type is determined by the options          dictionary     eqn: an EulerData object     opts: the options dictionary     pmesh: mesh used for preconditioning, can be same object as mesh\n\n\n\n"
 },
 
 {
@@ -4865,11 +4977,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/startup.html#EulerEquationMod.solve_euler",
+    "location": "solver/euler/startup.html#PDESolver.solvePDE",
     "page": "Startup",
-    "title": "EulerEquationMod.solve_euler",
+    "title": "PDESolver.solvePDE",
     "category": "Function",
-    "text": "Given fully initialized mesh, sbp, eqn, opts, this function solves   the Euler equations.  The 4 object should be obtained from createObjects().\n\nSpecifically, it applies an initial condition and invokes a nonlinear   solver according to the options dictionary.\n\nInputs:     mesh: an AbstractMesh     sbp: an AbstractSBP     eqn: an AbstractEulerData     opts: the options dictionary.  This must be the options dictionary returned           by createObjects().  Changing values in the options dictionary after           calling createObjects() results in undefined behavior.     pmesh: mesh used for preconditioning, can be same object as mesh.            default value of mesh\n\nOptions Keys:     Relfunc_name: also writes vtk files called \"solution_relfunc\"                   if key not present, ignored                    TODO: fix that     IC_name     calc_error: also write vtk files called \"solution_error\"     calc_trunc_error     perturb_ic     calc_dt     finalize_mpi\n\nFor options like calc_dt and Relfunc_name, it is very important that\nthe computed quantity be saved to the options dictionary for use later\nin the code (ie. and not passed directly to another function).  The\ncode won't restart correctly if this happens.\n\n\n\n"
+    "text": "Given fully initialized mesh, sbp, eqn, opts, this function solves   the Euler equations.  The 4 object should be obtained from createObjects().\n\nSpecifically, it applies an initial condition and invokes a nonlinear   solver according to the options dictionary.\n\nInputs:     mesh: an AbstractMesh     sbp: an AbstractSBP     eqn: an AbstractEulerData     opts: the options dictionary.  This must be the options dictionary returned           by createObjects().  Changing values in the options dictionary after           calling createObjects() results in undefined behavior.     pmesh: mesh used for preconditioning, can be same object as mesh.            default value of mesh\n\n\n\n"
 },
 
 {
@@ -5101,7 +5213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Preconditioners",
     "title": "LinearSolvers.applyPC",
     "category": "Method",
-    "text": "Applies the preconditioner, ie. x = inv(Ap)*b, where Ap is the approximation   to the matrix A.  Note that Ap itself may not be available for some   preconditioners, hence there is only an API for applying inv(Ap),   not Ap itself.\n\nMatrix-free preconditioners need to extend this function with a new method,\nmatrix-explicit preconditioners do not.\n\nInputs\n\npc: the \nAbstractPC\n implementation.\nmesh\nsbp\neqn: this argument should generally not be used because all the solution           related data should be stored in the pc ovject by \ncalcPC\nopts\nt: current time\nb: a AbstractVector representing the local part of the solution (ie         eqn.q_vec)\n\nInputs/Outputs\n\nx: AbstractVector updated with results (same size as b) (do not overwrite)\n\n\n\n"
+    "text": "Applies the preconditioner, ie. x = inv(Ap)*b, where Ap is the approximation   to the matrix A.  Note that Ap itself may not be available for some   preconditioners, hence there is only an API for applying inv(Ap),   not Ap itself.\n\nMatrix-free preconditioners need to extend this function with a new method,\nmatrix-explicit preconditioners do not.\n\nInputs\n\npc: the \nAbstractPC\n implementation.\nmesh\nsbp\neqn: this argument should generally not be used because all the solution           related data should be stored in the pc object by \ncalcPC\nopts\nt: current time\nb: a AbstractVector representing the local part of the solution (ie         eqn.q_vec)\n\nInputs/Outputs\n\nx: AbstractVector updated with results (same size as b) (do not overwrite)\n\n\n\n"
 },
 
 {
