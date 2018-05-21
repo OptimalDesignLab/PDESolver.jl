@@ -249,15 +249,15 @@ function cnRhs_uadj(mesh, sbp, eqn_nextstep, opts, rhs_vec, ctx, t)
 
   t_nextstep = t + h
 
-  # assembleSolution needs to be called after physics_func TODO: explain why
+  # array3DTo1D needs to be called after physics_func TODO: explain why
   physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
-  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+  array3DTo1D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
   if opts["parallel_type"] == 2 && mesh.npeers > 0
     startDataExchange(mesh, opts, eqn.q, eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   end
   physics_func(mesh, sbp, eqn, opts, t)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)

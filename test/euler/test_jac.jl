@@ -420,7 +420,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false
@@ -504,7 +504,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false
@@ -586,7 +586,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false

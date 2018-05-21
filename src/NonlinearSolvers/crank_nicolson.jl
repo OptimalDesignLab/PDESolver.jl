@@ -226,7 +226,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] = eqn.q_vec[i]
     end
-    disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
+    array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
 
 #    t = t_nextstep
     flush(BSTDOUT)
@@ -584,7 +584,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   # evalute residual at t_nextstep
   # q_vec -> q
-  disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec)
+  array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec)
 
   # start parallel communication if needed
   time = eqn.params.time
@@ -594,7 +594,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
 
   physics_func(mesh, sbp, eqn_nextstep, opts, t)
-  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, 
+  array3DTo1D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, 
                    eqn_nextstep.res_vec)
 
   # evalute residual at t - h
@@ -602,7 +602,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
   physics_func(mesh, sbp, eqn, opts, t - h)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   # compute rhs
 
@@ -661,7 +661,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
     physics_func(mesh, sbp, eqn_nextstep, opts, t)
     # needed b/c physics_func only updates eqn.res
-    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    array3DTo1D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
     # Comment here about mass matrix inv multiplication TODO
     applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
     unperturbed_res_vec = copy(eqn_nextstep.res_vec)
@@ -670,7 +670,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       eqn_nextstep.q_vec[i] = eqn_nextstep.q_vec[i] + epsilon
 
       physics_func(mesh, sbp, eqn_nextstep, opts, t)
-      assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+      array3DTo1D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
       applyMassMatrixInv(mesh, eqn, eqn_nextstep.res_vec)
 
       jac[:,i] = (eqn_nextstep.res_vec - unperturbed_res_vec)/epsilon
@@ -692,9 +692,9 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
     #=
     physics_func(mesh, sbp, eqn, opts, t)
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
-    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    array3DTo1D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
 
     rhs_vec = zeros(eqn.q_vec)
 
@@ -703,7 +703,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     end
     =#
     physics_func(mesh, sbp, eqn, opts, t_prev)
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     applyMassMatrixInv(mesh, eqn, eqn.res_vec)
     current_t_step_contribution = zeros(eqn.q_vec)
     for i = 1:mesh.numDof
@@ -717,11 +717,11 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 #     res_control = deepcopy(eqn.res)
 #     res_test = deepcopy(eqn.res)
 #     applyMassMatrixInv3D(mesh, sbp, eqn, res_test)
-#     assembleSolution(mesh, sbp, eqn, opts, res_test, res_vec_test)
+#     array3DTo1D(mesh, sbp, eqn, opts, res_test, res_vec_test)
 #     println("=+=+=+ norm of diff btwn res_vec_test & res_vec_control: ", norm(res_vec_test - res_vec_control))
 
     physics_func(mesh, sbp, eqn_nextstep, opts, t)
-    assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+    array3DTo1D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
     applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
     next_t_step_contribution = zeros(eqn.q_vec)
     for i = 1:mesh.numDof

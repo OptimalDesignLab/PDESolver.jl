@@ -17,7 +17,7 @@ import ODLCommonTools.sview
 using Input
 
 
-export AdvectionData, AdvectionData_, run_advection #getMass, assembleSolution, disassembleSolution
+export AdvectionData, AdvectionData_, run_advection #getMass, array3DTo1D, array1DTo3D
 
 # include("advection.jl")
 # include("getMass.jl")

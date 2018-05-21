@@ -75,8 +75,8 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
     u_vec = Tsol[1,2,3,4]
     u  = zeros(Tsol, 1, 3, 2)
 
-    # checking disassembleSolution
-    disassembleSolution(mesh, sbp, eqn, opts, u, u_vec)
+    # checking array1DTo3D
+    array1DTo3D(mesh, sbp, eqn, opts, u, u_vec)
     @fact u[1,1,2] --> roughly(2.0)
     @fact u[1,2,2] --> roughly(4.0)
     @fact u[1,3,2] --> roughly(3.0)
@@ -84,9 +84,9 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
     @fact u[1,2,1] --> roughly(2.0)
     @fact u[1,3,1] --> roughly(3.0)
 
-    #checking assembleSolution
+    #checking array3DTo1D
     fill!(u_vec, 0.0)
-    assembleSolution(mesh, sbp, eqn, opts, u, u_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, u, u_vec)
     @fact u_vec --> roughly([1.0,4.0,6.0,4.0])
 
     # check mass matrix
@@ -270,7 +270,7 @@ function test_lowlevel_volumeintegrals()
 
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res --> roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-12)
 
 
@@ -418,7 +418,7 @@ function test_lowlevel_volumeintegrals()
       @fact val_code --> roughly(val_test, atol=1e-14)
     end
 
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #TODO: uncomment when SBP boundaryintegrate is fixed
 #= 
     ARGS[1] = "input_vals_channel_verylarge.jl"

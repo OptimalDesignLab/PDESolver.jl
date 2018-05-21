@@ -355,7 +355,7 @@ function writeFiles(newton_data::NewtonData, mesh, sbp, eqn, opts)
   end
 
   if write_q
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec)
 
     fname = string("q", itr, "_", myrank, ".dat")
     writedlm("q$i_$myrank.dat", eqn.q)

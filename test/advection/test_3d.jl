@@ -24,7 +24,7 @@ function test_3d_sbp(mesh, sbp, eqn, opts)
   fill!(eqn.q_vec, 2.0)
   fill!(eqn.q, 2.0)
   AdvectionEquationMod.ICConstant(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
   evalResidual(mesh, sbp, eqn, opts)
 

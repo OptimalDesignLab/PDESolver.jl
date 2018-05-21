@@ -205,7 +205,7 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
       # u = 3
       # eqn_poly.q_vec[dof_ix] = 3.0
     end
-    assembleSolution(mesh, sbp, eqn, opts, eqn_poly.q, eqn_poly.q_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn_poly.q, eqn_poly.q_vec)
     vis_filename = string("poly_soln")
     saveSolutionToMesh(mesh, real(eqn_poly.q_vec))
     writeVisFiles(mesh, vis_filename)
@@ -250,7 +250,7 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
     adj.q_vec = copy(psi)
     writedlm("adj_ic.dat", adj.q_vec)
 
-    disassembleSolution(mesh, sbp, adj, opts, adj.q, adj.q_vec)     # diassembleSolution: q_vec -> q
+    array1DTo3D(mesh, sbp, adj, opts, adj.q, adj.q_vec)     # diarray3DTo1D: q_vec -> q
 
     println("--- Adj IC: end ---")
 
@@ -503,7 +503,7 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
       #   within cnAdjDirect, t_nextstep is calculated and used throughout.
       # (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t)
       (adj_nextstep.q_vec, jac) = cnAdjDirect(mesh, sbp, opts, adj, physics_func, jac, i_fwd, h, t_steps, t, dRdu_global_rev)
-      disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
+      array1DTo3D(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
 
     end
 
@@ -548,12 +548,12 @@ function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloa
       for dof_ix = 1:mesh.numDof
         eqn_nextstep.q_vec[dof_ix] = eqn.q_vec[dof_ix]
       end
-      disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
+      array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
     else
       for dof_ix = 1:mesh.numDof
         adj_nextstep.q_vec[dof_ix] = adj.q_vec[dof_ix]
       end
-      disassembleSolution(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
+      array1DTo3D(mesh, sbp, adj_nextstep, opts, adj_nextstep.q, adj_nextstep.q_vec)
     end
 
 

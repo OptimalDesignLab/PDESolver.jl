@@ -568,7 +568,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
 
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       end
 
       function test_post_func(mesh, sbp, eqn, opts, calc_norm=true)
@@ -697,7 +697,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     # evaluate residual at final q value
     need_res = true
     if need_res
-      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       # this will make sure the t value is stored into the equation object
       # this is important for calculating error norms later, to make sure
       # they exact solution is calculated at the right time
@@ -705,7 +705,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       evalResidual(mesh, sbp, eqn, opts, t)
 
       eqn.res_vec[:] = 0.0
-      assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     end
 
     if opts["write_finalsolution"]

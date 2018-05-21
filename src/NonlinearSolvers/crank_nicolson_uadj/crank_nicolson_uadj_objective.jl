@@ -14,7 +14,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     eqn.q_vec[i] += pert
 
     evalResidual(mesh, sbp, eqn, opts, t)
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
     J = J_arr[1]
@@ -27,7 +27,7 @@ function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   end
 
   evalResidual(mesh, sbp, eqn, opts, t)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   return dJdu
 
@@ -51,7 +51,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
     eqn.q_vec[i] += pert
 
     evalResidual(mesh, sbp, eqn, opts, t)
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     J_arr = calcObjectiveFn(mesh, sbp, eqn, opts, h, t)
     J = J_arr[1]
@@ -62,7 +62,7 @@ function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn
   end
 
   evalResidual(mesh, sbp, eqn, opts, t)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   return dJdu
 
@@ -101,7 +101,7 @@ end
 """
 function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t; isDeriv=false)
 
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -315,7 +315,7 @@ function calcdRdA_CS(mesh, sbp, eqn, opts, i, t)
   # But we don't for el 1.
 
   evalResidual(mesh, sbp, eqn_temp, opts, t)
-  assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
+  array3DTo1D(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   dRdA = imag(eqn_temp.res_vec)/norm(pert)
   # println("dRdA: ", dRdA)
@@ -363,7 +363,7 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   # println(" <<< dRdA_FD: using forward difference")
 
   evalResidual(mesh, sbp, eqn_temp, opts, t)
-  assembleSolution(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
+  array3DTo1D(mesh, sbp, eqn_temp, opts, eqn_temp.res, eqn_temp.res_vec)
 
   eqn_temp.params.sin_amplitude -= pert
   # eqn_temp.params.omega -= pert
@@ -372,7 +372,7 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   #   without this => difference between CS & FD is ~1e10
   #   TODO: why is this required
   evalResidual(mesh, sbp, eqn, opts, t)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   # TODO TODO 20170908
 
   # println(" <<< dRdA_FD: norm(eqn_temp.res_vec): ", norm(eqn_temp.res_vec))
@@ -397,9 +397,9 @@ function calcdRdA_FD(mesh, sbp, eqn, opts, i, t)
   println(" <<< dRdA_FD: using central difference")
 
   evalResidual(mesh, sbp, eqn_temp_fwd, opts)
-  assembleSolution(mesh, sbp, eqn_temp_fwd, opts, eqn_temp_fwd.res, eqn_temp_fwd.res_vec)
+  array3DTo1D(mesh, sbp, eqn_temp_fwd, opts, eqn_temp_fwd.res, eqn_temp_fwd.res_vec)
   evalResidual(mesh, sbp, eqn_temp_bck, opts)
-  assembleSolution(mesh, sbp, eqn_temp_bck, opts, eqn_temp_bck.res, eqn_temp_bck.res_vec)
+  array3DTo1D(mesh, sbp, eqn_temp_bck, opts, eqn_temp_bck.res, eqn_temp_bck.res_vec)
 
   eqn_temp_fwd.params.sin_amplitude -= pert
   eqn_temp_bck.params.sin_amplitude += pert
