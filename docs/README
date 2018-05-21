@@ -1,0 +1,86 @@
+README for generating docs + using Documenter & mkdocs
+
+### New Method ###
+We now use Documenter to generate html directly
+
+1. Make doc changes
+2. Run `julia ./make.jl`
+3. Use web browser to view changes, ex. firefox ./build/index.html
+4. run deploy_docs.sh to deploy docs to github
+
+### Old Method ###
+=== How to run mkdocs locally ===
+1. Make your doc changes
+2. run `mkdocs serve --dev-addr=IP:PORT`
+    Example: `mkdocs serve --dev-addr=128.113.130.100:8005`
+3. Open IP:PORT in any browser on the correct network
+
+
+# Documentation Standards
+
+Docstrings for functions should answer the following questions:
+
+1) What is the purpose of the function? (1-2 sentances)
+2) What method/algorithm does it use? (~1 paragraph)
+3) What are the arguments and returned values to the function and what do they
+   mean? (1 sentance each)
+4) What is the state of all arguments on entry? (1-2 sentances each)
+5) What is the state of all argument on exit? (1-2 sentances each)
+6) What alters the behavior of this function (options keys, global constants,
+   etc.)
+
+For simple functions, 2) may not be very long and 3-5 may be combined.
+The major distinction between 3) and 4) - 5) is when arguments are 
+Types whose fileds will be accessed.  If fileds are access, the documentation
+should describe which ones are used.
+
+If the algorithm description needs to be detailed, it should be split into
+two parts.  The first part should give a brief overview of the algorithm.
+The second part, usually located in a section called Implementation Notes and
+placed below item 3, should describe the algorithm in detail and any special
+cases where the algorithm might behave unexpectedly.
+
+Item 3 should be formatted as follows (the Markdown makes the website much
+more readable)
+
+  **Inputs**:
+
+    * arg1: description here
+    * arg2: description here
+
+  **Inputs/Outputs**:
+
+    * input/output1: description here
+    * input/output2: description here
+
+  **Output**:
+
+    * output1: description here
+    * output2: description here
+
+`Inputs` are arguments that are passed into the function and not modified.
+`Inputs/Outputs`: are arguments that are passed into the function and modified
+                  (arrays are are common example)
+`Outputs`: values that are returned by the function
+
+The general structure of a docstring should be (items in parenthesis are 
+references to the items above):
+
+"""
+  (Item 1)
+ 
+  (Item 2 - first part, and item 6, if possible)
+
+  (Item 3)
+
+  (Items 4 and 5)
+
+  Implementation notes:
+    (Item 2 - second part)
+
+  Options Keys:
+    (Item 6, if not done above)
+
+  Aliasing restrictions:
+    (list what variables cannot alias, if any)
+"""

@@ -4,17 +4,24 @@
 ### Utils.sharedFaceLogging
 
   This function writes files for the function that evalutes the shared face
-  integrals.  This function should only be called in debug mode
+  integrals.  This function should only be called in debug mode.
+  
+  If opts["writeqface"] is true,  writes the q values at the face to a file 
+  q_sharedface_i_myrank.dat, where i is the peer process index (not MPI rank)
+  and myrank is the MPI rank of the current process. 
+
+  If opts["write_fluxface"] is true, it writes eqn.flux_sharedface to a file
+  flux_sharedface_i_myrank.dat
 
   Inputs:
     mesh
     sbp
     eqn: and AbstractSolutionData
     opts: options dictonary
-    qL_arr: an array of arrays holding solution values at face nodes on the 
-            left side of the interface, ie. there are mesh.npeer arrays, and 
-            each array is numDofPerNode x numfacenodes x numsharedfaces on this
-            partition boundary
+    data: SharedFaceData object
+    qL_arr: an array holding solution values at face nodes on the 
+            left side of the interface,  numDofPerNode x numfacenodes x 
+            numsharedfaces on this partition boundary
     qR_arr: solution values at face nodes on the right side of the interface.
             same shape as qL_arr
 
@@ -24,24 +31,21 @@
   Aliasing restrictions: qL_arr, qR_arr, and eqn.flux_sharedface must not alias.
 """->
 function sharedFaceLogging{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol}, 
-                                 opts, qL_arr, qR_arr)
+                                 opts, data::SharedFaceData, qL_arr, qR_arr)
 
   if opts["writeqface"]
-    myrank = mesh.myrank
-    for i=1:mesh.npeers
-      tmp_arr = zeros(Tsol, mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.peer_face_counts[i])
-      qL_arr_i = qL_arr[i]
-      qR_arr_i = qR_arr[i]
-      for j = 1:mesh.peer_face_counts[i]
-        for k=1:mesh.numNodesPerFace
-          tmp_arr[:, 1, k, j] = qL_arr_i[:, k, j]
-          tmp_arr[:, 2, k, j] = qR_arr_i[:, k, j]
-        end
+    myrank = data.myrank
+    i = data.peeridx
+    tmp_arr = zeros(Tsol, mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.peer_face_counts[i])
+    for j = 1:mesh.peer_face_counts[i]
+      for k=1:mesh.numNodesPerFace
+        tmp_arr[:, 1, k, j] = qL_arr[:, k, j]
+        tmp_arr[:, 2, k, j] = qR_arr[:, k, j]
       end
-      println(eqn.params.f, "q_sharedface $i = \n", tmp_arr)
-      fname = string("qsharedface_", i, "_", myrank, ".dat")
-      writedlm(fname, tmp_arr)
-    end  # end loop over peers
+    end
+    println(eqn.params.f, "q_sharedface $i = \n", tmp_arr)
+    fname = string("qsharedface_", i, "_", myrank, ".dat")
+    writedlm(fname, tmp_arr)
 
   end  # end if
 
@@ -52,7 +56,7 @@ function sharedFaceLogging{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol},
     end
   end
 
-  flush(params.f)
+  flush(eqn.params.f)
   return nothing
 end
 

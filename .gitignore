@@ -1,3 +1,16 @@
 # file name patterns to ignore
 *~
-
+*.vtu
+*.pvtu
+install.log
+*.dat
+*.out
+simpleODE_*_3x3
+.*.swp
+arg_dict_output.jl
+known_keys.jl
+counts_*.txt
+deps/install.log
+test/Advection/input_vals_mms*.jl
+docs/build/
+docs/site/

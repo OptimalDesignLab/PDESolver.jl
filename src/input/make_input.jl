@@ -1,10 +1,25 @@
 # functions to create input files
 using ODLCommonTools
 
+"""
+  Make an input file from an options dictionary.
+
+  Inputs:
+    dict: the options dictionary
+    fname: the file name (without extension)
+
+  Outputs:
+    fname_ex: file name with extension
+"""
 function make_input(dict::Dict, fname::AbstractString)
 
-  fname_ex = string(fname, ".jl")
-  rmfile(fname_ex)  
+  # add extension if not already present
+  if !endswith(fname, ".jl")
+    fname_ex = string(fname, ".jl")
+    rmfile(fname_ex)
+  else
+    fname_ex = fname
+  end
 
   f = open(fname_ex, "w")
 
@@ -20,4 +35,5 @@ function make_input(dict::Dict, fname::AbstractString)
   println(f, ")")
   close(f)
 
+  return fname_ex
 end

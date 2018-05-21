@@ -41,7 +41,7 @@ function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=tr
     # write the dictonary declaration to the file
     write(fw, "# this file declares a dictonary of all known keys in the
                # options dictonary\n")
-    write(fw, "known_keys = Dict{Any, Any}(\n")
+    write(fw, "global const KNOWN_KEYS = Dict{Any, Any}(\n")
   end
 
   cntr = 1
@@ -132,11 +132,16 @@ The corresponding output to file is
 function write_arbitrary_keys(fout, stringval::ASCIIString, counts::Int)
 
   fw = open(fout, "a")
-  for i = 1:counts
-    key = string("\"", stringval, "$i\"", " => true,\n")
+  if counts == 0
+    key = string("\"", stringval, "\"", " => true,\n")
     write(fw, key)
-    # key = string("\"", stringval, "$i", "_name\"", " => true,\n")
-    # write(fw, key)
+  else
+    for i = 1:counts
+      key = string("\"", stringval, "$i\"", " => true,\n")
+      write(fw, key)
+      # key = string("\"", stringval, "$i", "_name\"", " => true,\n")
+      # write(fw, key)
+    end
   end
   
   close(fw)
@@ -144,6 +149,8 @@ end
    
 extractKeys("input_vals.txt", "known_keys.jl", header=true, footer=false)
 write_dummy("known_keys.jl")
-write_arbitrary_keys("known_keys.jl", "geom_edges_functional", 10)
+write_arbitrary_keys("known_keys.jl", "functional_bcs", 10)
 write_arbitrary_keys("known_keys.jl", "functional_name", 10)
+write_arbitrary_keys("known_keys.jl", "objective_function", 0)
+write_arbitrary_keys("known_keys.jl", "geom_faces_objective", 0)
 extractKeys("input_vals_internal.txt", "known_keys.jl", header=false, footer=true)

@@ -1,10 +1,18 @@
 # input_vals_internal.txt
-# this file documents keys that are used by PDESolver internally but are not 
+# this file documents keys that are used by Ticon internally but are not 
 # intended to be set by users
+"need_adjoint": whether or not the adjoint will be used.  Currently Euler only
 
-"parallel_type": what method of parallelization to use, (Int), 1 = face, 2 = 
-                 element, default implied by run_type: rk4 -> 1, any method
+"parallel_type": how often to exchange parallel data, (Int) 1 = every residual
+                 evaluation, 2 = every jacobian evaluation
+                 default implied by run_type: rk4 -> 1, any method
                  that requires calculating the Jacobian -> 2
+
+
+"parallel_data": what data to exchange in parallel, (ASCIIString), 
+                 known values "face" for face data and "element" for element 
+                 data, default implied by a set of other options which
+                 determine the calculations that need to be done
 
 "fname": the path to the file in which the dictionary is declared, ASCIIString,
          set from the argument passed to read_input
@@ -17,10 +25,6 @@
 "coloring_distance_prec": same as coloring_distance, for mesh used for
                           preconditioning.
 
-"jac_method" : what method to use for computing the Jacobian (finite difference,
-               or complex step, determined from "run_type", 1 finite difference
-               2 = complex step
-
 "solve" : call the solver specified by run_type, (Bool), default true
 
 "use_src_term" : whether to call the source term routin, (Bool), false if 
@@ -29,3 +33,52 @@
            is specified, otherwise true
 "use_itermax": whether or not use itermax to halt rk4, (Bool), true if
                itermax is specified, otherwise false
+"Tsol" : datatype of solution variables, (DataType), set during initialization
+"Tres" : datatype of residual variables, (DataType), set during initialization
+"Tsbp" : datatype of SBP operator, (DataType), set during initialization, 
+         nearly always to Float64
+"Tmsh" : datatype of mesh variables, (DataType), set during initialization,
+         until differentiation wrt the mesh variables is supported, this should
+         always be Float64
+
+"precompute_q_face": whether or not to use eqn.q_face, (Bool), determined from
+                     "precompute_face_flux" and other things
+
+"precompute_q_bndry": whether or not to use eqn.q_bndyr, (Bool), determined from
+                      "precompute_bndry_flux" and other things
+
+"use_staggered_grid": whether or not the staggered grid algorithm is used,
+                      (Bool), determined from "operator_ type2".
+
+"most_recent_checkpoint": index of most recently written checkpoint that is
+                          definitely complete, (Integer), default -1
+
+"most_recent_checkpoint_path": path to directory where the most recent
+                               checkpoint is stored, (ASCIIString), default ""
+
+"writing_checkpoint": index of most recently written checkpoint that might not
+                      be complete, (Integer), default -1
+
+"writing_checkpoint_path": path to the directory where the checkpoint is stored,
+                           (ASCIIString), default ""
+
+"is_restart": if this input file is restarting a run from a checkpoint, (Bool),
+              default false
+
+
+"calc_jac_explicit": compute the jacobian explicitly if true, otherwise use
+                     coloring, (Bool), default false.  This option must be set
+                     by the physics modules.
+
+"force_solution_complex": force Tsol and Tres to be complex numbers, even if
+                          not required by other options, (Bool), default false
+
+"setup__globalize_euler": have the PC/LO do the setup work for implicit
+                                Euler globalization.  If any user of Newton's
+                                method is going to use this globalization, this
+                                key must be set when the PC/LO are created.
+                                The *application* of the globalization is
+                                controlled by the "xxx_globalize_euler" key,
+                                where "xxx" is the name of a method that uses
+                                Newton's method (for example, "newton" or
+                                "homotopy").  This key only controls the setup.

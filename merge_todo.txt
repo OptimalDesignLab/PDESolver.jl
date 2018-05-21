@@ -1,0 +1,31 @@
+update copy constructor for equation to handle eqn.shared_data
+decide whether or not to precompute fluxes by default
+
+use new version of SBP (includig Optim dependency), curvilinear branch of PumiInterface (tag v0.5)
+
+use ODLCommonTools branch `new_parallel`
+
+update LinearSolvers to allocate the jacobian correctly for viscous terms
+
+change log:
+  Better interface between Utils and the physics modules for handling of parallel
+  computations (all MPI calls now encapsulated in Utils)
+
+  use mesh.nrm_face/bndry/sharedface instead of dxidx_face/bndry/sharedface
+
+  Switch to using curvilinear metric calculation (and reverse mode)
+
+  Add default BC system (see PumiInterface.jl readme)
+
+  made BSTDOUT a global, buffered STDOUT, to replace fstdout.  Also created
+  BSTDERR
+
+  4/19/18 - JC: add updateMetricDependents to physics module interface
+
+  4/19/18 - JC: add setup_globalize_euler key, changes things so implicit
+                euler globalization can be used at end of homotopy
+
+change argument order for common_funcs.jl, BCs, flux functions to be
+(params, q, coords, nrm, flux)
+
+  5/7/18 - JC: change initialization so solvePDE is extended by each physics

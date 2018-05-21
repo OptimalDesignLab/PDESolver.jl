@@ -1,24 +1,43 @@
 # Launching a simulation
-To solver the Euler equations, do
+To solve the Euler equations, do
 
 julia /path/to/startup.jl "input_file_name.jl"
 
 where input_file_name.jl is in your current directory.
 
-# The following keys are used for the options dictionary in the input file
 
-"run_type"  : what type of run, 1 = rk4, 4 = Newton finite difference, 5 = Newton complex step (integer)
+# The following keys are used for the options dictionary in the input file,
+#  and do not have default values, so the user must specify them if needed
+
+"physics" : which physics to run, ASCIIString, must match the name each
+            physics module uses to register itself with the PDESolver module
+
+"run_type"  : what type of run:
+              1 = rk4
+              5 = steady Newton, FD or CS is specified with jac_method
+              20 = Crank-Nicolson
+"jac_method" : what method to use for computing the Jacobian (finite difference,
+               or complex step, determined from "run_type", 1 finite difference
+               2 = complex step
 
 "order" : order of accuracy of elements, 1-4 will be supported eventually (integer)
 "dimensions" : specifies the dimensions of the physical problem, 2D or 3D (integer). Default = 2
-"smb_name" : name of smb file if using Pumi (string), if it appears to be a relative path (ie. does not begin with a "/"), it is relative to the installation directory of PDESolver.  If it appears to be an absolute path, it is treated as such
-"dmg_name" : name of dmg file if using Pumi (string), same behavior as "smb_name", default ".null" (you must omit this key if you are using the null geometric model)
+"smb_name" : name of smb file if using Pumi (string), can either be an absolute
+             path or a relative path.  As a special case, if it starts with
+             SRCMESHES, then the file is looked for in the src/mesh_files
+             directory of the repo PDESolver repo.
+"dmg_name" : name of dmg file if using Pumi (string), same behavior as
+             "smb_name", default ".null"
 
 "IC_name" : initial condition function name (string)
-"use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
 
-"operator_type" : name of discretization operator to use for DG, currently 
+"operator_type" : name of discretization operator to use for DG, currently
                   either SBPOmega or SBPGamma , (String), default SBPOmega
+
+"operator_type2": like "operator_type", but for the staggered grid, (String),
+                  default "SBPNone"
+
+`itermax`: see below
 
 # time stepping options
 "real_time" : have time marching scheme advance real time instead of pseudo-time,
@@ -40,23 +59,50 @@ where input_file_name.jl is in your current directory.
 "variable_type": which set of variables to write the equation in, (Symbol), default
             :conservative
 
+"volume_integral_type" : method of computing volume integrals, (Int),
+                        default 1 (Di*Fi), 2 --> use a split form
+                        numerical flux function
+"face_integral_type" : method of computing face integrals, (Int), default 1,
+                       regular face integrals, 2 --> entropy stable form
+
+"Volume_flux_name" : name of the numerical flux function to use for the
+                     split form volume integrals, (ASCIIString), default
+                     "StandardFlux"
+
+"FaceElementIntegral_name": name of integral type for "face_integral_type" == 2,
+                            (ASCIIString), default "EDissipativeFaceIntegral",
+                            note that for integrals that require a numerical flux
+                            function, "Flux_name" is used.
 # Solver options
-"use_DG": use discontinuous Galerkin for the spatial discretization, (Bool), 
+"use_DG": use discontinuous Galerkin for the spatial discretization, (Bool),
           default false
+"addVolumeIntegrals" : enable volume term, (Bool), default true
+"addBoundaryIntegrals" : enable the boundary integral term, (Bool), default true
+"addFaceIntegrals" : enable the face integral term for DG, (Bool), default true
+"addStabilization" : enable any stabilization,  individual types of stabilization
+                     are controlled by their individual keys, (Bool), default true
+
 "res_abstol" : stopping tolerance for residual, used by rk4 and Newton methods, (floatingpoint), default 1e-6
 "res_reltol"  : stopping tolerance for residual relative to some initial value, (floatingpoint), default 1e-6
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
 "step_tol" : step size tolerance for Newton methods (floating point), default -1
-"itermax" : maximum number of iterations for Newton methods or rk4 (integer), for rk4, it is ignored if note specified 
+"itermax" : maximum number of iterations for Newton methods or rk4 (integer), for rk4, it is ignored if not specified
 "Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (ASCIIString), defualt "none".  Note that this function will override res_reltol0 = -1.0
 "Relfunc_name": the name of an initial condtion, the residual of which is used
-                for computing the relative residual for solver stopping 
+                for computing the relative residual for solver stopping
                 criteria, "ASCIIString", default "none".
 
 # DG Flux options
 "Flux_name" : the name of the flux to use, (ASCIIString)
-"LFalpha" : the alpha parameter for the Lax-Friedrich flux, 1 = centered, 
+"LFalpha" : the alpha parameter for the Lax-Friedrich flux, 1 = centered,
             0 = upwinded, (Float64), default 0.0
+"precompute_volume_flux": precompute the volume flux or calculate it as needed,
+                          (Bool), default true
+"precompute_face_flux": precompute the face flux or calculate it as needed,
+                          (Bool), default true
+"precompute_boundary_flux": precompute the boundary flux or calculate it as
+                            needed, (Bool), default true
+"use_Minv" : apply the inverse mass matrix to the residual within the physics module
 
 # boundary condition specification
 "numBC" : number of boundary condtions used
@@ -68,40 +114,44 @@ where input_file_name.jl is in your current directory.
 # where i is the index of the boundary condition
 # i must have values 1 through numBC
 
-# source term specification (advection equation only)
+# source term specification
 "SRCname": the name of the source term to use, (ASCIIString), default SRC0
 
 # misc options
 "calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false
-"calc_error_infname"  : name of file to load, (ASCIIString), 
-"calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat 
+"calc_error_infname"  : name of file to load, (ASCIIString),
+"calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
 "calc_trunc_error"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
-"calc_havg" : calculate the average minimum distance between nodes (ie. the 
+"calc_havg" : calculate the average minimum distance between nodes (ie. the
               mesh spacing) and write it to the file "havg.dat", (Bool), default
               false
 
 # algorithmic differentiation options
 "res_edge_res" : use an edge based residual data structure (in addition to
-                 the standard residual) to make a distance-1 coloring into 
+                 the standard residual) to make a distance-1 coloring into
                  a distance-0 coloring, (Bool), default false.
                  This option is dangerous if misused.
 
-# paramters used by boundary and initial condiitions
+# parameters used by boundary and initial condiitions
 "Ma" : free stream Mach number (floating point)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
 #"rho_free" : free stream density
 #"E_free" : free stream energy
+"p_free": dimensional free stream pressure, used for non-dimensionalization,
+          (FloatingPoint), default 1.0
+"T_free": dimensional free stream temperature, used for non-dimensionalization,
+          (FloatingPoint), default 1.0
 "edgestab_gamma"  : edge stabilization parameter, (floatingpoint), default -0.1
 "perturb_ic" : add random noise to initial condition, (Bool), default false
 "perturb_mag" : magnitude of perturbation (perturbation could be + or -), (Float64), default 0.0
-"vortex_x0" : initial x coordinate of the unsteady vortex, (Float64), default 
+"vortex_x0" : initial x coordinate of the unsteady vortex, (Float64), default
               0.0
-"vortex_strength" : the strength of the unsteady vortex, (Float64), default 
+"vortex_strength" : the strength of the unsteady vortex, (Float64), default
                     1.0
 
 
-# Algorithmic Differentiatio Options
+# Algorithmic Differentiation Options
 "use_edge_res" : use the edge based residual (experimental!), (Bool), default
                  false
 
@@ -129,15 +179,54 @@ where input_file_name.jl is in your current directory.
 "use_edgestab_prec" : use edge stabilization for preconditioning matrix, (Bool), default false
 "use_filter_prec" : use filter for preconditioning matrix, (Bool), default false
 "use_dissipation_prec" : use dissipation for preconditioning, (Bool), default false
-Note that any values associated with these options are shared with the regular 
+Note that any values associated with these options are shared with the regular
 (non preconditioning) version
 
-# solve options
-"write_entropy" : write the norm of the entropy during every major iteration, 
+# logging options
+"write_entropy" : write the norm of the entropy during every major iteration,
                   (Bool), default false
-"write_entropy_fname" : file name (with extension) to write entropy to, 
+"write_entropy_freq" : write the entropy every this many timesteps if
+                       "write_entropy" is true, (Integer), default 1
+"write_entropy_fname" : file name (with extension) to write entropy to,
                         (ASCIIString), default "entropy.dat"
-"check_density" : whether not to check that density > 0 every residual 
+"write_integralq": write the integral of the q variables to a file every
+                   iteration, (Bool), default false, currently only supported
+                   by Euler module
+
+"write_integralq_fname": file name to write integral of q to, (ASCIIString),
+                         default "integralq.dat"
+
+"write_enstrophy" : write the integral of the enstrophy during every major
+                    iteration, (Bool), default false
+"write_enstrophy_freq" : write the enstrophy every this many timesteps if
+                       "write_enstrophy" is true, (Integer), default 1
+"write_enstrophy_fname" : file name (with extension) to write enstrophy to,
+                        (ASCIIString), default "enstrophy.dat"
+
+"write_kinetic_energy" : write the norm of the kinetic_energy during every
+                         major iteration, (Bool), default false
+"write_kinetic_energy_freq" : write the kinetic_energy every this many
+                              timesteps if "write_kinetic_energy" is true,
+                              (Integer), default 1
+"write_kinetic_energy_fname" : file name (with extension) to write
+                               kinetic_energy to, (ASCIIString), default
+                               "kinetic_energy.dat"
+
+"write_kinetic_energydt" : write the norm of the kinetic_energydt during every
+                         major iteration, (Bool), default false
+"write_kinetic_energydt_freq" : write the kinetic_energydt every this many
+                              timesteps if "write_kinetic_energydt" is true,
+                              (Integer), default 1
+"write_kinetic_energydt_fname" : file name (with extension) to write
+                               kinetic_energydt to, (ASCIIString), default
+                               "kinetic_energydt.dat"
+
+"write_drag" : write drag every time iteration. Bool. Default false.
+"write_drag_freq" : write drag this many timesteps if "write_drag" is true. Integer. Default 1.
+"write_drag_fname" : file name (with extension) to write drag to. Default "drag.dat".
+
+
+"check_density" : whether not to check that density > 0 every residual
                   evalution, (Bool), default true
 "check_pressure": whether to not to check that pressure > 0 every residual
                   evaluation, (Bool), default true
@@ -149,7 +238,7 @@ Note that any values associated with these options are shared with the regular
 "writeq"  : writes solution variables to the file q.dat, space delimited, (Bool) default false
 "writeqface" : write the solution at the face nodes to file qface.dat,
                space delimited, (Bool), default false
-"writefluxface:" write the flux at the face nodes to file fluxface.dat, space
+"write_fluxface" : write the flux at the face nodes to file fluxface.dat, space
                  delmited, (Bool), default false
 
 # mesh debugging options
@@ -169,21 +258,32 @@ Note that any values associated with these options are shared with the regular
                     (Bool), default false
 "write_boundaries": writes the contents of mesh.bndryfaces to file boundary.dat,                    (Bool), default false
 "write_sharedboundaries": write contents of mesh.bndries_local[i] to file
-                          sharedboundaries_i.dat for all i, (Bool) default 
+                          sharedboundaries_i.dat for all i, (Bool) default
                           false
-
+"write_dofs" : write the mesh.dof array to a file dofs_myrank.dat, (Bool),
+               default false
+"use_linear_metrics": use the metric calculation for straight-sided elements,
+                       (Bool), default false (ie. the curvilinear calculation is
+                       used even for straight-sided meshes
 # mesh options
-"reordering_algorithm" : which node reordering algorithm to use, options are 
-                         "adjacency" for the adjacency based reordering by Zhou 
+"reordering_algorithm" : which node reordering algorithm to use, options are
+                         "adjacency" for the adjacency based reordering by Zhou
                           et.al., or "default" for a more simplistic default
 "reordering_start_coords" : coordinates of a point to start the reordering at.
                             The highest dof number will be assigned to the vertex
                             nearest this point.  (Array of length 2), default [0, 0].
                             Not supported by the default reordering algorithm.
-"coloring_distance" : mesh coloring distance used for jacobian calculation, 
-                      (Integer), defalts to the minimum coloring that can be 
+"coloring_distance" : mesh coloring distance used for jacobian calculation,
+                      (Integer), defalts to the minimum coloring that can be
                       used with the specified stabilization
 "coloring_distance_prec" : coloring distance for preconditioning, see above.
+
+"preallocate_jacobian_coloring": preallocate jacobian as though coloring is 
+                                 used (all nodes of
+                                 element connected to all nodes of neighbours),
+                                 (Bool), default true if coloring will be used,
+                                 false otherwise.  Users generally should not
+                                 need to set the option.
 
 # Newton's Method debugging options
 "write_rhs"  : write rhs (residual) to a file (rhs$i.dat) each iteration, (Bool), default false
@@ -193,6 +293,14 @@ Note that any values associated with these options are shared with the regular
 "write_res"  : write the residual in 3d form (res$i.dat) each iteration, (Bool), default false
 "write_qic"  : write the initial condition, assembled into 3d array form, to file qic.dat, (Bool), default false
 "write_vis"  : write Paraview files (solution_newton$i.pvtu) each iteration, (Bool), default false
+"write_vorticity_vis": write Paraview files (solution_vorticity_$i.pvtu)
+                       containing the components of vorticity, the vorticity
+                       magnitude, and the enstrophy (in that order) as the
+                       solution field, (Bool), default false
+"exact_visualization" : write a subtriangulated Paraview file in addition to
+                        the regular one, (Bool), default false, SBP Omega only.
+                        The subtriangulated file will have "_exact" appended
+                        to the file name
 "print_eigs" : calculate and print eigenvalues to STDOUT.  The calculation is very expensive, (Bool), default false
 "write_eigs" : calculate and write eigenvalues to file (eigs$i.dat) each iteration.  If both pritn_eigs and write_eigs are true, only one calculation is performed.  (Bool), default false
 "write_eigdecomp" : calculate and write to file the eigenvalues and eignenvectors of the jacobian, only supported for a Jacobian owned by Julia, (Bool), default false
@@ -201,28 +309,63 @@ Note that any values associated with these options are shared with the regular
                         eigdecomp_realvecs$i.dat - real parts of eigenvectors
                         eigdecomp_imagvecs$i.dat - complex parts of eigenvectors
 "output_freq" : write paraview files every this many iterations, subject to write_vis, (Integer), default 1
-"recalc_prec_freq" : recalculate the preconditioner matrix every this many 
-                     iterations, if doing an interative solve, (Integer),
-                     default 1
+
+"newton_recalculation_policy": how often to recalculate the jacobian during
+                               Newton's method, (ASCIIString), default
+                               every iteration.
+"cleansheet_CN_newton" : use the Newton's method internal to CN. Only for debugging - it supports dense FD Jacs only
 
 # Newton's Method options
-"jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse)
+"use_jac_precond": use a different jacobian for preconditioning (jac_type = 3 only), (Bool), default false
+"jac_type"  : set calculation/storage method of Jacobian, (Int), 1 == dense, 2 == sparse, default= sparse, 3 = Petsc (therefore sparse), 4 = Petsc matrix-free
 "epsilon"  : perturbation size when calculation Jacobian, (Float64), default 1e-6 for finite difference, 1e-20 to complex step
-"newton_globalize_euler"  : use the Pseudo-Transient Continuation 
+"newton_globalize_euler"  : use the Pseudo-Transient Continuation
                             (aka. implicit Euler) globalization, (Bool), default                            false
 "euler_tau": the magnitude factor of the initial pseudo-timestep for the
-             Euler globalization, (FloatingPoint), default 1.0
+             Euler globalization, (FloatingPoint), default 1.0,
+             smaller values -> stronger globalization
 
+"use_volume_preconditioner" : use the jacobian of the volume integrals as a
+                              preconditioner (Bool), default false.  Note that
+                              this is done matrix-free
+
+"newton_verbosity": how much printing to do in Newton's method, (Int), default 5
+                    if steady newton, 4 otherwise (ie. when Newton is used by
+                    another method in NonlinearSolvers).  When 4 or less,
+                    Newton does not call majorIterationCallback
+"use_exact_nk": use inexact Newton-Krylov (dynamic updating of linear solve
+                relative tolerance), (Bool), default true for run type 5, 
+                false otherwise.
+"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
+
+# Homotopy options
+"homotopy_recalculation_policy": jacobian recalculation policy for homotopy,
+                                 (ASCIIString), default "RecalculateNever"
+"homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
+                                 false (the boundary terms slow convergence
+                                 in some cases)
+"homotopy_globalize_euler": use the method described by "newton_globalize_euler"
+                            on the final step of homotopy (when lambda == 0),
+                            (Bool), default false
+# Crank-Nicolson options
+"CN_recalculation_policy": jacbian recalculation policy for CN, (ASCIIString),
+                           default "RecalculateNever"
+
+# majorIterationCallback options
+"callback_write_qvec": write eqn.q_vec to a file named 
+                        "callback_q_vec_i_$myrank.dat", where `i` is the
+                       iteration number and `myrank` is the MPI rank of the
+                       process.  This file is suitable for use with ICFile,
+                       (Bool), default false
 
 # Newton-Krylov options
 "krylov_reltol"  : relative residual tolerance for krylov solver, (Float64),
                    default 1e-2
 "krylov_abstol"  : absolute residual tolerance for kylov solver, (Float64),
                    default 1e-12
-"krylov_dtol"  : relative residual tolerance for detecting divergence, 
+"krylov_dtol"  : relative residual tolerance for detecting divergence,
                  (Float64), default 1e5
 "krylov_itermax"  : maximum number of krylov iterations, (Int), default 1000
-"krylov_gamma"  : parameter for updating krylov_reltol, (Float64), default 2.0
 
 
 
@@ -230,20 +373,72 @@ Note that any values associated with these options are shared with the regular
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
                     (ASCIIString), default "nothing"
+
 # functional computation options
 "calc_functional" : calculate functional on geometric boundary edge(s)
 "num_functionals" : number of functionals that need to be calculated
-"functional_error_outfname" : name of file which stores the error in functional at a 
+"functional_error" : Boolean option for input dictionary to specify whether to compare against
+                     analytical functional value and write the error.
+"functional_error_outfname" : name of file which stores the error in functional at a
                          geometric boundary, (ASCIIString), default functional_error, while
                          writing the file a numerical suffix and .dat extension is added
 "analytical_functional_val" : The analytical functional value of the functional over
                               the specified geometric edges.
-"geom_edges_functionali" : Array of geometric edges (2D) where functional is being calculated
+"functional_bci" : the boundary condition groups that have (ie. BC1, BC2, etc.)
+                   that have this functional on it (where i is the functional
+                   number)
+
 "functional_namei" : Name of the ith functional that needs to be computed over specified
                      geometric edges(2D)/faces(3D), (ASCIIString)
 
 # Adjoint computation options
-"calc_adjoint" : calculates the adjoint vector for a particular functional, default false
-"write_timing" : write the mesh initialization and compute times to the file
-                 timing.dat, (Bool), default false
-"finalize_mpi" : whether or not to finalize MPI, (Bool), default false
+"write_adjoint" : writes the adjoint vector for a particular functional. default false
+"write_adjoint_vis" : Writes the VTK file depicting the adjoint field. default false
+"write_timing" : write timings for each part of calculation to file
+                 timing_breakdown.dat, and the name of each time to
+                 timing_breakdown_names.dat, (Bool), default false
+
+# Unsteady adjoint computation options. CN UADJ CODE DOES NOT RETURN CORRECT RESULTS
+"revolve"      : whether or not to use revolve adjoint checkpointing, default false
+"adjoint_straight" : calculate the unsteady adjoint by saving the state at every timestep
+"adjoint_revolve"  : calculate the unsteady adjoint, but using revolve to handle checkpointing
+                     and state saving
+"adjoint_saveall"  : save every time step's adjoint to disk
+"uadj_global" : compute global dRdu
+"use_Minv_override_for_uadj" : override applying use_Minv at the end of evalResidual in advection
+                               when reverse sweep is underway
+
+# checkpointing/restart
+"use_checkpointing" : whether or not to write checkpoints, (Bool), default false
+"ncheckpoints" : number of checkpoints to use, (Int), default 2
+"checkpoint_freq" : write checkpoints every this many time steps, (Int) default  200
+
+# Optimization Dictionary Options
+"objective_function" : name of the objective function being evalueated. There is an implicit assumption
+                       a boundary functional has already been specified and that the objective functiom
+                       acts on the same faces as the boundary functional.
+"objective_bcs": boundary conditions the objective functional is defined on
+                 (ie. BC1, BC2, etc.), (Array{Int, 1})
+"force_mesh_complex": if true, forces Tmsh to be Complex128 even if it would
+                      not otherwise be, (Bool), default false
+
+# SimpleODE equation selection
+"simpleODE_eqn" : integer to select the equation being solved
+                  1: u = x^2 + t^4
+                  2: u = x^2 + t^3
+                  3: u = x^2 + t^2
+                  4: u = x^2 + t
+                  5: u = t
+                  6: du/dt = u + 2t
+                  7: du/dt = u
+
+# Petsc Options
+"petsc_options" : options passed directly into Petsc, 
+                  Dict{AbstractString, AbstractString}), defaults include
+                  a block jacobi ilu(4) preconditioner.  The keys must begin
+                  with a dash (as required by PETSc).  Keys that do not take
+                  a value should use an empty string as the value.
+
+# Advection specific options
+"advection_velocity" : advection velocity vector, length 2 in 2D and 3 in 3D,
+                       (Vector{Float64}), default [1.0, 1.0, 1.0]

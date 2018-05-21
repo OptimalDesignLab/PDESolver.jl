@@ -1,3 +1,4 @@
+rm -v ./arg_dict_output.jl
 rm -v ./convergence.dat
 rm -v ./solution_newton*vtu
 rm -v ./solution_rk*vtu
@@ -28,6 +29,16 @@ rm -v ./sparsity_bnds.dat
 rm -v ./counts*.txt
 rm -v ./edge_vertdofs.txt
 rm -v ./*vtu
-rm -v ./coords_output.dat
+rm -v ./coords_output_*.dat
 rm -v ./functional_error*.dat
 rm -v ./newton_solution*.dat
+rm -rfv ./adjoint_field
+rm -rfv ./mesh_complete
+rm -rfv ./output_init
+rm -rfv ./solution_done
+rm -rfv ./solution_error
+rm -rfv ./solution_ic
+rm -v ./log_*.dat
+rm -v ./load_balance_*.dat
+rm -v ./error_calc.dat
+rm -v ./meshlog_*.dat
