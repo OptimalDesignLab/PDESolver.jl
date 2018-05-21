@@ -86,7 +86,6 @@ Master branch:
 Work branch:
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg?branch=work)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 
-[![Documentation Status](https://readthedocs.org/projects/pdesolverjl/badge/?version=latest)](https://readthedocs.org/projects/pdesolverjl/?badge=latest)
 [![codecov](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/OptimalDesignLab/PDESolver.jl)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.optimaldesignlab.com/PDESolver.jl)
 
