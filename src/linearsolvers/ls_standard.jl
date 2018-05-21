@@ -275,6 +275,13 @@ function _linearSolve{Tlo <: AbstractDenseLO, Tpc}(
   return nothing
 end
 
+"""
+  On Skylake, there is a problem with reusing the symbolic factorization
+  with UMFPACK.  If this constant is true, it will recalculate the the
+  symbolic factorization each time.  On other systems, this constant should
+  be set to false.
+"""
+global const SKYLAKE_STACKSMASH=true
 
 function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
                       ls::StandardLinearSolver{Tpc, Tlo},
@@ -288,6 +295,9 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
   # compute factorization if needed
   if !getIsSetup(lo2)
     umfpack_free_numeric(lo2.fac)  # free old factorization
+    if SKYLAKE_STACKSMASH
+      umfpack_free_symbolic(lo2.fac)  # DEBUGGING
+    end
     # note: the matrix stored in the factorization object must alias. lo2.A
     umfpack_numeric!(lo2.fac)
     setIsSetup(lo2, true)
