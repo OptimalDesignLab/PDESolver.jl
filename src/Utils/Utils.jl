@@ -24,6 +24,7 @@ include("mass_matrix.jl")
 include("curvilinear.jl")
 include("area.jl")
 include("checkpoint.jl")
+include("interpolation.jl")
 
 export free
 export disassembleSolution, writeQ, assembleSolution, assembleArray
@@ -75,6 +76,9 @@ export Checkpointer, AbstractCheckpointData, readCheckpointData,
        countFreeCheckpoints,
        getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
        freeCheckpoint, getNextFreeCheckpoint
+
+# interpolation.jl
+export interpField
 
 """
   Generic function to free any memory belonging to other libraries
