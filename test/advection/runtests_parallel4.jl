@@ -10,10 +10,13 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using Utils
 using Input
+using PETSc2
 
 
 #------------------------------------------------------------------------------
@@ -60,21 +63,11 @@ facts("----- Running Advection 4 processor tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(AdvectionTests, run_advection, tags)
+  run_testlist(AdvectionTests, solvePDE, tags)
 end
 
 #------------------------------------------------------------------------------
 # cleanup
 
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
-end
 FactCheck.exitstatus()
 

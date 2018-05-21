@@ -5,24 +5,27 @@
 module EulerEquationMod
 
 using PDESolver  # setup LOAD_PATH to find all PDESolver components
+using SolverCommon
 using ArrayViews
 using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts
 using PdePumiInterface  # common mesh interface implementation - pumi
 using NonlinearSolvers
+using LinearSolvers
 using ForwardDiff
 using Utils
 import ODLCommonTools.sview
 using MPI
 using Input  # input file processing
-using PETSc
+using PETSc2
+#using PETSc
 # using FreeFormDeformation
 # using MeshMovement
 
 # the AbstractEquation type is declared in ODLCommonTools
 # every equation will have to declare a new type that is a subtype of AbstractEquation
 
-export AbstractEulerData, EulerData, EulerData_, run_euler
+export AbstractEulerData, EulerData, EulerData_, run_euler, eval_dJdaoa
 
 # add a layer of abstraction
 @doc """
@@ -184,6 +187,7 @@ abstract FaceElementIntegralType
 # this allows them to have different methods for different dimension equations.
 
 include("types.jl")  # type definitions
+include("functionals.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("euler_macros.jl")
 include("common_funcs.jl")
@@ -199,7 +203,7 @@ include("flux.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
 include("boundary_functional.jl")
-include("adjoint.jl")
+include("functional_deriv.jl")
 include("source.jl")
 include("PressureMod.jl")
 include("entropy_flux.jl")
@@ -211,230 +215,21 @@ include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
 
+# Jacobian calculation
+include("evalJacobian.jl")
+include("euler_funcs_diff.jl")
+include("flux_diff.jl")
+include("bc_solvers_diff.jl")
+include("bc_diff.jl")
+include("homotopy_diff.jl")
+
+
 """
   This physics is named `Euler`
 """
 global const PhysicsName = "Euler"
 
-register_physics(PhysicsName, EulerEquationMod, run_euler)
+register_physics(PhysicsName, EulerEquationMod, createObjects, checkOptions)
 
-@doc """
-### EulerEquationMod.PressureData
-
-Subtype of AbstractOptimizationData. Stores all the information relevant to computing
-an objective function pertaining to pressure coefficeint
-
-**Members**
-
-*  `targetCp_arr` : An array of arrays that stores the target coefficient of
-                    pressure. length(targetCp_arr) = number of geometric edges
-                    over which the functional is being computed. Each sub array
-                    has dimensions (sbpface.numnodes, nfaces) *(from calcBoundarFlux
-                    in bc.jl)*
-*  `nodal_info` : 1D array of indices for one node needed to acces `targetCp_arr`
-                  at a particular data point.
-                  nodal_info[1] = geometric edge number
-                  nodal_info[2] = sbpface node number
-                  nodal_info[3] = element face number on the geometric edge
-
-"""->
-type PressureData{Tpress} <: AbstractOptimizationData
-  targetCp_arr::Array{Array{Tpress,2},1}
-
-  function PressureData(mesh::AbstractMesh, g_edges::AbstractArray{Int,1},
-                        nface_arr::AbstractArray{Int,1})
-
-    targetCp_arr = Array(Array{Tpress,2},length(g_edges))
-    for i = 1:length(g_edges)
-      targetCp_arr[i] = zeros(Tpress, mesh.sbpface.numnodes, nface_arr[i])
-    end
-
-    return new(targetCp_arr)
-
-  end # End inner constructor
-end   # End type PressureData
-
-@doc """
-### EulerEquationMod.LiftData
-
-Subtype of AbstractOptimizationData. Stores all the information relevant to computing
-an objective function pertaining to lift. Presently its an empty type
-"""->
-
-type LiftData{Topt} <: AbstractOptimizationData
-  target_lift::Topt
-  function LiftData()
-    target_lift = zero(Topt)
-    return new(target_lift)
-  end
-end
-
-@doc """
-### EulerEquationMod.DragData
-
-Subtype of AbstractOptimizationData. Stores all the information relevant to
-computing an objective function pertaining to drag. Presently its an empty type
-
-"""->
-
-type DragData{Topt} <: AbstractOptimizationData
-  target_drag::Topt
-  function DragData()
-    target_drag = zero(Topt)
-    return new(target_drag)
-  end
-end
-
-@doc """
-###EulerEquationMod.createObjectiveFunctionalData
-
-Function for create an object for functional and adjoint computation where the
-functional is an objective function in an optimization.
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Euler equation object
-* `opts` : Options dictionary
-
-"""->
-function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                             eqn::EulerData{Tsol}, opts)
-
-  functional_faces = opts["geom_faces_objective"]
-
-  if opts["objective_function"] == "lift"
-    objective = BoundaryForceData{Tsol, :lift}(mesh, sbp, eqn, opts, functional_faces)
-    objective.is_objective_fn = true
-  elseif opts["objective_function"] == "drag"
-    objective = BoundaryForceData{Tsol, :drag}(mesh, sbp, eqn, opts, functional_faces)
-    objective.is_objective_fn = true
-  end # End if opts["objective_function"]
-
-  return objective
-end # End function createObjectiveFunctionalData(mesh, sbp, eqn, opts)
-
-@doc """
-###EulerEquationMod.createFunctionalData
-
-Creates an object for functional computation. This function needs to be called
-the same number of times as the number of functionals EXCLUDING the objective
-function are being computed
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Euler equation object
-* `opts` : Options dictionary
-* `functional_number` : Which functional object is being generated. Default = 1
-
-"""->
-
-function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                    eqn::EulerData{Tsol}, opts,
-                                    functional_number::Int=1)
-
-  dict_val = string("functional_name", functional_number)
-  key = string("geom_faces_functional", functional_number)
-  functional_faces = opts[key]
-
-  if opts[dict_val] == "lift"
-    functional = BoundaryForceData{Tsol, :lift}(mesh, sbp, eqn, opts, functional_faces)
-  elseif opts[dict_val] == "drag"
-    functional = BoundaryForceData{Tsol, :drag}(mesh, sbp, eqn, opts, functional_faces)
-  end
-
-  return functional
-end
-
-#=
-@doc """
-### EulerEquationMod.OptimizationData
-
-A composite data type with data types pertaining to all possible objective
-functions or boundary functionals. While dealing with an objective function,
-make sure to use the bool
-
-**Members**
-
-* `pressCoeff_obj` : data object for functional corresponding to pressure
-                     coefficients
-* `lift_obj`       : data object for functional lift
-* `drag_obj`       : data object for functional drag
-
-**Constructor**
-
-In order to perform optimization, a variable of type OptimizationData can be
-constructed as
-
-```
-objective = OptimizationData(mesh, sbp, opts)
-```
-
-"""->
-
-type OptimizationData{Topt} <: AbstractOptimizationData
-
-  is_objective_fn::Bool
-  ndof::Int
-  val::Topt
-  pressCoeff_obj::PressureData{Topt} # Objective function related to pressure coeff
-  lift_obj::LiftData{Topt} # Objective function is lift
-  drag_obj::DragData{Topt} # Objective function is drag
-  force_obj::BoundaryForceData{Topt} # Objective function is boundaryForce
-
-  function OptimizationData(mesh::AbstractMesh, sbp::AbstractSBP, opts)
-
-    functional = new()
-    functional.val = zero(Topt)
-
-    for i = 1:opts["num_functionals"]
-      dict_val = string("functional_name", i)
-
-      if opts[dict_val] == "targetCp" || opts["objective_function"] == "targetCp"
-
-        if opts["objective_function"] == "targetCp"
-          functional.is_objective_fn = true
-        else
-          functional.is_objective_fn = false
-        end
-        g_edges = opts[string("geom_edges_functional", i)]
-        nface_arr = zeros(Int, length(g_edges))
-        for j = 1:length(nface_arr)
-          nface_arr[j] = getnFaces(mesh, g_edges[j])
-        end
-        functional.pressCoeff_obj = PressureData{Topt}(mesh, g_edges, nface_arr)
-        functional.ndof = 1
-
-      elseif opts[dict_val] == "lift" || opts["objective_function"] == "lift"
-
-        if opts["objective_function"] == "lift"
-          functional.is_objective_fn = true
-        else
-          functional.is_objective_fn = false
-        end
-        functional.lift_obj = LiftData{Topt}()
-        functional.dof = 1
-
-      elseif opts[dict_val] == "drag" || opts["objective_function"] == "drag"
-
-        if opts["objective_function"] == "drag"
-          functional.is_objective_fn = true
-        else
-          functional.is_objective_fn = false
-        end
-        functional.drag_obj = DragData{Topt}()
-        functional.ndof = 1
-
-
-      end # End if
-    end   # End for i = 1:opts["num_functionals"]
-
-    return functional
-  end  # End inner constructor
-end    # End OptimizationData
-=#
 
 end # end module

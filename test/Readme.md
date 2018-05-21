@@ -73,6 +73,8 @@ are run).
 The list of currently defined tags can be found in `./tags.jl`
 Note that the serial tests must  be run before the parallel tests.
 All test must have one of `LengthTags` associated with them.
+Any test that takes less than 60 seconds to run should be specified as a
+TAG_SHORTTEST, otherwise TAG_LONGTEST.
 
 ## Adding Tests
 Each physics module maintains a `TestSet` object which contains a list of
@@ -81,6 +83,7 @@ the required tags.  TestSet.jl provides an API for adding tests to the list.
 
 All tests must be enclosed in functions.  These functions must fit into
 one of three catagories:
+
   1. zero argument functions
   2. functions that take the arguments `(mesh, sbp, eqn, opts)` as produced by
      an input file which already exists

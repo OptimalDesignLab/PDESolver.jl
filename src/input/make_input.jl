@@ -13,8 +13,13 @@ using ODLCommonTools
 """
 function make_input(dict::Dict, fname::AbstractString)
 
-  fname_ex = string(fname, ".jl")
-  rmfile(fname_ex)  
+  # add extension if not already present
+  if !endswith(fname, ".jl")
+    fname_ex = string(fname, ".jl")
+    rmfile(fname_ex)
+  else
+    fname_ex = fname
+  end
 
   f = open(fname_ex, "w")
 

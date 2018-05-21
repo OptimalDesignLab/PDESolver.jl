@@ -1,5 +1,6 @@
 # Calculate boundary "forces" in advection
-export evalFunctional, calcBndryfunctional, getFunctionalName
+
+import PDESolver.evalFunctional
 
 @doc """
 ### AdvectionEquationMod.evalFunctional
@@ -13,34 +14,29 @@ mid level type specific function for the actual functional evaluation.
 
 *  `mesh` :  Abstract mesh object
 *  `sbp`  : Summation-By-Parts operator
-*  `eqn`  : Euler equation object
+*  `eqn`  : Advection equation object
 *  `opts` : Options dictionary
 *  `functionalData` : Object of the functional being computed.
-*  `functional_number` : Optional argument. This needs to be specified for all
-                         non-objective functionals being computed, if there are
-                         more than 1 of them. Default = 1
-
 """->
 function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
-                        functionalData::AbstractOptimizationData;
-                        functional_number::Int=1)
-
+                        functionalData::AbstractFunctional)
+#=
   if opts["parallel_type"] == 1
 
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
 
   end
-
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+=#
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
-  return nothing
+  return functionalData.val
 end
 
 
@@ -126,9 +122,10 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
 end
 =#
 
-function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP,
                             eqn::AdvectionData{Tsol}, opts,
-                            functionalData::QfluxData{Topt})
+                            functionalData::AbstractIntegralFunctional{Topt})
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary
@@ -140,29 +137,21 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
   alpha_x = eqn.params.alpha_x
   alpha_y = eqn.params.alpha_y
 
-  functional_edges = functionalData.geom_faces_functional
-  for itr = 1:length(functional_edges)
-    g_edge_number = functional_edges[itr] # Extract geometric edge number
+  for itr = 1:length(functionalData.bcnums)
+    bcnum = functionalData.bcnums[itr]
 
-    # get the boundary array associated with the geometric edge
-    itr2 = 0
-    for itr2 = 1:mesh.numBC
-      if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-        break
-      end
-    end
-
-    start_index = mesh.bndry_offsets[itr2]
-    end_index = mesh.bndry_offsets[itr2+1]
+    start_index = mesh.bndry_offsets[bcnum]
+    end_index = mesh.bndry_offsets[bcnum+1]
     idx_range = start_index:(end_index-1)
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
+
 
     nfaces = length(bndry_facenums)
     boundary_integrand = zeros(Tsol, 1, mesh.sbpface.numnodes, nfaces)
 
     for i = 1:nfaces
-      bndry_i = bndry_facenums[i]
       global_facenum = idx_range[i]
+      
       for j = 1:mesh.sbpface.numnodes
         q = eqn.q_bndry[ 1, j, global_facenum]
         coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
@@ -181,7 +170,7 @@ function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},sbp::A
     # Add contributions of multiple geometric edges to the final functional value
     local_functional_val += val_per_geom_edge[1]
 
-  end   # End for itr = 1:length(functional_edges)
+  end  # end loop itr
 
   functionalData.val = MPI.Allreduce(local_functional_val, MPI.SUM, eqn.comm)
 
@@ -220,50 +209,15 @@ function calcBoundaryFunctionalIntegrand(params::ParamType2, nx, ny, q,
   return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
 end
 
+"""
+  Method for [`IntegralQData`](@ref) functional.
 
-#=
-type qflux <: FunctionalType
+  Note that q should be scaled by the length of the normal vector so the
+  integration works correctly
+"""
+function calcBoundaryFunctionalIntegrand(params::ParamType2, nx, ny, q,
+                                         functionalData::IntegralQData)
+
+  fac = sqrt(nx*nx + ny*ny)
+  return q*fac
 end
-
-function call(obj::qflux, params::ParamType2, nx, ny, q,
-              functionalData::AbstractOptimizationData)
-
-  alpha_x = params.alpha_x
-  alpha_y = params.alpha_y
-  return functional_integrand = (alpha_x*nx + alpha_y*ny)*q
-end
-
-@doc """
-### AdvectionEquationMod.FunctionalDict
-
-It stores the names of all possible functional options that can be computed.
-Whenever a new functional is created, it should be added to FunctionalDict.
-
-"""->
-global const FunctionalDict = Dict{ASCIIString, FunctionalType} (
-"qflux" => qflux(),
-)
-
-@doc """
-### AdvectionEquationMod.getFunctionalName
-
-Gets the name of the functional that needs to be computed at a particular point
-
-**Inputs**
-
-*  `opts`     : Input dictionary
-*  `f_number` : Number of the functional in the input dictionary
-
-**Outputs**
-
-*  `functional` : Returns the functional name in the dictionary
-
-"""->
-function getFunctionalName(opts, f_number)
-
-  key = string("functional_name", f_number)
-  val = opts[key]
-
-  return functional = FunctionalDict[val]
-end
-=#

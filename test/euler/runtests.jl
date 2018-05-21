@@ -10,16 +10,15 @@ using PDESolver
 using PdePumiInterface  # common mesh interface - pumi
 using EulerEquationMod
 using ForwardDiff
+using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
+using OptimizationInterface
 using ArrayViews
 using EulerEquationMod
 using Utils
 using MPI
 using Input
-
-if !MPI.Initialized()
-  MPI.Init()
-end
+using PETSc2
 
 #------------------------------------------------------------------------------
 # define tests and tags
@@ -43,7 +42,8 @@ include("test_dg.jl")
 include("test_GLS3.jl")
 include("test_modes.jl")
 include("test_3d.jl")
-
+include("test_bc.jl")
+include("test_jac.jl")
 include("test_adjoint.jl")
 include("test_reversemode.jl")
 include("test_flux.jl")
@@ -70,23 +70,11 @@ facts("----- Running Euler tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(EulerTests, run_euler, tags)
+  run_testlist(EulerTests, solvePDE, tags)
 end
 
 
 #------------------------------------------------------------------------------
 # cleanup
-
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-
-
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
-end
 
 FactCheck.exitstatus()

@@ -4,7 +4,7 @@
 module TestSystem
 using Input
 
-global const TAG_DEFAULT = "default_tag"  # tag that every function must have
+global const TAG_DEFAULT = "tag_default"  # tag that every function must have
 include("tags.jl")
 
 global const EmptyDict = Dict{Any, Any}()

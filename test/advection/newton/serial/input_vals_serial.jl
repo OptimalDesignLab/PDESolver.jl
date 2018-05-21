@@ -1,4 +1,5 @@
 arg_dict = Dict{ASCIIString,Any}(
+"physics" => "Advection",
 "write_boundarynums" => false,
 "krylov_itermax" => 1000,
 "BC1" => [0,1,2,3],
@@ -95,7 +96,6 @@ arg_dict = Dict{ASCIIString,Any}(
 "jac_method" => 2,
 "use_DG" => true,
 "calc_havg" => false,
-"recalc_prec_freq" => 1,
 "mesh_size" => 1.0,
 "check_density" => true,
 "write_qic" => false,
@@ -108,7 +108,7 @@ arg_dict = Dict{ASCIIString,Any}(
 "write_sol" => false,
 "write_interfaces" => false,
 "write_finalresidual" => false,
-"finalize_mpi" => false,
+
 "write_edge_vertnums" => false,
 "vortex_strength" => 1.0,
 "exact_soln_func" => "ICp5",

@@ -11,7 +11,8 @@ function test_reversemode()
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_vortex_reversemode.jl"
-  include("../../src/solver/euler/startup.jl")
+  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#  include("../../src/solver/euler/startup.jl")
   Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 
 
@@ -133,7 +134,7 @@ function test_reversemode()
   facts("--- Testing Boundary Functional In Reverse Mode ---") do
 
     # Create functional object
-    drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = createFunctional(mesh, sbp, eqn, opts, 2)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
 
     context("Checking Boundary Functional Integrand w.r.t nrm") do
@@ -198,20 +199,14 @@ function test_reversemode()
       local_functional_val = zeros(Complex128, drag.ndof) # Local processor share
       bndry_force = drag.bndry_force
       fill!(bndry_force, 0.0)
-      functional_faces = drag.geom_faces_functional
+      functional_bcs = drag.bcnums
       phys_nrm = zeros(Complex128, mesh.dim)
 
       # Get bndry_offsets for the functional edge concerned
-      for itr = 1:length(functional_faces)
-        g_edge_number = functional_faces[itr] # Extract geometric edge number
-        itr2 = 0
-        for itr2 = 1:mesh.numBC
-          if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-            break
-          end
-        end
-        start_index = mesh.bndry_offsets[itr2]
-        end_index = mesh.bndry_offsets[itr2+1]
+      for itr = 1:length(functional_bcs)
+        bcnum = functional_bcs[itr]
+        start_index = mesh.bndry_offsets[bcnum]
+        end_index = mesh.bndry_offsets[bcnum+1]
         idx_range = start_index:(end_index-1)
         bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
         nfaces = length(bndry_facenums)
@@ -246,20 +241,14 @@ function test_reversemode()
       local_functional_val = zeros(Complex128, drag.ndof) # Local processor share
       bndry_force = drag.bndry_force
       fill!(bndry_force, 0.0)
-      functional_faces = drag.geom_faces_functional
+      functional_bcs = drag.bcnums
       phys_nrm = zeros(Complex128, 2)
 
       # Get bndry_offsets for the functional edge concerned
-      for itr = 1:length(functional_faces)
-        g_edge_number = functional_faces[itr] # Extract geometric edge number
-        itr2 = 0
-        for itr2 = 1:mesh.numBC
-          if findfirst(mesh.bndry_geo_nums[itr2],g_edge_number) > 0
-            break
-          end
-        end
-        start_index = mesh.bndry_offsets[itr2]
-        end_index = mesh.bndry_offsets[itr2+1]
+      for itr = 1:length(functional_bcs)
+        bcnum = functional_bcs[itr]
+        start_index = mesh.bndry_offsets[bcnum]
+        end_index = mesh.bndry_offsets[bcnum+1]
         idx_range = start_index:(end_index-1)
         bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
         nfaces = length(bndry_facenums)
@@ -306,7 +295,11 @@ function test_reversemode()
             nrm2_bar)
     for k = 1:length(nrm2)
       nrm2[k] += pert
-      EulerEquationMod.calcSAT(eqn.params, nrm2, q, sat, u, v, H)
+      roe_vars = eqn.params.roe_vars
+      roe_vars[1] = u
+      roe_vars[2] = v
+      roe_vars[3] = H
+      EulerEquationMod.calcSAT(eqn.params, roe_vars, q, nrm2, sat)
       dSat = imag(sat[:])/imag(pert)
       complex_valbar_SAT = dot(psi, dSat)
       nrm2[k] -= pert

@@ -3,6 +3,7 @@
 
 export crank_nicolson, cnResidual
 
+#TODO: stop doing this
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
@@ -49,12 +50,16 @@ crank_nicolson
 
    For physics modules, ctx should be (mesh, sbp, eqn) and q_vec and res_vec 
    should be eqn.q_vec and eqn.res_vec.
+
+   This function supported jacobian/preconditioner freezing with the prefix
+   "CN", with the default setting to never recalculate either.  newtonInner
+   will use its recalculation policy to recalculate the PC and jacobian.
 """->
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
 
-  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
+  myrank = eqn.myrank
   if myrank == 0
     println(BSTDOUT, "\nEntered Crank-Nicolson")
     println(BSTDOUT, "res_tol = ", res_tol)
@@ -74,9 +79,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   ncheckpoints = opts["ncheckpoints"]::Int
 
 
-  if jac_type == 4
-    throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
-  end
+#  if jac_type == 4
+#    throw(ErrorException("CN not implemented for matrix-free ops. (jac_type cannot be 4)"))
+#  end
 
   @mpi_master if myrank == 0
     _f1 = open("convergence.dat", "a")
@@ -92,8 +97,10 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # TODO: copyForMultistage! does not give correct values.
   #     deepcopy works for now, but uses more memory than copyForMultistage!, if it worked
   # eqn_nextstep = copyForMultistage!(eqn)
-  eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  eqn_nextstep.q = reshape(eqn_nextstep.q_vec, mesh.numDofPerNode,
+                           mesh.numNodesPerElement, mesh.numEl)
+  eqn_nextstep.res = reshape(eqn_nextstep.res_vec, mesh.numDofPerNode,
+                             mesh.numNodesPerElement, mesh.numEl)
 
   @debug1 println("============ In CN ============")
 
@@ -103,7 +110,13 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
-  newton_data, jac, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, f)
+
+  # NOTE: eqn_nextstep changed to eqn 20161013
+  pc, lo = getCNPCandLO(mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+  newton_data, rhs_vec = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
+  newton_data.itermax = 30
+  recalc_policy = getRecalculationPolicy(opts, "CN")
 
   # this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
@@ -113,26 +126,33 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
-    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
-      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
-      skip_checkpoint = false
-      # save all needed variables to the chkpointdata
-      chkpointdata.i = i
+    if use_checkpointing && i % chkpoint_freq == 0
+      if skip_checkpoint
+        skip_checkpoint = false
+      else
+        @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+        skip_checkpoint = false
+        # save all needed variables to the chkpointdata
+        chkpointdata.i = i
 
-      if countFreeCheckpoints(chkpointer) == 0
-        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
-      end
-      
-      # save the checkpoint
-      saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)
-    end
+        if countFreeCheckpoints(chkpointer) == 0
+          freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+        end
 
+        # save the checkpoint
+        saveNextFreeCheckpoint(chkpointer, mesh, sbp, eqn, opts, chkpointdata)
+      end   # end of if skip_checkpoint check
+    end   # end of if use_checkpointing check
 
+#=
     #----------------------------
     # zero out Jac
     #   this works for both PETSc and Julia matrices.
     #   when jac is a Julia matrix, this is effectively wrapping: fill!(jac, 0.0)
-    PetscMatZeroEntries(jac)
+    if jac_type != 4
+      MatZeroEntries(jac)
+    end
+=#
 
     # TODO: Allow for some kind of stage loop: ES-Dirk
 
@@ -141,22 +161,26 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
-    # NOTE: eqn_nextstep changed to eqn 20161013
-    ctx_residual = (f, eqn, h, newton_data)
-
     t_nextstep = t + h
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
     if opts["cleansheet_CN_newton"]
-      cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t)
+      cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t_nextstep)
     else
-      newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, cnJac, 
-                  jac, rhs_vec, ctx_residual, t, itermax=30, step_tol=opts["step_tol"], 
-                  res_abstol=opts["res_abstol"], res_reltol=opts["res_reltol"],                   res_reltol0=opts["res_reltol0"])
+
+      ctx_residual = (f, eqn, h, newton_data)
+
+      # recalculate PC and LO if needed
+      doRecalculation(recalc_policy, i,
+                    ls, mesh, sbp, eqn_nextstep, opts, ctx_residual, t_nextstep)
+
+
+      newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
+                  rhs_vec, ctx_residual, t_nextstep)
     end
 
     # do the callback using the current eqn object at time t
-    eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, STDOUT)
+    eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
 
     # need to assemble solution into res_vec?
     res_norm = calcNorm(eqn, eqn.res_vec)
@@ -171,7 +195,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     # check stopping conditions
-    if (res_norm < res_tol)
+    if (res_norm < res_tol)  # ???
       if myrank == 0
         println(BSTDOUT, "breaking due to res_tol, res norm = $res_norm")
         close(f1)
@@ -217,10 +241,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   copyForMultistage!(eqn, eqn_nextstep)
 
 
-  if jac_type == 3
-    # contents of ctx_newton: (jacp, x, b, ksp)
-    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
-  end
+  #TODO: return the NewtonData?
+  free(newton_data)
 
   @debug1 println("============= end of CN: t = $t ===============")
   return t
@@ -229,86 +251,317 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end   # end of crank_nicolson function
 
-@doc """
-###NonlinearSolvers.cnJac
+"""
+  Construct CN preconditioner and linear operator based on options dictionary
 
-  Jac of the CN calculation.
-  Effectively a wrapper for physicsJac, because the CN Jac is:
-    CN_Jac = I + dt/2 * physicsJac
+  **Inputs**
 
-  ctx:    
-    physics func must be the first element, i.e. evalEuler
-    eqn_nextstep must be the second element
-    h must be the third element
-    newton_data must be the fourth element
-"""->
-function cnJac(newton_data, mesh::AbstractMesh, sbp::AbstractSBP,
-               eqn_nextstep::AbstractSolutionData, opts, jac, ctx, t)
-
-  myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-
-  physics_func = ctx[1]
-  # NOTE: eqn instead of eqn_nextstep, 20161013
-  eqn = ctx[2]
-  h = ctx[3]
-  newton_data = ctx[4]
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function getCNPCandLO(mesh, sbp, eqn, opts)
 
   jac_type = opts["jac_type"]
 
-  t_nextstep = t + h
-
-  # Forming the CN Jacobian:
-  #   call physicsJac with eqn_nextstep & t_nextstep
-  #   then form CN_Jac = I + dt/2 * physics_Jac
-
-  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
-
-  # need to flush assembly cache before performing the scale operation.
-  #   These are defined for Julia matrices; they're just noops
-  PetscMatAssemblyBegin(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
-  PetscMatAssemblyEnd(jac, PETSc.PETSC_MAT_FINAL_ASSEMBLY)
-
-  #--------------------------
-  # applying dt/2 to jac
-  # Jacobian is always 2D
-  scale_factor = h*-0.5
-  # make this into a petsc_scale_factor
-  petsc_scale_factor = PetscScalar(scale_factor)
-
-  # PetscMatScale is defined for all jac types, PETSc and Julia
-  # when jac is julia array, this effectively does: scale!(jac, scale_factor)
-  PetscMatScale(jac, petsc_scale_factor)
-
-  # PetscMatAssembly___ not necessary here; PetscMatScale is provably local so it doesn't cache its stuff
-
-  #--------------------------
-  # adding identity
-  ix_petsc_row = zeros(PetscInt, 1)
-  ix_petsc_col = zeros(PetscInt, 1)
-  value_to_add = zeros(PetscScalar, 1, 1)
-  value_to_add[1,1] = 1.0
-  flag = PETSc.PETSC_ADD_VALUES
-
-  for i = 1:mesh.numDof
-    ix_petsc_row[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
-    ix_petsc_col[1,1] = i + mesh.dof_offset       # jac diag index + local to global offset
-
-    # PETSc function: set_values1!(Jac, [2], [2], Jac[2,2] + 1)
-    # args: array, row (as an array of len 1), col (as an array of len 1), new values (as a 2D array of len 1)
-    #   set_values1! has different methods for both PETSc matrices and Julia matrices
-    #   for Julia dense & sparse arrays, set_values1! effectively does this: jac[i,i] += 1
-    #   in serial, mesh.dof_offset is set to 0 automatically
-    set_values1!(jac, ix_petsc_row, ix_petsc_col, value_to_add, flag)
+  if jac_type <= 2
+    pc = PCNone(mesh, sbp, eqn, opts)
+  elseif opts["use_volume_preconditioner"]
+    pc = CNVolumePC(mesh, sbp, eqn, opts)
+  else
+    pc = CNMatPC(mesh, sbp, eqn, opts)
   end
 
-  # set_values1! only caches the results; need to be assembled. This happens in petscSolve in petsc_funcs.jl
-  #   (The assemble funcs are defined for Julia matrices; they're just noops)
+  if jac_type == 1
+    lo = CNDenseLO(pc, mesh, sbp, eqn, opts)
+  elseif jac_type == 2
+    lo = CNSparseDirectLO(pc, mesh, sbp, eqn, opts)
+  elseif jac_type == 3
+    lo = CNPetscMatLO(pc, mesh, sbp, eqn, opts)
+  elseif jac_type == 4
+    lo = CNPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+  end
 
-  # jac is now I + dt/2 * physics_jac
+  return pc, lo
+end
+#------------------------------------------------------------------------------
+# Regular (matrix-based) PC
+
+type CNMatPC <: AbstractPetscMatPC
+  pc_inner::NewtonMatPC
+end
+
+function CNMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+                    eqn::AbstractSolutionData, opts::Dict)
+
+  pc_inner = NewtonMatPC(mesh, sbp, eqn, opts)
+
+  return CNMatPC(pc_inner)
+end
+
+function calcPC(pc::CNMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  calcPC(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  modifyJacCN(pc, mesh, sbp, eqn, opts, ctx_residual, t)
 
   return nothing
-
 end
+
+
+#------------------------------------------------------------------------------
+# Volume preconditioner
+
+"""
+  Volume integral jacobian preconditioner for CN.
+
+"""
+type CNVolumePC <: AbstractPetscMatFreePC
+  pc_inner::PetscMatFreePC
+  other_pc::NewtonVolumePC
+end  # end type definition
+
+function CNVolumePC(mesh::AbstractMesh, sbp,
+                              eqn::AbstractSolutionData, opts)
+
+  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
+  other_pc = NewtonVolumePC(mesh, sbp, eqn, opts)
+
+  return CNVolumePC(pc_inner, other_pc)
+end
+
+function calcPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+# eqn should be eqn_nextstep from the CN function
+
+  cnCalcVolumePreconditioner(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  factorVolumePreconditioner(pc, mesh, sbp, eqn, opts)
+
+  # this needs to come last (because calcVolumePreconditioner calls it too)
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  return nothing
+end
+
+function applyPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
+
+  applyVolumePreconditioner(pc.other_pc, mesh, sbp, eqn, opts, b, x)
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# Linear operators
+
+#TODO: make a macro to generate these definitions
+
+type CNDenseLO <: AbstractDenseLO
+  lo_inner::NewtonDenseLO
+end
+
+function CNDenseLO(pc::PCNone, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
+
+  return CNDenseLO(lo_inner)
+end
+
+type CNSparseDirectLO <: AbstractSparseDirectLO
+  lo_inner::NewtonSparseDirectLO
+end
+
+function CNSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)
+
+  return CNSparseDirectLO(lo_inner)
+end
+
+
+type CNPetscMatLO <: AbstractPetscMatLO
+  lo_inner::NewtonPetscMatLO
+end
+
+function CNPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonPetscMatLO(pc, mesh, sbp, eqn, opts)
+
+  return CNPetscMatLO(lo_inner)
+end
+
+"""
+  All CN LOs that have matrices
+"""
+typealias CNMatLO Union{CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
+
+
+function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  return nothing
+end
+
+
+# matrix-free
+type CNPetscMatFreeLO <: AbstractPetscMatFreeLO
+  lo_inner::NewtonPetscMatFreeLO
+end
+
+function CNPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
+                      sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+
+  return CNPetscMatFreeLO(lo_inner, rhs_func)
+end
+
+"""
+  Any PC or LO that has a matrix in the field `A`
+"""
+typealias CNHasMat Union{CNMatPC, CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
+
+
+function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+  
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  return nothing
+end
+
+function applyLinearOperator{Tsol}(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
+
+  h = ctx[3]
+  # the CN residual has the form: I - 0.5*delta_t*jac, where jac is the physics
+  # Jacobian.
+  # thus a matrix vector product is: v - 0.5*delta_t*jac*v
+  applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+
+  scale!(b, -0.5*h)
+  @simd for i=1:length(b)
+    b[i] += x[i]
+  end
+
+  return nothing
+end
+
+function applyLinearOperatorTranspose{Tsol}(lo::CNPetscMatFreeLO,
+                             mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
+
+  # see the non-transpose method for an explanation of the math
+
+  h = ctx[3]
+  applyLinearOperatorTranspose(lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+
+  scale!(b, -0.5*h)
+  @simd for i=1:length(b)
+    b[i] += x[i]
+  end
+
+  return nothing
+end
+
+
+
+"""
+  Takes the Jacobian of the physics and modifies it to be the Crank-Nicolson
+  Jacobian.
+
+  CN_Jac = I - dt/2 * physicsJac
+
+
+  **Inputs**
+
+   * lo: a CNHasMat
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * ctx_residual: delta_t must be the 3rd element
+   * t
+"""
+function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
+
+
+  lo2 = getBaseLO(lo)
+  h = ctx_residual[3]
+
+  assembly_begin(lo2.A, MAT_FINAL_ASSEMBLY)
+  assembly_end(lo2.A, MAT_FINAL_ASSEMBLY)
+
+  # scale jac by -delta_t/2
+#  scale_factor = h*-0.5
+  petsc_scale_factor = PetscScalar(-h*0.5)
+  scale!(lo2.A, petsc_scale_factor)
+
+  # add the identity
+  diagonal_shift!(lo2.A, 1)
+
+  return nothing
+end
+
+
+"""
+  This function uses [`calcVolumePreconditioner`](@ref) to compute a
+  a preconditioner for the matrix used by Crank-Nicolson.  This function
+  has the same signature as [`cnJac`](@ref) to facilitate matrix-free
+  operations.
+"""
+function cnCalcVolumePreconditioner(pc::CNVolumePC, mesh::AbstractDGMesh,
+               sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts,
+               ctx_residual, t)
+  #TODO: is this ctx_residual?
+  physics_func = ctx[1]
+#  eqn = ctx[2]
+  h = ctx[3]
+
+  epsilon = opts["epsilon"]
+  pert = Complex128(0, epsilon)
+
+  other_pc = pc.other_pc
+
+#  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
+  calcVolumePreconditioner(other_pc, mesh, sbp, eqn_nextstep, opts, pert, 
+                           physics_func, t)
+
+  volume_prec = other_pc.vol_prec
+  scale!(other_pc.volume_jac, -0.5*h)
+
+  # add the identity matrix
+  jac_size = mesh.numDofPerNode*mesh.numNodesPerElement
+
+  for i=1:mesh.numEl
+    for j=1:jac_size
+      other_pc.volume_jac[j, j, i] += 1
+    end
+  end
+
+  return nothing
+end
+
+
+
 
 @doc """
 ###NonlinearSolvers.cnRhs
@@ -329,18 +582,29 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   eqn = ctx[2]
   h = ctx[3]
 
-  t_nextstep = t + h
+  # evalute residual at t_nextstep
+  # q_vec -> q
+  disassembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec)
 
-  # these two flipped 20161219
-  physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
-  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
+  # start parallel communication if needed
+  time = eqn.params.time
+  time.t_send += @elapsed if opts["parallel_type"] == 2 && mesh.npeers > 0
+    startSolutionExchange(mesh, sbp, eqn_nextstep, opts)
+  end
 
-  # TODO: can parallel_type != 2 and have CN work?
+
+  physics_func(mesh, sbp, eqn_nextstep, opts, t)
+  assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, 
+                   eqn_nextstep.res_vec)
+
+  # evalute residual at t - h
   if opts["parallel_type"] == 2 && mesh.npeers > 0
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
-  physics_func(mesh, sbp, eqn, opts, t)
+  physics_func(mesh, sbp, eqn, opts, t - h)
   assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  # compute rhs
 
   #   what this is doing:
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
@@ -356,7 +620,11 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   end
 
-  return nothing
+  # calculate the norm
+  rhs_0_norm = calcNorm(eqn, rhs_vec, strongres=true)
+
+
+  return rhs_0_norm
 
 end     # end of function cnRhs
 
@@ -370,7 +638,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
   # Jac on eqn or eqn_nextstep?
 
   epsilon = 1e-8
-  t_nextstep = t + h
+  t_prev = t - h
 
   jac = zeros(mesh.numDof, mesh.numDof)
 
@@ -391,7 +659,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     # emulates physicsJac
     unperturbed_q_vec = copy(eqn_nextstep.q_vec)
 
-    physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+    physics_func(mesh, sbp, eqn_nextstep, opts, t)
     # needed b/c physics_func only updates eqn.res
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
     # Comment here about mass matrix inv multiplication TODO
@@ -401,7 +669,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] = eqn_nextstep.q_vec[i] + epsilon
 
-      physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+      physics_func(mesh, sbp, eqn_nextstep, opts, t)
       assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
       applyMassMatrixInv(mesh, eqn, eqn_nextstep.res_vec)
 
@@ -434,7 +702,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
       rhs_vec[i] = eqn_nextstep.q_vec[i] - h*0.5*eqn_nextstep.res_vec[i] - eqn.q_vec[i] - h*0.5*eqn.res_vec[i]
     end
     =#
-    physics_func(mesh, sbp, eqn, opts, t)
+    physics_func(mesh, sbp, eqn, opts, t_prev)
     assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     applyMassMatrixInv(mesh, eqn, eqn.res_vec)
     current_t_step_contribution = zeros(eqn.q_vec)
@@ -452,7 +720,7 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 #     assembleSolution(mesh, sbp, eqn, opts, res_test, res_vec_test)
 #     println("=+=+=+ norm of diff btwn res_vec_test & res_vec_control: ", norm(res_vec_test - res_vec_control))
 
-    physics_func(mesh, sbp, eqn_nextstep, opts, t_nextstep)
+    physics_func(mesh, sbp, eqn_nextstep, opts, t)
     assembleSolution(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.res, eqn_nextstep.res_vec)
     applyMassMatrixInv(mesh, eqn_nextstep, eqn_nextstep.res_vec)
     next_t_step_contribution = zeros(eqn.q_vec)
@@ -495,6 +763,8 @@ function cnNewton(mesh, sbp, opts, h, physics_func, eqn, eqn_nextstep, t)
 
 end
 
+
+#TODO: why not use the versions in Utils?
 # TODO: comment here
 function applyMassMatrixInv(mesh, eqn, vec)
 

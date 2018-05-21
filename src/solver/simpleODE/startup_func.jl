@@ -1,6 +1,8 @@
 # startup file for simple ODE test problem:
 #   q = t^2 + x^2
 
+import PDESolver.solvePDE
+#=
 """
   This function invokes the solver for the simpleODE equation, using the
   specified input file
@@ -24,38 +26,31 @@ function run_simpleode(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
+=#
 
 """
   This function creates and initializes the mesh, sbp, eqn, and opts objects
 
-  Inputs:
-    file_name: input file name
+  **Inputs**
+    
+   * opts: options dictionary
 
-  Outputs:
-    mesh: an AbstractMesh.  The concrete type is determined by the options
+  **Outputs**
+
+   * mesh: an AbstractMesh.  The concrete type is determined by the options
           dictionary
-    sbp: an AbstractSBP.  The concrete type is determined by the options
+   * sbp: an AbstractSBP.  The concrete type is determined by the options
          dictionary
-    eqn: an EulerData object
-    opts: the options dictionary
-    pmesh: mesh used for preconditioning, can be same object as mesh
+   * eqn: an EulerData object
+   * opts: the options dictionary
+   * pmesh: mesh used for preconditioning, can be same object as mesh
 """
-function createObjects(input_file::AbstractString)
-
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
-  opts = read_input(input_file)
+function createObjects(opts::Dict)
 
   dim = opts["dimensions"]
   dofpernode = 1
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
-
-  println("\ntypeof(mesh) = ", typeof(mesh))
-  println("is subtype of DG mesh = ", typeof(mesh) <: AbstractDGMesh)
-  println("mesh.isDG = ", mesh.isDG)
 
   # Create a simpleODE equation object
   Tdim = dim
@@ -78,18 +73,20 @@ end
   Specifically, it applies an initial condition and invokes a nonlinear
   solver according to the options dictionary.
 
-  Inputs:
-    mesh: an AbstractMesh
-    sbp: an AbstractSBP
-    eqn: an AdvectionData
-    opts: the options dictionary.  This must be the options dictionary returned
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an AbstractSBP
+   * eqn: an AdvectionData
+   * opts: the options dictionary.  This must be the options dictionary returned
           by createObjects().  Changing values in the options dictionary after
           calling createObjects() results in undefined behavior.
-    pmesh: mesh used for preconditioning, can be same object as mesh.
+   * pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
 """
-function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP,
+                  eqn::SimpleODEData, opts::Dict, pmesh::AbstractMesh=mesh)
 
   # timestepping parameters
   delta_t = opts["delta_t"]
@@ -144,11 +141,11 @@ function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmes
 
     end
 
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     evalResidual(mesh, sbp, eqn, opts, eqn.params.t)
 
     eqn.res_vec[:] = 0.0
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     # printing solution and residual to file
     writedlm("solution_final.dat", real(eqn.q_vec))
@@ -164,9 +161,6 @@ function solve_simpleODE(mesh::AbstractMesh, sbp, eqn::SimpleODEData, opts, pmes
   end   # end of if opts["solve"]
 
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function

@@ -6,15 +6,15 @@ function test_convergence_p2_dg()
 
     cd("./m1")
     ARGS[1] = "input_vals_vortex3.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     ARGS[1] = "input_vals_vortex4.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("../m2")
     ARGS[1] = "input_vals_vortex3.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     ARGS[1] = "input_vals_vortex4.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
     include("calc_line.jl")

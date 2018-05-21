@@ -1,4 +1,4 @@
-# NonlinearSolvers Introduction
+# [NonlinearSolvers Introduction](@id sec:nonlinearsolvers)
 
 This module contains both the time-stepping methods and the methods for solving
 steady problems.
@@ -16,6 +16,8 @@ the final pages describe the Newton implementation used by them.
   Pages = [ "steady.md"
             "unsteady.md"
             "newton.md"
+            "jacobian.md"
+            "jac_recalc.md"
             "matrix.md"
             "newton_inner.md"
           ]

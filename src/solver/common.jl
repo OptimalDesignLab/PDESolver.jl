@@ -90,13 +90,22 @@ end
     Tsbp
     Tsol
     Tres
+
+  **Options Keys**
+
+   * run_type
+   * jac_method
+   * force_solution_complex
+   * force_mesh_complex
 """
 function getDataTypes(opts::Dict)
 
   flag = opts["run_type"]
-  if haskey(opts, "jac_method")
+  if haskey(opts, "jac_method")  #TODO: this should be handled in read_input()
     jac_method = opts["jac_method"]
   end
+
+  calc_jac_explicit = opts["calc_jac_explicit"]
 
   if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
     Tmsh = Float64
@@ -124,8 +133,14 @@ function getDataTypes(opts::Dict)
       # println("========== utils/initialization: flag 5, jac_method 2")
       Tmsh = Float64
       Tsbp = Float64
-      Tsol = Complex128
-      Tres = Complex128
+
+      if calc_jac_explicit
+        Tsol = Float64
+        Tres = Float64
+      else
+        Tsol = Complex128
+        Tres = Complex128
+      end
     else
       throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
     end
@@ -145,7 +160,11 @@ function getDataTypes(opts::Dict)
       # println("========== utils/initialization: flag 11, jac_method 2")
       Tmsh = Complex128
       Tsbp = Float64
-      Tsol = Complex128
+      if calc_jac_explicit
+        Tsol = Float64
+      else
+        Tsol = Complex128
+      end
       Tres = Complex128
     else
       throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
@@ -159,8 +178,13 @@ function getDataTypes(opts::Dict)
     elseif jac_method == 2 # Crank-Nicolson, CS Jac
       Tmsh = Float64
       Tsbp = Float64
-      Tsol = Complex128
-      Tres = Complex128
+      if calc_jac_explicit
+        Tsol = Float64
+        Tres = Float64
+      else
+        Tsol = Complex128
+        Tres = Complex128
+      end
     else
       throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
     end
@@ -182,6 +206,15 @@ function getDataTypes(opts::Dict)
     throw(ErrorException("Unrecognized run_type: $flag"))
   end
 
+  if opts["force_solution_complex"]
+    Tsol = Complex128
+    Tres = Complex128
+  end
+
+  if opts["force_mesh_complex"]
+    Tmsh = Complex128
+  end
+
   return Tmsh, Tsbp, Tsol, Tres
 end
 
@@ -191,23 +224,45 @@ end
   the shape_type that PumiInterface uses to describe the SBP operator to
   Pumi.
 
-  Inputs:
-    opts: the options dictionary
-    Tsbp: the DataType specifying the Tsbp passed to the SBP operator
+  **Inputs**
+
+   * opts: the options dictionary
+   * Tsbp: the DataType specifying the Tsbp passed to the SBP operator
           constructor
-    suffix: this suffix is added to all keys accessed in the options dictionary.
+   * suffix: this suffix is added to all keys accessed in the options dictionary.
             Usually the suffix is either the empty string or an integer.  This
             provides a convenient way for the input file to specify several
             different SBP operator and have this operator construct them.
             Default value is the empty string.
 
-  Outputs:
-    sbp: the SBP operator
-    sbpface: the SBP face operator
-    shape_type: an integer passed to the mesh constructor to describe the
-                operator
-    topo: in the 3D DG case, an ElementTopology describing the SBP reference
-          element, otherwise the integer 0.
+  **Outputs**
+
+   * sbp: the SBP operator
+   * sbpface: the SBP face operator
+   * shape_type: an integer passed to the mesh constructor to describe the
+                 operator
+   * topo: in the 3D DG case, an ElementTopology describing the SBP reference
+           element, otherwise the integer 0.
+
+  **DG Operator Names**
+
+   * SBPOmega: nodes on the interior of the element only
+   * SBPGamma: nodes on the faces of the element and the interior (similar
+               to Lagrange finite elements)
+   * SBPDiagonalE: operator with diagonal E matrix, with nodes on vertices,
+                   faces, and interior (similar to Lagrange FE)
+   * SBPDiagonalE2: operator with diagonal E matrix, with nodes on faces
+                    (but not vertices)
+   * SBPOmega2: attempt at optimized SBP Omega-type operators, probably not
+                working
+   * SBPOmega3: SBP Omega-type operator with degree 2p cubature rule for
+                all degree operators (p=1 and 2 are the same as SBPOmega),
+                unlike `SBPOmega2`, not optimized
+
+  **CG Operator Names**
+
+   * SBPGamma: see above, this operator can be used to CG as well
+
 """
 function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
   # construct SBP operator and figure out shape_type needed by Pumi
@@ -252,6 +307,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
         sbp = getTriSBPOmega2(degree=order, Tsbp=Tsbp)
       else
         throw(ArgumentError("3D SBPOmega2 not supported"))
+      end
+    elseif opts["operator_type$suffix"] == "SBPOmega3"
+      shape_type = 7
+      if dim == 2
+        sbp = getTriSBPOmega(degree=order, Tsbp=Tsbp)
+      else
+        throw(ArgumentError("3D SBPOmega3 not supported"))
       end
     else
       op_type = opts["operator_type$suffix"]
@@ -328,6 +390,10 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
 
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
+  # the mesh constructor looks at the order option, so temporarily make
+  # order = order$suffix
+  order_orig = opts["order"]
+  opts["order"] = opts["order$suffix"]
   order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
@@ -335,15 +401,19 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
   if opts["use_DG"]
     println("constructing DG mesh")
     if dim == 2
-      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
-                               dofpernode=dofpernode, 
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
+      mesh = PumiMeshDG2(Tmsh, sbp, opts, sbpface, dofpernode=dofpernode,
+                                                   shape_type=shape_type)
+#      mesh = PumiMeshDG2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface; 
+#                               dofpernode=dofpernode, 
+#                               coloring_distance=opts["coloring_distance"],
+#                               shape_type=shape_type)
     else
-      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
-                               topo; dofpernode=dofpernode,
-                               coloring_distance=opts["coloring_distance"],
-                               shape_type=shape_type)
+      mesh = PumiMeshDG3(Tmsh, sbp, opts, sbpface, topo, dofpernode=dofpernode,
+                                                   shape_type=shape_type)
+#      mesh = PumiMeshDG3{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface,
+#                               topo; dofpernode=dofpernode,
+#                               coloring_distance=opts["coloring_distance"],
+#                               shape_type=shape_type)
     end
 
     # create preconditioning mesh
@@ -376,6 +446,9 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
     end
   end  # end if DG
 
+
+  # reset order
+  opts["order"] = order_orig
 
   return mesh, pmesh
 end
@@ -468,9 +541,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       # dRdx here
 
     elseif flag == 4 || flag == 5 || flag == 11
-      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+      @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh)
 
       printSolution("newton_solution.dat", eqn.res_vec)
 
@@ -497,7 +568,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 10
       function test_pre_func(mesh, sbp, eqn, opts)
 
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       end
 
       function test_post_func(mesh, sbp, eqn, opts, calc_norm=true)
@@ -529,9 +600,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
-     @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh, itermax=opts["itermax"],
-                   step_tol=opts["step_tol"], res_abstol=opts["res_abstol"],
-                   res_reltol=opts["res_reltol"], res_reltol0=opts["res_reltol0"])
+     @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
@@ -628,7 +697,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     # evaluate residual at final q value
     need_res = true
     if need_res
-      eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       # this will make sure the t value is stored into the equation object
       # this is important for calculating error norms later, to make sure
       # they exact solution is calculated at the right time
@@ -636,7 +705,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       evalResidual(mesh, sbp, eqn, opts, t)
 
       eqn.res_vec[:] = 0.0
-      eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     end
 
     if opts["write_finalsolution"]
@@ -660,3 +729,4 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+

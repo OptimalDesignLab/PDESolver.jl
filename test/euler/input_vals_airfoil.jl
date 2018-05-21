@@ -1,4 +1,5 @@
 arg_dict = Dict{Any, Any}(
+"physics" => "Euler",
 "run_type" => 5,
 "jac_type" => 2,
 "jac_method" => 2,
@@ -37,10 +38,11 @@ arg_dict = Dict{Any, Any}(
 "output_freq" => 100000,
 "solve" => true,
 "do_postproc" => true,
+"force_solution_complex" => true,
 
-# Objective functional options
-"objective_function" => "lift",
-"geom_faces_objective" => [5],
+# functional options
+"functional_name1" => "lift",
+"functional_bcs1" => [2],
 
 "exact_soln_func" => "ICFreeStream",
 )

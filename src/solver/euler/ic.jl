@@ -279,8 +279,6 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-
-
 function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
                       operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
                       u0::AbstractVector{Tsol})
@@ -298,6 +296,39 @@ for i=1:numEl
       dofnums_j = sview(mesh.dofs, :, j, i)
  
       calcFreeStream(eqn.params, coords_j, sol)
+
+      for k=1:dofpernode
+        u0[dofnums_j[k]] = sol[k]
+      end
+
+  end
+end
+
+return nothing
+
+end  # end function
+
+"""
+  Like [`calcFreeStream`](@ref), but uses [`calcFreeStream0`](@ref) instead of
+  [`calcFreeStream`](@ref).
+"""
+function ICFreeStream0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                      operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                      u0::AbstractVector{Tsol})
+# populate u0 with initial values
+# this is a template for all other initial conditions
+
+
+numEl = mesh.numEl
+nnodes = mesh.numNodesPerElement
+dofpernode = mesh.numDofPerNode
+sol = zeros(Tsol, dofpernode)
+for i=1:numEl
+  for j=1:nnodes
+      coords_j = sview(mesh.coords, :, j, i)
+      dofnums_j = sview(mesh.dofs, :, j, i)
+ 
+      calcFreeStream0(eqn.params, coords_j, sol)
 
       for k=1:dofpernode
         u0[dofnums_j[k]] = sol[k]
@@ -659,7 +690,30 @@ return nothing
 
 end  # end function
 
+"""
+  Initial condition for SU2 bump in inviscid channel case.  See also
+  The subsonic inflow and subsonic outflow boundary conditions.
+"""
+function ICInvChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+                          opts, u0::AbstractArray{Tsol})
 
+  sol = zeros(Tsol, mesh.numDofPerNode)
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      dofnums_j = sview(mesh.dofs, :, j, i)
+      coords_j = sview(mesh.coords, :, j, i)
+      calcInvChannelIC(eqn.params, coords_j, sol)
+
+      for k=1:mesh.numDofPerNode
+        u0[dofnums_j[k]] = sol[k]
+      end
+    end
+  end
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.ICFile
@@ -880,6 +934,7 @@ global const ICDict = Dict{Any, Function}(
 "ICRho1E2U1VW0" => ICRho1E2U1VW0,
 "ICRho1E2U3" => ICRho1E2U3,
 "ICFreeStream" => ICFreeStream,
+"ICFreeStream0" => ICFreeStream0,
 "ICVortex" => ICVortex,
 #"ICLinear" => ICLinear,
 "ICsmoothHeavisideder" => ICsmoothHeavisideder,
@@ -888,6 +943,7 @@ global const ICDict = Dict{Any, Function}(
 "ICUnsteadyVortex" => ICUnsteadyVortex,
 "ICUnsteadyVortex2" => ICUnsteadyVortex2,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
+"ICInvChannel" => ICInvChannel,
 "ICFile" => ICFile,
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,

@@ -4,6 +4,7 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 arg_dict = Dict{Any, Any}(
+"physics" => "Euler",
 "run_type" => 1,
 "jac_type" => 3,
 "newton_globalize_euler" => true,

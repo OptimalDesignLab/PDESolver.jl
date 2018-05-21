@@ -5,6 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{Any, Any}(
+"physics" => "Advection",
 "run_type" => 5,
 # "jac_type" => 1,
 "jac_method" => 2,
@@ -43,12 +44,8 @@ arg_dict = Dict{Any, Any}(
 "num_functionals" => 1,
 "functional_name1" => "qflux",
 # "functional_error" => true,
-"geom_faces_functional1" => [1,2], # 0 based indexing for mesh edges
+"functional_bcs1" => [2,3],
 # "analytical_functional_val" => 3.0,
-
-# Compute the objective function
-"objective_function" => "qflux",
-"geom_faces_objective" => [1,2],
 
 # Compute adjoint vector
 "calc_adjoint" => false,

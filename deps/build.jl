@@ -39,9 +39,10 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [
               "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "new_parallel";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "curvilinear";
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "v0.3";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_v0.1";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "v0.7";
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.4"
               ]
 
 
@@ -79,56 +80,6 @@ function installPDESolver()
       install_pkg(pkgdir, pkg_name, git_url, git_commit, pkg_dict, f)
     end
   end
-
-
-  # now install PETSc
-  pkg_name = "PETSc"
-  git_url = petsc_git
-  already_installed = haskey(pkg_dict, pkg_name) 
-  force_specific = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_$pkg_name") 
-
-  if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS") && !already_installed  || force_specific  || FORCE_INSTALL_ALL
-    println(f, "Installing package $pkg_name")
-
-    try 
-      start_dir = pwd()
-      cd(pkgdir)
-      run(`git clone $petsc_git`)
-      run(`mv -v ./Petsc ./PETSc`)
-      Pkg.build("PETSc")
-      cd(start_dir)
-      println(f, "  Installation appears to have completed sucessfully")
-    catch x
-      println(f, "Error installing package $pkg_name")
-      println(f, "Error is $x")
-    end
-
-  elseif haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
-    println(f, "Bundling package PETSc")
-    start_dir = pwd()
-    try
-      cd(pkgdir )
-      println(f, "current directory is now ", pwd() )
-      run(`git clone $petsc_git`)
-      run(`mv -v ./Petsc ./PETSc`)
-      
-      cd("./PETSc/deps")
-      println(f, "pwd = ", pwd())
-      run(`./download.sh`)
-      println(f, "Bundling of package PETSc appears to have completed sucessfully")
-    catch x
-      print(f, "Bunding of backapge PETSc failed")
-      println(f, "Error is $x")
-    end
-    cd(start_dir)
-  elseif haskey(ENV, "PDESOLVER_UNBUNDLE_DEPS")
-    unbundle_pkg(pkgdir, pkg_name, f)
-  else
-    println(f, "bundle deps = ", haskey(ENV, "PDESOLVER_BUNDLE_DEPS"))
-    println(f, "Skipping installation of package $pkg_name")
-    println(f, "  already installed: ", already_installed, ", specifically forced: ", force_specific, ", force general: ", FORCE_INSTALL_ALL)
-  end
-
 
   println(f, "\n---Finished installing non METADATA packages---\n")
   #------------------------------------------------------------------------------

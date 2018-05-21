@@ -39,12 +39,8 @@ arg_dict = Dict{ASCIIString, Any}(
 # "functional_error" => true,
 "num_functionals" => 1,
 "functional_name1" => "lift",
-"geom_faces_functional1" => [3],
+"functional_bcs1" => [4],
 # "analytical_functional_val" => -1/1.4,
-
-# Objective Functional computation keys
-"objective_function" => "drag",
-"geom_faces_objective" => [3],
 
 # Adjoint computation keys
 "calc_adjoint" => false,
@@ -60,5 +56,6 @@ arg_dict = Dict{ASCIIString, Any}(
 "output_freq" => 1,
 "solve" => true,
 "do_postproc" => true,
-"exact_soln_func" => "ICIsentropicVortex"
+"exact_soln_func" => "ICIsentropicVortex",
+"calc_jac_explicit" => false
 )

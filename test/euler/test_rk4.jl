@@ -22,7 +22,7 @@ end
 """
 function test_rk4()
     facts("----- testing rk4 -----") do
-    opts_rk = Dict{Any, Any}("run_type" => 1, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
+    opts_rk = Dict{Any, Any}("physics" => "Euler", "run_type" => 1, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
     read_input(opts_rk)
 
     q_vec_rk = [1.0]
@@ -43,7 +43,7 @@ function test_rk4()
   end  # end facts block
 
   facts("----- testing lserk54 -----") do
-    opts_rk = Dict{Any, Any}("run_type" => 30, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
+    opts_rk = Dict{Any, Any}("physics" => "Euler", "run_type" => 30, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
     read_input(opts_rk)
 
     q_vec_rk = [1.0]

@@ -50,7 +50,7 @@ end
   A dictionary (referred to as the options dictionary) is returned.
   See [`read_input_file`](@ref) for the description of the input file format.
 
-  After default values are supplied, the dictionary is printed to 
+  After default values are supplied, the dictionary is printed to
   arg_dict_output.jl (by MPI rank 0) in the format of an input file.
   This is useful for rerunning a simulation.
 
@@ -126,14 +126,14 @@ end
 get!(arg_dict, "operator_type2", "SBPNone")
 get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 
-get!(arg_dict, "need_adjoint", false)
 
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
-aoa = get!(arg_dict, "aoa", -1.0)
-arg_dict["aoa"] = aoa*pi/180  # convert to radians
+aoa = get!(arg_dict, "aoa", 0.0)
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
+get!(arg_dict, "p_free", 1.0)
+get!(arg_dict, "T_free", 1.0)
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
 
@@ -212,7 +212,7 @@ else
 end
 
 if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
-  if arg_dict["face_integral_type"] == 2  # entropy stable 
+  if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
     get!(arg_dict, "parallel_data", "face")
@@ -289,6 +289,10 @@ get!(arg_dict, "write_kinetic_energydt", false)
 get!(arg_dict, "write_kinetic_energydt_fname", "kinetic_energydt.dat")
 get!(arg_dict, "write_kinetic_energydt_freq", 1)
 
+# drag
+get!(arg_dict, "write_drag", false)
+get!(arg_dict, "write_drag_fname", "drag.dat")
+get!(arg_dict, "write_drag_freq", 1)
 
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
@@ -355,18 +359,38 @@ get!(arg_dict, "write_vorticity_vis", false)
 get!(arg_dict, "exact_visualization", false)
 get!(arg_dict, "write_res", false)
 get!(arg_dict, "output_freq", 1)
-get!(arg_dict, "recalc_prec_freq", 1)
 get!(arg_dict, "jac_type", 2)
 get!(arg_dict, "use_jac_precond", false)
 get!(arg_dict, "res_abstol", 1e-6)
 get!(arg_dict, "res_reltol", 1e-6)
 get!(arg_dict, "res_reltol0", -1.0)
-get!(arg_dict, "step_tol", -1.0)
+get!(arg_dict, "step_tol", 0.0)
 get!(arg_dict, "print_eigs", false)
 get!(arg_dict, "write_eigs", false)
 get!(arg_dict, "write_eigdecomp", false)
 get!(arg_dict, "newton_globalize_euler", false)
 get!(arg_dict, "euler_tau", 1.0)
+get!(arg_dict, "use_volume_preconditioner", false)
+get!(arg_dict, "newton_recalculation_policy", "RecalculateFixedIntervals")
+get!(arg_dict, "newton_prec_recalc_freq", 1)
+get!(arg_dict, "newton_jac_recalc_freq", 1)
+get!(arg_dict, "newton_recalc_first", true)
+
+get!(arg_dict, "use_inexact_nk", arg_dict["run_type"] == 5 ? true : false)
+get!(arg_dict, "krylov_gamma", 2)
+
+
+
+# homotopy options
+get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
+get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
+get!(arg_dict, "homotopy_globalize_euler", false)
+
+# Crank-Nicolson options
+get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")
+
+# majorIterationCallback options
+get!(arg_dict, "callback_write_qvec", false)
 
 if arg_dict["run_type"] == 5  # steady newton
   get!(arg_dict, "newton_verbosity", 5)
@@ -384,6 +408,9 @@ if haskey(arg_dict, "jac_method")
   end
 end
 
+# figure out if anyone is going to do euler globalization
+get!(arg_dict, "setup_globalize_euler",  arg_dict["newton_globalize_euler"] || arg_dict["homotopy_globalize_euler"])
+
 # clean-sheet Newton's method (internal to CN) option - only for debugging
 get!(arg_dict, "cleansheet_CN_newton", false)
 
@@ -395,8 +422,6 @@ get!(arg_dict, "krylov_reltol", 1e-2)
 get!(arg_dict, "krylov_abstol", 1e-12)
 get!(arg_dict, "krylov_dtol", 1e5)
 get!(arg_dict, "krylov_itermax", 1000)
-get!(arg_dict, "krylov_gamma", 2)
-
 # testing options
 get!(arg_dict, "solve", true)
 
@@ -405,7 +430,6 @@ get!(arg_dict, "solve", true)
 get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 get!(arg_dict, "write_timing", false)
-get!(arg_dict, "finalize_mpi", false)
 
 myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -417,8 +441,14 @@ get!(arg_dict, "functional_error", false)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
 
+if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+  error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+end
+
 # Adjoint computation options
-get!(arg_dict, "calc_adjoint", false)
+get!(arg_dict, "need_adjoint", false)
+get!(arg_dict, "write_adjoint", false)
+get!(arg_dict, "write_adjoint_vis", false)
 
 # Unsteady adjoint (CN) computation options --- EXPERIMENTAL, NONWORKING CODE
 get!(arg_dict, "adjoint_revolve", false)
@@ -437,6 +467,41 @@ get!(arg_dict, "ncheckpoints", 2)
 get!(arg_dict, "checkpoint_freq", 200)
 get!(arg_dict, "use_checkpointing", false)
 
+get!(arg_dict, "force_solution_complex", false)
+get!(arg_dict, "force_mesh_complex", false)
+
+# Options passed directly to Petsc
+petsc_opts = Dict{AbstractString, AbstractString}(
+  "-malloc" => "",
+  "-malloc_debug" => "",
+  "-ksp_monitor" => "",
+  "-pc_type" => "bjacobi",
+  "-sub_pc_type" => "ilu",
+  "-sub_pc_factor_levels" => "4",
+  "-ksp_gmres_modifiedgramschmidt" => "",
+  "-ksp_pc_side" => "right",
+  "-ksp_gmres_restart" => "30",
+)
+
+if arg_dict["use_volume_preconditioner"]
+  petsc_opts["-pc_type"] = "shell"
+end
+
+
+petsc_opts = get!(arg_dict, "petsc_options", petsc_opts)
+
+# set the options in Petsc, if Petsc will be used
+if arg_dict["jac_type"] == 3 || arg_dict["jac_type"] == 4
+  PetscSetOptions(arg_dict["petsc_options"])
+end
+
+# Advection specific options
+# TODO; move these into physics module
+get!(arg_dict, "advection_velocity", [1.0, 1.0, 1.0])
+
+# get physics-specific options
+PhysicsOptionsFuncs[arg_dict["physics"]](arg_dict)
+
 checkForIllegalOptions_post(arg_dict)
 
 # write complete dictionary to file
@@ -445,23 +510,6 @@ commsize = MPI.Comm_size(MPI.COMM_WORLD)
 if myrank == 0
   fname = "arg_dict_output"
   make_input(arg_dict, fname)
-  #=
-  f = open(fname, "a+")
-
-  println(f, "arg_dict = Dict{Any, Any}(")
-  arg_keys = keys(arg_dict)
-
-
-  for key_i in arg_keys
-    show(f, key_i)
-    print(f, " => ")
-    show(f, arg_dict[key_i])
-    println(f, ",")
-  #  println(f, show(key_i), " => ", show(arg_dict[key_i]), ",")
-  end
-  println(f, ")")
-  close(f)
-  =#
 end
 # do some sanity checks here
 
@@ -514,7 +562,15 @@ end
 """
 function checkForIllegalOptions_pre(arg_dict)
 
-  # Ensure that jac-method is not specified 
+  if !haskey(arg_dict, "physics")
+    error("""the "physics" option must be specified""")
+  end
+
+  if !haskey(PhysicsOptionsFuncs, arg_dict["physics"])
+    error("Attempting to load an unregistered physics")
+  end
+
+  # Ensure that jac-method is not specified
   if haskey(arg_dict, "jac_method")
     if arg_dict["run_type"] == 1
       warn("jac_method specified, but run_type is RK4.")
@@ -529,6 +585,14 @@ function checkForIllegalOptions_pre(arg_dict)
     end
   end
 
+  if get(arg_dict, "use_volume_preconditioner", false)
+    petsc_opts = get(arg_dict, "petsc_options", Dict{Any, Any}())
+    val = get(petsc_opts, "-pc_type", "shell")
+    if val != "shell"
+      error("when use_volume_preconditioner, the petsc_opts -pc_type must be either unspecified or \"shell\"")
+    end
+  end
+
 
   return nothing
 
@@ -539,11 +603,12 @@ end
   Check the user supplied options for errors after supplying default options.
 """
 function checkForIllegalOptions_post(arg_dict)
-  
+
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
   commsize = MPI.Comm_size(MPI.COMM_WORLD)
 
-  if commsize > 1 && arg_dict["jac_type"] != 3 && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+  jac_type = arg_dict["jac_type"]
+  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
   error("Invalid jacobian type for parallel run")
 end
 
@@ -562,7 +627,7 @@ end
   # error if checkpointing not supported
   checkpointing_run_types = [1, 30, 20]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
-    error("checkpointing only supported with RK4 and LSERK")
+    error("checkpointing only supported with RK4 and LSERK and CN")
   end
 
   if arg_dict["use_checkpointing"]
@@ -574,6 +639,16 @@ end
       error("checkpointing requires checkpoint_freq > 0")
     end
   end
+
+  jac_type = arg_dict["jac_type"]
+  if arg_dict["use_volume_preconditioner"] && (jac_type != 3 && jac_type != 4)
+    error("cannot precondition non-iterative method")
+  end
+
+  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
+    error("cannot use volume preconditioner with any method except CN")
+  end
+
 
   checkBCOptions(arg_dict)
 
@@ -627,4 +702,3 @@ function checkBCOptions(arg_dict)
 
   return nothing
 end
-

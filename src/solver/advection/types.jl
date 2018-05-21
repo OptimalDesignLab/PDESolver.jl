@@ -29,6 +29,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   resL_f::Array{Tsol, 1}  # residual for a flux grid element
   resR_f::Array{Tsol, 1}  
   f::BufferedIO
+  x_design::Array{Tres, 1}  # design variables
   time::Timings
   #=
   # timings
@@ -51,18 +52,20 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
-      _f = open("log_$myrank.dat", "a")
+      _f = open("log_$myrank.dat", "w")
       f = BufferedIO(_f)
     else
       f = BufferedIO()  # create a dummy IOStream
     end
-    alpha_x = 1.0
-#     alpha_x = 0.0
-    # Note: alpha_y = 0.0 might be useful for testing out new methods,
-    #    but the CI tests will fail unless set to 1.0
-    alpha_y = 1.0
-#     alpha_y = 0.0
-    alpha_z = 1.0
+
+    advection_velocity = opts["advection_velocity"]
+    alpha_x = advection_velocity[1]
+    alpha_y = advection_velocity[2]
+    if Tdim == 3
+      alpha_z = advection_velocity[3]
+    else
+      alpha_z = 1.0
+    end
 
     numNodesPerElement_s = mesh.numNodesPerElement
     if opts["use_staggered_grid"]
@@ -71,26 +74,28 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
       numNodesPerElement_f = numNodesPerElement_s
     end
 
-    qL_s = Array(Tsol, numNodesPerElement_s)
-    qR_s = Array(Tsol, numNodesPerElement_s)
-    qL_f = Array(Tsol, numNodesPerElement_f)
-    qR_f = Array(Tsol, numNodesPerElement_f)
+    qL_s = zeros(Tsol, numNodesPerElement_s)
+    qR_s = zeros(Tsol, numNodesPerElement_s)
+    qL_f = zeros(Tsol, numNodesPerElement_f)
+    qR_f = zeros(Tsol, numNodesPerElement_f)
 
-    resL_s = Array(Tsol, numNodesPerElement_s)
-    resR_s = Array(Tsol, numNodesPerElement_s)
-    resL_f = Array(Tsol, numNodesPerElement_f)
-    resR_f = Array(Tsol, numNodesPerElement_f)
+    resL_s = zeros(Tsol, numNodesPerElement_s)
+    resR_s = zeros(Tsol, numNodesPerElement_s)
+    resL_f = zeros(Tsol, numNodesPerElement_f)
+    resR_f = zeros(Tsol, numNodesPerElement_f)
 
     # needed for the runtype=660 (CN uadj) objective
     sin_amplitude = 2.0
     omega = 1.0
+
+    x_design = zeros(Tres, 0)  # TODO: get proper size information
 
     t = Timings()
 
     return new(LFalpha, alpha_x, alpha_y, alpha_z,
                sin_amplitude, omega,
                qL_s, qR_s, qL_f, qR_f, resL_s, resR_s, resL_f, resR_f,
-               f, t)
+               f, x_design, t)
   end
 end
 
@@ -153,8 +158,6 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   M::Array{Float64, 1}       # mass matrix
   Minv::Array{Float64, 1}    # inverse mass matrix
   Minv3D::Array{Float64, 3}    # inverse mass matrix for application to res, not res_vec
-  disassembleSolution::Function # function u_vec -> eqn.q
-  assembleSolution::Function    # function : eqn.res -> res_vec
   multiplyA0inv::Function       # multiply an array by inv(A0), where A0
                                 # is the coefficient matrix of the time
                                 # derivative
@@ -178,14 +181,12 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     eqn.params = ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts)
     eqn.t = 0.0
     eqn.res_type = Tres
-    eqn.disassembleSolution = disassembleSolution
-    eqn.assembleSolution = assembleSolution
     eqn.majorIterationCallback = majorIterationCallback
     eqn.M = calcMassMatrix(mesh, sbp, eqn)
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.aux_vars = Array(Tsol, 0, 0, 0)
+    eqn.aux_vars = zeros(Tsol, 0, 0, 0)
 
     if opts["precompute_volume_flux"]
       eqn.flux_parametric = zeros(Tsol, 1, mesh.numNodesPerElement, mesh.numEl,
@@ -195,7 +196,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     end
 
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.res_edge = Array(Tres, 0, 0, 0, 0)
+    eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
     if mesh.isDG
       eqn.q_vec = reshape(eqn.q, mesh.numDof)
       eqn.res_vec = reshape(eqn.res, mesh.numDof)
@@ -221,7 +222,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
     if opts["precompute_q_bndry"]
       eqn.q_bndry = zeros(Tsol, 1, numfacenodes, mesh.numBoundaryFaces)
     else
-      eqn.q_bndry = Array(Tsol, 0, 0, 0)
+      eqn.q_bndry = zeros(Tsol, 0, 0, 0)
     end
 
     if opts["precompute_face_flux"]
@@ -238,7 +239,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       end  # end if isDG
 
     else
-      eqn.flux_face = Array(Tres, 0, 0, 0)
+      eqn.flux_face = zeros(Tres, 0, 0, 0)
       eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
     end  # end if precompute_face_flux
 
@@ -248,80 +249,11 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.shared_data = Array(SharedFaceData, 0)
     end
 
-#=
-    # send and receive buffers
-    #TODO: rename buffers to not include face
-    eqn.q_face_send = Array(Array{Tsol, 3}, mesh.npeers)
-    eqn.q_face_recv = Array(Array{Tsol, 3}, mesh.npeers)
-    if mesh.isDG
-      if opts["parallel_data"] == "face"
-        dim2 = numfacenodes
-        dim3_send = mesh.peer_face_counts
-        dim3_recv = mesh.peer_face_counts
-      elseif opts["parallel_data"] == "element"
-        dim2 = mesh.numNodesPerElement
-        dim3_send = mesh.local_element_counts
-        dim3_recv = mesh.remote_element_counts
-      else
-        ptype = opts["parallel_type"]
-        throw(ErrorException("Unsupported parallel type requested: $ptype"))
-      end
-    end
-
-    for i=1:mesh.npeers
-      eqn.q_face_send[i] = Array(Tsol, mesh.numDofPerNode, dim2,
-                                       dim3_send[i])
-      eqn.q_face_recv[i] = Array(Tsol,mesh.numDofPerNode, dim2,
-                                      dim3_recv[i])
-    end
-=#
     return eqn
   end # ends the constructor AdvectionData_
 
 end # End type AdvectionData_
 
-@doc """
-###AdvectionEquationMod.QfluxData
-
-Data type for storing relevant information pertaining to an a functional or an
-objective function.
-
-**Members**
-
-*  `is_objective_fn` : Bool whether the functional object is an objective
-                       function or not.
-*  `geom_faces_functional` : Geometric faces on which the functional is to be
-                             computed.
-*  `val` : Computed value of the functional
-*  `target_qFlux` : Target value for the functional qFlux
-
-The object is constructed using an inner constructor with the following 
-
-**Arguments**
-
-*  `mesh` : Abstract mesh type
-*  `sbp`  : Summation-By-Parts operator
-*  `eqn`  : Advection equation object
-*  `geom_faces_functional` : Geometric faces on which the functional is to be 
-                             computed
-
-"""->
-
-type QfluxData{Topt} <: AbstractOptimizationData
-  is_objective_fn::Bool
-  geom_faces_functional::AbstractArray{Int,1}
-  val::Topt
-  target_qflux::Topt
-  function QfluxData(mesh, sbp, eqn, opts, geom_faces_functional)
-
-    functional = new()
-    functional.is_objective_fn = false
-    functional.geom_faces_functional = geom_faces_functional
-    functional.val = zero(Topt)
-    functional.target_qflux = zero(Topt)
-    return functional
-  end
-end # End type OfluxData
 
 import ODLCommonTools.getAllTypeParams
 

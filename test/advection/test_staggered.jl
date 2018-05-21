@@ -40,7 +40,7 @@ function test_staggered()
   mesh, sbp, eqn, opts = run_solver(fname)
 
   # check if the D operators are the same
-  println("chekcing D")
+  println("checking D")
   for d=1:2
     sbp2 = mesh.sbp2
     Hinv = inv(diagm(sbp2.w))
@@ -48,9 +48,6 @@ function test_staggered()
 
     Hinv = inv(diagm(sbp.w))
     D_exact = Hinv*sbp.Q[:, :, d]
-    println("D_exact = \n", D_exact)
-    println("D_tilde = \n", D_tilde)
-    println("diff = \n", D_exact - D_tilde)
   end
 
   println("checking different operators")

@@ -15,7 +15,10 @@
     physics_func: the function to solve, ie. func(q) = 0  mathematically.
                   func must have the signature func(mesh, sbp, eqn, opts)
 
-    g_func: the function that evalutes G(q), the dissipation
+    g_func: the function that evalutes G(q), the dissipation.
+            If explicit jacobian calculation is used, then
+            [`evalHomotopyJacobian`](@ref) must evaluate the jacobian of this 
+            function wrt. q
     sbp: an SBP operator
     eqn: a AbstractSolutionData.  On entry, eqn.q_vec must be the
          initial condition.  On exit, eqn.q_vec will be the solution to
@@ -34,6 +37,20 @@
   it will contain the solution for func(q) = 0.
 
   This function is reentrant.
+
+  **Options Keys**
+
+   * calc_jac_explicit
+   * itermax
+   * res_reltol
+   * res_abstol
+   * krylov_reltol
+
+  This function supports jacobian/preconditioner freezing using the
+  prefix "newton".  Note that this recalcuation policy only affects
+  this function, and not newtonInner, and defaults to never recalculating
+  (and letting newtonInner update the jacobian/preconditioner according to
+  its recalculationPolicy).
 """
 function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
                                     g_func::Function,
@@ -48,7 +65,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   # define the homotopy function H and dH/dLambda
   # defines these as nested functions so predictorCorrectorHomotopy is
   # re-entrant
-  res_homotopy = zeros(eqn.res)  # used my homotopyPhysics
+  res_homotopy = zeros(eqn.res)  # used by homotopyPhysics
   """
     This function makes it appear as though the combined homotopy function H
     is a physics.  This works because an elementwise combinations of physics
@@ -70,10 +87,9 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
     # this function is only for use with Newton's method, where parallel
     # communication is started outside the physics
+    # q_vec -> q
 
-#    global evalPhysicsResidual
-
-    res_homotopy = zeros(eqn.res)
+#    res_homotopy = zeros(eqn.res)
     fill!(eqn.res, 0.0)
     fill!(res_homotopy, 0.0)
 
@@ -101,9 +117,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
   Tjac = real(Tres)
 
-  newton_data, jac, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, 
-                                          homotopyPhysics)
-  
+ 
 
   time = eqn.params.time
   lambda = 1.0  # homotopy parameter
@@ -111,14 +125,18 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
+  lambda_cutoff = 0.001
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
+  krylov_reltol0 = opts["krylov_reltol"]::Float64
+  orig_newton_globalize_euler = opts["newton_globalize_euler"]  # reset value
 
 
   # counters/loop variables
+  #TODO: make a type to store these
   iter = 1
-  homotopy_tol = 1e-2
+  homotopy_tol = 1e-4
   delta_max = 1.0  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
   psi = 0.0  # angle between tangent vectors
@@ -128,6 +146,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
   res_norm_0 = 0.0  # residual norm of initial guess
   h = 0.05  # step size
   lambda -= h  # the jacobian is ill-conditioned at lambda=1, so skip it
+  recalc_policy = getRecalculationPolicy(opts, "homotopy")
   # log file
   @mpi_master fconv = BufferedIO("convergence.dat", "a+")
 
@@ -140,19 +159,31 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
 
   # stuff for newtonInner
+  # because the homotopy function is a pseudo-physics, we can reuse the
+  # Newton PC and LO stuff, supplying homotopyPhysics in ctx_residual
   rhs_func = physicsRhs
-  jac_func = physicsJac
   ctx_residual = (homotopyPhysics,)
+  pc, lo = getHomotopyPCandLO(mesh, sbp, eqn, opts)
+  if !(typeof(pc) <: PCNone)
+    pc.lambda = lambda
+  end
+  lo.lambda = lambda
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
+
+  # configure NewtonData
+  newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
+  newton_data.itermax = 30
+ 
   # calculate physics residual
-  res_norm = real(calcResidual(mesh, sbp, eqn, opts, physics_func))
+  res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
   res_norm_0 = res_norm
 
   # print to log file
   @mpi_master println(fconv, 0, " ", res_norm, " ", 0.0)
   @mpi_master flush(fconv)
 
-  eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, STDOUT)
+  eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, BSTDOUT)
 
   #----------------------------------------------------------------------------
   # main loop
@@ -161,14 +192,12 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     @mpi_master begin
       println(BSTDOUT, "\npredictor iteration ", iter, ", lambda = ", lambda)
       println(BSTDOUT, "res_norm = ", res_norm)
-      println(BSTDOUT, "res_norm_0 = ", res_norm_0)
       println(BSTDOUT, "res_norm/res_norm_0 = ", res_norm/res_norm_0)
-      println(BSTDOUT, "res_norm = ", res_norm)
       println(BSTDOUT, "h = ", h)
     end
 
     # calculate homotopy residual
-    homotopy_norm = calcResidual(mesh, sbp, eqn, opts, homotopyPhysics)
+    homotopy_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (homotopyPhysics,))
 
     homotopy_norm0 = homotopy_norm
     copy!(q_vec0, eqn.q_vec)  # save initial q to calculate delta_q later
@@ -179,25 +208,38 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     if abs(lambda - lambda_min) <= eps()
       @mpi_master println(BSTDOUT, "tightening homotopy tolerance")
       homotopy_tol = res_reltol
-      newton_data.reltol = res_reltol*1e-3  # smaller than newton tolerance
-      newton_data.abstol = res_abstol*1e-3  # smaller than newton tolerance
+      reltol = res_reltol*1e-3  # smaller than newton tolerance
+      abstol = res_abstol*1e-3  # smaller than newton tolerance
+      setTolerances(newton_data.ls, reltol, abstol, -1, -1)
+      krylov_reltol0 = reltol  # do this so the call to setTolerances below
+                               # does not reset the tolerance
+      # enable globalization if required
+      opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
-        println(BSTDOUT, "ksp reltol = ", newton_data.reltol)
-        println(BSTDOUT, "ksp abstol = ", newton_data.abstol)
+        println(BSTDOUT, "ksp reltol = ", reltol)
+        println(BSTDOUT, "ksp abstol = ", abstol)
       end
     end
 
+    # calculate the PC and LO if needed
+    doRecalculation(recalc_policy, iter, newton_data.ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
     # do corrector steps
-    newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, jac_func, jac, 
-                rhs_vec, ctx_residual, res_reltol=homotopy_tol, 
-                res_abstol=res_abstol, itermax=30)
+    newton_data.res_reltol = homotopy_tol
+    # reset tolerances in case newton is doing inexact-NK and thus has changed
+    # the tolerances
+    setTolerances(newton_data.ls, krylov_reltol0, -1, -1, -1)
+    newtonInner(newton_data, mesh, sbp, eqn, opts, rhs_func, ls, 
+                rhs_vec, ctx_residual)
 
     # compute delta_q
     for i=1:length(eqn.q)
       delta_q[i] = eqn.q_vec[i] - q_vec0[i]
     end
+    #TODO: compute SBP L2 norm?
+    delta = calcNorm(eqn, delta_q)
     delta = calcEuclidianNorm(mesh.comm, delta_q)
     if iter == 2
       delta_max = delta
@@ -213,21 +255,25 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
 
       # calculate tangent vector dH/dq * t = dH/dLambda
       @mpi_master println(BSTDOUT, "solving for tangent vector")
-      jac_func(newton_data, mesh, sbp, eqn, opts, jac, ctx_residual)
+#      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-      matrixSolve(newton_data, eqn, mesh, opts, jac, tan_vec, dHdLambda_real, STDOUT)
+      tsolve = @elapsed linearSolve(ls, dHdLambda_real, tan_vec)
+      eqn.params.time.t_solve += tsolve
 
       # normalize tangent vector
-      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
+      tan_norm = calcNorm(eqn, tan_vec)
+#      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
       tan_norm = sqrt(tan_norm*tan_norm + 1)
-#      tan_norm = sqrt(dot(tan_vec, tan_vec) + 1)  # + 1 ?
       scale!(tan_vec, 1/tan_norm)
 
       psi = psi_max
       if iter > 1
-        tan_term = dot(tan_vec_1, tan_vec)
-        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
-        tan_norm_term = (1/tan_norm)*(1/tan_norm_1) 
+        # compute phi = acos(tangent_i_1 dot tangent_i)
+        # however, use the L2 norm for the q part of the tangent vector
+#        tan_term = dot(tan_vec_1, tan_vec)
+        tan_term = calcL2InnerProduct(eqn, tan_vec_1, tan_vec)
+#        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
+        tan_norm_term = (1/tan_norm)*(1/tan_norm_1)
         arg = tan_term + tan_norm_term
         arg = clamp(arg, -1.0, 1.0)
         psi = acos( arg )
@@ -238,7 +284,7 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
       tan_norm_1 = tan_norm
 
       # calculate step size
-      fac = max(psi/psi_max, delta/delta_max)
+      fac = max(psi/psi_max, sqrt(delta/delta_max))
       h /= fac
 
       # take predictor step
@@ -247,17 +293,35 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
         eqn.q_vec[i] += tan_vec[i]
       end
 
+#      prev_lambda = lambda
+#      lambda_final_step = 0.05  # maximum size of final step in lambda
       lambda = max(lambda_min, lambda - h)
+      if lambda < lambda_cutoff
+
+        # if this is the final step to lambda = 0, and the step is too large,
+        # force an intermediate step
+        # use 2 * lambda_final_step as heuristic for "too big"
+ #       if prev_lambda - lambda_min > 2*lambda_final_step
+ #         println(BSTDOUT, "limiting size of final step")
+ #         lambda = lambda_min + lambda_final_step
+ #       else  # otherwise set lambda to zero
+          lambda = 0.0
+#        end
+      end
+      if !(typeof(pc) <: PCNone)
+        pc.lambda = lambda
+      end
+      lo.lambda = lambda
     end  # end if lambda too large
 
     # calculate physics residual at new state q
-    res_norm = real(calcResidual(mesh, sbp, eqn, opts, physics_func))
+    res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,),))
 
     # print to log file
     @mpi_master println(fconv, iter, " ", res_norm, " ", h )
     @mpi_master flush(fconv)
 
-    eqn.majorIterationCallback(iter, mesh, sbp, eqn, opts, STDOUT)
+    eqn.majorIterationCallback(iter, mesh, sbp, eqn, opts, BSTDOUT)
 
     iter += 1
   end  # end while loop
@@ -275,9 +339,11 @@ function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
     println(BSTDOUT, "predictor-corrector converged with relative residual norm $tmp")
   end
 
-  if opts["jac_type"] == 3
-    NonlinearSolvers.destroyPetsc(jac, newton_data.ctx_newton...)
-  end
+  # reset options dictionary
+  opts["newton_globalize_euler"] = orig_newton_globalize_euler
+
+  free(newton_data)
+#  cleanupNewton(newton_data, mesh, mesh, sbp, eqn, opts)
 
   flush(BSTDOUT)
   flush(BSTDERR)
@@ -332,3 +398,210 @@ function calcdHdLambda(mesh, sbp, eqn, opts, lambda, physics_func, g_func, res_v
 end
 
 
+function getHomotopyPCandLO(mesh, sbp, eqn, opts)
+
+  # get PC
+  if opts["jac_type"] <= 2
+    pc = PCNone(mesh, sbp, eqn, opts)
+  else
+    pc = HomotopyMatPC(mesh, sbp, eqn, opts)
+  end 
+
+  jactype = opts["jac_type"]
+  if jactype == 1
+    lo = HomotopyDenseLO(pc, mesh, sbp, eqn, opts)
+  elseif jactype == 2
+    lo = HomotopySparseDirectLO(pc, mesh, sbp, eqn, opts)
+  elseif jactype == 3
+    lo = HomotopyPetscMatLO(pc, mesh, sbp, eqn, opts)
+  elseif jactype == 4
+    lo = HomotopyPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+  end
+
+  return pc, lo
+end
+
+
+
+
+# Define PC and LO objects
+#------------------------------------------------------------------------------
+# PC:
+
+type HomotopyMatPC <: AbstractPetscMatPC
+  pc_inner::NewtonMatPC
+  lambda::Float64  # homotopy parameter
+end
+
+function HomotopyMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+                    eqn::AbstractSolutionData, opts::Dict)
+
+
+  pc_inner = NewtonMatPC(mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopyMatPC(pc_inner, lambda)
+end
+
+function calcPC(pc::HomotopyMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  # compute the Jacobian of the Newton PC
+  calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  if opts["calc_jac_explicit"]
+    A = getBasePC(pc).A
+    assembly_begin(A, MAT_FINAL_ASSEMBLY)
+    assembly_end(A, MAT_FINAL_ASSEMBLY)
+
+    lambda_c = 1 - lambda # complement of lambda
+    scale!(A, lambda_c)
+
+    # compute the homotopy contribution to the Jacobian
+    assembler = AssembleElementData(A, mesh, sbp, eqn, opts)
+    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lambda)
+  end
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# LO:
+
+type HomotopyDenseLO <: AbstractDenseLO
+  lo_inner::NewtonDenseLO
+  lambda::Float64
+end
+
+function HomotopyDenseLO(pc::PCNone, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+  return HomotopyDenseLO(lo_inner, lambda)
+end
+
+type HomotopySparseDirectLO <: AbstractSparseDirectLO
+  lo_inner::NewtonSparseDirectLO
+  lambda::Float64
+end
+
+function HomotopySparseDirectLO(pc::PCNone, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopySparseDirectLO(lo_inner, lambda)
+end
+
+type HomotopyPetscMatLO <: AbstractPetscMatLO
+  lo_inner::NewtonPetscMatLO
+  lambda::Float64
+end
+
+
+function HomotopyPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonPetscMatLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopyPetscMatLO(lo_inner, lambda)
+end
+
+
+type HomotopyPetscMatFreeLO <: AbstractPetscMatFreeLO
+  lo_inner::NewtonPetscMatFreeLO
+  lambda::Float64  # this is unused, but needed for consistency
+end
+
+"""
+  Homotopy mat-free linear operator constructor
+
+  **Inputs**
+
+   * pc
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * rhs_func: rhs_func from [`newtonInner`](@ref)
+"""
+function HomotopyPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
+                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+
+  lo_inner = NewtonPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
+  lambda = 1.0
+
+  return HomotopyPetscMatFreeLO(lo_inner, lambda)
+end
+
+
+"""
+  Homotopy matrix-explicit linear operators
+"""
+typealias HomotopyMatLO Union{HomotopyDenseLO, HomotopySparseDirectLO, HomotopyPetscMatLO}
+
+
+function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+
+   
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  if opts["calc_jac_explicit"]
+    A = getBaseLO(lo).A
+    assembly_begin(A, MAT_FINAL_ASSEMBLY)
+    assembly_end(A, MAT_FINAL_ASSEMBLY)
+
+    lambda_c = 1 - lo.lambda # complement of lambda
+    scale!(A, lambda_c)
+
+    # compute the homotopy contribution to the Jacobian
+    assembler = _AssembleElementData(A, mesh, sbp, eqn, opts)
+    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo.lambda)
+  end
+
+  return nothing
+end
+
+
+function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
+  # nothing to do here
+
+  return nothing
+end
+
+
+function applyLinearOperator{Tsol}(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
+
+  @assert !(Tsol <: AbstractFloat)  # complex step only!
+
+  # ctx_residual[1] = homotopyPhysics, so this computes both the physics
+  # and homotopy contribution
+  applyLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+
+  return nothing
+end
+
+function applyLinearOperatorTranspose{Tsol}(lo::HomotopyPetscMatFreeLO, 
+                             mesh::AbstractMesh,
+                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             opts::Dict, ctx_residual, t, x::AbstractVector, 
+                             b::AbstractVector)
+
+  error("applyLinearOperatorTranspose() not supported by HomotopyPetscMatFreeLO")
+
+end

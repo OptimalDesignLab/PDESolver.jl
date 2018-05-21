@@ -25,8 +25,9 @@ include("curvilinear.jl")
 include("area.jl")
 include("checkpoint.jl")
 
+export free
 export disassembleSolution, writeQ, assembleSolution, assembleArray
-export calcNorm, calcMeshH, calcEuclidianNorm
+export calcNorm, calcL2InnerProduct, calcMeshH, calcEuclidianNorm
 #export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 #export startDataExchange
 #export exchangeElementData
@@ -36,7 +37,7 @@ export calcBCNormal, calcBCNormal_revm, max_deriv_rev
 export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
-export fastzero!, fastscale!
+export fastzero!, fastscale!, removeComplex
 export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
@@ -74,6 +75,16 @@ export Checkpointer, AbstractCheckpointData, readCheckpointData,
        countFreeCheckpoints,
        getLastCheckpoint, getOldestCheckpoint, freeOldestCheckpoint,
        freeCheckpoint, getNextFreeCheckpoint
+
+"""
+  Generic function to free any memory belonging to other libraries
+"""
+function free(x)
+
+  error("generic free() reached")
+
+  return nothing
+end
 
 @doc """
 ### Utils.disassembleSolution
@@ -290,6 +301,45 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
+"""
+  Set the complex part of the solution to zero, including `eqn.q`, `eqn.q_vec`, and
+  the send and receive buffers in `eqn.shared_data`
+
+  **Inputs**
+  
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function removeComplex(mesh::AbstractMesh, sbp::AbstractSBP,
+                       eqn::AbstractSolutionData, opts)
+
+  for i=1:mesh.numDof
+    eqn.q_vec[i] = real(eqn.q_vec[i])
+  end
+
+  if pointer(eqn.q_vec) != pointer(eqn.q)
+    for i=1:length(eqn.q)
+      eqn.q[i] = real(eqn.q[i])
+    end
+  end
+
+  # send and receive buffers
+  for i=1:length(eqn.shared_data)
+    arr = eqn.shared_data[i].q_send
+    for j=1:length(arr)
+      arr[j] = real(arr[j])
+    end
+
+    arr = eqn.shared_data[i].q_recv
+    for j=1:length(arr)
+      arr[j] = real(arr[j])
+    end
+  end
+
+  return nothing
+end
 
 @doc """
 ### Utils.calcNorm
@@ -338,6 +388,50 @@ function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; stron
   val = sqrt(val)
   return val
 end     # end of calcNorm function
+
+"""
+  This function calculate the SBP approximation to the L2 inner product of
+  two vectors of length mesh.numDof.
+
+  L2_product = u^T H conj(v)
+
+  Note that this function does not take a square root like [`calcNorm`](@ref)
+  does.
+
+  **Inputs**
+
+   * eqn: AbstractSolutionData
+   * u: first vector, of length mesh.numDof
+   * v: second vector, of length mesh.numDof.  If complex, this vector gets
+        conjugated
+
+  **Outputs**
+
+   * val: the value of the inner product
+
+  **Keyword Arguments**
+
+   * globalnrm: if true, computes the norm of the entire (parallel) vector,
+                if false, computes the norm of only the local part
+"""
+function calcL2InnerProduct{T, T2}(eqn::AbstractSolutionData, u::AbstractArray{T}, v::AbstractArray{T2}; globalnrm=true)
+
+  # TODO: generalize this to 1, mesh.numDofPerNode vectors
+  @assert length(u) == length(eqn.M)
+  @assert length(v) == length(eqn.M)
+
+  val = zero(real(promote_type(T, T2)))
+
+  for i=1:length(u)
+    val += real( u[i] * eqn.M[i] * conj(v[i]) )
+  end
+
+  eqn.params.time.t_allreduce = @elapsed if globalnrm
+    val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+  end
+
+  return val
+end
 
 
 """
@@ -422,6 +516,16 @@ type Timings
   t_dataprep::Float64  # time spent preparing data
   t_stab::Float64  # time spent adding stabilization
   t_send::Float64  # time spent sending data
+
+  t_volume_diff::Float64  # time for volume integrals
+  t_face_diff::Float64 # time for surface integrals (interior)
+  t_source_diff::Float64  # time spent doing source term
+  t_sharedface_diff::Float64  # time for shared face integrals
+  t_bndry_diff::Float64  # time spent doing boundary integrals
+  t_dataprep_diff::Float64  # time spent preparing data
+  t_stab_diff::Float64  # time spent adding stabilization
+
+
   t_wait::Float64  # time spent in MPI_Wait
   t_allreduce::Float64 # time spent in allreduce
   t_pert::Float64  # time spent applying peraturbation
@@ -444,7 +548,7 @@ type Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

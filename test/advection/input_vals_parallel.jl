@@ -5,6 +5,7 @@
 # now that this file is read inside a function, it is better encapsulated
 
 arg_dict = Dict{ASCIIString, Any}(
+"physics" => "Advection",
 "run_type" => 1,
 "jac_type" => 2,
 "order" => 4,
@@ -31,7 +32,7 @@ arg_dict = Dict{ASCIIString, Any}(
 "dmg_name" => ".null",
 "res_abstol" => 1e-10,
 # "step_tol" => 1e-6,
-"itermax" => 7000,
+"itermax" => 100,
 "res_abstol" => 1e-9,
 #"res_reltol" => 1e-9,
 #"step_tol" => 1e-10,

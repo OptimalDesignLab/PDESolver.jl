@@ -1,5 +1,7 @@
 # Description: startup function for solving an equation
 
+import PDESolver.solvePDE
+#=
 """
   This function invokes the solver for the Euler equations, using the
   specified input file
@@ -23,13 +25,13 @@ function run_euler(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
-
+=#
 
 """
   This function creates and initializes the mesh, sbp, eqn, and opts objects
 
   Inputs:
-    file_name: input file name
+    opts: options dictionary
 
   Outputs:
     mesh: an AbstractMesh.  The concrete type is determined by the options
@@ -40,15 +42,7 @@ end
     opts: the options dictionary
     pmesh: mesh used for preconditioning, can be same object as mesh
 """
-function createObjects(input_file::AbstractString)
-
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
-  opts = read_input(input_file)  # read input file and get default values
-  checkOptions(opts)  # physics specific options checking
-  #opts = read_input("input_vals_channel2.jl")
+function createObjects(opts::Dict)
 
   Tdim = opts["dimensions"]
   dofpernode = Tdim + 2
@@ -69,6 +63,40 @@ function createObjects(input_file::AbstractString)
 end
 
 """
+  Constructs a the EulerData object given a mesh, sbp, and options dictionary.
+
+  Used for submesh solves.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * opts
+
+  **Outputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * pmesh: currently, always the same as mesh
+"""
+function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+
+  var_type = opts["variable_type"]
+
+  Tdim = mesh.dim
+  Tmsh, Tsbp, Tsol, Tres = getDataTypes(opts)
+
+  eqn = EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
+
+  init(mesh, sbp, eqn, opts, mesh)
+
+  return mesh, sbp, eqn, opts, mesh
+end
+
+
+"""
   Given fully initialized mesh, sbp, eqn, opts, this function solves
   the Euler equations.  The 4 object should be obtained from createObjects().
 
@@ -86,24 +114,8 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
-  Options Keys:
-    Relfunc_name: also writes vtk files called "solution_relfunc"
-                  if key not present, ignored
-                   TODO: fix that
-    IC_name
-    calc_error: also write vtk files called "solution_error"
-    calc_trunc_error
-    perturb_ic
-    calc_dt
-    finalize_mpi
-
-    For options like calc_dt and Relfunc_name, it is very important that
-    the computed quantity be saved to the options dictionary for use later
-    in the code (ie. and not passed directly to another function).  The
-    code won't restart correctly if this happens.
-
 """
-function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts::Dict, pmesh::AbstractMesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
   myrank = mesh.myrank
@@ -140,7 +152,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
       end
     end
   #  println("eqn.q_vec = ", eqn.q_vec)
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
     res_real = real(eqn.res_vec)
   #  println("res_real = \n", res_real)
   #  println("eqn.res_vec = ", eqn.res_vec)
@@ -198,7 +210,7 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
 
   if opts["calc_trunc_error"]  # calculate truncation error
     @mpi_master println("\nCalculating residual for truncation error")
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
 
     @mpi_master begin
       f = open("error_trunc.dat", "w")
@@ -244,9 +256,6 @@ function solve_euler(mesh::AbstractMesh, sbp, eqn::AbstractEulerData, opts, pmes
   cleanup(mesh, sbp, eqn, opts)
 
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function
@@ -294,10 +303,6 @@ function postproc(mesh, sbp, eqn, opts)
 
 
       diff_norm = calcNorm(eqn, q_diff)
-#      diff_norm = MPI.Allreduce(diff_norm, MPI.SUM, mesh.comm)
-#      diff_norm = sqrt(diff_norm)
-
-
       @mpi_master println("solution error norm = ", diff_norm)
       # TODO: make this mesh.min_el_size?
       h_avg = calcMeshH(mesh, sbp, eqn, opts)
@@ -309,49 +314,6 @@ function postproc(mesh, sbp, eqn, opts)
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-      #=
-      #---- Calculate functional on a boundary  -----#
-      if opts["calc_functional"]
-        num_functionals = opts["num_functionals"]
-        for j = 1:num_functionals
-          functional = OptimizationData{Tsol}(mesh, sbp, opts)
-          evalFunctional(mesh, sbp, eqn, opts, functional, functional_number=j)
-        end  # End for j = 1:num_functionals
-        # evalFunctional(mesh, sbp, eqn, opts) # Legacy
-      end    # End if opts["calc_functional"]
-
-
-      #----- Calculate Adjoint Vector For A Functional -----#
-      if opts["calc_adjoint"]
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
-
-        # TODO: Presently adjoint computation only for 1 functional. Figure out
-        # API based on future use.
-        j = 1
-        key = string("geom_edges_functional", j)
-        functional_edges = opts[key]
-        functional_number = j
-        functional_name = getFunctionalName(opts, j)
-
-        adjoint_vec = zeros(Tsol, mesh.numDof)
-        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
-
-
-        # Write adjoint vector to file and mesh
-        file_object = open("adjoint_vector.dat", "w")
-        for iter = 1:length(adjoint_vec)
-          println(file_object, real(adjoint_vec[iter]))
-        end
-        close(file_object)
-        saveSolutionToMesh(mesh, real(adjoint_vec))
-        writeVisFiles(mesh, "adjoint_field")
-
-      end  # End if opts["calc_adjoint"]
-      =#
-
     end  # end if haskey(ICname)
   end  # end if do_postproc
 

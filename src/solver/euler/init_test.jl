@@ -30,7 +30,6 @@ EulerEquationMod.writeSurfacePressureCoeff(mesh, sbp, eqn, opts, g_edges, pressC
 # Create the objective function data object
 functional_faces = opts["geom_faces_objective"]
 objective = EulerEquationMod.BoundaryForceData{Complex128, :drag}(mesh, sbp, eqn, opts, functional_faces)
-objective.is_objective_fn = true
 objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
 
 #=

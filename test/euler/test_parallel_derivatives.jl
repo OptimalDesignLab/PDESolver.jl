@@ -7,8 +7,9 @@ function test_parallel_derivatives()
     ARGS[1] = "./input_vals_airfoil_parallel.jl"
 
     # Get the adjoint vector
-    include("../../src/solver/euler/startup.jl")
-    objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+#    include("../../src/solver/euler/startup.jl")
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    objective = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
     context("Checking functional J and ∂J/∂aoa in parallel") do
@@ -26,14 +27,18 @@ function test_parallel_derivatives()
     end # End context("Checking ∂J/∂aoa")
 
     lift = objective.lift_val
+    pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+    ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
     adjoint_vec = zeros(Complex128, mesh.numDof)
-    EulerEquationMod.calcAdjoint(mesh, sbp, eqn, opts, objective, adjoint_vec)
+
+
+    calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
     dJdaoa = EulerEquationMod.eval_dJdaoa(mesh, sbp, eqn, opts, objective, "lift", adjoint_vec)
 
     # Check complete derivatives w.r.t alpha using finite difference
     pert = 1e-6
     eqn.params.aoa += pert
-    EulerEquationMod.solve_euler(mesh, sbp, eqn, opts, mesh)
+    solvePDE(mesh, sbp, eqn, opts, mesh)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
     lift_pert = objective.lift_val
     drag_pert = objective.drag_val

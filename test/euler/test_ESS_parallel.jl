@@ -5,16 +5,12 @@
 function test_ESS_parallel()
   facts("----- testing ESS parallel -----") do
 
-    if !MPI.Initialized()
-      MPI.Init()
-    end
-
     if MPI.Comm_rank(MPI.COMM_WORLD) == 1
       rmfile("./entropy.dat")
     end
 
     ARGS[1] = "input_vals_ESS_parallel.jl"
-    mesh, sbp, eqn, opts = run_euler(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     data = readdlm("entropy.dat")
 

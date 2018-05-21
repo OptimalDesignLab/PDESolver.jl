@@ -13,6 +13,11 @@
 """
 function checkOptions(opts)
 
+  if opts["physics"] != PhysicsName
+    error("physics not specified as $PhysicsName, are you lost?")
+  end
+
+
   if opts["use_edge_res"]
     error("use_edge_res does not work correctly, do not use")
   end
@@ -44,6 +49,8 @@ function checkOptions(opts)
   end
 
 
+  get!(opts, "calc_jac_explicit", false)
+  get!(opts, "preallocate_jacobian_coloring", true)
 
   return nothing
 end

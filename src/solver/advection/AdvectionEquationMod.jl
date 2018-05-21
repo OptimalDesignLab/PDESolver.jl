@@ -1,15 +1,17 @@
 module AdvectionEquationMod
 
 using PDESolver  # setupf LOAD_PATH to find PDESolver components
+using SolverCommon
 using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using ForwardDiff
 using NonlinearSolvers
+using LinearSolvers
 using MPI
 using Utils
-using PETSc
+#using PETSc
 
 import ODLCommonTools.sview
 using Input
@@ -33,6 +35,7 @@ abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
 abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
 
 include("types.jl")
+include("functionals.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("advection.jl")
 include("common_funcs.jl")
@@ -42,7 +45,7 @@ include("ic.jl")
 include("GLS.jl")
 include("GLS2.jl")
 include("boundary_functional.jl")
-include("adjoint.jl")
+include("functional_deriv.jl")
 include("source.jl")
 include("flux.jl")
 include("check_options.jl")
@@ -54,65 +57,6 @@ include("startup_func.jl")  # function to invoke the solver
   This physics is named `Advection`
 """
 global const PhysicsName = "Advection"
-register_physics(PhysicsName, AdvectionEquationMod, run_advection)
-
-@doc """
-###AdvectionEquationMod.createObjectiveFunctionalData
-
-Function for creating an object for functional and adjoint computation where the
-functional is an objective function in an optimization.
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Advection equation object
-* `opts` : Options dictionary
-
-"""->
-
-function createObjectiveFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                             eqn::AdvectionData{Tsol}, opts)
-
-  functional_faces = opts["geom_faces_objective"]
-  if opts["objective_function"] == "qflux"
-    objective = QfluxData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
-    objective.is_objective_fn = true
-  end
-
-  return objective
-end
-
-@doc """
-###AdvectionEquationMod.createFunctionalData
-
-Creates an object for functional computation. This function needs to be called
-the same number of times as the number of functionals EXCLUDING the objective
-function are being computed
-
-**Arguments**
-
-* `mesh` : Abstract PUMI mesh
-* `sbp`  : Summation-by-parts operator
-* `eqn`  : Advection equation object
-* `opts` : Options dictionary
-* `functional_number` : Which functional object is being generated. Default = 1
-
-"""->
-
-function createFunctionalData{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                    eqn::AdvectionData{Tsol}, opts,
-                                    functional_number::Int=1)
-
-  dict_val = string("functional_name", functional_number)
-  key = string("geom_faces_functional", functional_number)
-  functional_faces = opts[key]
-
-  if opts[dict_val] == "qflux"
-    functional = QfluxData{Tsol}(mesh, sbp, eqn, opts, functional_faces)
-  end
-
-  return functional
-end
+register_physics(PhysicsName, AdvectionEquationMod, createObjects, checkOptions)
 
 end # end module

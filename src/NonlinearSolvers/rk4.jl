@@ -209,20 +209,24 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
        println(BSTDOUT, "\ntimestep ",i)
     end
 
+    if use_checkpointing && i % chkpoint_freq == 0
+      if skip_checkpoint    # skips only the first checkpoint
+        skip_checkpoint = false
+      else
 
-    if use_checkpointing && i % chkpoint_freq == 0 && !skip_checkpoint
-      @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
-      skip_checkpoint = false
-      # save all needed variables to the chkpointdata
-      chkpointdata.i = i
+        @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
+        # save all needed variables to the chkpointdata
+        chkpointdata.i = i
 
-      if countFreeCheckpoints(chkpointer) == 0
-        freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
-      end
-      
-      # save the checkpoint
-      saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
-    end
+        if countFreeCheckpoints(chkpointer) == 0
+          freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
+        end
+
+        # save the checkpoint
+        saveNextFreeCheckpoint(chkpointer, ctx..., opts, chkpointdata)
+
+      end   # end of if skip_checkpoint check
+    end   # end of if use_checkpointing check
 
     # flush after all printing
     if i % output_freq == 0
@@ -420,7 +424,7 @@ end
 """->
 function pde_pre_func(mesh, sbp, eqn, opts)
   
-  eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
 end
 
 
@@ -441,7 +445,7 @@ end
 """->
 function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
     local_norm = calcNorm(eqn, eqn.res_vec)

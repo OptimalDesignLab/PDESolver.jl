@@ -76,7 +76,7 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
     u  = zeros(Tsol, 1, 3, 2)
 
     # checking disassembleSolution
-    eqn.disassembleSolution(mesh, sbp, eqn, opts, u, u_vec)
+    disassembleSolution(mesh, sbp, eqn, opts, u, u_vec)
     @fact u[1,1,2] --> roughly(2.0)
     @fact u[1,2,2] --> roughly(4.0)
     @fact u[1,3,2] --> roughly(3.0)
@@ -86,7 +86,7 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
 
     #checking assembleSolution
     fill!(u_vec, 0.0)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, u, u_vec)
+    assembleSolution(mesh, sbp, eqn, opts, u, u_vec)
     @fact u_vec --> roughly([1.0,4.0,6.0,4.0])
 
     # check mass matrix
@@ -257,7 +257,7 @@ function test_lowlevel_volumeintegrals()
 
     # use the 8 element mesh
     ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     println("precompute_boundary_flux = ", opts["precompute_boundary_flux"])
     Tmsh = eltype(mesh.dxidx)
@@ -270,7 +270,7 @@ function test_lowlevel_volumeintegrals()
 
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact eqn.res --> roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-12)
 
 
@@ -367,7 +367,7 @@ function test_lowlevel_volumeintegrals()
 
 
     ARGS[1] = "input_vals_8el_large.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     println("----- Checking q=2*x^2 + 5 case on large grid -----")
     
     x1 = zeros(Tmsh, 3)
@@ -392,7 +392,7 @@ function test_lowlevel_volumeintegrals()
 
     # back to the original mesh
     ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     println("----- Checking sinwave case -----")
     x1 = zeros(Tmsh, 3)
@@ -418,11 +418,11 @@ function test_lowlevel_volumeintegrals()
       @fact val_code --> roughly(val_test, atol=1e-14)
     end
 
-    eqn.assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #TODO: uncomment when SBP boundaryintegrate is fixed
 #= 
     ARGS[1] = "input_vals_channel_verylarge.jl"
-    mesh, sbp, eqn, opts = run_advection(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     println("----- Checking sinwave case on very large mesh -----")
     x1 = zeros(Tmsh, 3)

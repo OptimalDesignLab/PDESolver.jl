@@ -21,7 +21,7 @@ global const test_eqn_copy_inputfile = "input_vals_channel_dg.jl"
 
 function test_eqn_copy()
 
-  mesh, sbp, eqn, opts = run_euler(test_eqn_copy_inputfile)
+  mesh, sbp, eqn, opts = solvePDE(test_eqn_copy_inputfile)
 
   eqn_copy = eqn_deepcopy(mesh, sbp, eqn, opts)
 
@@ -70,12 +70,9 @@ function test_eqn_copy()
     @fact (eqn_copy.edgestab_alpha == eqn.edgestab_alpha) --> true
     @fact (eqn_copy.bndryflux == eqn.bndryflux) --> true
     @fact (eqn_copy.stabscale == eqn.stabscale) --> true
-    @fact (eqn_copy.dissipation_mat == eqn.dissipation_mat) --> true
     @fact (eqn_copy.Minv3D == eqn.Minv3D) --> true
     @fact (eqn_copy.Minv == eqn.Minv) --> true
     @fact (eqn_copy.M == eqn.M) --> true
-    @fact (eqn_copy.disassembleSolution == eqn.disassembleSolution) --> true
-    @fact (eqn_copy.assembleSolution == eqn.assembleSolution) --> true
     @fact (eqn_copy.multiplyA0inv == eqn.multiplyA0inv) --> true
     @fact (eqn_copy.majorIterationCallback == eqn.majorIterationCallback) --> true
     @fact (eqn_copy.src_func == eqn.src_func) --> true
@@ -233,7 +230,6 @@ function test_eqn_copy()
     @fact (pointer(eqn_copy.edgestab_alpha) == pointer(eqn.edgestab_alpha)) --> false
     @fact (pointer(eqn_copy.bndryflux) == pointer(eqn.bndryflux)) --> false
     @fact (pointer(eqn_copy.stabscale) == pointer(eqn.stabscale)) --> false
-    @fact (pointer(eqn_copy.dissipation_mat) == pointer(eqn.dissipation_mat)) --> false
     @fact (pointer(eqn_copy.Minv3D) == pointer(eqn.Minv3D)) --> false
     @fact (pointer(eqn_copy.Minv) == pointer(eqn.Minv)) --> false
     @fact (pointer(eqn_copy.M) == pointer(eqn.M)) --> false
@@ -346,7 +342,7 @@ function test_eqn_copy()
 
 end   # end of function test_eqn_copy
 
-add_func1!(EulerTests, test_eqn_copy, [TAG_LONGTEST])
+add_func1!(EulerTests, test_eqn_copy, [TAG_SHORTTEST])
 
 #=
 All fields of Euler's eqn obj, as of 20170522
@@ -382,8 +378,6 @@ dissipation_mat  Array{Float64,3}  false
 Minv3D  Array{Float64,3}  false
 Minv  Array{Float64,1}  false
 M  Array{Float64,1}  false
-disassembleSolution  Function  false
-assembleSolution  Function  false
 multiplyA0inv  Function  false
 majorIterationCallback  Function  false
 src_func  EulerEquationMod.SRC0  false

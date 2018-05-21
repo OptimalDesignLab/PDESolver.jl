@@ -37,7 +37,7 @@ function test_eq4()
     start_dir = pwd()
     cd("./eqn4/")
     ARGS[1] = "input_vals_simpleODE.jl"
-    mesh, sbp, eqn, opts = run_simpleode(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     for i = 1:length(eqn.q_vec)
       @fact eqn.q_vec[i] --> roughly(4.0, atol=1e-10)
@@ -64,24 +64,12 @@ facts("----- Running SimpleODE tests -----") do
 
   resize!(ARGS, 1)
   ARGS[1] = ""
-  run_testlist(SimpleODETests, run_simpleode, tags)
+  run_testlist(SimpleODETests, solvePDE, tags)
 end
 
 
 #------------------------------------------------------------------------------
 # cleanup
-
-# define global variable if needed
-# this trick allows running the test files for multiple physics in the same
-# session without finalizing MPI too soon
-if !isdefined(:TestFinalizeMPI)
-  TestFinalizeMPI = true
-end
-
-
-if MPI.Initialized() && TestFinalizeMPI
-  MPI.Finalize()
-end
 
 FactCheck.exitstatus()
 

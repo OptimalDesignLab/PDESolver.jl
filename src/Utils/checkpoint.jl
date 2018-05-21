@@ -204,7 +204,7 @@ function Checkpointer(opts::Dict, myrank::Integer)
   end
 
   if myrank == 0
-    println(BSTDOUT, "checkpont path = ", checkpoint_path)
+    println(BSTDOUT, "checkpoint path = ", checkpoint_path)
   end
   fname = joinpath_ascii(checkpoint_path, Checkpointer_fname)
   f = open(fname, "r")

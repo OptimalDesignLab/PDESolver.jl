@@ -4,7 +4,8 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{ASCIIString, Any} (
+arg_dict = Dict{ASCIIString, Any}(
+"physics" => "Euler",
 "var1" => 1,
 "var2" => "a",
 "var3" => 3.5,
@@ -20,7 +21,7 @@ arg_dict = Dict{ASCIIString, Any} (
 "variable_type" => :conservative,
 #"IC_name" => "ICFile",
 #"ICfname" => "start.dat",
-"Relfunc_name" => "ICRho1E2U3",
+#"Relfunc_name" => "ICRho1E2U3",
 "numBC" => 1,
 "BC1" => [ 0, 1, 2, 3],
 "BC1_name" => "isentropicVortexBC",

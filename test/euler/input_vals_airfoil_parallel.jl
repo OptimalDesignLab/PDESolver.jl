@@ -50,9 +50,10 @@ arg_dict = Dict{Any, Any}(
 "solve" => true,
 "do_postproc" => true,
 "calc_functional" => false,
+"force_solution_complex" => true,
 
-"objective_function" => "lift",
-"geom_faces_objective" => [5],
+"functional_name1" => "lift",
+"functional_bcs1" => [2],
 "num_functionals" => 1,
 "need_adjoint" => false, # Necessary for reverse mode
 

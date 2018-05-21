@@ -1,3 +1,6 @@
+import PDESolver.solvePDE
+
+#=
 # Startup function for 1 dof advection equation
 """
   This function invokes the solver for the advection equation, using the
@@ -22,36 +25,28 @@ function run_advection(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
-
+=#
 
 """
   This function creates and initializes the mesh, sbp, eqn, and opts objects
 
-  Inputs:
-    file_name: input file name
+  **Inputs**
 
-  Outputs:
-    mesh: an AbstractMesh.  The concrete type is determined by the options
+   * opts: options dictionary
+
+  **Outputs**
+
+   * mesh: an AbstractMesh.  The concrete type is determined by the options
           dictionary
-    sbp: an AbstractSBP.  The concrete type is determined by the options
+   * sbp: an AbstractSBP.  The concrete type is determined by the options
          dictionary
-    eqn: an EulerData object
-    opts: the options dictionary
-    pmesh: mesh used for preconditioning, can be same object as mesh
+   * eqn: an AdvectionData object
+   * opts: the options dictionary
+   * pmesh: mesh used for preconditioning, can be same object as mesh
 """
-function createObjects(input_file::AbstractString)
+function createObjects(opts::Dict)
 
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
-  #function runtest(flag::Int)
-  opts = read_input(input_file)  # read input file and gets default values
-  checkOptions(opts)  # physics specific options checking
-  # timestepping parameters
   dim = opts["dimensions"]
-  # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
-
   dofpernode = 1
 
   sbp, mesh, pmesh, Tsol, Tres, Tmsh, mesh_time = createMeshAndOperator(opts, dofpernode)
@@ -70,9 +65,9 @@ end
 
 """
   Given fully initialized mesh, sbp, eqn, opts, this function solves
-  the advection equations.  The 4 object should be obtained from 
+  the advection equations.  The 4 object should be obtained from
   createObjects().
-  
+
 
   Specifically, it applies an initial condition and invokes a nonlinear
   solver according to the options dictionary.
@@ -87,15 +82,9 @@ end
     pmesh: mesh used for preconditioning, can be same object as mesh.
            default value of mesh
 
-  Options Keys:
-    calc_error
-    calc_trunc_error
-    calc_havg
-    perturb_ic
-    calc_dt
-    finalize_mpi
 """
-function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AdvectionData,
+                  opts::Dict, pmesh::AbstractMesh=mesh)
 
   myrank = mesh.myrank
 
@@ -110,12 +99,12 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
   ICfunc_name = opts["IC_name"]
   ICfunc = ICDict[ICfunc_name]
   @mpi_master println("ICfunc = ", ICfunc)
-  ICfunc(mesh, sbp, eqn, opts, q_vec) 
+  ICfunc(mesh, sbp, eqn, opts, q_vec)
 
   writedlm("solution_ic.dat", eqn.q_vec)
 
   if opts["calc_error"]
-    @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"], 
+    @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"],
             " compared to initial condition")
     # read in this processors portion of the solution
     vals = readdlm(get_parallel_fname(opts["calc_error_infname"], mesy.myrank))
@@ -134,7 +123,7 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
 
   if opts["calc_trunc_error"]  # calculate truncation error
     @mpi_master println("\nCalculating residual for truncation error")
-    tmp = calcResidual(mesh, sbp, eqn, opts, evalResidual)
+    tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
     if myrank == 0
       f = open("error_trunc.dat", "w")
       println(f, tmp)
@@ -188,9 +177,6 @@ function solve_advection(mesh::AbstractMesh, sbp, eqn::AdvectionData, opts, pmes
   postproc(mesh, sbp, eqn, opts)
 
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function
@@ -253,49 +239,6 @@ function postproc(mesh, sbp, eqn, opts)
         println(f, diff_norm, " ", h_avg)
         close(f)
       end
-      #=
-      #----  Calculate functional on a boundary  -----#
-
-      if opts["calc_functional"]
-        num_functionals = opts["num_functionals"]
-        for j = 1:num_functionals
-          functional = OptimizationData{Tsol}(mesh, sbp, opts)
-          evalFunctional(mesh, sbp, eqn, opts, functional, functional_number=j)
-        end  # End for j = 1:num_functionals
-        # evalFunctional(mesh, sbp, eqn, opts) # Legacy
-      end    # End if opts["calc_functional"]
-
-
-      #-----  Calculate adjoint vector for a functional  -----#
-
-      if opts["calc_adjoint"]
-        eqn.disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
-        if mesh.isDG
-          boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
-        end
-
-        # TODO: Presently adjoint computation only for 1 functional. Figure out
-        # API based on future use.
-        j = 1
-        key = string("geom_edges_functional", j)
-        functional_edges = opts[key]
-        functional_number = j
-        functional_name = getFunctionalName(opts, j)
-
-        adjoint_vec = zeros(Tsol, mesh.numDof)
-        calcAdjoint(mesh, sbp, eqn, opts, functional_name, functional_number, adjoint_vec)
-
-
-        # Write adjoint vector to file and mesh
-        file_object = open("adjoint_vector.dat", "w")
-        for iter = 1:length(adjoint_vec)
-          println(file_object, real(adjoint_vec[iter]))
-        end
-        close(file_object)
-        saveSolutionToMesh(mesh, real(adjoint_vec))
-        writeVisFiles(mesh, "adjoint_field")
-      end  # end if opts["calc_adjoint"]
-      =#
 #=
       outname = opts["calc_error_outfname"]
       f = open(outname, "w")
@@ -307,5 +250,3 @@ function postproc(mesh, sbp, eqn, opts)
 
   return nothing
 end
-
-

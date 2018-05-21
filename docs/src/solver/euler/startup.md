@@ -10,7 +10,7 @@ This page documents the functions that start the solver.
 
 ```@autodocs
   Modules = [EulerEquationMod]
-  Pages = ["euler/startup_func.jl"]
+  Pages = ["euler/startup_func.jl", "euler/check_options.jl"]
 ```
 
 

@@ -233,7 +233,7 @@ function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
   boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
 
   #TODO: fix this
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data,  qL_arr, qr_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data,  qL_arr, qr_arr)
 
   return nothing
 end
@@ -285,7 +285,7 @@ function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
     boundaryFaceIntegrate!(mesh.sbpface, interface_i.faceL, flux_face, res_i)
   end
   
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data,  qL_arr, qr_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data,  qL_arr, qr_arr)
 
   return nothing
 end
@@ -323,8 +323,8 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData, functor::FluxType)
 
-  @debug1 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
-  @debug1 flush(eqn.params.f)
+  @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
+  @debug2 flush(eqn.params.f)
 
   if opts["parallel_data"] != "element"
     throw(ErrorException("cannot use getSharedFaceIntegrals_elemenet without parallel element data"))
@@ -351,7 +351,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
   start_elnum = mesh.shared_element_offsets[idx]
 
-  @debug1 begin
+  @debug2 begin
     qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
     qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
@@ -372,8 +372,8 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
     
-    @debug1 qL_face_arr[:, :, j] = q_faceL
-    @debug1 qR_face_arr[:, :, j] = q_faceR
+    @debug2 qL_face_arr[:, :, j] = q_faceL
+    @debug2 qR_face_arr[:, :, j] = q_faceR
 
     # calculate flux
     for k=1:mesh.numNodesPerFace
@@ -389,7 +389,7 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   # evaluate integral
   boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res)
 
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 
   return nothing
 end
@@ -406,8 +406,8 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType)
 
-  @debug1 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
-  @debug1 flush(eqn.params.f)
+  @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
+  @debug2 flush(eqn.params.f)
 
   if opts["parallel_data"] != "element"
     throw(ErrorException("cannot use getSharedFaceIntegrals_elemenet without parallel element data"))
@@ -433,7 +433,7 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
 
   start_elnum = mesh.shared_element_offsets[idx]
 
-  @debug1 begin
+  @debug2 begin
     qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
     qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
@@ -455,8 +455,8 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
 
     interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
 
-    @debug1 qL_face_arr[:, :, j] = q_faceL
-    @debug1 qR_face_arr[:, :, j] = q_faceR
+    @debug2 qL_face_arr[:, :, j] = q_faceL
+    @debug2 qR_face_arr[:, :, j] = q_faceR
 
     # calculate flux
     for k=1:mesh.numNodesPerFace
@@ -471,7 +471,7 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
     boundaryFaceIntegrate!(mesh.sbpface, bndryL_j.face, flux_face, res_j)
   end  # end loop over interfaces
 
-  @debug1 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
+  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
 
   return nothing
 end
