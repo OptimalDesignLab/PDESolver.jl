@@ -67,7 +67,6 @@ end
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
-#using ForwardDiff
 using LinearSolvers
 #using NonlinearSolvers   # non-linear solvers
 using ArrayViews

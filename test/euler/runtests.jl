@@ -9,7 +9,6 @@ using PDESolver
 #using Base.Test
 using PdePumiInterface  # common mesh interface - pumi
 using EulerEquationMod
-#using ForwardDiff
 using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface

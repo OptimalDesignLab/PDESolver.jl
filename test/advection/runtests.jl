@@ -11,7 +11,6 @@ using Utils
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
-#using ForwardDiff
 using NonlinearSolvers   # non-linear solversa
 using OptimizationInterface
 using ArrayViews

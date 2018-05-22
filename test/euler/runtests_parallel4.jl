@@ -10,7 +10,6 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using Utils
 using EulerEquationMod
-#using ForwardDiff
 using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface

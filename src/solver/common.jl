@@ -520,22 +520,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
   #    printSolution("rk4_solution.dat", eqn.res_vec)
 
     elseif flag == 2 # forward diff dR/du
-    #=
-      # define nested function
-      function dRdu_rk4_wrapper(u_vals::AbstractVector, res_vec::AbstractVector)
-        eqn.q_vec = u_vals
-        eqn.q_vec = res_vec
-        rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn)
-        return nothing
-      end
 
-      # use ForwardDiff package to generate function that calculate jacobian
-      calcdRdu! = forwarddiff_jacobian!(dRdu_rk4_wrapper, Float64,
-                  fadtype=:dual, n = mesh.numDof, m = mesh.numDof)
-
-      jac = zeros(Float64, mesh.numDof, mesh.numDof)  # array to be populated
-      calcdRdu!(eqn.q_vec, jac)
-    =#
+      error("run type 2 no longer suppored (ForwardDiff removed)")
     elseif flag == 3 # calculate dRdx
 
       # dRdx here

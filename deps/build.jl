@@ -95,33 +95,10 @@ function installPDESolver()
               "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "93e80390aeedb1dbcd90281b6dff7f760f430bc8";
               "SHA" "https://github.com/staticfloat/SHA.jl.git" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
               "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
-              "NaNMath" "https://github.com/mlubin/NaNMath.jl.git" "969151c5ff8022487379279ebac4a239a400dd44";
-              "Calculus" "https://github.com/johnmyleswhite/Calculus.jl.git" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
-              "DualNumbers" "https://github.com/JuliaDiff/DualNumbers.jl.git" "34ae2b236f4853028fc60a5efed42bd17a33230f";
               "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
 #              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
-              "ForwardDiff" "https://github.com/JuliaDiff/ForwardDiff.jl.git" "805ad5da942ba5f4477d1d8c5bce0b11cf3260fe";
-              "DiffBase" "https://github.com/JuliaDiff/DiffBase.jl.git" "a84a2be263ab5ec4b5261946a17f01fda358b9ac";
-              "Optim" "https://github.com/JuliaNLSolvers/Optim.jl.git"  "250b50ab5f9bb87576c623fa20fdafb981ce40a1";
-              "PositiveFactorizations" "https://github.com/timholy/PositiveFactorizations.jl.git" "32233b5a3d4b4453a8de28a6d363344023b1e074";
-              "LineSearches" "https://github.com/JuliaNLSolvers/LineSearches.jl.git"  "007640e240e4e8a2a2d38636d2c6f22540c69b3c"]
               
   
-#=
-  pkg_list = ["Compat"  "5b03745a6a948781329c444f08ad67cff63f91f7";
-  "URIParser" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
-  "FactCheck" "e3caf3143b13d4ce9bc576579d5ed9cd4aaefb11";
-  "ArrayViews" "4ec55697fc4f9cba522a5137b96d502230269910"
-  "SHA" "6f249c3e3f8ec0503f11e95ac5dca8edf210ab2c";
-  "BinDeps" "0ff7ad492955bca87155f62511ac37d662616de3";
-  "NaNMath" "adb02521f6fd7dfa7c64bbb38611d1f017e026f1";
-  "Calculus" "cb42f3699177449a42bdc3461c8aea8777aa8c39";
-  "DualNumbers" "7d4eedfa1bd6c0af7d844d085d0c2ce6b2357aa7";
-  "Debug" "0e733093cd71c67bd40ac1295e54153c3db0c751";
-  "MPI" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
-  "ForwardDiff" "d6714170e667027e9e53aa5daf941c3ef5252e7b"]
-=#
-
     println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)
 
