@@ -2,6 +2,11 @@
 Before running the code, you must `source` the shell script
 `PumiInterface/src/use_julialib.sh`.  This enables Julia to find and use Pumi.
 
+```
+cd /path/to/PumiInterface/src # for example ~/.julia/v0.4/PumiInterface/src)
+source ./use_julialib.sh  # note that you must be in the same directory as the script when sourcing it
+```
+
 The code takes an input file that defines all options for the solver, including
 the which physics to solve, which mesh to use, initial conditions,
 boundary conditions, and discretization.  The file `src/input/input_vals.txt`
