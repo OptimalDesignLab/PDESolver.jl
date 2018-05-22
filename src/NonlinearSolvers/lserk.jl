@@ -508,6 +508,23 @@ function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         return t
 end
 
+"""
+  calcDragTimeAverage:
+    Calculates the time average of drag. Reads this data from 'drag.dat' in the current directory.
+
+  Input:
+    mesh, sbp, eqn, opts: standard
+    delta_t: Time step size
+    itermax_fromnlsolver: The last iteration's number from the NL Solver
+
+  Outputs: (return values)
+    Cd:     Coefficient of drag
+            Cd = <D>/(0.5*M^2)
+    dCddM:  Derivative of the coefficient of drag. This derivative is in a partial sense.
+            This is calculated by taking the partial derivative of Cd wrt M:
+            dCd/dM = (-2<D>)/(0.5*M^3)
+
+"""
 function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver)
 
   dt = delta_t
@@ -551,8 +568,17 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
 end     # end function calcDragTimeAverage
 
 """
-t_steps:  max number of time steps, set by tmax
-itermax:  max number of time steps, set by user option itermax
+  calcFinalIter:
+    Simple function to decide which is actually the final iteration's number,
+      because there are two ways that is determined.
+
+  Input:
+    t_steps:  max number of time steps, set by tmax
+    itermax:  max number of time steps, set by user option itermax
+
+  Output: (return value)
+    finaliter: the actual number of the final iteration
+
 """
 function calcFinalIter(t_steps, itermax)
 
@@ -569,9 +595,19 @@ function calcFinalIter(t_steps, itermax)
 end     # end function calcFinalIter
 
 """
-i:        iter number to calculate quadrature weight at
-delta_t:  time step size
-itermax:  max number of time steps. This version is agnostic to where that number comes from
+  calcQuadWeight:
+    Determines the quadrature weight based upon the trapezoid rule. Handles the
+    special case if # time steps is less than 3.
+  
+  Inputs:
+    i:        iter number to calculate quadrature weight at
+    delta_t:  time step size
+    itermax:  max number of time steps. This version is agnostic to where that number comes from
+
+  Output: (return value)
+    quad_weight: The quadrature weight for this time step. This should be applied as a 
+                 factor if, for example, you are forming a sum over all time steps
+                 and adding into a field each time step.
 """
 function calcQuadWeight(i, delta_t, finaliter)
 
@@ -590,14 +626,21 @@ function calcQuadWeight(i, delta_t, finaliter)
 end     # end function calcQuadWeight
 
 """
-Provides a stabilized version of the imaginary component of q_vec.
+  calcStabilizedQUpdate!:
+    Provides a stabilized version of the imaginary component of q_vec.
 
-t: make sure to use treal here.
-q_vec: the q_vec to be stabilized. This should be the actual q_vec - only the imaginary component
-       of q_vec is used here, because we don't want to affect the solution in any way,
-       just the direct sensitivity. This will not be modified here
-Bv: just an array that is prealloc'd. size of q_vec. Real.
-    In the formulation, this is B*v = B*imag(q_vec)
+  Input:
+    mesh, sbp, eqn, opts: standard
+    stab_A: DiagJac type
+    stab_assembler: AssembleDiagJacData type
+    t: Time. Make sure to use treal here.
+    q_vec: the q_vec to be stabilized. This should be the actual q_vec - only the imaginary component
+          of q_vec is used here, because we don't want to affect the solution in any way,
+          just the direct sensitivity. This will not be modified here
+
+  In/Output:
+    Bv: just an array that is prealloc'd. size of q_vec. Real.
+        In the formulation, this is B*v = B*imag(q_vec)
 """
 function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
                                 stab_assembler, t, q_vec, Bv)
