@@ -6,7 +6,7 @@ using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using Utils
 using AdvectionEquationMod
-using ForwardDiff
+#using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 

@@ -116,8 +116,8 @@ end
 # mid level function (although it doesn't need Tdim)
 function array1DTo3D{T}(mesh::AbstractCGMesh, sbp,
                              eqn::AbstractSolutionData, opts,
-                             q_arr::AbstractArray{T, 3},
-                             q_vec::AbstractArray{T, 1})
+                             q_vec::AbstractArray{T, 1},
+                             q_arr::AbstractArray{T, 3})
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -136,8 +136,8 @@ end
 
 function array1DTo3D{T}(mesh::AbstractDGMesh, sbp,
                              eqn::AbstractSolutionData, opts,
-                             q_arr::AbstractArray{T, 3},
-                             q_vec::AbstractArray{T, 1})
+                             q_vec::AbstractArray{T, 1},
+                             q_arr::AbstractArray{T, 3})
 
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(q_arr) != pointer(q_vec)
