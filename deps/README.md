@@ -68,6 +68,8 @@ Because `Pkg.build` swallows errors, failures inside `Pkg.build` are not logged.
 
 ## Known Issues
 
+### Stack Smashing
+
 On Intel Skylake, there is a problem with reusing the symbolic factorization
 when using the sparse direct linar solver.  The error message looks like:
 
@@ -88,3 +90,33 @@ newtonInner at util.jl:179
 ```
 
 To avoid this problem, see the `SKYLAKE_STACKSMASH` the `src/linearsolver/ls_standard.jl` file.
+
+### Building Julia Offline
+
+Building Julia on a system that cannot access the internet is a little bit
+different than build on a regular computer.  The approach is
+
+On a computer with internet access
+
+ * clone the Julia repository
+ * checkout the version of Julia you want to build
+ * run `make -C deps getall` to download the source tarballs for all the things Julia builds during its build process
+ * create a tarball of the julia directory
+ * copy the julia tarball to the offline system
+
+On the system without internet access
+
+ * extract the julia tarball
+ * add the line `prefix=/path/to/installation/directory` to the file `Make.user` (create the file if it does not exist
+ * run `make` (or parallel `make` with the `-j` switch
+ * make the directories `julia/doc/_build/html/en`
+ * create the file `julia/doc/_build/html/en/index.html`
+ * run `make install`
+
+The purpose of creating the `index.html` file is that it will trick the Julia
+build system into not building the documentation.  This is necessary because
+build documentation requires downloading several Julia packages from the
+internet.
+
+After `make install` has finished, the julia directory can be deleted, which
+can save a lot of disk space on the filesystems used on clusers/supercomputers.
