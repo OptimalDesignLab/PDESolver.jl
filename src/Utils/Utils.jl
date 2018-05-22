@@ -27,7 +27,7 @@ include("checkpoint.jl")
 include("interpolation.jl")
 
 export free
-export disassembleSolution, writeQ, assembleSolution, assembleArray
+export array1DTo3D, writeQ, array3DTo1D, assembleArray
 export calcNorm, calcL2InnerProduct, calcMeshH, calcEuclidianNorm
 #export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 #export startDataExchange
@@ -91,7 +91,7 @@ function free(x)
 end
 
 @doc """
-### Utils.disassembleSolution
+### Utils.array1DTo3D
 
   This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
   3 dimensional array.  This function uses mesh.dofs
@@ -108,13 +108,13 @@ end
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 
-  The DG method for disassembleSolution assumes that q and q_vec refer to the
+  The DG method for array1DTo3D assumes that q and q_vec refer to the
     same memory address, and therefore does no explicit writing/copying.
 
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
-function disassembleSolution{T}(mesh::AbstractCGMesh, sbp,
+function array1DTo3D{T}(mesh::AbstractCGMesh, sbp,
                              eqn::AbstractSolutionData, opts,
                              q_arr::AbstractArray{T, 3},
                              q_vec::AbstractArray{T, 1})
@@ -134,7 +134,7 @@ function disassembleSolution{T}(mesh::AbstractCGMesh, sbp,
 end
 
 
-function disassembleSolution{T}(mesh::AbstractDGMesh, sbp,
+function array1DTo3D{T}(mesh::AbstractDGMesh, sbp,
                              eqn::AbstractSolutionData, opts,
                              q_arr::AbstractArray{T, 3},
                              q_vec::AbstractArray{T, 1})
@@ -175,7 +175,7 @@ end
 
 
 @doc """
-### Utils.assembleSolution
+### Utils.array3DTo1D
 
   This function takes the 3D array of variables in arr and
   reassembles it into the vector res_vec.  Note that
@@ -186,13 +186,13 @@ end
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
+function array3DTo1D{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
                          sbp, eqn::AbstractSolutionData{Tsol}, opts,
                          res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
-#  println("in assembleSolution")
+#  println("in array3DTo1D")
   if mesh.isDG
     return nothing
   end
@@ -214,7 +214,7 @@ function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
   return nothing
 end
 
-function assembleSolution{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
+function array3DTo1D{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
                          sbp, eqn::AbstractSolutionData{Tsol}, opts,
                          res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
                          zero_resvec=true)
@@ -238,7 +238,7 @@ function arrToVecAssign{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 
   # This was created so a q -> q_vec operation could be performed, but it is sufficiently
   #   generic to operate on other things.
-  # It is the inverse function of disassembleSolution
+  # It is the inverse function of array1DTo3D
 
   # arr is the array to be assembled into dest_vec, using an assignment reduction
 
@@ -278,7 +278,7 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 # the length of res_vec is mesh.numDof/mesh.numDofPerNode, only the last
 # dof on the node is placed into res_vec
 
-#  println("in assembleSolution")
+#  println("in array3DTo1D")
 
   if zero_resvec
     fill!(res_vec, 0.0)

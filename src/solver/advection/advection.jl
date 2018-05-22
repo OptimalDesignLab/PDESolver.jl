@@ -14,7 +14,7 @@ This function evaluates the Advection equation.
 *  `opts` : Options dictionary
 *  `t`    :
 
-Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use assembleSolution on eqn.res and eqn.res_vec
+Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use array3DTo1D on eqn.res and eqn.res_vec
 
 **Outputs**
 
@@ -664,7 +664,7 @@ end
   3D array is read matters, because only the last value assigned to a location 
   in a vector remains.
 
-  In most cases, what you really want is assembleSolution().
+  In most cases, what you really want is array3DTo1D().
 
   Inputs:
     mesh
@@ -690,7 +690,7 @@ function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                          zero_resvec=true)
 # arr is the array to be assembled into res_vec
 
-#  println("in assembleSolution")
+#  println("in array3DTo1D")
 
   if zero_resvec
     fill!(res_vec, 0.0)

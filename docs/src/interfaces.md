@@ -114,8 +114,8 @@ many other operations, so it is allocated here so the memory can be reused.
 There are functions to facilitate the scattering of values from `q_vec` to `q`.
 Note that for Continuous Galerkin type discretization (as opposed to
 Discontinuous Galerkin discretizations), there is not a corresponding "gather"
-operation (ie. `q` -> `q_vec`).  See [`Utils.disassembleSolution`](@ref) 
-and [`Utils.assembleSolution`](@ref).
+operation (ie. `q` -> `q_vec`).  See [`Utils.array1DTo3D`](@ref) 
+and [`Utils.array3DTo1D`](@ref).
 
 `shared_data` is a vector of length `npeers`.  Each element contains the data
               needed send and receive the `q` variables to/from other
@@ -641,7 +641,7 @@ which the next value if `eqn.q` is calculated.  The algorthmic differentiation
 mechanism described above is uses several residual evaluations to compute the
 Jacobian if needed for a given method.  Some methods, such as RK4, are better
 expressed in terms of `eqn.q_vec` and `eqn.res_vec` rather than `eqn.q` and
-`eqn.res`.  `eqn.assembleSolution` and `eqn.disassmbleSolution` exist to
+`eqn.res`.  `eqn.array3DTo1D` and `eqn.disassmbleSolution` exist to
 transform back and forth between the vector and 3D array forms.  In order to
 compute the Jacobian efficiently, it is necessary to work with the 3D arrays.
 For this reason, `evalResidual` must work only with `eqn.q` and `eqn.res`

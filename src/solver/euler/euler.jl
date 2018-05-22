@@ -94,8 +94,8 @@ import PDESolver.evalResidual
   eqn.q_vec and eqn.res_vec exist for reusable storage *outside* the residual
   evaluation.  They should never be used inside the residual evaluation.
 
-  The function disassembleSolution takes q_vec and puts it into eqn.q
-  The function assembleSolution takes eqn.res and puts it into res_vec
+  The function array1DTo3D takes q_vec and puts it into eqn.q
+  The function array3DTo1D takes eqn.res and puts it into res_vec
 
   Arguments:
     * mesh  : a mesh object

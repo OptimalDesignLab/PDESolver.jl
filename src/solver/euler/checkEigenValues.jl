@@ -85,7 +85,7 @@ function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       end
       
       fill!(eqn.res_vec, 0.0)
-      assembleSolution(mesh, sbp, eqn, opts, eqn.res,  eqn.res_vec)
+      array3DTo1D(mesh, sbp, eqn, opts, eqn.res,  eqn.res_vec)
       # println("elem_res_vec - eqn.res_vec = \n", elem_res_vec - eqn.res_vec)
       # println("orig_res_vec - eqn.res_vec = \n", orig_res_vec - eqn.res_vec)
 

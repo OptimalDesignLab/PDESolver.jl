@@ -382,12 +382,12 @@ function calcdHdLambda(mesh, sbp, eqn, opts, lambda, physics_func, g_func, res_v
 
   # calculate physics residual
   physics_func(mesh, sbp, eqn, opts)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
 
   # calculate homotopy function
   g_func(mesh, sbp, eqn, opts, res_homotopy)
-  assembleSolution(mesh, sbp, eqn, opts, res_homotopy, res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, res_homotopy, res_vec)
 
   # combine them
   for i=1:length(res_vec)

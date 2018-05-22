@@ -25,7 +25,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   println("  Calculating Jac using forward sweep data from: ", qvec_filename)
   q_vec_with_complex = readdlm(qvec_filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
-  disassembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+  array1DTo3D(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
 
   check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
   println("  eqn_dummy.q_vec loaded. i_fwd: ", i_fwd)
@@ -47,7 +47,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   #=
   # make eqn object consistent
   evalResidual(mesh, sbp, eqn_dummy, opts)
-  assembleSolution(mesh, sbp, eqn_dummy, opts, eqn_dummy.res, eqn_dummy.res_vec)
+  array3DTo1D(mesh, sbp, eqn_dummy, opts, eqn_dummy.res, eqn_dummy.res_vec)
 
   # TODO: fix ordering & repetition of these
   eqn_dummy.q = reshape(eqn_dummy.q_vec, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)

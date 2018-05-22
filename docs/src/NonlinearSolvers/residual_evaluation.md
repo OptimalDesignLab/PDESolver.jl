@@ -11,5 +11,5 @@ the `NonlinearSolvers` module.
 ```@docs
 physicsRhs
 assembleResidual
-disassembleSolution(::Any, ::Any, ::Any, ::Any, ::AbstractArray{Float64, 1})
+array1DTo3D(::Any, ::Any, ::Any, ::Any, ::AbstractArray{Float64, 1})
 ```

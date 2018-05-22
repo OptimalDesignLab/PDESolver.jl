@@ -16,7 +16,7 @@ function test_modes()
     # load a new initial condition
     ICFunc = EulerEquationMod.ICDict["ICIsentropicVortex"]
     ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
-    NonlinearSolvers.disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    NonlinearSolvers.array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec)
 #=  # unneeded after LinearOperator introduction
     # compute jacobian
     Tsol = eltype(eqn.q)

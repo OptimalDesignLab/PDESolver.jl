@@ -33,9 +33,9 @@ The reference Path is ~/.julia/v0.4/PDESolver/src/solver/euler/
 *  init
 *  dataPrep
 *  getBCFluxes
-*  disassembleSolution
+*  array1DTo3D
 *  writeQ
-*  assembleSolution
+*  array3DTo1D
 *  calcEulerFlux
 
 == ic.jl == 
