@@ -415,6 +415,7 @@ Note that any values associated with these options are shared with the regular
 "perturb_Ma": perturb Mach number using complex step
 "perturb_Ma_magnitude": magnitude of the complex perturbation to be applied to Ma. This is a real value, example: 1e-20.
                         It gets complexified later, in types.jl.
+"stabilize_v": turn on experimental stabilization of v, the direct sensitivity vector
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved

@@ -148,11 +148,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     #------------------------------------------------------------------------------
     # allocation of objects for stabilization routine
-    stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
-    stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
-    # Bv = zeros(Float64, length(q_vec), )
-    Bv = zeros(Complex128, length(q_vec), )
-    dqimag_vec = zeros(Bv)
+    if opts["stabilize_v"]
+      stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
+      stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
+      # Bv = zeros(Float64, length(q_vec), )
+      Bv = zeros(Complex128, length(q_vec), )
+      dqimag_vec = zeros(Bv)
+      @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")
+    end
 
     #------------------------------------------------------------------------------
     # stabilize q_vec (this only affects the imaginary part of q_vec)
@@ -269,7 +272,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] += fac*dq_vec[j]
     end
 
-    if opts["perturb_Ma"]
+    if opts["stabilize_v"]
       # Stage 1: get B*v
       calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
@@ -278,11 +281,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       #     imag(q) -= fac*delta_t*Bv
       #   or
       #     imag(q) -= fac*delta_t*B*imag(q)
+      update_tmp = 0.0
       for j = 1:length(q_vec)
         dqimag_vec[j] = delta_t*Bv[j]
         # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac*dqimag_vec[j]) 
+        update_tmp += fac*dqimag_vec[j]
         q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j])) 
       end
+      @mpi_master println(f_stabilize_v, "i: $i   stage: 1   sum of stab update:", update_tmp)
     end
     
     #--------------------------------------------------------------------------
@@ -303,7 +309,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         q_vec[j] += fac2*dq_vec[j]
       end
 
-      if opts["perturb_Ma"]
+      if opts["stabilize_v"]
         # Stages 2-5: get B*v
         calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
@@ -312,11 +318,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         # The steps for doing this are the same as the full update on q_vec above as part
         #   of LSERK. The difference here is that the update is with (B*v) instead of 
         #   res_vec, and with a separate holding vector for the previous stage update.
+        update_tmp = 0.0
         for j = 1:length(q_vec)
           dqimag_vec[j] = fac*dqimag_vec[j] + delta_t*Bv[j]
           # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac2*dqimag_vec[j])
+
+          update_tmp += fac2*dqimag_vec[j]
           q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac2*dqimag_vec[j]))
         end
+        @mpi_master println(f_stabilize_v, "i: $i   stage: $stage   sum of stab update:", update_tmp)
       end
 
 
@@ -407,6 +417,11 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   end
 
   if opts["perturb_Ma"]
+
+    @mpi_master if opts["stabilize_v"]
+      close(f_stabilize_v)
+    end
+
     @mpi_master close(f_drag)
 
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)

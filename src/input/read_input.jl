@@ -437,6 +437,7 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 # Direct sensitivity of drag wrt Ma options
 get!(arg_dict, "perturb_Ma", false)
 get!(arg_dict, "perturb_Ma_magnitude", 0.0)
+get!(arg_dict, "stabilize_v", false)
 
 
 # Adjoint computation options
@@ -662,6 +663,9 @@ function checkForIllegalOptions_post(arg_dict)
   if arg_dict["perturb_Ma"] == true && arg_dict["perturb_Ma_magnitude"] == 0.0
     error("\n Options error: perturb_Ma is true, but the option for setting the perturbation
             magnitude, perturb_Ma_magnitude, is unset or set to 0.0.")
+  end
+  if arg_dict["stabilize_v"] == true && arg_dict["perturb_Ma"] == false
+    error("\n Direct sensitivity stabilization turned on, but perturb_Ma is false.")
   end
 
 
