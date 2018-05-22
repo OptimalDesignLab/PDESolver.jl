@@ -38,7 +38,7 @@ separate directory called pressCoeff. The function deletes any existing
 function writeSurfacePressureCoeff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts, g_edges, nodal_pressCoeff)
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end

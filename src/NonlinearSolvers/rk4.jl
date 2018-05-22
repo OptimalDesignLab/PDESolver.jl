@@ -424,7 +424,7 @@ end
 """->
 function pde_pre_func(mesh, sbp, eqn, opts)
   
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 end
 
 

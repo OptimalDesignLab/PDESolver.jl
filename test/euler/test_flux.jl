@@ -152,7 +152,7 @@ function test_flux_2d()
     ic_func = EulerEquationMod.ICDict["ICExp"]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
 
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     fill!(eqn.res, 0.0)
     EulerEquationMod.calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
     res_split = copy(eqn.res)
@@ -219,7 +219,7 @@ function test_flux_2d()
     # test that constant field -> 0 residual
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     fill!(eqn.res, 0.0)
     opts["volume_integral_type"] = 2
@@ -238,7 +238,7 @@ function test_flux_2d()
     # test non-precomputed flux version of functions
     ic_func = EulerEquationMod.ICDict["ICExp"]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # test volume integrals
     fill!(eqn.res, 0.0)

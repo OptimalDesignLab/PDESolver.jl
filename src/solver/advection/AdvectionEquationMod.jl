@@ -6,7 +6,6 @@ using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
-using ForwardDiff
 using NonlinearSolvers
 using LinearSolvers
 using MPI

@@ -151,7 +151,7 @@ end
 function array1DTo3D{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
 # scatters the q_vec to the 3d array eqn.q
 # no aliasing concerns here
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, q_vec, eqn.q)
 
   return nothing
 end

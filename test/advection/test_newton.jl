@@ -9,7 +9,6 @@ using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using AdvectionEquationMod
-using ForwardDiff
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 

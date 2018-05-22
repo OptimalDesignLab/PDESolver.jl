@@ -950,7 +950,7 @@ function test_ESS()
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
         scale!(eqn.q_vec, 0.01)
-        array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         for i=1:mesh.numEl
           for j=1:mesh.numNodesPerElement
             eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
@@ -1004,7 +1004,7 @@ function test_ESS()
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
         scale!(eqn.q_vec, 0.01)
-        array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         for i=1:mesh.numEl
           for j=1:mesh.numNodesPerElement
             eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])

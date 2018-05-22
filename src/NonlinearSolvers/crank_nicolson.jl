@@ -226,7 +226,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     for i = 1:mesh.numDof
       eqn_nextstep.q_vec[i] = eqn.q_vec[i]
     end
-    array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q, eqn_nextstep.q_vec)
+    array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec, eqn_nextstep.q)
 
 #    t = t_nextstep
     flush(BSTDOUT)

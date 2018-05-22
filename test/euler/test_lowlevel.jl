@@ -296,7 +296,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
 
   facts("--- Testing convert Functions ---") do
     # for the case, the solution is uniform flow
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     v_arr = copy(eqn.q)
     v2 = zeros(4)
 
@@ -649,7 +649,7 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
   facts("--- Testing dataPrep ---") do
  
     # the input file loaded a uniform flow into q_vev
-    EulerEquationMod.array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    EulerEquationMod.array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
     # test array1DTo3D
     for i=1:mesh.numEl
@@ -727,7 +727,7 @@ add_func2!(EulerTests, test_lowlevel_dataprep, "input_vals_channel.jl", [TAG_FLU
 """
 function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
-  EulerEquationMod.array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  EulerEquationMod.array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
   facts("--- Testing evalVolumeIntegrals ---")  do
