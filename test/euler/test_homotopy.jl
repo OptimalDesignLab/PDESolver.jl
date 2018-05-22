@@ -40,7 +40,7 @@ function test_homotopy(mesh, sbp, eqn, opts)
   # test jacobian
   t = 0.0
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
   ls_dense = StandardLinearSolver(pc, lo, eqn.comm, opts)

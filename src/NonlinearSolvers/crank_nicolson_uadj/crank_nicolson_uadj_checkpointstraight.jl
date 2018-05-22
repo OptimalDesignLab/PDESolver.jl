@@ -25,7 +25,7 @@ function cnAdjLoadChkpt(mesh, sbp, opts, adj, physics_func, i_fwd)
   println("  Calculating Jac using forward sweep data from: ", qvec_filename)
   q_vec_with_complex = readdlm(qvec_filename)
   eqn_dummy.q_vec = q_vec_with_complex[:,1]     # because readdlm gives a field to the zero-valued complex part
-  array1DTo3D(mesh, sbp, eqn_dummy, opts, eqn_dummy.q, eqn_dummy.q_vec)
+  array1DTo3D(mesh, sbp, eqn_dummy, opts, eqn_dummy.q_vec, eqn_dummy.q)
 
   check_q_qvec_consistency(mesh, sbp, eqn_dummy, opts)
   println("  eqn_dummy.q_vec loaded. i_fwd: ", i_fwd)

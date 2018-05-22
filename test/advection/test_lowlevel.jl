@@ -76,7 +76,7 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
     u  = zeros(Tsol, 1, 3, 2)
 
     # checking array1DTo3D
-    array1DTo3D(mesh, sbp, eqn, opts, u, u_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, u_vec, u)
     @fact u[1,1,2] --> roughly(2.0)
     @fact u[1,2,2] --> roughly(4.0)
     @fact u[1,3,2] --> roughly(3.0)

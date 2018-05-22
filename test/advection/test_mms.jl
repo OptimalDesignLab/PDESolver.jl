@@ -42,7 +42,7 @@ function test_mms_poly(opts::Dict, maxdegree::Integer)
 
     # get IC
     AdvectionEquationMod.ICDict["ICp$d"](mesh, sbp, eqn, opts, eqn.q_vec)
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # set BCs
     opts["BC1_name"] = string("p", d, "BC")
