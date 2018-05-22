@@ -15,7 +15,7 @@ function test_interp()
 
     mesh, sbp, eqn, opts = createObjects(opts)
     mesh2, sbp2, eqn2, opts2 = createObjects(opts2)
-    disassembleSolution(mesh2, sbp2, eqn2, opts2, eqn2.q, eqn2.q_vec)
+    array1DTo3D(mesh2, sbp2, eqn2, opts2, eqn2.q_vec, eqn2.q)
 
     # put degree p field into eqn
     for i=1:mesh.numEl
