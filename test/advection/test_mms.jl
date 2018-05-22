@@ -42,7 +42,7 @@ function test_mms_poly(opts::Dict, maxdegree::Integer)
 
     # get IC
     AdvectionEquationMod.ICDict["ICp$d"](mesh, sbp, eqn, opts, eqn.q_vec)
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # set BCs
     opts["BC1_name"] = string("p", d, "BC")
@@ -55,7 +55,7 @@ function test_mms_poly(opts::Dict, maxdegree::Integer)
     # compute residual
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     @fact calcNorm(eqn, eqn.res_vec) --> roughly(0.0, atol=1e-12)
 #    @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
   end

@@ -52,7 +52,7 @@ function test_staggered_same(mesh, sbp, eqn, opts)
 
   # test a non-uniform condition
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   opts["use_staggered_grid"] = true
   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
@@ -150,7 +150,7 @@ function test_staggered_different(mesh, sbp, eqn, opts)
   # S is skew-symmetric, so c.' S c = 0
   # this is basically the test of conservation
   EulerEquationMod.ICRhoe1E2U3(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   q_node = eqn.q[:, 1, 1]
 

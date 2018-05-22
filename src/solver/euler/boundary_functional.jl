@@ -31,7 +31,7 @@ function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 =#
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -75,7 +75,7 @@ function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
 
   end
 
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end

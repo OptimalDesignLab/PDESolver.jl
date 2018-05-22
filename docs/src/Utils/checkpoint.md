@@ -74,11 +74,11 @@ function explicit_timemarching_example(mesh, sbp, eqn, opts, func::Function)
 
     t = (step - 1)*delta_t
     # q_vec -> q
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     func(mesh, sbp, eqn, opts, t)
 
     # res -> res_vec
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     for i=1:mesh.numDof
       eqn.q_vec[i] = ... # some function of eqn.res_vec[i]
@@ -153,11 +153,11 @@ function explicit_timemarching_example(mesh, sbp, eqn, opts, func::Function)
     end
 
     # q_vec -> q
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     func(mesh, sbp, eqn, opts, t)
 
     # res -> res_vec
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     for i=1:mesh.numDof
       eqn.q_vec[i] = ... # some function of eqn.res_vec[i]

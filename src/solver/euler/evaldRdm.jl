@@ -15,7 +15,7 @@ Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
 function evalrevm_transposeproduct{Tsol}(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0)
 
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.res_bar, input_array)
+  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params

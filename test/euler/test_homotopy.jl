@@ -40,7 +40,7 @@ function test_homotopy(mesh, sbp, eqn, opts)
   # test jacobian
   t = 0.0
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   pc, lo = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
   ls_dense = StandardLinearSolver(pc, lo, eqn.comm, opts)
@@ -112,7 +112,7 @@ end  # end do
   return nothing
 end
 
-add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST, TAG_TMP])
+add_func3!(EulerTests, test_homotopy, test_homotopy_inputfile, test_homotopy_moddict, [TAG_HOMOTOPY, TAG_SHORTTEST])
 
 function test_homotopy_convergence()
 

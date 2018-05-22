@@ -9,7 +9,6 @@ using PDESolver
 #using Base.Test
 using PdePumiInterface  # common mesh interface - pumi
 using EulerEquationMod
-using ForwardDiff
 using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
@@ -43,6 +42,7 @@ include("test_GLS3.jl")
 include("test_modes.jl")
 include("test_3d.jl")
 include("test_bc.jl")
+include("test_interp.jl")
 include("test_jac.jl")
 include("test_adjoint.jl")
 include("test_reversemode.jl")

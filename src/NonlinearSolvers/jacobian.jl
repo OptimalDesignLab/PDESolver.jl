@@ -102,7 +102,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
       #       matter (recompute res_vec internally?
       arrToVecAssign(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
       # res_0 is the unperturbed res, and it needs to be passed in vector form
-      assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+      array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
       res_copy_vec = copy(eqn.res_vec)
       #TODO: don't copy the giant vector!
       tmp, t_jac, t_gc, alloc = @time_all calcJacFD(mesh, sbp, eqn, opts, func, res_copy_vec, pert, jac, t)
@@ -223,7 +223,7 @@ function calcJacFD(mesh, sbp, eqn, opts, func, res_0, pert, jac::DenseArray, t=0
     end
 
 
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts, t)
 
@@ -276,7 +276,7 @@ function calcJacobianComplex(mesh, sbp, eqn, opts, func, pert, jac, t=0.0)
       eqn.q_vec[j] += pert
     end
 
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec)
     # evaluate residual
     func(mesh, sbp, eqn, opts, t)
 

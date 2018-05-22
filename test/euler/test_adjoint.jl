@@ -122,7 +122,7 @@ function test_adjoint()
     println(file, lift.dDragdaoa)
     close(file)
 
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     orig_Ju = deepcopy(lift.lift_val) # Copy the original objective value
     orig_q_vec = deepcopy(eqn.q_vec)
     original_res_vec = deepcopy(eqn.res_vec)
@@ -135,14 +135,14 @@ function test_adjoint()
       boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
       EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, lift,
                                         func_deriv_arr)  # populate df_dq_bndry
-      assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+      array3DTo1D(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
 
       rand_vec = rand(length(eqn.q_vec))
       contract_val = dot(rand_vec,func_deriv)
 
       # Check with finite difference
       eqn.q_vec += 1e-6*rand_vec
-      disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+      array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
       dJdu_fd = (lift.lift_val-orig_Ju)/1e-6
 

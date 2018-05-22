@@ -1,12 +1,5 @@
 julia 0.4.0-dev+5149
 Compat 0.7.8
-URIParser 0.1.1
 FactCheck 0.4.2
 ArrayViews 0.6.4
-SHA 0.1.2
-BinDeps 0.3.19
-NaNMath 0.1.1
-Calculus 0.1.14
-DualNumbers 0.1.5
-ForwardDiff 0.1.2
 Debug 0.1.6

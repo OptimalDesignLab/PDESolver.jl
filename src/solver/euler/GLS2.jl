@@ -201,11 +201,11 @@ function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   gls_resvec = zeros(Tsol, mesh.numDof)
   full_resvec = zeros(Tsol, mesh.numDof)
   old_resvec = zeros(Tsol, mesh.numDof)
-  assembleSolution(mesh, sbp, eqn, opts, gls_res, gls_resvec)
-  assembleSolution(mesh, sbp, eqn, opts, gls_full, full_resvec)
+  array3DTo1D(mesh, sbp, eqn, opts, gls_res, gls_resvec)
+  array3DTo1D(mesh, sbp, eqn, opts, gls_full, full_resvec)
   writedlm("gls_full.dat", real(gls_full))
   writedlm("gls_fullvec.dat", full_resvec)
-  assembleSolution(mesh, sbp, eqn, opts, res_before, old_resvec)
+  array3DTo1D(mesh, sbp, eqn, opts, res_before, old_resvec)
   gls_norm = calcNorm(eqn, gls_resvec)
   full_norm = calcNorm(eqn, full_resvec)
   old_norm = calcNorm(eqn, old_resvec)
@@ -614,7 +614,7 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
   gls_res_vec = zeros(Tres, mesh.numDof)
   middle_vec = zeros(gls_res_vec)
   gls_fullvec = zeros(gls_res_vec)
-  assembleSolution(mesh, sbp, eqn, opts, gls_res_vec
+  array3DTo1D(mesh, sbp, eqn, opts, gls_res_vec
   =#
 
   return nothing

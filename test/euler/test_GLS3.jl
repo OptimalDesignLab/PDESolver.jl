@@ -155,7 +155,7 @@ function test_gls_channel(mesh, sbp, eqn, opts)
  #   resize!(ARGS, 1)
  #   ARGS[1] = "input_vals_channel_gls.jl"
  #   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     test_GLS(mesh, sbp, eqn, opts)
   end  # end facts block
 
@@ -189,7 +189,7 @@ function test_gls_vortex()
         resize!(ARGS, 1)
         ARGS[1] = "input_vals_vortex3_gls.jl"
         mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         test_GLS(mesh, sbp, eqn ,opts)
       end  # end facts block
     end
@@ -229,7 +229,7 @@ function test_gls_fd()
 
 
         len = mesh.numDofPerNode*mesh.numNodesPerElement
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         test_GLS(mesh, sbp, eqn, opts)
         jac_fd = zeros(len, len)
         eps_fd = 1e-8
@@ -266,7 +266,7 @@ function test_gls_fd()
         # trick code into only doing 1 element
         mesh.numEl = 1
 
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         eqn.params.tau_type = p
 
         eps_c = 1e-20

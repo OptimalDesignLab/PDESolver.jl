@@ -141,11 +141,11 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP,
 
     end
 
-    disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     evalResidual(mesh, sbp, eqn, opts, eqn.params.t)
 
     eqn.res_vec[:] = 0.0
-    assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
     # printing solution and residual to file
     writedlm("solution_final.dat", real(eqn.q_vec))

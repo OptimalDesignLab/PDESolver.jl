@@ -6,13 +6,12 @@ using ArrayViews
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
-using ForwardDiff
 using NonlinearSolvers
 using MPI
 using Utils
 using Input
 import ODLCommonTools: sview
-export SimpleODEData, SimpleODEData_ #getMass, assembleSolution, disassembleSolution
+export SimpleODEData, SimpleODEData_ #getMass, array3DTo1D, array1DTo3D
 export evalResidual, init, run_simpleode # exported from simpleODE.jl
 export ICDict              # exported from ic.jl
 export ode_pre_func, ode_post_func    # exported from simpleODE_func.jl

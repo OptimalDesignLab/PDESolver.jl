@@ -710,6 +710,39 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
 end
 
 """
+  Test the entropy-stable boundary condition
+"""
+function test_ESSBC(mesh, sbp, eqn, opts)
+
+  func = EulerEquationMod.BCDict["noPenetrationESBC"]
+
+  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+
+  bndry_flux = zeros(eltype(eqn.res), mesh.numDofPerNode)
+  w = zeros(eltype(eqn.q), mesh.numDofPerNode)
+
+  for i=1:mesh.numBoundaryFaces
+    for j=1:mesh.numNodesPerFace
+      q = ro_sview(eqn.q, :, j, i)
+      aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, i)
+      coords = ro_sview(mesh.coords_bndry, :, j, i)
+      nrm_xy = mesh.nrm_bndry[:, j, i]
+      scale!(nrm_xy, 1/norm(nrm_xy))  # normalize
+
+      func(eqn.params, q, aux_vars, coords, nrm_xy, bndry_flux)
+      EulerEquationMod.convertToIR(eqn.params, q, w)
+
+      # test: psi - w^T f(q) < 0
+      psi_n = q[2]*nrm_xy[1] + q[3]*nrm_xy[2]
+      @fact psi_n - dot(w, bndry_flux) --> less_than_or_equal(1e-12)
+    end
+  end
+
+  return nothing
+end
+
+
+"""
   Used for debugging LW functions, not used for regular testing
 """
 function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts)
@@ -917,7 +950,7 @@ function test_ESS()
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
         scale!(eqn.q_vec, 0.01)
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         for i=1:mesh.numEl
           for j=1:mesh.numNodesPerElement
             eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
@@ -931,7 +964,12 @@ function test_ESS()
         println("finished testing LW dissipation")
         println("testing LW2 dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
-        println("finished testing LW2 dissipation")
+        println("finished testing LW dissipation")
+        if dim == 2
+          println("testing ESBC")
+          test_ESSBC(mesh, sbp, eqn, opts)
+        end
+
 
     #    testLW(mesh, sbp, eqn, opts)
         # check polynomial
@@ -943,6 +981,12 @@ function test_ESS()
         println("testing LW dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
         println("finished testing LW dissipation")
+        if dim == 2
+          println("testing ESBC")
+          test_ESSBC(mesh, sbp, eqn, opts)
+        end
+
+
         # check full calling sequence
         fill!(eqn.res, 0.0)
         EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
@@ -960,7 +1004,7 @@ function test_ESS()
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
         scale!(eqn.q_vec, 0.01)
-        disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+        array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         for i=1:mesh.numEl
           for j=1:mesh.numNodesPerElement
             eqn.aux_vars[1, j, i] = EulerEquationMod.calcPressure(eqn.params, eqn.q[:, j, i])
@@ -1009,4 +1053,4 @@ function test_ESS()
 end  # end function
 
 #test_ESS()
-add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST])
+add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST, TAG_TMP])

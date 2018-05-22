@@ -424,7 +424,7 @@ end
 """->
 function pde_pre_func(mesh, sbp, eqn, opts)
   
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 end
 
 
@@ -445,7 +445,7 @@ end
 """->
 function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
   eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
   if calc_norm
     local_norm = calcNorm(eqn, eqn.res_vec)

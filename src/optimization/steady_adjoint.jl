@@ -55,7 +55,7 @@ function calcAdjoint{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
   evalFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
 
   # Assemble func_deriv
-  assembleSolution(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
+  array3DTo1D(mesh, sbp, eqn, opts, func_deriv_arr, func_deriv)
   scale!(func_deriv, -1.0)
 
   # do transpose solve

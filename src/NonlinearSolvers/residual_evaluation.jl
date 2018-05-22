@@ -3,7 +3,7 @@
 
 # TODO: calcResidual shouldn't need exporting
 export calcResidual, physicsRhs
-import Utils.disassembleSolution
+import Utils.array1DTo3D
 
 """
   This function computes the vector form of of the residual from the vector
@@ -68,7 +68,7 @@ function physicsRhs(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t=0.0)
   
 
   # q_vec -> q
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec)
 
   # start parallel communication if needed
   time = eqn.params.time
@@ -95,7 +95,7 @@ end
 
   This function takes the residual in eqn.res and performs an additive reduction
   into res_vec.
-  This function wraps assembleSolution.
+  This function wraps array3DTo1D.
 
   Inputs:
     mesh: AbstractMesh
@@ -116,12 +116,12 @@ function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1};
 # no aliasing concerns
 #TODO: clarify zero_resvec (why not used for both calls?)
 
-  assembleSolution(mesh, sbp, eqn, opts, eqn.res, res_vec)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, res_vec)
 
   if assemble_edgeres
 
     for i=1:size(eqn.res_edge, 4)
-      assembleSolution(mesh, sbp, eqn, opts, sview(eqn.res_edge, :, :, :, i),
+      array3DTo1D(mesh, sbp, eqn, opts, sview(eqn.res_edge, :, :, :, i),
                            res_vec, zero_resvec=zero_resvec)
     end
   end
@@ -131,7 +131,7 @@ end
 
 
 @doc """
-### NonlinearSolvers.disassembleSolution
+### NonlinearSolvers.array1DTo3D
 
   This function performs the scatter q_vec -> eqn.q
 
@@ -148,10 +148,10 @@ end
   Aliasing Restrictions: none
 
 """->
-function disassembleSolution{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
+function array1DTo3D{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
 # scatters the q_vec to the 3d array eqn.q
 # no aliasing concerns here
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, q_vec, eqn.q)
 
   return nothing
 end

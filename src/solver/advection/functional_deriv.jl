@@ -11,7 +11,7 @@ function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
                            functionalData::AbstractIntegralFunctional,
                            func_deriv_arr::Abstract3DArray)
 
-  disassembleSolution(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
