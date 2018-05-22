@@ -269,18 +269,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] += fac*dq_vec[j]
     end
 
-    # Stage 1: get B*v
-    calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+    if opts["perturb_Ma"]
+      # Stage 1: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
-    # Stage 1: stabilize q_vec (this only affects the imaginary part of q_vec)
-    # The below is doing this:
-    #     imag(q) -= fac*delta_t*Bv
-    #   or
-    #     imag(q) -= fac*delta_t*B*imag(q)
-    for j = 1:length(q_vec)
-      dqimag_vec[j] = delta_t*Bv[j]
-      # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac*dqimag_vec[j]) 
-      q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j])) 
+      # Stage 1: stabilize q_vec (this only affects the imaginary part of q_vec)
+      # The below is doing this:
+      #     imag(q) -= fac*delta_t*Bv
+      #   or
+      #     imag(q) -= fac*delta_t*B*imag(q)
+      for j = 1:length(q_vec)
+        dqimag_vec[j] = delta_t*Bv[j]
+        # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac*dqimag_vec[j]) 
+        q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j])) 
+      end
     end
     
     #--------------------------------------------------------------------------
@@ -301,18 +303,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         q_vec[j] += fac2*dq_vec[j]
       end
 
-      # Stages 2-5: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+      if opts["perturb_Ma"]
+        # Stages 2-5: get B*v
+        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
-      # Stages 2-5: stabilize q_vec (this only affects the imaginary part of q_vec)
-      # This is doing a -= on the imaginary part of q_vec.
-      # The steps for doing this are the same as the full update on q_vec above as part
-      #   of LSERK. The difference here is that the update is with (B*v) instead of 
-      #   res_vec, and with a separate holding vector for the previous stage update.
-      for j = 1:length(q_vec)
-        dqimag_vec[j] = fac*dqimag_vec[j] + delta_t*Bv[j]
-        # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac2*dqimag_vec[j])
-        q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac2*dqimag_vec[j]))
+        # Stages 2-5: stabilize q_vec (this only affects the imaginary part of q_vec)
+        # This is doing a -= on the imaginary part of q_vec.
+        # The steps for doing this are the same as the full update on q_vec above as part
+        #   of LSERK. The difference here is that the update is with (B*v) instead of 
+        #   res_vec, and with a separate holding vector for the previous stage update.
+        for j = 1:length(q_vec)
+          dqimag_vec[j] = fac*dqimag_vec[j] + delta_t*Bv[j]
+          # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac2*dqimag_vec[j])
+          q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac2*dqimag_vec[j]))
+        end
       end
 
 
