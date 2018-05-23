@@ -9,7 +9,7 @@ export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
 export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
-       evalJacobianStrongDiag, createFunctional,
+       evalJacobianStrong, createFunctional,
        evalFunctional, evalFunctionalDeriv, updateMetricDependents,
        solvePDE
 
