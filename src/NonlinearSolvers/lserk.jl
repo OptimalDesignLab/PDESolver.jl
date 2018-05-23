@@ -34,7 +34,6 @@
 
   See the documentation for rk4.
 """
-
 function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); 
@@ -61,15 +60,14 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                     2802321613138/2924317926251]
 
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-#  MPI.Barrier(MPI.COMM_WORLD)
+  # MPI.Barrier(MPI.COMM_WORLD)
   if myrank == 0
     println(BSTDOUT, "\nEntered lserk54")
     println(BSTDOUT, "res_tol = ", res_tol)
   end
-#  flush(BSTDOUT)
-#  MPI.Barrier(MPI.COMM_WORLD)
-# res_tol is alternative stopping criteria
-
+  # flush(BSTDOUT)
+  # MPI.Barrier(MPI.COMM_WORLD)
+  # res_tol is alternative stopping criteria
 
   # unpack options
   output_freq = opts["output_freq"]::Int
@@ -82,14 +80,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   chkpoint_freq = opts["checkpoint_freq"]::Int
   ncheckpoints = opts["ncheckpoints"]::Int
 
-
   t = 0.0  # timestepper time
   treal = 0.0  # real time (as opposed to pseudo-time)
   t_steps = round(Int, t_max/delta_t)
-  println(BSTDOUT, "t_steps: ",t_steps)
-  println(BSTDOUT, "delta_t = ", delta_t)
+  @mpi_master println(BSTDOUT, "t_steps: ", t_steps)
+  @mpi_master println(BSTDOUT, "delta_t = ", delta_t)
 
-  (m,) = size(q_vec)
+  (m,) = size(q_vec)    # TODO: what is this
 
   # allocate storage
   # this is actually a 3N scheme because the function f cannot overwrite its
@@ -118,10 +115,12 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     term23 = zero(eqn.params.Ma)      # type stable version of 'term23 = 0.0'
     Ma_pert_mag = opts["perturb_Ma_magnitude"]
     Ma_pert = complex(0, Ma_pert_mag)
+    # Complex128(
+    # Tsol(     # TODO
 
-    term2 = zeros(eqn.q)
-    term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
-    @mpi_master println("Direct sensitivity setup done.")
+    term2 = zeros(eqn.q)      # TODO: change var name to dJdu
+    term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)     # TODO: Tsol
+    @mpi_master println("Direct sensitivity setup done.")     # TODO: BSTDOUT
   end   # end if opts["perturb_Ma"]
 
   #------------------------------------------------------------------------------
@@ -152,9 +151,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
       stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
       # Bv = zeros(Float64, length(q_vec), )
-      Bv = zeros(Complex128, length(q_vec), )
+      Bv = zeros(Complex128, length(q_vec), )     # TODO: stop with trailing comma
       dqimag_vec = zeros(Bv)
-      @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")
+      @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
     end
 
     #------------------------------------------------------------------------------
@@ -166,14 +165,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     v_vec = zeros(q_vec)      # direct sensitivity vector
     for v_ix = 1:length(v_vec)
-      v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)
+      v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)     # TODO: use Ma_pert_mag instead, so no imag() call
     end
-    term2 = zeros(eqn.q)
+    term2 = zeros(eqn.q)      # TODO: use fill! instead
     # evalFunctional calls disassembleSolution, which puts q_vec into q
     # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
     EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
     # do the dot product of the two terms, and save
+    # this dot product is: dJdu*dudM
     term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
     assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
@@ -187,14 +187,13 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       println(f_L2vnorm, i, "  ", L2_v_norm)
     end
 
-
   end   # end if opts["perturb_Ma"]
 
   flush(BSTDOUT)
 
   #------------------------------------------------------------------------------
   # Main timestepping loop
-  @mpi_master println("---- Ma @ LSERK start: ", eqn.params.Ma, " ----")
+  @mpi_master println(BSTDOUT, "---- Ma @ LSERK start: ", eqn.params.Ma, " ----")
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
     if opts["perturb_Ma"]
@@ -238,10 +237,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     timing.t_func += @elapsed f(ctx..., opts, treal)            # evalResidual call
     sol_norm = post_func(ctx..., opts)
 
-
-    #--------------------------------------------------------------------------
-    # -----> former location of majorIterCallback
-    #--------------------------------------------------------------------------
     # callback and logging
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT) # dirsens note: here is where drag is written
 
@@ -266,6 +261,11 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     #------------------------------------------------------------------------------
+    # stabilize q_vec: needs to be before q_vec update? TODO think about it
+    if opts["stabilize_v"]
+      # Stage 1: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+    end
 
     # Stage 1 update
     fac = b_coeffs[1]
@@ -275,8 +275,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     if opts["stabilize_v"]
-      # Stage 1: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+      # calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
       # Stage 1: stabilize q_vec (this only affects the imaginary part of q_vec)
       # The below is doing this:
@@ -292,7 +291,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
       @mpi_master println(f_stabilize_v, "i: $i   stage: 1   sum of stab update:", update_tmp)
     end
-    
+
     #--------------------------------------------------------------------------
     # loop over remaining stages
     for stage=2:5
@@ -302,6 +301,11 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
       timing.t_func += @elapsed f( ctx..., opts, treal)           # evalResidual call
       post_func(ctx..., opts, calc_norm=false)
+
+      # call to calcStabilizedQUpdate should be HERE, before the update to q_vec at this stage
+      if opts["stabilize_v"]
+        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+      end
 
       # LSERK solution update
       fac = a_coeffs[stage]
@@ -313,7 +317,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       if opts["stabilize_v"]
         # Stages 2-5: get B*v
-        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+        # calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
         # Stages 2-5: stabilize q_vec (this only affects the imaginary part of q_vec)
         # This is doing a -= on the imaginary part of q_vec.
@@ -643,20 +647,23 @@ end     # end function calcQuadWeight
         In the formulation, this is B*v = B*imag(q_vec)
 """
 function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
-                                stab_assembler, t, q_vec, Bv)
+                                stab_assembler, t, q_vec, Bv)     # TODO eqn.q_vec instead of q_vec
                          # q_vec::AbstractArray{Tsol, 1},
                          # Bv::AbstractArray{Tsol, 1})
                          # stab_A::DiagJac,
                          # stab_assembler::AssembleDiagJacData,
   MatZeroEntries(stab_A)
-  evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
+  # -> modify eqn.q_vec to only be real
+  evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)     # calcs Qx*Ax + Qy*Ay     # TODO: is stab_assembler.A complex or real
   filterDiagJac(mesh, q_vec, stab_A)        # stab_A is now B in the derivation
+
+  # -> make sure q_vec has its complex part back!!!
 
   # don't think this is required; see diagMatVec code. Bv is assigned straight into, no += or anything
   # fill!(Bv, 0.0)
 
   # does Bv = B*imag(q_vec)
-  diagMatVec(stab_A, mesh, imag(q_vec), Bv)
+  diagMatVec(stab_A, mesh, imag(q_vec), Bv)     # Prof H thinks stab_A needs to be real       # TODO TODO imag(q_vec) needs to have cplx perturbation applied to it???
 
   # Bv = fac*delta_t*Bv     # scale() doesn't seem to make a difference in time
   # q_vec = complex(real(q_vec), Bv)
