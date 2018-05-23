@@ -1,5 +1,19 @@
 # differentiated version of functions in euler_funcs.jl
+"""
+  Computes the derivataive of the volume term of the Roe scheme with respect
+  to `q`, ie
 
+  d/dq (Q^T * f)
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler: used to assemble the contribution of each element into the
+                Jacobian
+"""
 function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
                                    mesh::AbstractMesh{Tmsh},
                                    sbp::AbstractSBP,
@@ -52,7 +66,6 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
         end
       end
     end
-    
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
@@ -64,8 +77,87 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end  # end function
 
+"""
+  Computes the derivative of the strong form volume terms with
+  respect to `q`, ie.
+
+  d/dq (-Q * f)
+
+  but only the mesh.numDofPerNode x mesh.numDofPerNode diagonal block
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler: used to assemble the contribution of each element into the
+                Jacobian
+  
+"""
+function calcVolumeIntegralsStrong_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+                                   mesh::AbstractMesh{Tmsh},
+                                   sbp::AbstractSBP,
+                                   eqn::EulerData{Tsol, Tres, Tdim},
+                                   opts,
+                                   assembler::AssembleElementData)
 
 
+  @assert eqn.params.use_Minv != 1  # use_Minv not supported
+
+  # flux jacobian at every node in each direction
+  flux_jac = eqn.params.flux_jac
+  res_jac = eqn.params.res_jac; fill!(res_jac, 0.0)
+#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  nrm = eqn.params.nrm  # vector in parametric direction
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      # compute dF/dq
+      for k=1:Tdim
+        fluxjac_k = sview(flux_jac, :, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        calcEulerFlux_diff(eqn.params, q_j, aux_vars_j, nrm, fluxjac_k)
+      end  # end loop k
+    end  # end loop j
+
+    # compute dR/dq
+    for k=1:Tdim
+      weakDifferentiateElement_jac!(sbp, k, sview(flux_jac, :, :, :, k), res_jac, SummationByParts.Subtract(), false)
+    end
+
+    
+    if eqn.params.use_Minv == 1
+      # multiply by Minv if needed
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jac[n, m, p, q] *= val
+            end
+          end
+        end
+      end
+    end
+
+    # assemble element level jacobian into the residual
+    assembleElement(assembler, mesh, i, res_jac)
+    fill!(res_jac, 0.0)
+    # flux_jac gets overwritten, so no need to zero it 
+
+  end  # end loop i
+
+  return nothing
+end  # end function
 
 
 """
