@@ -153,6 +153,7 @@ function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
 
   throw(ErrorException("Generic fallback evalJacobianStrongDiag reached: did you forget to extend evalJacobian() with a new method for your AbstractSolutionData?"))
 
+end
 
 
 """
