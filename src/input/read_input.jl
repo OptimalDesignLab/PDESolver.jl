@@ -428,6 +428,10 @@ get!(arg_dict, "adjoint_straight", false)
 get!(arg_dict, "uadj_global", false)
 get!(arg_dict, "use_Minv_override_for_uadj", false)
 
+# Viscous options
+get!(arg_dict, "isViscous", false)
+get!(arg_dict, "SAT_type", "Hartman")
+get!(arg_dict, "Viscous_flux_name", "ErrorFlux")
 
 # checkpointing/restart options
 get!(arg_dict, "most_recent_checkpoint", -1)
@@ -624,6 +628,9 @@ end
     error("cannot use volume preconditioner with any method except CN")
   end
 
+  if arg_dict["isViscous"] && commsize > 1
+    error("Viscous terms not working in parallel.")
+  end
 
   checkBCOptions(arg_dict)
 
