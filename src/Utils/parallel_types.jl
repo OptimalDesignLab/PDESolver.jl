@@ -16,9 +16,9 @@
 
     q_send: the send buffer, a 3D array of n x m x d.  While these dimensions
             are arbitrary, there are two commonly used case.  If
-            opts["parallel_data"] == face, then m is mesh.numNodesPerFace and
+            opts["parallel_type"] == face, then m is mesh.numNodesPerFace and
             d is the number of faces shared with peernum.
-            If opts["parallel_data"] == element, then 
+            If opts["parallel_type"] == element, then 
             m = mesh.numNodesPerElement and d is the number of elements that
             share faces with peernum.
     q_recv: the receive buffer.  Similar to q_send, except the size needs to
