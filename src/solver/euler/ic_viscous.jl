@@ -407,7 +407,7 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                                  u0::AbstractVector{Tsol})
   # populate u0 with initial values
   # this is a template for all other initial conditions
-  sigma = 0.01
+  sigma = 0.0001
   pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0
@@ -430,10 +430,11 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 
       calcFreeStream(eqn.params, xyz, sol)
 
+      xyz1 = 1 * pi * xyz
       xyz2 = 2 * pi * xyz
       xyz4 = 4 * pi * xyz
-      sin_val_1 = sin(xyz)
-      cos_val_1 = cos(xyz)
+      sin_val_1 = sin(xyz1)
+      cos_val_1 = cos(xyz1)
       sin_val_2 = sin(xyz2)
       cos_val_2 = cos(xyz2)
       sin_val_4 = sin(xyz4)

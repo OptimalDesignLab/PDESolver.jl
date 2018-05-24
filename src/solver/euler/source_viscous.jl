@@ -763,7 +763,7 @@ function call(obj::SRCTrigonometric,
               params::ParamType{3}, 
               t)
   Tdim = 3
-  sigma = 0.01
+  sigma = 0.0001
   gamma = params.gamma
   gamma_1 = params.gamma - 1
   aoa = params.aoa
@@ -778,10 +778,11 @@ function call(obj::SRCTrigonometric,
   qRef[4] = params.Ma * cos(beta) * sin(aoa)
   qRef[5] = 1.0
 
+  xyz1 = 1 * pi * xyz
   xyz2 = 2 * pi * xyz
   xyz4 = 4 * pi * xyz
-  sin_val_1 = sin(xyz)
-  cos_val_1 = cos(xyz)
+  sin_val_1 = sin(xyz1)
+  cos_val_1 = cos(xyz1)
   sin_val_2 = sin(xyz2)
   cos_val_2 = cos(xyz2)
   sin_val_4 = sin(xyz4)
