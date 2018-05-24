@@ -974,7 +974,7 @@ function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       # Compute the size of face
       face_area = 0.0
       for n=1:mesh.numNodesPerFace
-        nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
+        nrm_xy = ro_sview(mesh.nrm_bndry, :, n, f)
         area[n] = norm(nrm_xy)
         face_area += sbpface.wface[n]*area[n]
       end
