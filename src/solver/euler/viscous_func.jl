@@ -180,7 +180,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscousity
+  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscosity
   dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
   dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
   tau  = Array(Tsol, dim, dim, numNodes)       # stress    
@@ -199,7 +199,7 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
     T[n] = gamma*gamma_1*(q[5, n]/q[1, n] - 0.5*vel2)
   end
 
-  # Compute viscousity and conductivity coefficients
+  # Compute viscosity and conductivity coefficients
   getMuK(T, rMuK)
 
   # First we compute derivatives, dudx, dudy, dTdx, dTdy
@@ -389,7 +389,7 @@ end
 
 # Input:
 #   sbp     : sbp operator
-#   q       : viscousity tensor
+#   q       : viscosity tensor
 #   dqdx    : gradient of conservative variable
 # Output:
 #   Fv      : viscous flux
@@ -400,8 +400,8 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
                         Fv::AbstractArray{Tsol, 3})
 
   @assert(size(Gv, 5) == size(dqdx, 3)) # number of nodes per element
-  @assert(size(Gv, 4) == size(dqdx, 1)) # spatial dimention 
-  @assert(size(Gv, 3) == size(dqdx, 1)) # spatial dimention 
+  @assert(size(Gv, 4) == size(dqdx, 1)) # spatial dimension
+  @assert(size(Gv, 3) == size(dqdx, 1)) # spatial dimension
   @assert(size(Gv, 2) == size(dqdx, 2)) # number of dofs per element
   @assert(size(Gv, 1) == size(dqdx, 2)) # number of dofs per element
 
