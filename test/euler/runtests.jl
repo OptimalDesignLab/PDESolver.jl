@@ -29,10 +29,6 @@ include("../tags.jl")
 # test list
 global const EulerTests = TestList()
 
-
-include("test_viscous.jl")
-
-#=
 include("test_eqn_deepcopy.jl")     # note: eqn gets written random values to it, so anything that 
 include("test_empty.jl")
 include("test_input.jl")
@@ -57,7 +53,8 @@ include("test_parallel.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
-=#
+
+include("test_viscous.jl")
 
 #------------------------------------------------------------------------------
 # run tests

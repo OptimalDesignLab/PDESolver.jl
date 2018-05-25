@@ -40,7 +40,8 @@ arg_dict   = Dict{Any, Any}(
   # "smb_name" => "/fasttmp/ashlea/jf_meshes/square16x16.smb",
   # "smb_name" => "/fasttmp/ashlea/nssolver_tests/0aa_meshes/square2_aa_par2.smb",
   # "smb_name" => "/fasttmp/ashlea/nssolver_tests/0aa_meshes/square2_aa_ser.smb",
-  "smb_name" => "/fasttmp/ashlea/nssolver_tests/0aa_meshes/square_pert/square02_pert_ser.smb",
+  # "smb_name" => "/fasttmp/ashlea/nssolver_tests/0aa_meshes/square_pert/square02_pert_ser.smb",
+  "smb_name" => "SRCMESHES/square02_pert_forviscous_ser.smb",
  
   #
   # Channel MMS: nonperiodic
