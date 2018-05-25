@@ -4,7 +4,7 @@
 # $1 describes the stopping behavior.  If not supplied, the script runs to completion.
 # if $1 == 1, the script stopes at the first error
 # jj=julia
-jj=/usr/local/julia/0.4.7/bin/julia
+jj=julia
 
 jflags=$@  # take flags as command line arguments
 if [ $# == 0 ]; then
