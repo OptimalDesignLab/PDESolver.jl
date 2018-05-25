@@ -420,7 +420,7 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
     if (opts["jac_type"] == 3 || opts["jac_type"] == 4) && opts["use_jac_precond"]
       @assert dim == 2
       pmesh = PumiMeshDG2Preconditioning(mesh, sbp, opts;
-                     coloring_distance=opts["coloring_distance_prec"])
+                                         coloring_distance=opts["coloring_distance_prec"])
     else
       pmesh = mesh
     end
@@ -483,30 +483,27 @@ function loadRestartState(mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 """
-  This function takes in the 4 principle object, fully initialized, and calls
-  a nonlinear solver on them, according to the options in the dictionary.
-  The evalResidual function is passed to the nonlinear solver
-
-  Inputs:
-    mesh: a mesh object
-    sbp: an SBP operator
-    eqn: an equation object
-    opts: options dictionary, used to determine which nonlinear solver to call
-    pmesh: mesh used for calculating preconditioning jacobian in Newton's
-           method, default to using mesh if not specified
-
-  Outputs:
-    none
-
-  Aliasing restrictions: none (specificaly, mesh and pmesh *can* be the same
-                         object)
+This function takes in the 4 principle object, fully initialized, and calls
+a nonlinear solver on them, according to the options in the dictionary.
+The evalResidual function is passed to the nonlinear solver
+Inputs:
+mesh: a mesh object
+sbp: an SBP operator
+eqn: an equation object
+opts: options dictionary, used to determine which nonlinear solver to call
+pmesh: mesh used for calculating preconditioning jacobian in Newton's
+method, default to using mesh if not specified
+Outputs:
+none
+Aliasing restrictions: none (specificaly, mesh and pmesh *can* be the same
+object)
 """
 function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                        eqn::AbstractSolutionData, opts::Dict,
                        pmesh::AbstractMesh=mesh)
   flag = opts["run_type"]::Int
   t = 0.0  # for steady methods, t = 0.0 always, for unsteady, the time
-           # stepper returns a new t value
+  # stepper returns a new t value
   if opts["solve"]
 
     t_nlsolve = @elapsed if flag == 1 # normal run
@@ -515,13 +512,14 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       t_max = opts["t_max"]
 
       @time t = rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
-                res_tol=opts["res_abstol"], real_time=opts["real_time"])
+                    res_tol=opts["res_abstol"], real_time=opts["real_time"])
       println("finish rk4")
-  #    printSolution("rk4_solution.dat", eqn.res_vec)
+      #    printSolution("rk4_solution.dat", eqn.res_vec)
 
     elseif flag == 2 # forward diff dR/du
 
       error("run type 2 no longer suppored (ForwardDiff removed)")
+
     elseif flag == 3 # calculate dRdx
 
       # dRdx here
@@ -539,9 +537,9 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       end
 
       function post_func(mesh, sbp, eqn, opts)
-  #      for i=1:mesh.numDof
-  #        eqn.res_vec[i] *= eqn.Minv[i]
-  #      end
+        #      for i=1:mesh.numDof
+        #        eqn.res_vec[i] *= eqn.Minv[i]
+        #      end
         nrm = norm(eqn.res_vec)
         println("post_func returning residual norm = ", nrm)
         return nrm
@@ -565,8 +563,8 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
 
       t = rk4(evalResidual, delta_t, t_max, eqn.q_vec, eqn.res_vec, test_pre_func,
-          test_post_func, (mesh, sbp, eqn), opts, 
-          majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
+              test_post_func, (mesh, sbp, eqn), opts, 
+              majorIterationCallback=eqn.majorIterationCallback, real_time=opts["real_time"])
 
 
     elseif flag == 20
@@ -586,7 +584,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
-     @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
+      @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
@@ -665,7 +663,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       eqn.t = t
 
     else
-       throw(ErrorException("No flag specified: no solve will take place"))
+      throw(ErrorException("No flag specified: no solve will take place"))
 
     end       # end of if/elseif blocks checking flag
 
@@ -704,9 +702,9 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     end
 
     myrank = mesh.myrank
-  #  f = open("profile_$myrank.dat", "a+")
-  #  Profile.print(f, format=:flat, C=true)
-  #  close(f)
+    #  f = open("profile_$myrank.dat", "a+")
+    #  Profile.print(f, format=:flat, C=true)
+    #  close(f)
 
     saveSolutionToMesh(mesh, real(eqn.q_vec))
     writeVisFiles(mesh, "solution_done")

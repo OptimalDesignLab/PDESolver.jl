@@ -50,7 +50,7 @@ function RoeSolver{Tmsh, Tsol, Tres}(params::ParamType{2},
   gami = params.gamma_1
   sat_fac = 1  # multiplier for SAT term
 
-  # Begin main executuion
+  # Begin main execution
   nx = nrm[1]
   ny = nrm[2]
 
@@ -145,7 +145,7 @@ function RoeSolver_revm{Tmsh, Tsol, Tres}(params::ParamType{2},
   gami = params.gamma_1
   sat_fac = 1  # multiplier for SAT term
 
-  # Begin main executuion
+  # Begin main execution
   nx = nrm[1]
   ny = nrm[2]
 

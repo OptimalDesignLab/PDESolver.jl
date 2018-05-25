@@ -130,6 +130,7 @@ get!(arg_dict, "use_staggered_grid", arg_dict["operator_type2"] != "SBPNone")
 Ma = get!(arg_dict, "Ma", -1.0)
 Re = get!(arg_dict, "Re", -1.0)
 aoa = get!(arg_dict, "aoa", 0.0)
+sideslip_angle = get!(arg_dict, "sideslip_angle", 0.0)
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
 get!(arg_dict, "p_free", 1.0)
@@ -153,6 +154,7 @@ end
 # volume integral options
 get!(arg_dict, "volume_integral_type", 1)
 get!(arg_dict, "Volume_flux_name", "StandardFlux")
+get!(arg_dict, "Viscous_flux_name", "ErrorFlux")
 get!(arg_dict, "face_integral_type", 1)
 get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 
@@ -456,6 +458,9 @@ get!(arg_dict, "adjoint_straight", false)
 get!(arg_dict, "uadj_global", false)
 get!(arg_dict, "use_Minv_override_for_uadj", false)
 
+# Viscous options
+get!(arg_dict, "isViscous", false)
+get!(arg_dict, "SAT_type", "Hartman")
 
 # checkpointing/restart options
 get!(arg_dict, "most_recent_checkpoint", -1)
@@ -649,6 +654,9 @@ end
     error("cannot use volume preconditioner with any method except CN")
   end
 
+  if arg_dict["isViscous"] && commsize > 1
+    error("Viscous terms not working in parallel.")
+  end
 
   checkBCOptions(arg_dict)
 
