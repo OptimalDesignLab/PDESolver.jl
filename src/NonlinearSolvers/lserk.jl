@@ -386,7 +386,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
 
         if (i % opts["output_freq"]) == 0
-          flush(f_L2vnorm)
+          @mpi_master flush(f_L2vnorm)
         end
       end
 
