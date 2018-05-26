@@ -182,9 +182,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
     end
 
-    @mpi_master if opts["write_L2vnorm"]
+    if opts["write_L2vnorm"]
       L2_v_norm = calcNorm(eqn, v_vec)
-      println(f_L2vnorm, i, "  ", L2_v_norm)
+      @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
     end
 
   end   # end if opts["perturb_Ma"]
@@ -381,9 +381,9 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       #   'energy' = L2 norm of the solution
       # JEH: So, at each time step, evaluate: sum_{i,j,k} q[i,j,k]*q[i,j,k]*sbp.w[j]*jac[j,k]  
       #      (here I assume jac is proportional to the element volume)
-      @mpi_master if opts["write_L2vnorm"]
+      if opts["write_L2vnorm"]
         L2_v_norm = calcNorm(eqn, v_vec)
-        println(f_L2vnorm, i, "  ", L2_v_norm)
+        @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
 
         if (i % opts["output_freq"]) == 0
           flush(f_L2vnorm)
