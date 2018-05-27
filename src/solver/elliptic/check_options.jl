@@ -13,6 +13,16 @@
 """
 function checkOptions(opts)
 
+  if opts["physics"] != PhysicsName
+    error("physics not specified as $PhysicsName, are you lost?")
+  end
+
+  if opts["use_staggered_grid"]
+    error("staggered grids not supported for physics $PhysicsName")
+  end
+
+  get(opts, "calc_jac_explicit", false)
+
 
   return nothing
 end

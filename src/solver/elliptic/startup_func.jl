@@ -1,5 +1,8 @@
 # Description: startup function for solving an equation
 
+import PDESolver.solvePDE
+
+#=
 """
 This function invokes the solver for the Elliptic equations, using the
 specified input file
@@ -23,7 +26,7 @@ function run_elliptic(input_file::AbstractString)
 
   return mesh, sbp, eqn, opts
 end
-
+=#
 
 """
 This function creates and initializes the mesh, sbp, eqn, and opts objects
@@ -42,13 +45,7 @@ pmesh: mesh used for preconditioning, can be same object as mesh
 """
 function createObjects(input_file::AbstractString)
 
-  if !MPI.Initialized()
-    MPI.Init()
-  end
-
-  opts = read_input(input_file)  # read input file and get default values
   checkOptions(opts)  # physics specific options checking
-  #opts = read_input("input_vals_channel2.jl")
 
   Tdim = opts["dimensions"]
   dofpernode = 1 
@@ -61,14 +58,6 @@ function createObjects(input_file::AbstractString)
   # var_type = opts["variable_type"]
   # eqn = EllipticData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh, sbp, opts)
   eqn = EllipticData_{Tsol, Tres, Tdim, Tmsh}(mesh, sbp, opts)
-
-  for elem = 1:mesh.numEl
-    for n = 1:mesh.numNodesPerElement
-      if mesh.jac[n, elem] <= 0.0
-        error("Error: negative jacobian")
-      end
-    end
-  end
 
   # initialize physics module and populate any fields in mesh and eqn that
   # depend on the physics module
@@ -96,7 +85,7 @@ pmesh: mesh used for preconditioning, can be same object as mesh.
 default value of mesh
 
 """
-function solve_elliptic(mesh::AbstractMesh, sbp, eqn::AbstractEllipticData, opts, pmesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEllipticData, opts::Dict, pmesh::AbstractMesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
   myrank = mesh.myrank

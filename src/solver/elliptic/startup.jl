@@ -3,6 +3,5 @@
 
 using PDESolver
 using EllipticEquationMod
-using EllipticEquationMod.run_elliptic
 
-mesh, sbp, eqn, opts = run_elliptic(ARGS[1])
+mesh, sbp, eqn, opts = run_solver(ARGS[1])

@@ -29,7 +29,7 @@ include("ic.jl")
 include("flux.jl")
 include("check_options.jl")
 include("source.jl")
-include("output.jl")
+#include("output.jl")
 include("exactSolution.jl")
 include("diffusion.jl")
 include("functional.jl")
@@ -37,5 +37,5 @@ include("types.jl")
 include("startup_func.jl")  # function for invoking the solver
 
 global const PhysicsName = "Elliptic"
-register_physics(PhysicsName, EllipticEquationMod, run_elliptic)
+register_physics(PhysicsName, EllipticEquationMod, createObjects, checkOptions)
 end # end of module
