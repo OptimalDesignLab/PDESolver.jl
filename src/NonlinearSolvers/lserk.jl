@@ -669,6 +669,12 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
   # q_vec = complex(real(q_vec), Bv)
   # No. Do the reform into q_vec outside, where you can take advantage of existing LSERK code
 
+  # The mass matrix needs to be applied to Bv, as it is part of the residual.
+  #   see pde_post_func in rk4.jl
+  for j = 1:length(Bv)
+    Bv[j] = eqn.Minv[j]*Bv[j]
+  end
+
   return nothing
 
 end
