@@ -151,23 +151,20 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
       stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
       # Bv = zeros(Float64, length(q_vec), )
-      Bv = zeros(Complex128, length(q_vec), )     # TODO: stop with trailing comma
+      Bv = zeros(Complex128, length(q_vec))
       dqimag_vec = zeros(Bv)
       @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
     end
 
-    #------------------------------------------------------------------------------
-    # stabilize q_vec (this only affects the imaginary part of q_vec)
-    # calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
-    # should we be doing this at the IC??? 
-    #   I don't think so, no evalResidual yet, and hasn't entered the time-stepper yet
+    # Note: no stabilization of q_vec at the IC
+    #   no evalResidual yet, and hasn't entered the time-stepper yet
     #   so no appropriate scaling factors like delta_t or fac or anything
 
     v_vec = zeros(q_vec)      # direct sensitivity vector
     for v_ix = 1:length(v_vec)
-      v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)     # TODO: use Ma_pert_mag instead, so no imag() call
+      v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag
     end
-    term2 = zeros(eqn.q)      # TODO: use fill! instead
+    term2 = zeros(eqn.q)      # First allocation of term2. fill! used below, during timestep loop
     # evalFunctional calls disassembleSolution, which puts q_vec into q
     # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
     EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
@@ -261,10 +258,10 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     #------------------------------------------------------------------------------
-    # stabilize q_vec: needs to be before q_vec update? TODO think about it
+    # stabilize q_vec: needs to be before q_vec update
     if opts["stabilize_v"]
       # Stage 1: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv)   # q_vec now obtained from eqn.q_vec
     end
 
     # Stage 1 update
@@ -275,7 +272,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     if opts["stabilize_v"]
-      # calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
       # Stage 1: stabilize q_vec (this only affects the imaginary part of q_vec)
       # The below is doing this:
@@ -304,7 +300,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       # call to calcStabilizedQUpdate should be HERE, before the update to q_vec at this stage
       if opts["stabilize_v"]
-        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
+        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv)   # q_vec now obtained from eqn.q_vec
       end
 
       # LSERK solution update
@@ -317,7 +313,6 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       if opts["stabilize_v"]
         # Stages 2-5: get B*v
-        # calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, q_vec, Bv)
 
         # Stages 2-5: stabilize q_vec (this only affects the imaginary part of q_vec)
         # This is doing a -= on the imaginary part of q_vec.
@@ -357,7 +352,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       # v is the direct sensitivity, du/dM
       # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
       for v_ix = 1:length(v_vec)
-        v_vec[v_ix] = imag(q_vec[v_ix])/imag(Ma_pert)         # v_vec alloc'd outside timestep loop
+        v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
       end
 
       # term2 is the partial deriv of the functional wrt the state: dCd/du
@@ -638,36 +633,37 @@ end     # end function calcQuadWeight
     stab_A: DiagJac type
     stab_assembler: AssembleDiagJacData type
     t: Time. Make sure to use treal here.
+
+  Old input:
     q_vec: the q_vec to be stabilized. This should be the actual q_vec - only the imaginary component
           of q_vec is used here, because we don't want to affect the solution in any way,
           just the direct sensitivity. This will not be modified here
+
+    Now q_vec is obtained straight from eqn.q_vec
 
   In/Output:
     Bv: just an array that is prealloc'd. size of q_vec. Real.
         In the formulation, this is B*v = B*imag(q_vec)
 """
 function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
-                                stab_assembler, t, q_vec, Bv)     # TODO eqn.q_vec instead of q_vec
+                                stab_assembler, t, Bv)
                          # q_vec::AbstractArray{Tsol, 1},
                          # Bv::AbstractArray{Tsol, 1})
                          # stab_A::DiagJac,
                          # stab_assembler::AssembleDiagJacData,
   MatZeroEntries(stab_A)
-  # -> modify eqn.q_vec to only be real
+  # -> TODO modify eqn.q_vec to only be real
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)     # calcs Qx*Ax + Qy*Ay     # TODO: is stab_assembler.A complex or real
-  filterDiagJac(mesh, q_vec, stab_A)        # stab_A is now B in the derivation
+  filterDiagJac(mesh, eqn.q_vec, stab_A)        # stab_A is now B in the derivation
 
-  # -> make sure q_vec has its complex part back!!!
+  # -> TODO make sure q_vec has its complex part back!!!
 
-  # don't think this is required; see diagMatVec code. Bv is assigned straight into, no += or anything
-  # fill!(Bv, 0.0)
+  # Bv fill! to 0's is not required here. See diagMatVec code. Bv is assigned straight into, no += or anything
 
   # does Bv = B*imag(q_vec)
-  diagMatVec(stab_A, mesh, imag(q_vec), Bv)     # Prof H thinks stab_A needs to be real       # TODO TODO imag(q_vec) needs to have cplx perturbation applied to it???
+  diagMatVec(stab_A, mesh, imag(eqn.q_vec), Bv)     # Prof H thinks stab_A needs to be real       # TODO TODO imag(q_vec) needs to have cplx perturbation applied to it???
 
-  # Bv = fac*delta_t*Bv     # scale() doesn't seem to make a difference in time
-  # q_vec = complex(real(q_vec), Bv)
-  # No. Do the reform into q_vec outside, where you can take advantage of existing LSERK code
+  # application of Bv to q_vec happens outside of this function.
 
   # The mass matrix needs to be applied to Bv, as it is part of the residual.
   #   see pde_post_func in rk4.jl
