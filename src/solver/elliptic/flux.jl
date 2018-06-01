@@ -88,8 +88,8 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   factor_shahbazi = Float64(p + 1.0)*Float64(p + Tdim)/(2.0*Tdim)
   sbpface = mesh.sbpface
   numFacesPerElem = 3
-  nrm = Array(Tmsh, mesh.numNodesPerFace, Tdim)
-  nrm0 = Array(Tmsh, mesh.numNodesPerFace, Tdim)
+  nrm = Array(Tmsh, Tdim, mesh.numNodesPerFace)
+  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
   area = Array(Tmsh, mesh.numNodesPerFace)
   lambda_dqdxL = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   lambda_dqdxR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -147,28 +147,17 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
     permR = sview(sbpface.perm, :, fR)
     stencilSize = sbpface.stencilsize
 
-    #
     # Compute geometric info on face
-    #
-    # dxidx = sview(mesh.dxidx_face, :, :, :, f)
+    nrm = ro_sview(mesh.nrm_face, :, :, f)
     for n=1:mesh.numNodesPerFace
-      dxidx = sview(mesh.dxidx_face, :, :, n, f)
-      # norm vector in reference element
-      nrm_xi = sview(mesh.sbpface.normal, :, fL)
-      nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-      nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
-
-      area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
-      #
-      # norm vector in physical domain without any scale, ie, |nrm|=1
-      #
-      nrm0[n,1] = nrm[n,1]/area[n]
-      nrm0[n,2] = nrm[n,2]/area[n]
-      # println(nrm[n,1],", ", nrm[n,2], ", ", area[n])
+      # area[n] = norm(view(nrm, :, n))
+      area[n] = norm(ro_sview(nrm, :, n))
+        # norm vector in physical domain without any scale, ie, |nrm|=1
+      nrm1[:, n] = nrm[:, n]/area[n]
+      nrm1[:, n] = nrm[:, n]/area[n]
     end
-    #
+
     # Compute the size of element and face, and then meas(face)/meas(elem)
-    #
     elem_volL = 0.0
     elem_volR = 0.0
     face_area = 0.0
@@ -268,10 +257,10 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
       #
       for n = 1:mesh.numNodesPerFace
         for dof = 1:mesh.numDofPerNode
-          penalty[dof, n] =  nrm0[n,1]*nrm0[n,1]*(lambda_faceL[1, 1, dof, n] + lambda_faceR[1,1,dof, n])
-          penalty[dof, n] += nrm0[n,1]*nrm0[n,2]*(lambda_faceL[1, 2, dof, n] + lambda_faceR[1,2,dof, n])
-          penalty[dof, n] += nrm0[n,2]*nrm0[n,1]*(lambda_faceL[2, 1, dof, n] + lambda_faceR[2,1,dof, n])
-          penalty[dof, n] += nrm0[n,2]*nrm0[n,2]*(lambda_faceL[2, 2, dof, n] + lambda_faceR[2,2,dof, n])
+          penalty[dof, n] =  nrm1[1, n]*nrm1[1, n]*(lambda_faceL[1, 1, dof, n] + lambda_faceR[1,1,dof, n])
+          penalty[dof, n] += nrm1[1, n]*nrm1[2, n]*(lambda_faceL[1, 2, dof, n] + lambda_faceR[1,2,dof, n])
+          penalty[dof, n] += nrm1[2, n]*nrm1[1, n]*(lambda_faceL[2, 1, dof, n] + lambda_faceR[2,1,dof, n])
+          penalty[dof, n] += nrm1[2, n]*nrm1[2, n]*(lambda_faceL[2, 2, dof, n] + lambda_faceR[2,2,dof, n])
           penalty[dof, n] *= 0.5*factor_shahbazi*area[n]/he
         end
       end
@@ -303,8 +292,7 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
           # N_{d1}i} RLR N_{d2}
           for n1 = 1:mesh.numNodesPerFace
             for n2 = 1:mesh.numNodesPerFace
-              # Sat[:, n2, n1] += nrm0[n2, d1]*(RLR_L[:, n2, n1] + RLR_R[:,n2, n1])*nrm0[n1, d2]
-              Sat[:, n2, n1] += nrm0[n2, d1]*RLR[:, n2, n1]*nrm0[n1, d2]
+              Sat[:, n2, n1] += nrm1[d1, n2]*RLR[:, n2, n1]*nrm1[d2, n1]
             end
           end
         end
@@ -329,25 +317,6 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
 
     end
 
-    # RHR[:,:,:] = 0.0
-    # for n1 = 1:mesh.numNodesPerFace
-    # for n2 = 1:mesh.numNodesPerFace
-    # for k = 1:stencilSize
-    # # RLR_L[:, n2, n1] += lambdaL[d1, d2, :, permL[k]] / eqn.w[permL[k], eL] * R[k, n2] * R[k, n1] 
-    # # RLR_R[:, n2, n1] += lambdaR[d1, d2, :, permR[k]] / eqn.w[permR[k], eR] * R[k, n2] * R[k, n1] 
-    # RHR[n2, n1] +=  R[k, n2] * R[k, n1]/sbp.w[permL[k]] 
-    # end
-    # end
-    # end
-    # println(eigmax(RHR))
-
-    # # @bp
-    # for row = 1:mesh.numNodesPerFace
-    # for col = 1:mesh.numNodesPerFace
-    # RLR[:, row, col] *= 0.25*numFacesPerElem*sbpface.wface[row]*sbpface.wface[col]
-    # end
-    # end
-
     qL = sview(eqn.q_face, :, 1, :, f)
     qR = sview(eqn.q_face, :, 2, :, f)
 
@@ -363,21 +332,19 @@ function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
       # while scalar g(u+, u-) is stored in flux_face.
 
       # term-2 vector [[q]]
-      xflux_face[:, n, f] = -0.5*dq[:,n]*nrm[n,1]
-      yflux_face[:, n, f] = -0.5*dq[:,n]*nrm[n,2]
+      xflux_face[:, n, f] = -0.5*dq[:,n]*nrm[1, n]
+      yflux_face[:, n, f] = -0.5*dq[:,n]*nrm[2, n]
 
 
       # term-3, {{∇q}}⋅norm
-      flux_face[:, n, f] = -0.5*((lambda_dqdxL[1, :, n]+ lambda_dqdxR[1, :, n])*nrm[n,1] + (lambda_dqdxL[2, :, n]+ lambda_dqdxR[2, :, n])*nrm[n,2])
+      flux_face[:, n, f] = -0.5*((lambda_dqdxL[1, :, n]+ lambda_dqdxR[1, :, n])*nrm[1, n] + (lambda_dqdxL[2, :, n]+ lambda_dqdxR[2, :, n])*nrm[2, n])
 
     end
     #
     # term-4, penalty term 
     #            	
 
-    #
     # area comes from dΓ = area*dΓ_{ξ}
-    #
     if penalty_method == "Shahbazi" || penalty_method == "SAT0"|| penalty_method == "Hartman"  
       for n=1:mesh.numNodesPerFace
         for dof = 1:mesh.numDofPerNode

@@ -2,14 +2,18 @@ module EllipticEquationMod
 
 using PDESolver
 using ArrayViews
+using SolverCommon
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
 using NonlinearSolvers
+using LinearSolvers
 using Input
 # using ForwardDiff
 using Utils
 using MPI
+using Input  # input file processing
+using PETSc2
 
 import ODLCommonTools.sview
 

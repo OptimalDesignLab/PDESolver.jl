@@ -1,27 +1,27 @@
-arg_dict = Dict{Any, Any}(                                                                                                                                                                                                                 
+arg_dict = Dict{Any, Any}(
   # "operator_type"   => "SBPGamma",
-   "operator_type"   => "SBPOmega",
+  "operator_type"   => "SBPOmega",
   # "operator_type"   => "SBPDiagE",
-   "physics"         => "Elliptic",
+  "physics"         => "Elliptic",
   "use_DG"          => true,
-   "delta_t"         => 1.0e-3,
+  "delta_t"         => 1.0e-3,
   "t_max"           => 5.0,
-   "res_tol"         => 1e-12,
+  "res_tol"         => 1e-12,
   "step_tol"        => 1e-12,
-   "itermax"         => 1,
+  "itermax"         => 1,
   "order"           => 2,
   "Relfunc_name"    => true,
-  "smb_name"        => "/home/yanj4/.julia/v0.4/PDESolver/src/solver/elliptic/meshfiles/square32x32.smb",
+  "smb_name"        => "SRCMESHES/square32x32.smb",
   "dmg_name"        => ".null",
-  "IC_name"         => "ICRandom",
   "numBC"           => 1,
   "BC1"             => [0, 1, 2, 3],
   "exactSolution"   =>"ExactExpTrig",
   "BC1_name"        => "DirichletTrig",
-  "Diffusion"       => "poly0th",
+  "Diffusion"       => "poly0th", 
   "SRC_name"        => "SrcExpTrigPoly0thDiffn",
   "Functional"      => "volumeAverage",
   "exactFunctional" => 1.846230857168755189823348538541e-02,
+  "IC_name"         => "ICRandom",
 
   # "exactSolution"   =>"ExactTrig",
   # "BC1_name"        => "DirichletTrig",
@@ -38,11 +38,11 @@ arg_dict = Dict{Any, Any}(
   # "BC1_name"        => "DirichletPolynial2nd",
   # "SRC_name"        => "SrcPoly2nd",
 
-  # "SRC_name"        => "SRC0",        # for energy stability test
+  # "SRC_name"        => "SRC0",		# for energy stability test
 
-  # "Flux_name"       => "SAT",         # SAT-BR2
-  "Flux_name"       => "SAT0",      # SAT-SIPG
-  # "Flux_name"       => "Shahbazi",    # Shahbazi
+  # "Flux_name"       => "SAT",			# SAT-BR2
+  "Flux_name"       => "SAT0",		# SAT-SIPG
+  # "Flux_name"       => "Shahbazi",	# Shahbazi
   "Cip"             => -3.0,
   "run_type"        => 5,
   "jac_type"        => 2,
@@ -54,4 +54,5 @@ arg_dict = Dict{Any, Any}(
   "solve"           => true,
   "real_time"       => false
 )
+
 

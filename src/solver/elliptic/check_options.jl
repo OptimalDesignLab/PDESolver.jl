@@ -21,8 +21,15 @@ function checkOptions(opts)
     error("staggered grids not supported for physics $PhysicsName")
   end
 
-  get(opts, "calc_jac_explicit", false)
+  get!(opts, "calc_jac_explicit", false)
+  if opts["calc_jac_explicit"]
+    get!(opts, "preallocate_jacobian_coloring", false)
+  else
+    get!(opts, "preallocate_jacobian_coloring", true)
+  end
 
+  get!(opts, "Flux_name", "SAT0")
+  get!(opts, "IC_name", "ICRandom")
 
   return nothing
 end

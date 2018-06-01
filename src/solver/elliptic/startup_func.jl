@@ -32,7 +32,7 @@ end
 This function creates and initializes the mesh, sbp, eqn, and opts objects
 
 Inputs:
-file_name: input file name
+    opts: options dictionary
 
 Outputs:
 mesh: an AbstractMesh.  The concrete type is determined by the options
@@ -43,9 +43,7 @@ eqn: an EllipticData object
 opts: the options dictionary
 pmesh: mesh used for preconditioning, can be same object as mesh
 """
-function createObjects(input_file::AbstractString)
-
-  checkOptions(opts)  # physics specific options checking
+function createObjects(opts::Dict)
 
   Tdim = opts["dimensions"]
   dofpernode = 1 
@@ -141,12 +139,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEllipticDat
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
-  # cleanup(mesh, sbp, eqn, opts)
-
   MPI.Barrier(mesh.comm)
-  if opts["finalize_mpi"]
-    MPI.Finalize()
-  end
 
   return mesh, sbp, eqn, opts
 end  # end function

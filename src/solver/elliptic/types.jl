@@ -161,6 +161,7 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
   q_vec::Array{Tres,1}            # initial condition in vector form
   q_bndry::Array{Tsol, 3}         # store solution variables interpolated to
 
+  shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI send and receive buffers
   #q_face_send::Array{Array{Tsol, 3}, 1}    # send buffers for sending q values
   # to other processes
   #q_face_recv::Array{Array{Tsol, 3}, 1}    # recieve buffers for q values
@@ -195,7 +196,7 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
   # (numdof, numNodesPerElement, numEl, numEdgesPerEl)
   flux_func::FluxType
   majorIterationCallback::Function
-  assembleSolution::Function
+  # assembleSolution::Function
   disassembleSolution::Function
   multiplyA0inv::Function
 
@@ -266,7 +267,20 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
     eqn.xflux_bndry = zeros(Tsol, numvars, numfacenodes, numBndFaces)
     eqn.yflux_bndry = zeros(Tsol, numvars, numfacenodes, numBndFaces)
     eqn.lambda_bndry = zeros(Tsol, Tdim, Tdim, numvars, numfacenodes, numBndFaces)
-    #
+    if mesh.isDG
+      for i=1:mesh.npeers
+        if opts["precompute_face_flux"]
+          eqn.flux_sharedface[i] = zeros(Tres, mesh.numDofPerNode, numfacenodes,
+                                         mesh.peer_face_counts[i])
+        end
+        # eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
+                                        # numfacenodes, mesh.peer_face_counts[i])
+      end
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+    else
+      eqn.shared_data = Array(SharedFaceData, 0)
+    end
+#
     # reshape of q and res
     #
     eqn.q_vec = reshape(eqn.q, mesh.numDof)
@@ -275,8 +289,8 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
 
     # flux_func = FluxDict["SIPG"]
     eqn.majorIterationCallback = majorIterationCallback
-    eqn.assembleSolution = assembleSolution
-    eqn.disassembleSolution = disassembleSolution
+    # eqn.assembleSolution = assembleSolution
+    # eqn.disassembleSolution = disassembleSolution
     eqn.multiplyA0inv = multiplyA0inv
 
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
@@ -344,11 +358,13 @@ function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       dxidx = sview(mesh.dxidx_face, :, :, n, f)
       # norm vector in reference element
       # nrm_xi = sview(sbp.facenormal, :, fL)
-      nrm_xi = sview(mesh.sbpface.normal, :, fL)
-      nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-      nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+      # nrm_xi = sview(mesh.sbpface.normal, :, fL)
+      # nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+      # nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+      # area[n] = sqrt(nrm_xy[n,1]*nrm_xy[n,1] + nrm_xy[n,2]*nrm_xy[n,2])
 
-      area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
+      nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
+      area[n] = norm(nrm_xy)
       face_area += sbpface.wface[n]*area[n]
     end
     eqn.area_sum[eL] += face_area
@@ -366,14 +382,14 @@ function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       # Compute the size of face
       face_area = 0.0
       for n=1:mesh.numNodesPerFace
-
-        dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
-        # norm vector in reference element
-        nrm_xi = sview(mesh.sbpface.normal, :, face)
-        nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-        nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
-
-        area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
+        # dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
+        # # norm vector in reference element
+        # nrm_xi = sview(mesh.sbpface.normal, :, face)
+        # nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
+        # nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
+        # area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
+        nrm_xy = ro_sview(mesh.nrm_bndry, :, :, f)
+        area[n] = norm(nrm_xy)
         face_area += sbpface.wface[n]*area[n]
       end
       eqn.area_sum[elem] += 2.0*face_area

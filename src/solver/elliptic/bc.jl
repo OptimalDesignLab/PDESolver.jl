@@ -147,8 +147,8 @@ end
   penalty_shahbazi = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   sbpface = mesh.sbpface
   numFacesPerElem = 3
-  nrm = Array(Tmsh, mesh.numNodesPerFace, Tdim)
-  nrm0 = Array(Tmsh, mesh.numNodesPerFace, Tdim)
+  nrm = Array(Tmsh, Tdim, mesh.numNodesPerFace)
+  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
   area = Array(Tmsh, mesh.numNodesPerFace)
   numFacesPerElem = 3
 
@@ -198,14 +198,10 @@ end
       #
       # Compute geometric info on face
       #
+      nrm = ro_sview(mesh.nrm_bndry, :, :, f)
       for n=1:mesh.numNodesPerFace
-        dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
-        nrm_xi = sview(mesh.sbpface.normal, :, bndry.face)
-        nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-        nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
-        area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
-        nrm0[n,1] = nrm[n,1]/area[n]
-        nrm0[n,2] = nrm[n,2]/area[n]
+        area[n] = norm(ro_sview(nrm, :, n)) 
+        nrm1[:,n] = nrm[:,n] / area[n]
       end
 
       dqdx = sview(eqn.q_grad_bndry, :, :, f, 1)
@@ -226,12 +222,12 @@ end
         #
         # term-2
         #
-        xflux[:, n] = -q[:]*nrm[n,1]
-        yflux[:, n] = -q[:]*nrm[n,2]
+        xflux[:, n] = -q[:]*nrm[1, n]
+        yflux[:, n] = -q[:]*nrm[2, n]
         #
         # term-3
         #
-        flux[:, n] = -lambda_dqdx[1, :, n]*nrm[n,1] - lambda_dqdx[2, :, n]*nrm[n,2]
+        flux[:, n] = -lambda_dqdx[1, :, n]*nrm[1, n] - lambda_dqdx[2, :, n]*nrm[2, n]
       end
     end
 
@@ -252,14 +248,12 @@ end
         #
         # Compute geometric info on face
         #
-        for n=1:mesh.numNodesPerFace
-          dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
-          nrm_xi = sview(mesh.sbpface.normal, :, bndry.face)
-          nrm[n,1] = dxidx[1, 1]*nrm_xi[1] + dxidx[2, 1]*nrm_xi[2]
-          nrm[n,2] = dxidx[1, 2]*nrm_xi[1] + dxidx[2, 2]*nrm_xi[2]
-          area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
-          nrm0[n,1] = nrm[n,1]/area[n]
-          nrm0[n,2] = nrm[n,2]/area[n]
+        nrm = ro_sview(mesh.nrm_bndry, :, :, f)
+        for n = 1 : mesh.numNodesPerFace
+          # area[n] = norm(view(nrm, :, n))
+          area[n] = norm(ro_sview(nrm, :, n))
+          nrm1[1, n] = nrm[1, n]/area[n]
+          nrm1[2, n] = nrm[2, n]/area[n]
         end
         #
         # compute element size `he`
@@ -308,10 +302,10 @@ end
 
           for n = 1:mesh.numNodesPerFace
             for dof = 1:mesh.numDofPerNode
-              penalty[dof, n] =  nrm0[n,1]*nrm0[n,1]*lambda_face[1, 1, dof, n]
-              penalty[dof, n] += nrm0[n,1]*nrm0[n,2]*lambda_face[1, 2, dof, n]
-              penalty[dof, n] += nrm0[n,2]*nrm0[n,1]*lambda_face[2, 1, dof, n]
-              penalty[dof, n] += nrm0[n,2]*nrm0[n,2]*lambda_face[2, 2, dof, n]
+              penalty[dof, n] =  nrm1[1, n]*nrm1[1, n]*lambda_face[1, 1, dof, n]
+              penalty[dof, n] += nrm1[1, n]*nrm1[2, n]*lambda_face[1, 2, dof, n]
+              penalty[dof, n] += nrm1[2, n]*nrm1[1, n]*lambda_face[2, 1, dof, n]
+              penalty[dof, n] += nrm1[2, n]*nrm1[2, n]*lambda_face[2, 2, dof, n]
               penalty[dof, n] *= penalty_factor_shahbazi*area[n]/he
             end
           end 
@@ -338,7 +332,7 @@ end
               #
               for n1 = 1:mesh.numNodesPerFace
                 for n2 = 1:mesh.numNodesPerFace
-                  Sat[:, n2, n1] += nrm0[n2, d1]*RLR[:, n2, n1]*nrm0[n1, d2]
+                  Sat[:, n2, n1] += nrm1[d1, n2]*RLR[:, n2, n1]*nrm1[d2, n12]
                 end
               end
             end
@@ -395,8 +389,8 @@ end
         # term-7
         #
         for n = 1:mesh.numNodesPerFace
-          xflux[:, n] += gD[:,n]*nrm[n,1]
-          yflux[:, n] += gD[:,n]*nrm[n,2]
+          xflux[:, n] += gD[:,n]*nrm[1, n]
+          yflux[:, n] += gD[:,n]*nrm[2, n]
         end
         #
       end
@@ -409,26 +403,17 @@ end
         #
         # Compute geometric info on face
         #
-        for n=1:mesh.numNodesPerFace
-          dxidx = sview(mesh.dxidx_bndry, :, :, n, f)
-          # nrm = sview(sbp.facenormal, :, bndry.face)
-          nrm_xi = sview(mesh.sbpface.normal, :, bndry.face)
-          nrm[n,1] = dxidx[1, 1]*nrm[1] + dxidx[2, 1]*nrm[2]
-          nrm[n,2] = dxidx[1, 2]*nrm[1] + dxidx[2, 2]*nrm[2]
-          area[n] = sqrt(nrm[n,1]*nrm[n,1] + nrm[n,2]*nrm[n,2])
-          nrm0[n,1] = nrm[n,1]/area[n]
-          nrm0[n,2] = nrm[n,2]/area[n]
+        nrm = ro_sview(mesh.nrm_bndry, :, :, f)
+        for n = 1 : mesh.numNodesPerFace
+          # area[n] = norm(view(nrm, :, n))
+          area[n] = norm(ro_sview(nrm, :, n))
+          nrm1[1, n] = nrm[1, n]/area[n]
+          nrm1[2, n] = nrm[2, n]/area[n]
         end
 
         for j = 1:mesh.numNodesPerFace
           xy = sview(mesh.coords_bndry, :, j, f)
-          # dxidx = sview(mesh.dxidx_bndry, :, :, j, iBC)
-          # nrm = sview(sbp.facenormal, :, bndry.face)
-          # nx = dxidx[1, 1]*nrm[1] + dxidx[2, 1]*nrm[2]
-          # ny = dxidx[1, 2]*nrm[1] + dxidx[2, 2]*nrm[2]
-          # area = sqrt(nx*nx + ny*ny)
           bc_func(xy, gN)
-          #
           # term-8
           flux[:, j] -= gN*area[n]
         end

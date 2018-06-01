@@ -11,37 +11,47 @@ start_dir=`pwd`
 err=0
 
 cd ./euler
-  $jj $jflags ./runtests.jl
-  tmp=$?
-  err=$((err + tmp))
+$jj $jflags ./runtests.jl
+tmp=$?
+err=$((err + tmp))
 
-  if [[ $err -gt 0 ]];
-  then
+if [[ $err -gt 0 ]];
+then
     exit $err
-  fi
+fi
 
 cd $start_dir
 
 cd ./advection
-  $jj $jflags ./runtests.jl
-  tmp=$?
-  err=$((err + tmp))
-  if [[ $err -gt 0 ]];
-  then
+$jj $jflags ./runtests.jl
+tmp=$?
+err=$((err + tmp))
+if [[ $err -gt 0 ]];
+then
     exit $err
-  fi
+fi
 
+cd $start_dir
+
+cd ./elliptic
+$jj $jflags ./runtests.jl
+tmp=$?
+err=$((err + tmp))
+if [[ $err -gt 0 ]];
+then
+    exit $err
+fi
 
 cd $start_dir
 
 cd ./simpleODE/
-  $jj $jflags ./runtests.jl
-  tmp=$?
-  err=$((err + tmp))
-  if [[ $err -gt 0 ]];
-  then
+$jj $jflags ./runtests.jl
+tmp=$?
+err=$((err + tmp))
+if [[ $err -gt 0 ]];
+then
     exit $err
-  fi
+fi
 cd $start_dir
 
 ./runtests_parallel.sh $jflags
