@@ -13,6 +13,7 @@ env:
   - TEST_ADVECTION=1; MPI_IMPL="mpich3"
   - TEST_EULER=1; MPI_IMPL="mpich3"
   - TEST_SIMPLEODE=1; MPI_IMPL="mpich3"
+  - TEST_ELLIPTIC=1; MPI_IMPL="mpich3"
 # this hangs, for reasons unknown
 #  - TEST_ADVECTION=1; MPI_IMPL="openmpi"
 #  - TEST_EULER=1; MPI_IMPL="openmpi"
