@@ -127,22 +127,24 @@ function installPDESolver()
     end
 
     println(f, "\n---Finished manual package installations---\n")
-=#a
+=#
 
   PkgFix.checkout("ArrayViews", "master")  # need the aview change
   close(f)
-
-  # generate the known_keys dictonary
-  if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
-    start_dir = pwd()
-    input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
-    cd(input_path)
-    include(joinpath(input_path, "extract_keys.jl"))
-    cd(start_dir)
-  end
 
 end  # end function
 
 
 # run the installation
 installPDESolver()
+
+# generate the known_keys dictonary
+if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+  start_dir = pwd()
+  input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
+  cd(input_path)
+  include(joinpath(input_path, "extract_keys.jl"))
+  cd(start_dir)
+end
+
+

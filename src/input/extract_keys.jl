@@ -47,29 +47,32 @@ function extractKeys(fin::String, fout::String; header=true, footer=true)
   cntr = 1
   for ln in eachline(f)
 #    print(cntr, " ", ln)
+    if ln == ""
+      continue
+    end
 
-     if ln[1] == Char(34)  # a double quote
-       # find the matching end quote
-       end_idx = 0
-       for i=2:length(ln)
-         if ln[i] == Char(34)
-           end_idx = i
-           break
-         end
-       end  # end search for matching quote
+    if ln[1] == Char(34)  # a double quote
+      # find the matching end quote
+      end_idx = 0
+      for i=2:length(ln)
+        if ln[i] == Char(34)
+          end_idx = i
+          break
+        end
+      end  # end search for matching quote
 
-       if end_idx == 0
-         println(STDERR, "Warning: no matching close quote in line 
+      if end_idx == 0
+        println(STDERR, "Warning: no matching close quote in line 
                           $cntr of file ", fin)
-       end
+      end
 
-       # assuming we actually found a matching quote
-       key = ln[1:end_idx]
-       write(fw, key)
-       write(fw, " => true,")
-       write(fw, "\n")
+      # assuming we actually found a matching quote
+      key = ln[1:end_idx]
+      write(fw, key)
+      write(fw, " => true,")
+      write(fw, "\n")
 
-     end  # end if first character is a quote
+    end  # end if first character is a quote
 
     cntr += 1
   end  # end loop over lines

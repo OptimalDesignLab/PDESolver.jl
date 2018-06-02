@@ -19,7 +19,7 @@ function is_commit(pkg_dir::AbstractString, hash::AbstractString)
   
   iscommit = false
   try
-    vals = readstring(`git show-ref | grep $hash`)
+    vals = readstring(`git show-ref \| grep $hash`)
     # make sure this is an exact match
     name = split(vals, '/')[end]
     if name[1:end-1] == hash
