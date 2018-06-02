@@ -4,16 +4,16 @@
   A way of calculating the entropy stable face integral, used for comparison
   and debugging.
 """
-function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim},
-                                sbpface::AbstractFace,
-                                iface::Interface,
-                                qL::AbstractMatrix{Tsol},
-                                qR::AbstractMatrix{Tsol}, 
-                                aux_vars::AbstractMatrix{Tres},
-                                nrm_face::AbstractArray{Tmsh, 2},
-                                functor::FluxType,
-                                resL::AbstractMatrix{Tres}, 
-                                resR::AbstractMatrix{Tres})
+function calcECFaceIntegralTest(params::AbstractParamType{Tdim},
+        sbpface::AbstractFace,
+        iface::Interface,
+        qL::AbstractMatrix{Tsol},
+        qR::AbstractMatrix{Tsol}, 
+        aux_vars::AbstractMatrix{Tres},
+        nrm_face::AbstractArray{Tmsh, 2},
+        functor::FluxType,
+        resL::AbstractMatrix{Tres}, 
+        resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 #  println("----- entered calcEss test -----")
 
@@ -86,7 +86,7 @@ end
 """
   Calculate the entropy flux psi at a node
 """
-function psi_vec{Tdim}(params::AbstractParamType{Tdim}, q_vals)
+function psi_vec(params::AbstractParamType{Tdim}, q_vals) where Tdim
   psi_vec = zeros(eltype(q_vals), Tdim)
   for i=1:Tdim
     psi_vec[i] = q_vals[i+1]
@@ -98,7 +98,7 @@ end
 """
   Calculate the entropy flux psi for an element.  
 """
-function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector)
+function getPsi(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector) where Tsol
 
   numDofPerNode, numNodesPerElement = size(qL)
   psiL = zeros(Tsol, numNodesPerElement)
@@ -126,7 +126,7 @@ end
   Calculate the boundary operator in the specified direction times
   the vector of entropy flux (psi) vals
 """
-function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, dir::Integer)
+function getEPsi(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, dir::Integer) where Tsol
   # this computes the regular E * psi
   # not what is needed for lemma 3
 #  println("----- entered getEPsi -----")
@@ -173,7 +173,7 @@ end
 """
   Contract resL and resR with entropy variables.
 """
-function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+function contractLHS(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres}
 
 #  println("----- entered contractLHS -----")
 
@@ -185,7 +185,7 @@ end
 """
   Contract a residual array for an element with the entropy variables
 """
-function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres})
+function contractLHS(params, qL::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}) where {Tsol, Tres}
 
   numDofPerNode, numNodesPerElement = size(qL)
   resL_vec = reshape(resL, length(resL))
@@ -267,12 +267,12 @@ end
 =#
 
   
-function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
+function entropyDissipativeRef(
               params::AbstractParamType{Tdim},
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol},
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 #  println("----- entered entropyDissipativeRef -----")
   numDofPerNode = size(qL, 1)
@@ -745,7 +745,7 @@ end
 """
   Used for debugging LW functions, not used for regular testing
 """
-function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts)
+function testLW(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts) where {Tsol, Tres, Tdim}
   # computes the Lax-Wendroff term using the maximum eigenvalue for all 
   # eigenvalue, turning it into Lax-Friedrich
   # compare agains LF
@@ -864,7 +864,7 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
   return nothing
 end
 
-function applyPoly{Tsol, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, p)
+function applyPoly(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, p) where {Tsol, Tres}
 # set the solution to be a polynomial of degree p of the entropy variables
 
   v_vals = zeros(Tsol, mesh.numDofPerNode)

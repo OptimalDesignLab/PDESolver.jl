@@ -8,7 +8,7 @@
   Data written to the object is stored in the IOBuffer until flush() is called, 
   when the buffer is (efficiently) dumped into the file
 """->
-type BufferedIO{T <: IO}  <: IO
+mutable struct BufferedIO{T <: IO}  <: IO
   fstream::T
   fbuf::IOBuffer
 end

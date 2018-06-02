@@ -18,11 +18,11 @@ u0: vector to populate with the solution
 Aliasing restrictions: none.
 
 """->
-function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                  operator::AbstractSBP{Tsbp}, 
-                                  eqn::EllipticData{Tsol}, 
-                                  opts, 
-                                  u0::AbstractVector{Tsol})
+function ICZero(mesh::AbstractMesh{Tmsh}, 
+                operator::AbstractSBP{Tsbp}, 
+                eqn::EllipticData{Tsol}, 
+                opts, 
+                u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
 
@@ -64,11 +64,11 @@ Aliasing restrictions: none.
 
 """->
 
-function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                  operator::AbstractSBP{Tsbp}, 
-                                  eqn::EllipticData{Tsol}, 
-                                  opts,
-                                  u0::AbstractVector{Tsol})
+function ICOnes(mesh::AbstractMesh{Tmsh}, 
+                operator::AbstractSBP{Tsbp}, 
+                eqn::EllipticData{Tsol}, 
+                opts,
+                u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   numEl = mesh.numEl
   nnodes = operator.numnodes
@@ -89,11 +89,11 @@ function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function ICOnes
 
-function ICRandom{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                    operator::AbstractSBP{Tsbp}, 
-                                    eqn::EllipticData{Tsol}, 
-                                    opts,
-                                    u0::AbstractVector{Tsol})
+function ICRandom(mesh::AbstractMesh{Tmsh}, 
+                  operator::AbstractSBP{Tsbp}, 
+                  eqn::EllipticData{Tsol}, 
+                  opts,
+                  u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   numEl = mesh.numEl
   nnodes = operator.numnodes

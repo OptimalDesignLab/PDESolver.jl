@@ -57,11 +57,11 @@ crank_nicolson
 # function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         # mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         # opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
-function crank_nicolson_uadj{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
+function crank_nicolson_uadj(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         opts, 
                         WWW, ZZZ, dRdu_global_fwd, dRdu_global_rev, dRdu_global_rev_PM,
-                        res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
+                        res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false) where {Tmsh, Tsol}
                         # NEWNEW: neg_time, obj_fn, store_u_to_disk
   #----------------------------------------------------------------------
   if opts["uadj_global"]

@@ -47,9 +47,9 @@
   Ths is a low level function.
 """->
 
-function convertToEntropy_{Tsol}(params::ParamType{2}, 
-                           qc::AbstractArray{Tsol,1}, 
-                           qe::AbstractArray{Tsol, 1})
+function convertToEntropy_(params::ParamType{2}, 
+                     qc::AbstractArray{Tsol,1}, 
+                     qe::AbstractArray{Tsol, 1}) where Tsol
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -67,9 +67,9 @@ function convertToEntropy_{Tsol}(params::ParamType{2},
   return nothing
 end
 
-function convertToEntropy_{Tsol}(params::ParamType{3}, 
-                           qc::AbstractArray{Tsol,1}, 
-                           qe::AbstractArray{Tsol, 1})
+function convertToEntropy_(params::ParamType{3}, 
+                     qc::AbstractArray{Tsol,1}, 
+                     qe::AbstractArray{Tsol, 1}) where Tsol
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -107,9 +107,9 @@ end
 
   Ths is a low level function.
 """->
-function convertToConservative_{Tsol}(params::ParamType{2}, 
-                                qe::AbstractArray{Tsol,1}, 
-                                qc::AbstractArray{Tsol, 1})
+function convertToConservative_(params::ParamType{2}, 
+                          qe::AbstractArray{Tsol,1}, 
+                          qc::AbstractArray{Tsol, 1}) where Tsol
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -122,9 +122,9 @@ function convertToConservative_{Tsol}(params::ParamType{2},
   qc[4] = (1.0 - k1)*rho_int
 end
 
-function convertToConservative_{Tsol}(params::ParamType{3}, 
-                                qe::AbstractArray{Tsol,1}, 
-                                qc::AbstractArray{Tsol, 1})
+function convertToConservative_(params::ParamType{3}, 
+                          qe::AbstractArray{Tsol,1}, 
+                          qc::AbstractArray{Tsol, 1}) where Tsol
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -157,9 +157,9 @@ end
 
   Ths is a low level function.
 """->
-function convertToIR_{Tsol}(params::ParamType{2}, 
-                           qc::AbstractArray{Tsol, 1}, 
-                           qe::AbstractArray{Tsol, 1})
+function convertToIR_(params::ParamType{2}, 
+                     qc::AbstractArray{Tsol, 1}, 
+                     qe::AbstractArray{Tsol, 1}) where Tsol
 # this is the same code as convertToEntropy_, scaled by 1/gamma_1
 # it is necessary to copy it because qc and qe can alias
 
@@ -180,9 +180,9 @@ function convertToIR_{Tsol}(params::ParamType{2},
   return nothing
 end
 
-function convertToIR_{Tsol}(params::ParamType{3}, 
-                           qc::AbstractArray{Tsol, 1}, 
-                           qe::AbstractArray{Tsol, 1})
+function convertToIR_(params::ParamType{3}, 
+                     qc::AbstractArray{Tsol, 1}, 
+                     qe::AbstractArray{Tsol, 1}) where Tsol
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -221,9 +221,9 @@ end
 
   Ths is a low level function.
 """->
-function convertToConservativeFromIR_{Tsol}(params::ParamType{2}, 
+function convertToConservativeFromIR_(params::ParamType{2}, 
                                 qe::AbstractArray{Tsol, 1}, 
-                                qc::AbstractArray{Tsol, 1})
+                                qc::AbstractArray{Tsol, 1}) where Tsol
   # this is very siilar to the convertToConservative code, except qe is 
   # scaled by gamma_1.  There is no way to do this operation by calling 
   # convertToConservative_ in the case where qe and qc alias
@@ -240,9 +240,9 @@ function convertToConservativeFromIR_{Tsol}(params::ParamType{2},
   qc[4] = (1.0 - k1)*rho_int/gamma_1
 end
 
-function convertToConservativeFromIR_{Tsol}(params::ParamType{3}, 
+function convertToConservativeFromIR_(params::ParamType{3}, 
                                 qe::AbstractArray{Tsol,1}, 
-                                qc::AbstractArray{Tsol, 1})
+                                qc::AbstractArray{Tsol, 1}) where Tsol
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -279,9 +279,9 @@ end
 
   Ths is a low level function.
 """->
-function convertToConservative{Tdim, Tsol}(params::ParamType{Tdim, :entropy}, 
-                               qe::AbstractArray{Tsol,1}, 
-                               qc::AbstractArray{Tsol, 1})
+function convertToConservative(params::ParamType{Tdim, :entropy}, 
+                   qe::AbstractArray{Tsol,1}, 
+                   qc::AbstractArray{Tsol, 1}) where {Tdim, Tsol}
 
   convertToConservative_(params, qe, qc)
 
@@ -297,9 +297,9 @@ end
   Aliasing restrictions: none (qc and qe *can* be the same vector)
 
 """->
-function convertToConservative{Tdim, Tsol}(params::ParamType{Tdim, 
-                              :conservative}, qe::AbstractArray{Tsol,1}, 
-                              qc::AbstractArray{Tsol, 1})
+function convertToConservative(params::ParamType{Tdim, 
+                  :conservative}, qe::AbstractArray{Tsol,1}, 
+                  qc::AbstractArray{Tsol, 1}) where {Tdim, Tsol}
 # maybe the compiler will be smart enough to make this a no-op?
   for i=1:length(qe)
     qc[i] = qe[i]
@@ -331,10 +331,10 @@ end
                          support in-place conversion).
 
 """->
-function convertFromNaturalToWorkingVars{Tdim, Tsol}(
-                                         params::ParamType{Tdim, :conservative},
-                                         qc::AbstractArray{Tsol,1}, 
-                                         qe::AbstractArray{Tsol,1})
+function convertFromNaturalToWorkingVars(
+                             params::ParamType{Tdim, :conservative},
+                             qc::AbstractArray{Tsol,1}, 
+                             qe::AbstractArray{Tsol,1}) where {Tdim, Tsol}
   for i=1:length(qc)
     qe[i] = qc[i]
   end
@@ -361,10 +361,10 @@ end
   Aliasing: no restrictions
 """->
 #3D array entropy -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, 
-                               eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
-                               opts, q_arr::AbstractArray{Tsol, 3})
+function convertToConservative(mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP, 
+       eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
+       opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
@@ -377,20 +377,20 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 # 3D array conservative -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, 
-                               eqn::EulerData{Tsol, Tres, Tdim, :conservative},
-                               opts, q_arr::AbstractArray{Tsol, 3})
+function convertToConservative(mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP, 
+       eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+       opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end
 
 
 # q_vec conversion entropy -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, 
-                               eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
-                               opts, q_vec::AbstractArray{Tsol, 1})
+function convertToConservative(mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP, 
+       eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
+       opts, q_vec::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
@@ -401,10 +401,10 @@ function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 # q_vec conversion conservative -> conservative
-function convertToConservative{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, 
-                               eqn::EulerData{Tsol, Tres, Tdim, :conservative},
-                               opts, q_arr::AbstractArray{Tsol, 1})
+function convertToConservative(mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP, 
+       eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+       opts, q_arr::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end
@@ -433,8 +433,8 @@ end
   Aliasing restrictions: none (qc and qe *can* be the same vector)
 
 """->
-function convertToEntropy{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
-               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+function convertToEntropy(params::ParamType{Tdim, :conservative}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1}) where {Tdim, Tsol}
 
   convertToEntropy_(params, qc, qe)
 
@@ -453,8 +453,8 @@ end
   Aliasing restrictions: none (qc and qe *can* be the same vector)
 
 """->
-function convertToEntropy{Tdim, Tsol}(params::ParamType{Tdim, :entropy}, 
-               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+function convertToEntropy(params::ParamType{Tdim, :entropy}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1}) where {Tdim, Tsol}
 
   for i=1:length(qc)
     qe[i] = qc[i]
@@ -466,9 +466,9 @@ end
 #doc """
 
 
-function convertFromNaturalToWorkingVars{Tdim, Tsol}(
+function convertFromNaturalToWorkingVars(
                params::ParamType{Tdim, :entropy}, 
-               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1}) where {Tdim, Tsol}
 
   convertToEntropy_(params, qc, qe)
 end
@@ -478,8 +478,8 @@ end
   equation in IR variables is not yet supported, so the corresponding
   convertToConservative method is not defined.
 """
-function convertToIR{Tdim, Tsol}(params::ParamType{Tdim, :conservative}, 
-               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})
+function convertToIR(params::ParamType{Tdim, :conservative}, 
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1}) where {Tdim, Tsol}
 
   convertToIR_(params, qc, qe)
 
@@ -508,10 +508,10 @@ end
   Aliasing: no restrictions
 """->
 # 3D array conservative -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, 
-                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
-                          opts, q_arr::AbstractArray{Tsol, 3})
+function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP, 
+  eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
+  opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
 
 
@@ -527,10 +527,10 @@ end
 
 
 # 3D array entropy -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, 
-                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
-                          q_arr::AbstractArray{Tsol, 3})
+function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP, 
+  eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
+  q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end
@@ -538,10 +538,10 @@ end
 
 
 # q_vec conversion conservative -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, 
-                          eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts,
-                          q_vec::AbstractArray{Tsol, 1})
+function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP, 
+  eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts,
+  q_vec::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_view = sview(q_vec, i:(i+mesh.numDofPerNode-1))
@@ -552,10 +552,10 @@ function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
 end
 
 # q_vec conversion entropy -> entropy
-function convertToEntropy{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, 
-                          eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
-                          q_arr::AbstractArray{Tsol, 1})
+function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP, 
+  eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
+  q_arr::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end

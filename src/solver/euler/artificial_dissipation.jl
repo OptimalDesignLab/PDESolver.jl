@@ -22,9 +22,9 @@
   Aliasing restrictions: no guarantees what happens if arr is eqn.res
 
 """->
-function applyDissipation{Tmsh, Tsol, T}(mesh::AbstractMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, 
-                          opts, arr::AbstractArray{T, 3})
+function applyDissipation(mesh::AbstractMesh{Tmsh}, 
+           sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, 
+           opts, arr::AbstractArray{T, 3}) where {Tmsh, Tsol, T}
 # applies the artificial dissipation to the array arr
 # arr must be mesh.numDofPerNode by sbp.numNodesPerElement by mesh.numEl
 
@@ -77,9 +77,9 @@ end
     Aliasing restrictions: none
 
 """->
-function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                 sbp::AbstractSBP, eqn::AbstractEulerData{Tsol},
-                                 opts, dissipation_name::String)
+function calcDissipationOperator(mesh::AbstractMesh{Tmsh}, 
+                     sbp::AbstractSBP, eqn::AbstractEulerData{Tsol},
+                     opts, dissipation_name::String) where {Tmsh, Tsol}
 # calculates and returns the artificial dissipation operator array
 
   epsilon = eqn.params.dissipation_const  # dissipation constant
@@ -148,7 +148,7 @@ end  # end function
   Outputs:
     F: a numNodesPerElement x numNodesPerElement filter matrix
 """->
-function getDissipationFilterOperator{T}(sbp::TriSBP{T}, filter::Function)
+function getDissipationFilterOperator(sbp::TriSBP{T}, filter::Function) where T
 # calculate the filter operator (including the conversion to and from
 # the modal basis) used for artificial dissipation
 # the filter function defines the filter kernel

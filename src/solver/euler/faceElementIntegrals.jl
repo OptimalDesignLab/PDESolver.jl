@@ -34,17 +34,17 @@ include("IR_stab.jl")  # stabilization for the IR flux
                     p=4 elements, but would not be able to take advantage of 
                     the sparsity of R for SBP Gamma elements
 """
-function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::DenseFace, 
-                             iface::Interface,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             nrm_xy::AbstractMatrix{Tmsh},
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
+function calcECFaceIntegral(
+     params::AbstractParamType{Tdim}, 
+     sbpface::DenseFace, 
+     iface::Interface,
+     qL::AbstractMatrix{Tsol}, 
+     qR::AbstractMatrix{Tsol}, 
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_xy::AbstractMatrix{Tmsh},
+     functor::FluxType, 
+     resL::AbstractMatrix{Tres}, 
+     resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 
 #  Flux_tmp = params.flux_vals1
@@ -103,17 +103,17 @@ end
 
   Aliasing restrictions: params.flux_vals1 must not be in use
 """
-function calcECFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::SparseFace, 
-                             iface::Interface,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             nrm_xy::AbstractMatrix{Tmsh},
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
+function calcECFaceIntegral(
+     params::AbstractParamType{Tdim}, 
+     sbpface::SparseFace, 
+     iface::Interface,
+     qL::AbstractMatrix{Tsol}, 
+     qR::AbstractMatrix{Tsol}, 
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_xy::AbstractMatrix{Tmsh},
+     functor::FluxType, 
+     resL::AbstractMatrix{Tres}, 
+     resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   flux_tmp = params.flux_vals1
 
@@ -151,17 +151,17 @@ end
   This uses calcECFaceIntegral and calcLFEntropyPenaltyIntegral internally, 
   see those functions for details.
 """
-function calcESLFFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
-                             iface::Interface,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             nrm_face::AbstractMatrix{Tmsh},
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
+function calcESLFFaceIntegral(
+     params::AbstractParamType{Tdim}, 
+     sbpface::AbstractFace, 
+     iface::Interface,
+     qL::AbstractMatrix{Tsol}, 
+     qR::AbstractMatrix{Tsol}, 
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_face::AbstractMatrix{Tmsh},
+     functor::FluxType, 
+     resL::AbstractMatrix{Tres}, 
+     resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
@@ -177,17 +177,17 @@ end
   This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally, 
   see those functions for details.
 """
-function calcESLWFaceIntegral{Tdim, Tsol, Tres, Tmsh}(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
-                             iface::Interface,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             nrm_face::AbstractMatrix{Tmsh},  # dxidx or nrm
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
+function calcESLWFaceIntegral(
+     params::AbstractParamType{Tdim}, 
+     sbpface::AbstractFace, 
+     iface::Interface,
+     qL::AbstractMatrix{Tsol}, 
+     qR::AbstractMatrix{Tsol}, 
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_face::AbstractMatrix{Tmsh},  # dxidx or nrm
+     functor::FluxType, 
+     resL::AbstractMatrix{Tres}, 
+     resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
@@ -203,7 +203,7 @@ end
   This uses calcECFaceIntegral and calcLW2EntropyPenaltyIntegral internally, 
   see those functions for details.
 """
-function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcESLW2FaceIntegral(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
                              iface::Interface,
@@ -213,7 +213,7 @@ function calcESLW2FaceIntegral{Tdim, Tsol, Tres, Tmsh}(
                              nrm_face::AbstractMatrix{Tmsh}, # dxidx or nrm
                              functor::FluxType, 
                              resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres})
+                             resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
@@ -240,12 +240,12 @@ end
 
   Aliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil
 """
-function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcLFEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   numDofPerNode = size(qL, 1)
 
@@ -336,12 +336,12 @@ end
 
   Aliasing restrictions: params: v_vals, v_vals2, q_vals, A0, res_vals1, res_vals2
 """
-function calcLFEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcLFEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::SparseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   numDofPerNode = size(qL, 1)
 
@@ -419,12 +419,12 @@ end
     Y, S2, Lambda, res_vals1, res_vals2, res_vals3,  w_vals_stencil, 
     w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2
 """
-function calcLWEntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcLWEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 #  println("----- entered calcEntropyLWEntropyPenaltyIntegral -----")
 
@@ -583,12 +583,12 @@ end
     w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2, nrm2, P
 
 """
-function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcLW2EntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::DenseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 #  println("----- entered calcLW2EntropyPenaltyIntegral -----")
   numDofPerNode = size(qL, 1)
@@ -711,12 +711,12 @@ end
   Aliasing restrictions: params: v_vals, v_vals2, q_vals, q_vals2, A0, res_vals1, res_vals2
                          A0, S2, Lambda, nrm2, P
 """
-function calcLW2EntropyPenaltyIntegral{Tdim, Tsol, Tres, Tmsh}(
+function calcLW2EntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::SparseFace, iface::Interface, 
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   numDofPerNode = size(qL, 1)
 
@@ -888,16 +888,16 @@ end
 """
   Entropy conservative term only
 """
-type ECFaceIntegral <: FaceElementIntegralType
+mutable struct ECFaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ECFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ECFaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
@@ -909,16 +909,16 @@ end
 """
   Entropy conservative integral + Lax-Friedrich penalty
 """
-type ESLFFaceIntegral <: FaceElementIntegralType
+mutable struct ESLFFaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ESLFFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ESLFFaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
   calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
@@ -928,16 +928,16 @@ end
 """
   Lax-Friedrich entropy penalty term only
 """
-type ELFPenaltyFaceIntegral <: FaceElementIntegralType
+mutable struct ELFPenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ELFPenaltyFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ELFPenaltyFaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
   calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
@@ -947,16 +947,16 @@ end
 """
   Entropy conservative integral + approximate Lax-Wendroff penalty
 """
-type ESLWFaceIntegral <: FaceElementIntegralType
+mutable struct ESLWFaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ESLWFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ESLWFaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
   calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
@@ -966,16 +966,16 @@ end
 """
   Approximate Lax-Wendroff entropy penalty term only
 """
-type ELWPenaltyFaceIntegral <: FaceElementIntegralType
+mutable struct ELWPenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ELWPenaltyFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ELWPenaltyFaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
   calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
@@ -985,16 +985,16 @@ end
 """
   Entropy conservative integral + Lax-Wendroff penalty
 """
-type ESLW2FaceIntegral <: FaceElementIntegralType
+mutable struct ESLW2FaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ESLW2FaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ESLW2FaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
   calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
 
@@ -1003,16 +1003,16 @@ end
 """
   Lax-Wendroff entropy penalty term only
 """
-type ELW2PenaltyFaceIntegral <: FaceElementIntegralType
+mutable struct ELW2PenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function (obj::ELW2PenaltyFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
+function (obj::ELW2PenaltyFaceIntegral)(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
               functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
   calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)

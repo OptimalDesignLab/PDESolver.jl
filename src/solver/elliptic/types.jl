@@ -1,5 +1,5 @@
 
-type ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
+mutable struct ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
   f::IOStream
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
@@ -125,7 +125,7 @@ type ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
 
 end  # end type declaration
 
-type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
+mutable struct EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
   params::ParamType{Tdim, Tsol, Tres, Tmsh}
   comm::MPI.Comm
   commsize::Int
@@ -330,9 +330,9 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
   end # end function
 end # end type
 
-function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                             sbp::AbstractSBP,
-                                             eqn::EllipticData{Tsol, Tres, Tdim})
+function calcWetArea(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP,
+                     eqn::EllipticData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, mesh.numNodesPerFace, Tdim)
   area = zeros(Tmsh, mesh.numNodesPerFace)
@@ -414,11 +414,11 @@ function majorIterationCallback(itr::Integer,
   return nothing
 end
 
-function multiplyA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                                               sbp::AbstractSBP,
-                                               eqn::EllipticData{Tsol, Tres, Tdim},
-                                               opts,
-                                               res::AbstractArray{Tsol, 3})
+function multiplyA0inv(mesh::AbstractMesh{Tmsh},
+                       sbp::AbstractSBP,
+                       eqn::EllipticData{Tsol, Tres, Tdim},
+                       opts,
+                       res::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
   return nothing
 end
 

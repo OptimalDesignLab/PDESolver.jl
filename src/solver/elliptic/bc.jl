@@ -1,30 +1,30 @@
-abstract AbstractDirichletBC <: BCType
-abstract AbstractNeumannBC <: BCType
+abstract type AbstractDirichletBC <: BCType end
+abstract type AbstractNeumannBC <: BCType end
 export isDirichlet, isNeumann
 
-type DirichletAllZero <: AbstractDirichletBC
+mutable struct DirichletAllZero <: AbstractDirichletBC
 end
-function (obj::DirichletAllZero){Tmsh, Tsol}(
+function (obj::DirichletAllZero)(
                           xy::AbstractArray{Tmsh},
-                          gD::AbstractArray{Tsol, 1})  # (numDofPerNode))
+                          gD::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   gD[:] = 0.0
   return nothing
 end
 
-type DirichletAllOne <: AbstractDirichletBC
+mutable struct DirichletAllOne <: AbstractDirichletBC
 end
-function (obj::DirichletAllOne){Tmsh, Tsol}(
+function (obj::DirichletAllOne)(
                           xy::AbstractArray{Tmsh},
-                          gD::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gD::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   gD[:] = 1.0
   return nothing
 end
 
-type DirichletTrig <: AbstractDirichletBC
+mutable struct DirichletTrig <: AbstractDirichletBC
 end
-function (obj::DirichletTrig){Tmsh, Tsol}(
+function (obj::DirichletTrig)(
                           xy::AbstractArray{Tmsh}, 
-                          q::AbstractArray{Tsol, 1})  # (numDofPerNode))
+                          q::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   k = 2.0
   q[:] = sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
   if abs(q[1]) > 1.0E-10
@@ -33,11 +33,11 @@ function (obj::DirichletTrig){Tmsh, Tsol}(
   return nothing
 end
 
-type DirichletPolynial2nd <: AbstractDirichletBC
+mutable struct DirichletPolynial2nd <: AbstractDirichletBC
 end
-function (obj::DirichletPolynial2nd){Tmsh, Tsol}(
+function (obj::DirichletPolynial2nd)(
                           xy::AbstractArray{Tmsh},
-                          gD::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gD::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   a = 1.0
   b = 1.0
   c = 1.0
@@ -46,22 +46,22 @@ function (obj::DirichletPolynial2nd){Tmsh, Tsol}(
 end
 
 
-type NeumannAllZero <: AbstractNeumannBC
+mutable struct NeumannAllZero <: AbstractNeumannBC
 end
 
-function (obj::NeumannAllZero){Tmsh, Tsol}(
+function (obj::NeumannAllZero)(
                           xy::AbstractArray{Tmsh, 1},
-                          gN::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gN::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   gN[:] = 1.0
   return nothing
 end
 
-type NeumannAllOne <: AbstractNeumannBC
+mutable struct NeumannAllOne <: AbstractNeumannBC
 end
 
-function (obj::NeumannAllOne){Tmsh, Tsol}(
+function (obj::NeumannAllOne)(
                           xy::AbstractArray{Tmsh, 1},
-                          gN::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gN::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   gN[:] = 1.0
   return nothing
 end
@@ -96,21 +96,21 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EllipticData, 
     mesh.bndry_funcs[i] = BCDict[val]
   end
 end
-function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
-                                         sbp::AbstractSBP,
-                                         eqn::AbstractEllipticData{Tsol, Tres},
-                                         opts,
-                                         q::AbstractArray{Tsol,3},
-                                         q_bndry::AbstractArray{Tsol,3})
+function interpolateBoundary(mesh::AbstractDGMesh,
+                             sbp::AbstractSBP,
+                             eqn::AbstractEllipticData{Tsol, Tres},
+                             opts,
+                             q::AbstractArray{Tsol,3},
+                             q_bndry::AbstractArray{Tsol,3}) where {Tsol, Tres}
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, q, q_bndry)
 end
 
-function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
-                                         sbp::AbstractSBP,
-                                         eqn::AbstractEllipticData{Tsol, Tres},
-                                         opts,
-                                         grad::AbstractArray{Tsol,4},
-                                         grad_bndry::AbstractArray{Tsol,4})
+function interpolateBoundary(mesh::AbstractDGMesh,
+                             sbp::AbstractSBP,
+                             eqn::AbstractEllipticData{Tsol, Tres},
+                             opts,
+                             grad::AbstractArray{Tsol,4},
+                             grad_bndry::AbstractArray{Tsol,4}) where {Tsol, Tres}
   @assert(size(grad, 4) == size(grad_bndry, 4))   # Tdim
   @assert(size(grad, 1) == size(grad_bndry, 1))   # numDofPerNode
 
@@ -122,10 +122,10 @@ function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
   end
 end
 
-function getBCFluxes{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                    sbp::AbstractSBP,
-                                                    eqn::EllipticData{Tsol, Tres, Tdim},
-                                                    opts)
+function getBCFluxes(mesh::AbstractMesh{Tmsh},
+                            sbp::AbstractSBP,
+                            eqn::EllipticData{Tsol, Tres, Tdim},
+                            opts) where {Tmsh, Tsol, Tres, Tdim}
   #
   # The boundary integrals are categorized into 3 classes.
   # The first is numerical and applies to all boundaries (both Dirichlet

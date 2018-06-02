@@ -1,12 +1,12 @@
-abstract AbstractFunctional
+abstract type AbstractFunctional end
 
-type volumeAverage <: AbstractFunctional
+mutable struct volumeAverage <: AbstractFunctional
 end
-function (obj::volumeAverage){Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                      sbp::AbstractSBP,
-                                      eqn::EulerData{Tsol, Tres, Tdim},
-                                      opts,
-                                      val::Array{Tsol, 1})
+function (obj::volumeAverage)(mesh::AbstractMesh{Tmsh},
+              sbp::AbstractSBP,
+              eqn::EulerData{Tsol, Tres, Tdim},
+              opts,
+              val::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
   @assert(length(val) == mesh.numDofPerNode)
   val[:] = 0.0
 

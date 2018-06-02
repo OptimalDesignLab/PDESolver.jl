@@ -43,7 +43,7 @@ export AbstractEulerData, EulerData, EulerData_, run_euler, eval_dJdaoa
   the function only needs to ensure that it is solving the Euler equations,
   but does not care even a little bit about how.
 """->
-abstract AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+abstract type AbstractEulerData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres} end
 #=
 Use this type to leverage multiple dispatch.
 This type holds any data, including large arrays of solution values,
@@ -169,14 +169,14 @@ If it is variable sized then macros give the advantage of doing location lookup
     * Minv :  vector holding inverse mass matrix
     # Minv3D :  3D array holding inverse mass matrix for application to res (not res_vec)
 """->
-abstract EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres}
+abstract type EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, Tres} end
 
 """
   Functor type for faceElementIntegrals.  These integrals operate on a face,
   but require data from the entirety of the elements that make up the
   face, rather than data interpolated to the face
 """
-abstract FaceElementIntegralType
+abstract type FaceElementIntegralType end
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
 # Mid level function should take in an EulerData{Tsol, Tdim}, so they

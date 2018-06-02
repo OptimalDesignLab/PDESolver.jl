@@ -1,13 +1,13 @@
 # differentiated version of functions in flux.jl
 
-function calcFaceIntegral_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+function calcFaceIntegral_nopre_diff(
                                 mesh::AbstractDGMesh{Tmsh},
                                 sbp::AbstractSBP,
                                 eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                                 opts,
                                 functor::FluxType_diff,
                                 interfaces::AbstractArray{Interface, 1},
-                                assembler::AssembleElementData)
+                                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
   nfaces = length(interfaces)
@@ -111,10 +111,10 @@ end
   [`calcSharedFaceIntegrals_element_inner`](@ref).
   It presents the interface required by [`finishExchangeData`](@ref)
 """
-function calcSharedFaceIntegrals_element_diff{Tmsh, Tsol}(
+function calcSharedFaceIntegrals_element_diff(
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol},
-                            opts, data::SharedFaceData)
+                            opts, data::SharedFaceData) where {Tmsh, Tsol}
 
     calcSharedFaceIntegrals_nopre_element_inner_diff(mesh, sbp, eqn, opts, data, eqn.flux_func_diff, eqn.assembler)
 
@@ -127,11 +127,11 @@ end
 """
   Differentiated version of [`calcSharedFaceIntegrals_nopre_element_inner`](@ref),
 """
-function calcSharedFaceIntegrals_nopre_element_inner_diff{Tmsh, Tsol, Tres}(
+function calcSharedFaceIntegrals_nopre_element_inner_diff(
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType_diff,
-                            assembler::AssembleElementData)
+                            assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
   params = eqn.params
 
@@ -242,32 +242,32 @@ end
 """
   Calls the [`RoeSolver_diff`](@ref)
 """
-type RoeFlux_diff <: FluxType_diff
+mutable struct RoeFlux_diff <: FluxType_diff
 end
 
-function (obj::RoeFlux_diff){Tsol, Tres, Tmsh}(params::ParamType,
+function (obj::RoeFlux_diff)(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractVector{Tmsh},
               F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres})
+              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
 
   RoeSolver_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
   return nothing
 end
 
 
-type LFFlux_diff <: FluxType_diff
+mutable struct LFFlux_diff <: FluxType_diff
 end
 
-function (obj::LFFlux_diff){Tsol, Tres, Tmsh}(params::ParamType,
+function (obj::LFFlux_diff)(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractVector{Tmsh},
               F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres})
+              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
 
   calcLFFlux_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
 
@@ -276,16 +276,16 @@ end
 
 
 
-type ErrorFlux_diff <: FluxType_diff
+mutable struct ErrorFlux_diff <: FluxType_diff
 end
 
-function (obj::ErrorFlux_diff){Tsol, Tres, Tmsh}(params::ParamType,
+function (obj::ErrorFlux_diff)(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractVector{Tmsh},
               F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres})
+              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
 
 
   error("ErrorFlux() called, something unexpected has occured")

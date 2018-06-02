@@ -22,9 +22,9 @@
   Aliasing restrictions: none
 
 """->
-function calcIsentropicVortex{Tmsh, Tsol}(params::ParamType2,
-                              coords::AbstractArray{Tmsh},
-                              sol::AbstractVector{Tsol})
+function calcIsentropicVortex(params::ParamType2,
+                  coords::AbstractArray{Tmsh},
+                  sol::AbstractVector{Tsol}) where {Tmsh, Tsol}
   # calculates the solution at a point of the isentropic vortex
   # 2D only
 
@@ -76,9 +76,9 @@ return nothing
 end
 
 
-function calcIsentropicVortex{Tmsh, Tsol}(params::ParamType3,
-                              coords::AbstractArray{Tmsh},
-                              sol::AbstractVector{Tsol})
+function calcIsentropicVortex(params::ParamType3,
+                  coords::AbstractArray{Tmsh},
+                  sol::AbstractVector{Tsol}) where {Tmsh, Tsol}
 # calculates the solution at a point of the isentropic vortex
 
 
@@ -184,9 +184,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
-                        coords::AbstractArray{Tmsh, 1},
-                        sol::AbstractArray{Tsol, 1})
+function calcFreeStream(params::ParamType2,
+            coords::AbstractArray{Tmsh, 1},
+            sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 # calculate the free stream conditions using the fields of params
 
 
@@ -201,9 +201,9 @@ function calcFreeStream{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
-function calcFreeStream{Tmsh, Tsol}(params::ParamType3,
-                        coords::AbstractArray{Tmsh, 1},
-                        sol::AbstractArray{Tsol, 1})
+function calcFreeStream(params::ParamType3,
+            coords::AbstractArray{Tmsh, 1},
+            sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 # calculate the free stream conditions using the fields of params
 
   # calculate the free stream conditions using the fields of params
@@ -225,9 +225,9 @@ end
   Like [`calcFreeStream`](@ref), but assumes zero angle of attack, regardless
   of what the options dictionary says.
 """
-function calcFreeStream0{Tmsh, Tsol}(params::ParamType2,
-                        coords::AbstractArray{Tmsh, 1},
-                        sol::AbstractArray{Tsol, 1})
+function calcFreeStream0(params::ParamType2,
+            coords::AbstractArray{Tmsh, 1},
+            sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 # calculate the free stream conditions using the fields of params
 
 
@@ -271,9 +271,9 @@ end
 
 """->
 
-function calcFreeStream_dAlpha{Tmsh, Tsol}(params::ParamType2,
-                               coords::AbstractArray{Tmsh, 1},
-                               sol::AbstractArray{Tsol, 1})
+function calcFreeStream_dAlpha(params::ParamType2,
+                   coords::AbstractArray{Tmsh, 1},
+                   sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 # calculate the free stream conditions using the fields of params
 
 
@@ -287,9 +287,9 @@ function calcFreeStream_dAlpha{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
-function calcFreeStream_daoa{Tmsh, Tsol}(params::ParamType3,
-                             coords::AbstractArray{Tmsh, 1},
-                             sol::AbstractArray{Tsol, 1})
+function calcFreeStream_daoa(params::ParamType3,
+                 coords::AbstractArray{Tmsh, 1},
+                 sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   # calculate the free stream conditions using the fields of params
 
@@ -327,9 +327,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcUnsteadyVortex{Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
-                            coords::AbstractArray{Tmsh, 1},
-                            sol::AbstractArray{Tsol, 1})
+function calcUnsteadyVortex(params::ParamType{Tdim},
+          coords::AbstractArray{Tmsh, 1},
+          sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim}
 
   fval = vortex_f(coords, params)
   t = params.t
@@ -392,9 +392,9 @@ end
   Does *not* use params.Ma or params.vortex_strength, or vortex.x0
 
 """
-function calcUnsteadyVortex2{Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
-                            coords::AbstractArray{Tmsh, 1},
-                            sol::AbstractArray{Tsol, 1})
+function calcUnsteadyVortex2(params::ParamType{Tdim},
+          coords::AbstractArray{Tmsh, 1},
+          sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim}
   t = params.t
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -471,9 +471,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2{Tmsh, Tsol}(params::ParamType2,
-                         coords::AbstractArray{Tmsh, 1},
-                         sol::AbstractArray{Tsol,1})
+function calcRho1Energy2(params::ParamType2,
+             coords::AbstractArray{Tmsh, 1},
+             sol::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
   # for square test case with rho = 1, everything else  = 0
 
   sol[1] = 1.0
@@ -483,9 +483,9 @@ function calcRho1Energy2{Tmsh, Tsol}(params::ParamType2,
 
   return nothing
 end
-function calcRho1Energy2{Tmsh, Tsol}(params::ParamType3,
-                         coords::AbstractArray{Tmsh, 1},
-                         sol::AbstractArray{Tsol,1})
+function calcRho1Energy2(params::ParamType3,
+             coords::AbstractArray{Tmsh, 1},
+             sol::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
   # for square test case with rho = 1, everything else  = 0
 
   sol[1] = 1.0
@@ -517,9 +517,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcOnes{Tmsh, Tsol}(params::ParamType2,
-                  coords::AbstractArray{Tmsh, 1},
-                  sol::AbstractArray{Tsol,1})
+function calcOnes(params::ParamType2,
+      coords::AbstractArray{Tmsh, 1},
+      sol::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   fill!(sol, 1.0)
 
@@ -545,9 +545,9 @@ end  # end function calcOnes
 
 """->
 
-function calcZeros{Tmsh, Tsol}(params::ParamType2,
-                   coords::AbstractArray{Tmsh, 1},
-                   sol::AbstractArray{Tsol,1})
+function calcZeros(params::ParamType2,
+       coords::AbstractArray{Tmsh, 1},
+       sol::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   fill!(sol, 0.0)
 
@@ -576,9 +576,9 @@ end  # end function calcZeros
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType2,
+function calcRho1Energy2U1VW0(params::ParamType2,
                            coords::AbstractArray{Tmsh},
-                           sol::AbstractArray{Tsol, 1})
+                           sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   # for square test case with rho = 1, digonal momentum, energy
 
   sol[1] = 1.0
@@ -589,9 +589,9 @@ function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
-function calcRho1Energy2U1VW0{Tmsh, Tsol}(params::ParamType3,
+function calcRho1Energy2U1VW0(params::ParamType3,
                            coords::AbstractArray{Tmsh},
-                           sol::AbstractArray{Tsol, 1})
+                           sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   # for square test case with rho = 1, digonal momentum, energy
 
   sol[1] = 1.0
@@ -624,9 +624,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcRho1Energy2U3{Tmsh, Tsol}(params::ParamType2,
-                           coords::AbstractArray{Tmsh},
-                           sol::AbstractArray{Tsol, 1})
+function calcRho1Energy2U3(params::ParamType2,
+               coords::AbstractArray{Tmsh},
+               sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   # for square test case with rho = 1, digonal momentum, energy
 
   sol[1] = 1.0
@@ -637,9 +637,9 @@ function calcRho1Energy2U3{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
-function calcRho1Energy2U3{Tmsh, Tsol}(params::ParamType3,
-                           coords::AbstractArray{Tmsh},
-                           sol::AbstractArray{Tsol, 1})
+function calcRho1Energy2U3(params::ParamType3,
+               coords::AbstractArray{Tmsh},
+               sol::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   # for square test case with rho = 1, digonal momentum, energy
 
   sol[1] = 1.0
@@ -674,9 +674,9 @@ end
   Aliasing restrictions: none
 
 """->
-function calcVortex{Tmsh, Tsol}(params::ParamType2,
-                    coords::AbstractArray{Tmsh,1},
-                    sol::AbstractArray{Tsol,1})
+function calcVortex(params::ParamType2,
+        coords::AbstractArray{Tmsh,1},
+        sol::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 # solid body rotation
   x = coords[1]
   y = coords[2]
@@ -705,8 +705,8 @@ end
 """
   Calculates a manufactured solution based on exponentials
 """
-function calcExp{Tmsh, Tsol}(params::ParamType2, coords::AbstractArray{Tmsh,1},
-                             q::AbstractArray{Tsol,1})
+function calcExp(params::ParamType2, coords::AbstractArray{Tmsh,1},
+                 q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   x = coords[1]
   y = coords[2]
@@ -723,8 +723,8 @@ function calcExp{Tmsh, Tsol}(params::ParamType2, coords::AbstractArray{Tmsh,1},
   return nothing
 end
 
-function calcExp{Tmsh, Tsol}(params::ParamType3, coords::AbstractArray{Tmsh,1},
-                             q::AbstractArray{Tsol,1})
+function calcExp(params::ParamType3, coords::AbstractArray{Tmsh,1},
+                 q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
   x = coords[1]
   y = coords[2]
   z = coords[3]
@@ -763,9 +763,9 @@ end
   This is typically used with a mesh that spans [-1, 1] in all directions
 
 """
-function calcPeriodicMMS{Tmsh, Tsol}(params::ParamType2,
-                         coords::AbstractArray{Tmsh,1},
-                         q::AbstractArray{Tsol,1})
+function calcPeriodicMMS(params::ParamType2,
+             coords::AbstractArray{Tmsh,1},
+             q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   x = coords[1]
   y = coords[2]
@@ -785,9 +785,9 @@ function calcPeriodicMMS{Tmsh, Tsol}(params::ParamType2,
   return nothing
 end
 
-function calcPeriodicMMS{Tmsh, Tsol}(params::ParamType3,
-                         coords::AbstractArray{Tmsh,1},
-                         q::AbstractArray{Tsol,1})
+function calcPeriodicMMS(params::ParamType3,
+             coords::AbstractArray{Tmsh,1},
+             q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   x = coords[1]
   y = coords[2]
@@ -824,9 +824,9 @@ end
   Manufactured condition for a channel with y in [0, 1].
   No source term.  2D only
 """
-function calcChannelMMS{Tmsh, Tsol}(params::ParamType2,
-                        coords::AbstractArray{Tmsh,1},
-                        q::AbstractArray{Tsol,1})
+function calcChannelMMS(params::ParamType2,
+            coords::AbstractArray{Tmsh,1},
+            q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   R = params.R
   gamma_1 = params.gamma_1
@@ -852,9 +852,9 @@ end
   The base flow is uniform, and if  -0.05 < x < 0.05, then it is perturbed
   by a small amount.
 """
-function calcSquare1D{Tmsh, Tsol}(params::ParamType2,
-                        coords::AbstractArray{Tmsh,1},
-                        q::AbstractArray{Tsol,1})
+function calcSquare1D(params::ParamType2,
+            coords::AbstractArray{Tmsh,1},
+            q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   # apply base state
   q[1] = 1.0
@@ -880,9 +880,9 @@ end
   The base flow is uniform, and if  -0.05 < x, y < 0.05, then it is perturbed
   by a small amount.
 """
-function calcSquare2D{Tmsh, Tsol}(params::ParamType2,
-                        coords::AbstractArray{Tmsh,1},
-                        q::AbstractArray{Tsol,1})
+function calcSquare2D(params::ParamType2,
+            coords::AbstractArray{Tmsh,1},
+            q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   # apply base state
   q[1] = 1.0
@@ -910,9 +910,9 @@ end
   0.05 centered at the origin
 
 """
-function calcSedovExplosion{Tmsh, Tsol}(params::ParamType2,
+function calcSedovExplosion(params::ParamType2,
                         coords::AbstractArray{Tmsh,1},
-                        q::AbstractArray{Tsol,1})
+                        q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
 
   # parameters
@@ -937,9 +937,9 @@ end
 """
   Initial condition for SU2 inviscid channel
 """
-function calcInvChannelIC{Tmsh, Tsol}(params::ParamType2,
-                         coords::AbstractArray{Tmsh,1},
-                         q::AbstractArray{Tsol,1})
+function calcInvChannelIC(params::ParamType2,
+             coords::AbstractArray{Tmsh,1},
+             q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
 
   rho = 1.22531
@@ -958,9 +958,9 @@ end
 """
   Free stream conditions for SU2 inviscid channel
 """
-function calcInvChannelFreeStream{Tmsh, Tsol}(params::ParamType2,
+function calcInvChannelFreeStream(params::ParamType2,
                          coords::AbstractArray{Tmsh,1},
-                         q::AbstractArray{Tsol,1})
+                         q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
 
   rho = 1.22531

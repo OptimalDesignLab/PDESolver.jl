@@ -2,11 +2,11 @@
 
 import PDESolver.evalResidual
 
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                sbp::AbstractSBP,
-                                eqn::AbstractEllipticData{Tsol, Tres},
-                                opts,
-                                pmesh=mesh)
+function init(mesh::AbstractMesh{Tmsh},
+              sbp::AbstractSBP,
+              eqn::AbstractEllipticData{Tsol, Tres},
+              opts,
+              pmesh=mesh) where {Tmsh, Tsol, Tres}
   #
   # TODO: initMPIStructures(mesh, opts)
   #
@@ -73,10 +73,10 @@ function evalResidual(mesh::AbstractMesh,
 end
 
 
-function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::AbstractEllipticData{Tsol, Tres},
-                                           opts)
+function dataPrep(mesh::AbstractMesh{Tmsh},
+                         sbp::AbstractSBP,
+                         eqn::AbstractEllipticData{Tsol, Tres},
+                         opts) where {Tmsh, Tsol, Tres}
   #
   # TODO: Not sure if filtering is needed
   #
@@ -140,10 +140,10 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                     sbp::AbstractSBP,
-                                                     eqn::EllipticData{Tsol, Tres, Tdim},
-                                                     opts)
+function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractSBP,
+                             eqn::EllipticData{Tsol, Tres, Tdim},
+                             opts) where {Tmsh, Tsol, Tres, Tdim}
   #
   # integral of term-1
   #
@@ -152,10 +152,10 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   strongintegrate(mesh, sbp, eqn.src, eqn.res)
 end
 
-function strongintegrate{Tmsh, Tsbp, Tflx, Tres}(mesh::AbstractMesh{Tmsh},
-                                                 sbp::AbstractSBP{Tsbp},
-                                                 f::AbstractArray{Tflx,3},
-                                                 res::AbstractArray{Tres,3})
+function strongintegrate(mesh::AbstractMesh{Tmsh},
+                         sbp::AbstractSBP{Tsbp},
+                         f::AbstractArray{Tflx,3},
+                         res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tflx, Tres}
   for elem = 1:mesh.numEl
     jac = sview(mesh.jac, :, elem)
     for i = 1:mesh.numNodesPerElement
@@ -169,11 +169,11 @@ end
 #     \int ∇v⋅(Λ∇f) dΩ
 # where Λ is matrix coefficient
 #
-function weakdifferentiate2!{Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                                      sbp::AbstractSBP{Tsbp},
-                                                                      eqn::EllipticData{Tsol, Tres, Tdim},
-                                                                      q_grad::AbstractArray{Tflx,4},
-                                                                      res::AbstractArray{Tres,3})
+function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
+                                    sbp::AbstractSBP{Tsbp},
+                                    eqn::EllipticData{Tsol, Tres, Tdim},
+                                    q_grad::AbstractArray{Tflx,4},
+                                    res::AbstractArray{Tres,3}) where {Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}
   @assert (sbp.numnodes == size(q_grad, 2))
   @assert (sbp.numnodes == size(res,2))
   @assert (size(q_grad, 1) == size(res,1))    # numDofPerNode
@@ -220,11 +220,11 @@ end
 # TODO: put the integral of ∫∇v ⋅ (fx, fy) dΓ into a function,
 #       let's say interiorfaceintegrate2
 #
-function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
-                                                          mesh::AbstractDGMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EllipticData{Tsol, Tres, Tdim},
-                                                          opts)
+function evalFaceIntegrals(
+                                  mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EllipticData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
 
   #
   # Integrate face_flux
@@ -299,9 +299,9 @@ function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
-function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                       sbp::AbstractSBP,
-                                                       eqn::EllipticData{Tsol, Tres, Tdim})
+function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
+                               sbp::AbstractSBP,
+                               eqn::EllipticData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.flux_bndry, eqn.res)
 
   sbpface = mesh.sbpface
@@ -357,10 +357,10 @@ end  # end evalBoundaryIntegrals
 #
 # Compute Dx
 #
-function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
-                      elem::Int,
-                      Dx::AbstractArray{Tmsh, 3})
+function calcDx(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                elem::Int,
+                Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
   @assert(size(Dx, 2) == mesh.numNodesPerElement)
   @assert(size(Dx, 3) == size(mesh.dxidx, 1))
@@ -385,10 +385,10 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
   end
 end
 
-function calcQx{Tmsh}(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
-                      elem::Int,
-                      Qx::AbstractArray{Tmsh, 3})
+function calcQx(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                elem::Int,
+                Qx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Qx, 1) == mesh.numNodesPerElement)
   @assert(size(Qx, 2) == mesh.numNodesPerElement)
   @assert(size(Qx, 3) == size(mesh.dxidx, 1))

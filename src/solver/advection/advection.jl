@@ -21,9 +21,9 @@ Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use arr
 *  None
 
 """->
-function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                       sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                       opts::Dict, t=0.0)
+function evalResidual(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+opts::Dict, t=0.0) where {Tmsh, Tsol, Tres, Tdim}
 
   myrank = mesh.myrank
   params = eqn.params
@@ -100,10 +100,10 @@ end
   None
 
 """->
-function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::AdvectionData{Tsol, Tres, Tdim},
-                                           opts)
+function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
+                   sbp::AbstractSBP,
+                   eqn::AdvectionData{Tsol, Tres, Tdim},
+                   opts) where {Tmsh, Tsol, Tres, Tdim}
 
   if opts["use_staggered_grid"]
     calcVolumeIntegralsStaggered(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts)
@@ -197,13 +197,13 @@ end
    * opts: options dictionary 
 
 """
-function calcVolumeIntegralsStaggered{Tmsh, Tsol, Tres, Tdim}(
-                                     mesh_s::AbstractDGMesh{Tmsh},
-                                     mesh_f::AbstractDGMesh{Tmsh},
-                                     sbp_s::AbstractSBP,
-                                     sbp_f::AbstractSBP,
-                                     eqn::AdvectionData{Tsol, Tres, Tdim},
-                                     opts)
+function calcVolumeIntegralsStaggered(
+             mesh_s::AbstractDGMesh{Tmsh},
+             mesh_f::AbstractDGMesh{Tmsh},
+             sbp_s::AbstractSBP,
+             sbp_f::AbstractSBP,
+             eqn::AdvectionData{Tsol, Tres, Tdim},
+             opts) where {Tmsh, Tsol, Tres, Tdim}
   q_f = eqn.params.qL_f
   alphas_xy = zeros(Float64, Tdim)  # advection coefficients in the xy 
                                     #directions
@@ -273,8 +273,8 @@ end
     eqn
     opts
 """
-function calcAdvectionFlux{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, 
-                           eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
+function calcAdvectionFlux(mesh::AbstractMesh{Tmsh}, sbp, 
+   eqn::AdvectionData{Tsol, Tres, Tdim}, opts) where {Tsol, Tres, Tdim, Tmsh}
 
   flux_parametric = eqn.flux_parametric
 
@@ -319,11 +319,11 @@ end
     flux: vector of length Tdim to populate with the flux in the parametric
           directions
 """
-function calcAdvectionFlux{Tsol, Tmsh, Tres, Tdim}(
-                           params::ParamType{Tsol, Tres, Tdim}, q::Tsol,
-                           alphas_xy::AbstractVector,
-                           dxidx::AbstractMatrix{Tmsh},
-                           flux::AbstractVector{Tres})
+function calcAdvectionFlux(
+   params::ParamType{Tsol, Tres, Tdim}, q::Tsol,
+   alphas_xy::AbstractVector,
+   dxidx::AbstractMatrix{Tmsh},
+   flux::AbstractVector{Tres}) where {Tsol, Tmsh, Tres, Tdim}
 
   for k=1:Tdim  # loop over parametric dimensions
     alpha_k = zero(Tmsh)
@@ -356,8 +356,8 @@ the result.
 *  None
 
 """->
-function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts)
+function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh}, 
+                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("----- Entered evalBoundaryIntegrals -----")
 
@@ -474,9 +474,9 @@ end
   Aliasing restrictions: none
 
 """->
-function evalSRCTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, 
-                     opts)
+function evalSRCTerm(mesh::AbstractMesh{Tmsh},
+sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, 
+opts) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # placeholder for multiple source term functionality (similar to how
@@ -581,8 +581,8 @@ end
 
   Aliasing restrictions: none
 """->
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-              eqn::AbstractAdvectionData{Tsol, Tres}, opts)
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+eqn::AbstractAdvectionData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   println("Entering Advection Module")
   getBCFunctors(mesh, sbp, eqn, opts)
@@ -684,10 +684,10 @@ end
 
 """->
 #TODO: replace this with arrToVecAssign?
-function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                         sbp::AbstractSBP, eqn::AbstractAdvectionData{Tsol}, opts, 
-                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
-                         zero_resvec=true)
+function assembleArray(mesh::AbstractMesh{Tmsh}, 
+       sbp::AbstractSBP, eqn::AbstractAdvectionData{Tsol}, opts, 
+       arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
+       zero_resvec=true) where {Tmsh, Tsol, Tres}
 # arr is the array to be assembled into res_vec
 
 #  println("in array3DTo1D")
@@ -740,16 +740,16 @@ end
 
 
 # functions needed to make it compatible with the NonLinearSolvers module
-function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                     sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
-                     opts, res_arr::AbstractArray{Tsol, 3})
+function matVecA0inv(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end
 
-function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                  sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
-                  res_arr::AbstractArray{Tsol, 3})
+function matVecA0(mesh::AbstractMesh{Tmsh},
+sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end

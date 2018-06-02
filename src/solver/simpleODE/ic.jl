@@ -30,9 +30,9 @@ Computes the initial conditions for the state variable
 *  None
 
 """->
-function ICx2plust4{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICx2plust4(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   t = 0.0
 
@@ -68,9 +68,9 @@ Computes the initial conditions for the state variable
 *  None
 
 """->
-function ICx2plust3{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICx2plust3(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   t = 0.0
 
@@ -107,9 +107,9 @@ Computes the initial conditions for the state variable
 
 """->
 
-function ICx2plust2{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICx2plust2(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   t = 0.0
 
@@ -146,9 +146,9 @@ Computes the initial conditions for the state variable
 
 """->
 
-function ICallzero{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICallzero(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
   t = 0.0
 
   for i = 1:mesh.numEl
@@ -164,9 +164,9 @@ function ICallzero{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function ICallzero
 
-function ICallOnes{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICallOnes(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::SimpleODEData{Tsol, Tres, 2}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
   t = 0.0
 
   for i = 1:mesh.numEl

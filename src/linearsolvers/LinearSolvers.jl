@@ -64,12 +64,12 @@ import Base.SparseArrays.UMFPACK: UmfpackLU, umfpack_free_numeric,
    * T1: type of pc
    * T2: type of lo
 """
-abstract LinearSolver{T1, T2}
+abstract type LinearSolver{T1, T2} end
 
 """
   The most commonly used implementation of [`LinearSolver`](@ref).
 """
-type StandardLinearSolver{T1, T2} <: LinearSolver{T1, T2}
+mutable struct StandardLinearSolver{T1, T2} <: LinearSolver{T1, T2}
   pc::T1
   lo::T2
   shared_mat::Bool
@@ -105,7 +105,7 @@ end
   "krylov_itermax"
 
 """
-function StandardLinearSolver{T1, T2}(pc::T1, lo::T2, comm::MPI.Comm, opts)
+function StandardLinearSolver(pc::T1, lo::T2, comm::MPI.Comm, opts) where {T1, T2}
 
   if typeof(lo) <: DirectLO
     @assert typeof(pc) <: PCNone
@@ -181,22 +181,22 @@ end
   or [`PetscMatFreePC`](@ref) for a non-nested preconditioner, or some
   other [`AbstractPC`](@ref) for a nested preconditioner.
 """
-abstract AbstractPC
+abstract type AbstractPC end
 
 """
   Abstract supertype of all Petsc matrix-explicit preconditioners
 """
-abstract AbstractPetscMatPC <: AbstractPC
+abstract type AbstractPetscMatPC <: AbstractPC end
 
 """
   Abstract supertype of all Petsc matrix-free preconditioners.
 """
-abstract AbstractPetscMatFreePC <: AbstractPC
+abstract type AbstractPetscMatFreePC <: AbstractPC end
 
 """
   Alias for any kind of Petsc PC (matrix-explicit or matrix-free)
 """
-typealias AbstractPetscPC Union{AbstractPetscMatPC, AbstractPetscMatFreePC}
+const AbstractPetscPC = Union{AbstractPetscMatPC, AbstractPetscMatFreePC}
 
 # PC interface
 """
@@ -319,7 +319,7 @@ end
 
    * pc2: a PC that is a subtype of PC2
 """
-function getInnerPC{T1 <: AbstractPC, T2 <: AbstractPC}(pc::T1, ::Type{T2})
+function getInnerPC(pc::T1, ::Type{T2}) where {T1 <: AbstractPC, T2 <: AbstractPC}
   if T1 <: T2
     return pc
   else
@@ -398,7 +398,7 @@ end
                [`PetscMatFreeLO`](@ref), or any other user defined linear
                operator.
 """
-abstract AbstractLO
+abstract type AbstractLO end
 
 #TODO: doc these
 
@@ -406,23 +406,23 @@ abstract AbstractLO
   Linear operator type for Dense matrices.  This is generally used only for
   debugging.
 """
-abstract AbstractDenseLO <: AbstractLO
+abstract type AbstractDenseLO <: AbstractLO end
 
 """
   Linear operator type for `SparseMatrixCSC` matrices, which use a direct
   solver.
 """
-abstract AbstractSparseDirectLO <: AbstractLO
+abstract type AbstractSparseDirectLO <: AbstractLO end
 
 """
   Linear operator type for Petsc matrix-explicit.
 """
-abstract AbstractPetscMatLO <: AbstractLO
+abstract type AbstractPetscMatLO <: AbstractLO end
 
 """
   Linear operator type for Petsc matrix-free.
 """
-abstract AbstractPetscMatFreeLO <: AbstractLO
+abstract type AbstractPetscMatFreeLO <: AbstractLO end
 
 """
   Useful union for all the matrix-explicit linear operator types.
@@ -430,17 +430,17 @@ abstract AbstractPetscMatFreeLO <: AbstractLO
   often possible to write a single function that works on all the different
   types of matrices.
 """
-typealias MatExplicitLO Union{AbstractDenseLO, AbstractSparseDirectLO, AbstractPetscMatLO}
+const MatExplicitLO = Union{AbstractDenseLO, AbstractSparseDirectLO, AbstractPetscMatLO}
 
 """
   Union of Petsc linear operator types
 """
-typealias PetscLO Union{AbstractPetscMatLO, AbstractPetscMatFreeLO}
+const PetscLO = Union{AbstractPetscMatLO, AbstractPetscMatFreeLO}
 
 """
   Union of linear operators that do direct solves
 """
-typealias DirectLO Union{AbstractDenseLO, AbstractSparseDirectLO}
+const DirectLO = Union{AbstractDenseLO, AbstractSparseDirectLO}
 
 
 """

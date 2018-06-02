@@ -18,9 +18,9 @@ mid level type specific function for the actual functional evaluation.
 *  `opts` : Options dictionary
 *  `functionalData` : Object of the functional being computed.
 """->
-function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
-                        functionalData::AbstractFunctional)
+function evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
+            functionalData::AbstractFunctional) where {Tmsh, Tsol}
 #=
   if opts["parallel_type"] == 1
 
@@ -122,10 +122,10 @@ function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::Abstrac
 end
 =#
 
-function calcBndryFunctional{Tmsh, Tsol, Topt}(mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP,
-                            eqn::AdvectionData{Tsol}, opts,
-                            functionalData::AbstractIntegralFunctional{Topt})
+function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
+          sbp::AbstractSBP,
+          eqn::AdvectionData{Tsol}, opts,
+          functionalData::AbstractIntegralFunctional{Topt}) where {Tmsh, Tsol, Topt}
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary

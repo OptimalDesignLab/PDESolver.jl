@@ -124,7 +124,7 @@ every node on the mesh boundary would be slow.  Instead a construct is used
 as follows:
 
 ```julia
-type myBC <: BCType  # create a singleton type
+mutable struct myBC <: BCType  # create a singleton type
 end
 
 function call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)

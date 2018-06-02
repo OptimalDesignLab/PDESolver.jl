@@ -36,7 +36,7 @@
 
   `newton_verbosity` is used to the `verbose` field
 """->
-type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
+mutable struct NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
 
   # MPI info
   myrank::Int
@@ -74,9 +74,9 @@ type NewtonData{Tsol, Tres, Tsolver <: LinearSolver}
 end
 
 #TODO: see if the static parameters are still needed
-function NewtonData{Tsol, Tres}(mesh, sbp,  
-                    eqn::AbstractSolutionData{Tsol, Tres}, opts,
-                    ls::LinearSolver)
+function NewtonData(mesh, sbp,  
+        eqn::AbstractSolutionData{Tsol, Tres}, opts,
+        ls::LinearSolver) where {Tsol, Tres}
 
   myrank = mesh.myrank
   commsize = mesh.commsize
@@ -148,9 +148,9 @@ include("jacobian.jl")
   See [`cleanupNewton`](@ref) to the cleanup function
 
 """->
-function setupNewton{Tsol, Tres}(mesh, pmesh, sbp,
-                     eqn::AbstractSolutionData{Tsol, Tres}, opts,
-                     ls::LinearSolver; alloc_rhs=true)
+function setupNewton(mesh, pmesh, sbp,
+         eqn::AbstractSolutionData{Tsol, Tres}, opts,
+         ls::LinearSolver; alloc_rhs=true) where {Tsol, Tres}
 
   newton_data = NewtonData(mesh, sbp, eqn, opts, ls)
 
@@ -307,7 +307,7 @@ end
 """
   Matrix-based Petsc preconditioner for Newton's method
 """
-type NewtonMatPC <: AbstractPetscMatPC
+mutable struct NewtonMatPC <: AbstractPetscMatPC
   pc_inner::PetscMatPC
   @newtonfields
 
@@ -362,7 +362,7 @@ end
     
   Subtype of [`AbstractDenseLO`](@ref)
 """
-type NewtonDenseLO <: AbstractDenseLO
+mutable struct NewtonDenseLO <: AbstractDenseLO
   lo_inner::DenseLO
   @newtonfields 
 end
@@ -391,7 +391,7 @@ end
   Sparse direct linear operator for Newton's method.  Subtype of
   [`AbstractSparseDirectLO`](@ref)
 """
-type NewtonSparseDirectLO <: AbstractSparseDirectLO
+mutable struct NewtonSparseDirectLO <: AbstractSparseDirectLO
   lo_inner::SparseDirectLO
   @newtonfields
 end
@@ -422,7 +422,7 @@ end
 
   Subtype of [`AbstractPetscMatLO`](@ref)
 """
-type NewtonPetscMatLO <: AbstractPetscMatLO
+mutable struct NewtonPetscMatLO <: AbstractPetscMatLO
   lo_inner::PetscMatLO
   @newtonfields
 end
@@ -453,7 +453,7 @@ end
 
   Subtype of [`AbstractPetscMatFreeLO`](@ref)
 """
-type NewtonPetscMatFreeLO <: AbstractPetscMatFreeLO
+mutable struct NewtonPetscMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::PetscMatFreeLO
   @newtonfields
 end
@@ -490,22 +490,22 @@ end
 """
   All Newton linear operators
 """
-typealias NewtonLO Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO}
+const NewtonLO = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO}
 
 """
   Newton matrix-explicit linear operators
 """
-typealias NewtonMatLO Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO}
+const NewtonMatLO = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO}
 
 """
   Any PC or LO that has a matrix in the field `A`
 """
-typealias NewtonHasMat Union{NewtonMatPC, NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO}
+const NewtonHasMat = Union{NewtonMatPC, NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO}
 
 """
   Any Newton PC or LO.
 """
-typealias NewtonLinearObject Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC}
+const NewtonLinearObject = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC}
 
 
 function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
@@ -542,10 +542,10 @@ function calcLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
 end
 
 
-function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
-                             opts::Dict, ctx_residual, t, x::AbstractVector, 
-                             b::AbstractVector)
+function applyLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
+                       sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                       opts::Dict, ctx_residual, t, x::AbstractVector, 
+                       b::AbstractVector) where Tsol
 
   @assert !(Tsol <: AbstractFloat)  # complex step only!
 
@@ -574,11 +574,11 @@ function applyLinearOperator{Tsol}(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
   return nothing
 end
 
-function applyLinearOperatorTranspose{Tsol}(lo::NewtonPetscMatFreeLO, 
+function applyLinearOperatorTranspose(lo::NewtonPetscMatFreeLO, 
                              mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
-                             b::AbstractVector)
+                             b::AbstractVector) where Tsol
 
   error("applyLinearOperatorTranspose() not supported by NewtonPetscMatFreeLO")
 

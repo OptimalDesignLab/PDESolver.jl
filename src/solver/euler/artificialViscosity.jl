@@ -17,9 +17,9 @@ of the PDE.
 *  Fav : Flux corresponding to artificial viscosity
 
 """->
-function artificialViscosity{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                              sbp::AbstractSBP, 
-                                              eqn::EulerData{Tsol, Tres, Tdim})
+function artificialViscosity(mesh::AbstractMesh{Tmsh}, 
+                       sbp::AbstractSBP, 
+                       eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh,Tsol, Tres, Tdim}
   
   # Create the Artificial Viscosity flux matrix
   qbar = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
@@ -94,8 +94,8 @@ Computes the Artificial Viscosity flux components
 
 """->
 
-function calcArtViscosityFluxComp{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1},
-                                        F::AbstractArray{Tsol,1})
+function calcArtViscosityFluxComp(params::ParamType{2}, q::AbstractArray{Tsol,1},
+                                  F::AbstractArray{Tsol,1}) where Tsol
   
   press = calcPressure(params, q)
   F[1] = q[1]
@@ -167,7 +167,7 @@ function shockIndicator{Tsol}(params::ParamType{2}, q::AbstractArray{Tsol,1})
 end
 =#
 
-function boundingBox{Tmsh}(coord::AbstractArray{Tmsh,2}, h::AbstractArray{Tmsh,1})
+function boundingBox(coord::AbstractArray{Tmsh,2}, h::AbstractArray{Tmsh,1}) where Tmsh
   # It works at the element level. Accepts the vertex coordinates of all the nodes
   # h = zeros(Tmsh,Tdim)  # Stores the dimensions of the bounding box
   for i = 1:2
@@ -201,7 +201,7 @@ function AverageMeshDimen{Tmsh, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end =#
 
-function AvgMeshSize{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres, Tdim})
+function AvgMeshSize(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   
   hArray = zeros(Tmsh, Tdim,mesh.numEl)  # Array of bounding box of all adjacent elements
   resetFaceIt() # Reset Iterator over Face

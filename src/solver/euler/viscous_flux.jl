@@ -13,10 +13,10 @@ Input:
 Output:
 
 # """->
-function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
 
   Ma      = eqn.params.Ma
   Re      = eqn.params.Re
@@ -209,10 +209,10 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 end # end of function calcViscousFlux_interior
 
 
-function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
   # freestream info
   Ma = eqn.params.Ma
   Re = eqn.params.Re
@@ -407,10 +407,10 @@ Input:
 Output:
 
 """->
-function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+function evalFaceIntegrals_vector(mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
   sbpface = mesh.sbpface
   DxL = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
@@ -504,10 +504,10 @@ Input:
 Output:
 
 """->
-function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                              sbp::AbstractSBP,
-                                                              eqn::EulerData{Tsol, Tres, Tdim},
-                                                              opts)
+function evalBoundaryIntegrals_vector(mesh::AbstractMesh{Tmsh},
+                                      sbp::AbstractSBP,
+                                      eqn::EulerData{Tsol, Tres, Tdim},
+                                      opts) where {Tmsh, Tsol, Tres, Tdim}
 
   sbpface = mesh.sbpface
   Dx = Array(Tmsh, (mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
@@ -591,10 +591,10 @@ Input:
 Output:
 
 # """->
-function weakdifferentiate2!{Tmsh, Tsbp, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                           sbp::AbstractSBP{Tsbp},
-                                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                                           res::AbstractArray{Tres,3})
+function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractSBP{Tsbp},
+                             eqn::EulerData{Tsol, Tres, Tdim},
+                             res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tsol, Tres, Tdim}
   @assert (sbp.numnodes ==  size(res,2))
 
   dim             = Tdim

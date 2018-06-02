@@ -19,9 +19,9 @@
   Aliasing restrictions: none.
 
 """->
-function ICZero{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-                u0::AbstractVector{Tsol})
+function ICZero(mesh::AbstractMesh{Tmsh}, 
+operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -74,9 +74,9 @@ end  # end function
 
 """->
 
-function ICOnes{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
-                u0::AbstractVector{Tsol})
+function ICOnes(mesh::AbstractMesh{Tmsh}, 
+operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
+u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   numEl = mesh.numEl
   nnodes = operator.numnodes
@@ -128,9 +128,9 @@ end # end function ICOnes
 """->
 
 
-function ICRho1E2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-                  u0::AbstractVector{Tsol})
+function ICRho1E2(mesh::AbstractMesh{Tmsh}, 
+operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -183,9 +183,9 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-function ICRho1E2U1VW0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+function ICRho1E2U1VW0(mesh::AbstractMesh{Tmsh}, 
                     operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                    opts, u0::AbstractVector{Tsol})
+                    opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -232,9 +232,9 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-function ICRho1E2U3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                    opts, u0::AbstractVector{Tsol})
+function ICRho1E2U3(mesh::AbstractMesh{Tmsh}, 
+  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+  opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -280,9 +280,9 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-function ICFreeStream{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                      operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-                      u0::AbstractVector{Tsol})
+function ICFreeStream(mesh::AbstractMesh{Tmsh}, 
+    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -313,9 +313,9 @@ end  # end function
   Like [`calcFreeStream`](@ref), but uses [`calcFreeStream0`](@ref) instead of
   [`calcFreeStream`](@ref).
 """
-function ICFreeStream0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                      operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-                      u0::AbstractVector{Tsol})
+function ICFreeStream0(mesh::AbstractMesh{Tmsh}, 
+    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -346,9 +346,9 @@ end  # end function
 
 
 # what is this? how is it different than ICIsentropic Vortex?
-function ICVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-                  u0::AbstractVector{Tsol})
+function ICVortex(mesh::AbstractMesh{Tmsh}, 
+operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
 
@@ -402,9 +402,9 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-function ICsmoothHeavisideder{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                              operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol},
-                              opts, u0::AbstractVector{Tsol})
+function ICsmoothHeavisideder(mesh::AbstractMesh{Tmsh}, 
+            operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol},
+            opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # calculate the value of the smooth heaviside function derivative at a location x
 # x0 is specified within this function
 
@@ -468,10 +468,10 @@ end
   Aliasing restrictions: none.
 
 """->
-function ICsmoothHeaviside{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                             operator::AbstractSBP{Tsbp}, 
-                                             eqn::EulerData{Tsol}, 
-                                             opts, u0::AbstractArray{Tsol, 1})
+function ICsmoothHeaviside(mesh::AbstractMesh{Tmsh}, 
+                           operator::AbstractSBP{Tsbp}, 
+                           eqn::EulerData{Tsol}, 
+                           opts, u0::AbstractArray{Tsol, 1}) where {Tmsh, Tsbp, Tsol}
   # calculate the value of the smooth heaviside function at a location x
   # x0 is specified within this function
 
@@ -527,10 +527,10 @@ mesh
   Aliasing restrictions: none.
 
 """->
-function ICIsentropicVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                              operator::AbstractSBP{Tsbp}, 
-                                              eqn::EulerData{Tsol}, 
-                                              opts, u0::AbstractArray{Tsol})
+function ICIsentropicVortex(mesh::AbstractMesh{Tmsh}, 
+                            operator::AbstractSBP{Tsbp}, 
+                            eqn::EulerData{Tsol}, 
+                            opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
 
@@ -580,10 +580,10 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-function ICIsentropicVortexWithNoise{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
-                                     operator::AbstractSBP{Tsbp}, 
-                                     eqn::EulerData{Tsol}, 
-                                     opts, u0::AbstractVector{Tsol})
+function ICIsentropicVortexWithNoise(mesh::AbstractMesh{Tmsh},
+                   operator::AbstractSBP{Tsbp}, 
+                   eqn::EulerData{Tsol}, 
+                   opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
 
@@ -627,9 +627,9 @@ end  # end function
   Aliasing restrictions: none.
 
 """->
-function ICUnsteadyVortex{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                          opts, u0::AbstractArray{Tsol})
+function ICUnsteadyVortex(mesh::AbstractMesh{Tmsh}, 
+        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+        opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
 
@@ -660,9 +660,9 @@ end  # end function
 """
   Vortex travelling at an angle
 """
-function ICUnsteadyVortex2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                          opts, u0::AbstractArray{Tsol})
+function ICUnsteadyVortex2(mesh::AbstractMesh{Tmsh}, 
+        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+        opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
 
@@ -694,9 +694,9 @@ end  # end function
   Initial condition for SU2 bump in inviscid channel case.  See also
   The subsonic inflow and subsonic outflow boundary conditions.
 """
-function ICInvChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                          operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                          opts, u0::AbstractArray{Tsol})
+function ICInvChannel(mesh::AbstractMesh{Tmsh}, 
+        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+        opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   sol = zeros(Tsol, mesh.numDofPerNode)
 
@@ -740,9 +740,9 @@ end
   Aliasing restrictions: none.
 
 """->
-function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-                u0::AbstractVector{Tsol})
+function ICFile(mesh::AbstractMesh{Tmsh}, 
+operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values from a disk file
   # the file name comes from opts["ICfname"]
 
@@ -761,7 +761,7 @@ end
   Assigns exp(k*x*y*z) as the initial condition, of each node, where k is 
   the index of the degree of freedom of the node
 """
-function ICExp{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICExp(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   q = eqn.params.q_vals
   for i=1:mesh.numEl
@@ -781,7 +781,7 @@ end
 """
   Writes calcPeriodicMMS to the initial condition vector u0
 """
-function ICPeriodicMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICPeriodicMMS(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   q = eqn.params.q_vals
   for i=1:mesh.numEl
@@ -803,8 +803,8 @@ end
   using the constants in Gassner, Winters, and Kopriva's Split form Nodal
   DG paper
 """
-function ICTaylorGreen{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, 
-                       eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICTaylorGreen(mesh::AbstractMesh{Tmsh}, sbp, 
+          eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   # parameters
   M = 1.0  # Mach number
@@ -839,7 +839,7 @@ end
 """
   Initial condition of channel MMS
 """
-function ICChannelMMS{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICChannelMMS(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   q = eqn.params.q_vals
   for i=1:mesh.numEl
@@ -859,7 +859,7 @@ end
 """
   Initial for square wave in 1D
 """
-function ICSquare1D{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICSquare1D(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   q = eqn.params.q_vals
   for i=1:mesh.numEl
@@ -879,7 +879,7 @@ end
  """
   Initial for square wave in 2D
 """
-function ICSquare2D{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICSquare2D(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   q = eqn.params.q_vals
   for i=1:mesh.numEl
@@ -899,8 +899,8 @@ end
  """
   Initial for square wave in 2D
 """
-function ICSedovExplosion{Tmsh, Tsol,}(mesh::AbstractMesh{Tmsh}, sbp,
-                          eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol})
+function ICSedovExplosion(mesh::AbstractMesh{Tmsh}, sbp,
+             eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
   q = eqn.params.q_vals
   for i=1:mesh.numEl

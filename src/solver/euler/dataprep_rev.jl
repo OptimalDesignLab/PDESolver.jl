@@ -12,9 +12,9 @@ Reverse mode of `getEulerFlux` w.r.t mesh metrics.
 * opts  : options dictionary
 
 """
-function getEulerFlux_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                        sbp::AbstractSBP,
-                                        eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function getEulerFlux_revm(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
   nrm = zeros(Tmsh, Tdim)
@@ -105,11 +105,11 @@ needed for CG and DG meshes.
 
 """
 
-function calcBoundaryFlux_revm{Tmsh,  Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
+function calcBoundaryFlux_revm(mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol},
                           functor_bar::BCType_revm, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
-                          bndryflux_bar::AbstractArray{Tres, 3})
+                          bndryflux_bar::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
 
@@ -143,12 +143,12 @@ Reverse mode of `calcFaceFlux`.
 
 """
 
-function calcFaceFlux_revm{Tmsh,  Tsol, Tres, Tdim}( mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP,
-                          eqn::EulerData{Tsol, Tres, Tdim, :conservative},
-                          functor_bar::FluxType_revm,
-                          interfaces::AbstractArray{Interface,1},
-                          flux_face_bar::AbstractArray{Tres, 3})
+function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
+ sbp::AbstractSBP,
+ eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+ functor_bar::FluxType_revm,
+ interfaces::AbstractArray{Interface,1},
+ flux_face_bar::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres, Tdim}
 
   fill!(mesh.nrm_face_bar, 0.0)  # should this be zeroed out here?
   nfaces = length(interfaces)

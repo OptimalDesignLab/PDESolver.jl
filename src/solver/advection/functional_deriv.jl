@@ -5,11 +5,11 @@ import PDESolver.evalFunctionalDeriv
 """
   evalFunctionalDeriv for Advection
 """
-function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
+function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP,
                            eqn::AdvectionData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
-                           func_deriv_arr::Abstract3DArray)
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
@@ -100,10 +100,10 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
 end
 =#
 # DG Version
-function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
-                             eqn::AdvectionData{Tsol}, opts,
-                             functionalData::AbstractIntegralFunctional,
-                             func_deriv_arr)
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+                 eqn::AdvectionData{Tsol}, opts,
+                 functionalData::AbstractIntegralFunctional,
+                 func_deriv_arr) where {Tmsh, Tsol}
 
   alpha_x = eqn.params.alpha_x
   alpha_y = eqn.params.alpha_y

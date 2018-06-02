@@ -178,10 +178,10 @@ end
                  [`AbstractIntegralFunctional`](@ref), although this is not
                  required.
 """
-function createFunctional{I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                    eqn::AbstractSolutionData, opts,
-                                    functional_name::AbstractString,
-                                    functional_bcs::Vector{I})
+function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+                        eqn::AbstractSolutionData, opts,
+                        functional_name::AbstractString,
+                        functional_bcs::Vector{I}) where I<:Integer
 
 
 
@@ -208,9 +208,9 @@ end
                         This type determines the functional being computed and
                         holds all the relevant data.
 """
-function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
-                        functionalData::AbstractFunctional)
+function evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
+            functionalData::AbstractFunctional) where {Tmsh, Tsol}
 
   error("Generic fallback for evalFunctional() reached: did you forget to extend evalFunctional() with a new method for you AbstractSolutionData")
 
@@ -239,11 +239,11 @@ end
 
   This funciton is not compatible with `precompute_q_bndry` = false
 """
-function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
-                           func_deriv_arr::Abstract3DArray)
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   error("Generic fallback for evalFunctionalDeriv() reached: did you forget to extend evalFunctionalDeriv() with a new method for you AbstractSolutionData")
 

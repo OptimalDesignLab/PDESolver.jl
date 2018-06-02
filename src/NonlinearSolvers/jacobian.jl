@@ -302,7 +302,7 @@ global const insert_freq = 1
 """
   Helper type for [`calcJacobianSparse`](@ref)
 """
-type AssembleData{T <: AbstractMatrix}
+mutable struct AssembleData{T <: AbstractMatrix}
   A::T
   # temporary arrays used to for Petsc MatSetValues
   insert_idx::Int
@@ -312,7 +312,7 @@ type AssembleData{T <: AbstractMatrix}
   idy_tmp::Array{PetscInt, 1}
 end
 
-function AssembleData{T}(A::T, mesh, sbp, eqn, opts)
+function AssembleData(A::T, mesh, sbp, eqn, opts) where T
 
   insert_idx = 1
   local_size = mesh.numNodesPerElement*mesh.numDofPerNode*insert_freq
@@ -464,10 +464,10 @@ end  # end function
 
   Aliasing restrictions: none
 """->
-function applyPerturbation{T}(mesh::AbstractMesh, arr::Abstract3DArray,
-                           shared_data::Array{SharedFaceData{T}, 1},  
-                           color::Integer, pert, i, j, f=BSTDOUT; 
-                           perturb_shared=true)
+function applyPerturbation(mesh::AbstractMesh, arr::Abstract3DArray,
+                        shared_data::Array{SharedFaceData{T}, 1},  
+                        color::Integer, pert, i, j, f=BSTDOUT; 
+                        perturb_shared=true) where T
   # applys perturbation pert to array arr according to a mask
   # color is the color currently being perturbed, used to select the mask
   # i, j specify the dof, node number within arr
@@ -541,10 +541,10 @@ end
 
   Aliasing restrictions: res_arr and res_0 must not alias each other.
 """
-function assembleElement{Tsol <: Real}(helper::AssembleData, mesh,
-                         eqn::AbstractSolutionData{Tsol}, res_arr, res_0,
-                         el_res::Integer, el_pert::Integer, dof_pert::Integer,
-                         epsilon, jac::AbstractMatrix)
+function assembleElement(helper::AssembleData, mesh,
+           eqn::AbstractSolutionData{Tsol}, res_arr, res_0,
+           el_res::Integer, el_pert::Integer, dof_pert::Integer,
+           epsilon, jac::AbstractMatrix) where Tsol <: Real
 #
 
   # resize array
@@ -587,7 +587,7 @@ end
   Aliasing restrictions: res_0 and res cannot alias (obviously).
 
 """->
-function calcJacCol{T <: Real}(jac_row, res_0, res::AbstractArray{T,1}, epsilon)
+function calcJacCol(jac_row, res_0, res::AbstractArray{T,1}, epsilon) where T <: Real
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
 
@@ -609,10 +609,10 @@ end
   Same as other method, but for complex numbers.  See that method for
   details.  res_0 is not used in this case
 """
-function assembleElement{Tsol <: Complex}(helper::AssembleData, mesh,
-                         eqn::AbstractSolutionData{Tsol}, res_arr, res_0,
-                         el_res::Integer, el_pert::Integer, dof_pert::Integer,
-                         epsilon, jac::AbstractMatrix)
+function assembleElement(helper::AssembleData, mesh,
+        eqn::AbstractSolutionData{Tsol}, res_arr, res_0,
+        el_res::Integer, el_pert::Integer, dof_pert::Integer,
+        epsilon, jac::AbstractMatrix) where Tsol <: Complex
 # assemble an element contribution into jacobian
 # making this a separate function enables dispatch on type of jacobian
 # el_res is the element in the residual to assemble
@@ -659,7 +659,7 @@ end
   Aliasing restrictions: none
 
 """->
-function calcJacCol{T <: Complex}(jac_row, res::AbstractArray{T, 1}, epsilon)
+function calcJacCol(jac_row, res::AbstractArray{T, 1}, epsilon) where T <: Complex
 # calculate a row of the jacobian from res_0, the function evaluated 
 # at the original point, and res, the function evaluated at a perturbed point
 
@@ -694,7 +694,7 @@ global const assem_min_volume_nodes = 3  # minimum number of volume nodes
    * vals_i: temporary array for storing matrix entries when assembling
              interface jacobians, size 2 x numDofPerNode square
 """
-type _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
+mutable struct _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   A::T
 
   # temporary array for element jacobian assembly
@@ -806,8 +806,8 @@ const NullAssembleElementData = _AssembleElementData()
   Its size is numDofPerNode x numDofPerNode x numNodesPerElement x numNodesPerElement.
 
 """
-function assembleElement{T}(helper::_AssembleElementData, mesh::AbstractMesh,
-                            elnum::Integer, jac::AbstractArray{T, 4})
+function assembleElement(helper::_AssembleElementData, mesh::AbstractMesh,
+                         elnum::Integer, jac::AbstractArray{T, 4}) where T
 
   #TODO: make a specialized version of this for block Petsc matrices
 
@@ -881,8 +881,8 @@ end
 =#
 
 # This tiled version
-function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
-                            elnum::Integer, jac::AbstractArray{T, 4})
+function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
+                         elnum::Integer, jac::AbstractArray{T, 4}) where T
 
   numNodesPerElement = size(jac, 4)
   numDofPerNode = size(jac, 1)
@@ -999,13 +999,13 @@ end
 
   jacAB has the same size/layout as `jac` in [`assembleElement`](@ref).
 """
-function assembleInterface{T}(helper::_AssembleElementData, 
-                              sbpface::DenseFace,
-                              mesh::AbstractMesh, iface::Interface,
-                              jacLL::AbstractArray{T, 4},
-                              jacLR::AbstractArray{T, 4},
-                              jacRL::AbstractArray{T, 4},
-                              jacRR::AbstractArray{T, 4})
+function assembleInterface(helper::_AssembleElementData, 
+                           sbpface::DenseFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
 
 
   numNodesPerElement = size(jacLL, 4)
@@ -1055,13 +1055,13 @@ function assembleInterface{T}(helper::_AssembleElementData,
 end
 
 
-function assembleInterface{T}(helper::_AssembleElementData, 
-                              sbpface::SparseFace,
-                              mesh::AbstractMesh, iface::Interface,
-                              jacLL::AbstractArray{T, 4},
-                              jacLR::AbstractArray{T, 4},
-                              jacRL::AbstractArray{T, 4},
-                              jacRR::AbstractArray{T, 4})
+function assembleInterface(helper::_AssembleElementData, 
+                           sbpface::SparseFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
 
 
   numNodesPerElement = size(jacLL, 4)
@@ -1107,13 +1107,13 @@ end
 
 
 
-function assembleInterface{T}(helper::_AssembleElementData{PetscMat}, 
-                              sbpface::DenseFace,
-                              mesh::AbstractMesh, iface::Interface,
-                              jacLL::AbstractArray{T, 4},
-                              jacLR::AbstractArray{T, 4},
-                              jacRL::AbstractArray{T, 4},
-                              jacRR::AbstractArray{T, 4})
+function assembleInterface(helper::_AssembleElementData{PetscMat}, 
+                           sbpface::DenseFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
 
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
@@ -1163,13 +1163,13 @@ function assembleInterface{T}(helper::_AssembleElementData{PetscMat},
 end
 
 
-function assembleInterface{T}(helper::_AssembleElementData{PetscMat}, 
-                              sbpface::SparseFace,
-                              mesh::AbstractMesh, iface::Interface,
-                              jacLL::AbstractArray{T, 4},
-                              jacLR::AbstractArray{T, 4},
-                              jacRL::AbstractArray{T, 4},
-                              jacRR::AbstractArray{T, 4})
+function assembleInterface(helper::_AssembleElementData{PetscMat}, 
+                           sbpface::SparseFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
 
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
@@ -1228,11 +1228,11 @@ end
    * jacLL
    * jacLR
 """
-function assembleSharedFace{T}(helper::_AssembleElementData{PetscMat}, sbpface::DenseFace,
-                               mesh::AbstractMesh,
-                               iface::Interface,
-                               jacLL::AbstractArray{T, 4},
-                               jacLR::AbstractArray{T, 4})
+function assembleSharedFace(helper::_AssembleElementData{PetscMat}, sbpface::DenseFace,
+                            mesh::AbstractMesh,
+                            iface::Interface,
+                            jacLL::AbstractArray{T, 4},
+                            jacLR::AbstractArray{T, 4}) where T
 
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
@@ -1273,11 +1273,11 @@ function assembleSharedFace{T}(helper::_AssembleElementData{PetscMat}, sbpface::
 end
 
 
-function assembleSharedFace{T}(helper::_AssembleElementData{PetscMat}, sbpface::SparseFace,
-                               mesh::AbstractMesh,
-                               iface::Interface,
-                               jacLL::AbstractArray{T, 4},
-                               jacLR::AbstractArray{T, 4})
+function assembleSharedFace(helper::_AssembleElementData{PetscMat}, sbpface::SparseFace,
+                            mesh::AbstractMesh,
+                            iface::Interface,
+                            jacLL::AbstractArray{T, 4},
+                            jacLR::AbstractArray{T, 4}) where T
 
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
@@ -1327,10 +1327,10 @@ end
    * mesh: a mesh
    * jac: a jac, same layout as [`assembleElement`](@ref)
 """
-function assembleBoundary{T}(helper::_AssembleElementData, sbpface::DenseFace,
-                               mesh::AbstractMesh,
-                               bndry::Boundary,
-                               jac::AbstractArray{T, 4})
+function assembleBoundary(helper::_AssembleElementData, sbpface::DenseFace,
+                            mesh::AbstractMesh,
+                            bndry::Boundary,
+                            jac::AbstractArray{T, 4}) where T
 # MatSetValuesBlocked not implemented for boundaries because the performance
 # gain isn't that great
 
@@ -1372,10 +1372,10 @@ function assembleBoundary{T}(helper::_AssembleElementData, sbpface::DenseFace,
   return nothing
 end
 
-function assembleBoundary{T}(helper::_AssembleElementData, sbpface::SparseFace,
-                               mesh::AbstractMesh,
-                               bndry::Boundary,
-                               jac::AbstractArray{T, 4})
+function assembleBoundary(helper::_AssembleElementData, sbpface::SparseFace,
+                            mesh::AbstractMesh,
+                            bndry::Boundary,
+                            jac::AbstractArray{T, 4}) where T
 
   elnum = bndry.element
   numNodesPerElement = size(jac, 4)

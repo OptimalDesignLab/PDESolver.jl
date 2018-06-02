@@ -8,7 +8,7 @@
   This is the zero source term.  This is the default of source term
   is specified
 """->
-type SRC0 <: SRCType
+mutable struct SRC0 <: SRCType
 end
 
 function (obj::SRC0)(params::ParamTypes, coords::AbstractVector, t)
@@ -20,7 +20,7 @@ end
 
   This source term returns 1 everywhere.
 """->
-type SRC1 <: SRCType
+mutable struct SRC1 <: SRCType
 end
 
 function (obj::SRC1)(params::ParamType2, coords::AbstractVector, t)
@@ -32,7 +32,7 @@ end
 
   This source term returns 1 everywhere.
 """->
-type SRC2 <: SRCType
+mutable struct SRC2 <: SRCType
 end
 
 function (obj::SRC2)(params::ParamType2, coords::AbstractVector, t)
@@ -44,7 +44,7 @@ end
 
   This source term that returns: f = x
 """->
-type SRCx <: SRCType
+mutable struct SRCx <: SRCType
 end
 
 function (obj::SRCx)(params::ParamType2, coords::AbstractVector, t)
@@ -56,7 +56,7 @@ end
 
   This source term that returns: the derivative of mms1
 """->
-type SRCmms1 <: SRCType
+mutable struct SRCmms1 <: SRCType
 end
 
 function (obj::SRCmms1)(params::ParamType2, coords::AbstractVector, t)
@@ -69,7 +69,7 @@ end
   This source term that returns: the source term for a manufactured solution
   using a 4th order polynomial
 """->
-type SRCx4 <: SRCType
+mutable struct SRCx4 <: SRCType
 end
 
 function (obj::SRCx4)(params::ParamType2, coords::AbstractVector, t)
@@ -82,7 +82,7 @@ end
   This source term that returns: the source term for a manufactured solution
   using a 1st order polynomial
 """->
-type SRCp1 <: SRCType
+mutable struct SRCp1 <: SRCType
 end
 
 function (obj::SRCp1)(params::ParamType2, coords::AbstractVector, t)
@@ -101,7 +101,7 @@ end
   This source term that returns: the source term for a manufactured solution
   using a 2nd order polynomial
 """->
-type SRCp2 <: SRCType
+mutable struct SRCp2 <: SRCType
 end
 
 function (obj::SRCp2)(params::ParamType2, coords::AbstractVector, t)
@@ -121,7 +121,7 @@ end
   This source term that returns: the source term for a manufactured solution
   using a 3rd order polynomial
 """->
-type SRCp3 <: SRCType
+mutable struct SRCp3 <: SRCType
 end
 
 function (obj::SRCp3)(params::ParamType2, coords::AbstractVector, t)
@@ -141,7 +141,7 @@ end
   This source term that returns: the source term for a manufactured solution
   using a 4th order polynomial
 """->
-type SRCp4 <: SRCType
+mutable struct SRCp4 <: SRCType
 end
 
 function (obj::SRCp4)(params::ParamType2, coords::AbstractVector, t)
@@ -159,7 +159,7 @@ end
   This source term that returns: the source term for a manufactured solution
   using a 5th order polynomial
 """->
-type SRCp5 <: SRCType
+mutable struct SRCp5 <: SRCType
 end
 
 function (obj::SRCp5)(params::ParamType2, coords::AbstractVector, t)
@@ -176,7 +176,7 @@ end
 
   This is a source term that returns a source term for e^(x+y)
 """->
-type SRCexp_xplusy <: SRCType
+mutable struct SRCexp_xplusy <: SRCType
 end
 
 function (obj::SRCexp_xplusy)(params::ParamType2, coords::AbstractVector, t)
@@ -189,7 +189,7 @@ end
 
   This is a source term that returns a source term for e^(x+y)
 """->
-type SRCx5plusy5 <: SRCType
+mutable struct SRCx5plusy5 <: SRCType
 end
 
 function (obj::SRCx5plusy5)(params::ParamType2, coords::AbstractVector, t)
@@ -206,7 +206,7 @@ end
 Calculates the source term for q = exp(5*x + 4*y +2)
 
 """->
-type SRCexp5xplus4yplus2 <: SRCType
+mutable struct SRCexp5xplus4yplus2 <: SRCType
 end
 
 function (obj::SRCexp5xplus4yplus2)(params::ParamType2, coords::AbstractVector, t)
@@ -220,7 +220,7 @@ end
 
 Calculates the source term for q = exp(5*x + y)
 """->
-type SRCexp5xplusy <: SRCType
+mutable struct SRCexp5xplusy <: SRCType
 end
 
 function (obj::SRCexp5xplusy)(params::ParamType2, coords::AbstractVector, t)
@@ -233,7 +233,7 @@ end
 
 Calculates the source term for q = exp(3*x + y)
 """->
-type SRCexp3xplusy <: SRCType
+mutable struct SRCexp3xplusy <: SRCType
 end
 
 function (obj::SRCexp3xplusy)(params::ParamType2, coords::AbstractVector, t)
@@ -246,7 +246,7 @@ end
 
 Calculates the source term for q = exp(2*x + 2*y)
 """->
-type SRCexp2xplus2y <: SRCType
+mutable struct SRCexp2xplus2y <: SRCType
 end
 
 function (obj::SRCexp2xplus2y)(params::ParamType2, coords::AbstractVector, t)
@@ -260,7 +260,7 @@ end
 Calculates the source term for q = exp(x*y)
 """->
 
-type SRCexp_xy <: SRCType
+mutable struct SRCexp_xy <: SRCType
 end
 
 function (obj::SRCexp_xy)(params::ParamType2, coords::AbstractVector, t)
@@ -276,7 +276,7 @@ end
 calculates the source term for q = x + y
 
 """->
-type SRCxplusy <: SRCType
+mutable struct SRCxplusy <: SRCType
 end
 
 function (obj::SRCxplusy)(params::ParamType2, coords::AbstractVector, t)
@@ -287,7 +287,7 @@ end
 """
   Source term for unsteady mms
 """
-type SRCunsteadymms <: SRCType
+mutable struct SRCunsteadymms <: SRCType
 end
 
 function (obj::SRCunsteadymms)(params::ParamType2, coords::AbstractVector, t)
@@ -317,7 +317,7 @@ end
 """
   Source term for unsteady poly
 """
-type SRCunsteadypoly <: SRCType
+mutable struct SRCunsteadypoly <: SRCType
 end
 
 function (obj::SRCunsteadypoly)(params::ParamType2, coords::AbstractVector, t)

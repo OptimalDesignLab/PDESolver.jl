@@ -21,9 +21,9 @@
 
 
 """->
-function applyFilter{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-                     eqn::AbstractSolutionData{Tsol}, opts, 
-                     arr::Abstract3DArray; trans=false)
+function applyFilter(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+         eqn::AbstractSolutionData{Tsol}, opts, 
+         arr::Abstract3DArray; trans=false) where {Tmsh, Tsol}
 # applies filter to array arr
 # trans determine whether or not to transpose the filter matrix
 

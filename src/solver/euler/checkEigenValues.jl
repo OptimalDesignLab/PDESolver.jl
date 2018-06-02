@@ -29,9 +29,9 @@ function checkEigenValues(EigenValues, elementNo, elemcount)
 end
 
 
-function elementEigenValues{Tmsh,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                       sbp::AbstractSBP, 
-                                       eqn::EulerData{Tsol, Tres, Tdim})
+function elementEigenValues(mesh::AbstractMesh{Tmsh}, 
+                sbp::AbstractSBP, 
+                eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh,Tsol, Tres, Tdim}
 
   res_0 = zeros(eqn.res_vec)
   res_0_norm = physicsRhs(mesh, sbp, eqn, opts, res_0, (evalResidual,))

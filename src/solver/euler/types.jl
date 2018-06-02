@@ -43,7 +43,7 @@
    * aoa : angle of attack (radians)
 
 """->
-type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
+mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::BufferedIO
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
@@ -513,7 +513,7 @@ end  # end type declaration
 
  exist.
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
+mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
 # hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
@@ -879,12 +879,12 @@ end  # end of type declaration
 """
   Useful alias for 2D ParamType
 """
-typealias ParamType2 ParamType{2}
+const ParamType2 = ParamType{2}
 
 """
   Useful alias for 3D ParamType
 """
-typealias ParamType3 ParamType{3}
+const ParamType3 = ParamType{3}
 
 
 """
@@ -994,7 +994,7 @@ Gets the type parameters for mesh and equation objects.
 * `Tres` : Type parameter of the residual array.
 """->
 
-function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
+function getTypeParameters(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tmsh, Tsol, Tres}
   return Tmsh, Tsol, Tres
 end
 
@@ -1016,7 +1016,7 @@ Gets the type parameters for mesh and equation objects.
 * `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
 
 """->
-function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{Tmsh}, eqn::EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}, opts)
+function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}, opts) where {Tmsh, Tsol, Tres, Tdim, var_type}
 
   tuple = (Tsol, Tres, Tdim, Tmsh, var_type)
 
@@ -1051,9 +1051,9 @@ sbp: SBP operator
 eqn: an implementation of EulerData. Does not have to be fully initialized.
 """->
 # used by EulerData Constructor
-function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                     sbp::AbstractSBP,
-                                                     eqn::EulerData{Tsol, Tres, Tdim})
+function calcElemSurfaceArea(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractSBP,
+                             eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
   area = zeros(Tmsh, mesh.numNodesPerFace)
@@ -1116,8 +1116,8 @@ Output:
   cont_tii
 """->
 
-function calcTraceInverseInequalityConst{Tsbp}(sbp::AbstractSBP{Tsbp},
-                                               sbpface::AbstractFace{Tsbp})
+function calcTraceInverseInequalityConst(sbp::AbstractSBP{Tsbp},
+                                         sbpface::AbstractFace{Tsbp}) where Tsbp
   R = sview(sbpface.interp, :,:)
   BsqrtRHinvRtBsqrt = Array(Tsbp, sbpface.numnodes, sbpface.numnodes)
   perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)

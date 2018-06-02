@@ -12,9 +12,9 @@
   Methods are available for 2 and 3 dimensions.
   A0 is overwritten with the result
 """
-@inline function getIRA0{Tsol}(params::ParamType{2}, 
-                           q::AbstractArray{Tsol,1}, 
-                           A0::AbstractArray{Tsol, 2})
+@inline function getIRA0(params::ParamType{2}, 
+                     q::AbstractArray{Tsol,1}, 
+                     A0::AbstractArray{Tsol, 2}) where Tsol
 
 
   gamma = params.gamma
@@ -55,9 +55,9 @@
   return nothing
 end
 
-@inline function getIRA0{Tsol}(params::ParamType{3}, 
-                           q::AbstractArray{Tsol,1}, 
-                           A0::AbstractArray{Tsol, 2})
+@inline function getIRA0(params::ParamType{3}, 
+                     q::AbstractArray{Tsol,1}, 
+                     A0::AbstractArray{Tsol, 2}) where Tsol
 
 
   gamma = params.gamma
@@ -121,11 +121,11 @@ end
 
   Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
 """
-function getEntropyLFStab{Tmsh, Tsol, Tres, Tdim}(
+function getEntropyLFStab(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
   q_avg = params.q_vals3
   for i=1:length(q_avg)
@@ -179,11 +179,11 @@ end
               v_vals2.
 
 """
-function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
+function getEntropyLFStab_inner(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 #  println("entered getEntropyLFStab_inner")
 
   A0 = params.A0
@@ -265,9 +265,9 @@ function getEntropyLFStab_inner{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
-function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
-                      qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
-                      dir::AbstractVector{Tmsh})
+function getLambdaMax(params::ParamType{Tdim}, 
+    qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
+    dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
 # compute lambda_max approximation from Carpenter's Entropy Stable Collocation
 # Schemes paper
 
@@ -320,9 +320,9 @@ end
 
   Aliasing restrictions: params.q_vals3 must be unused
 """
-function getLambdaMaxSimple{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
+function getLambdaMaxSimple(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
-                      dir::AbstractVector{Tmsh})
+                      dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
 # calculate maximum eigenvalue at simple average state
 
   gamma = params.gamma
@@ -352,9 +352,9 @@ function getLambdaMaxSimple{Tsol, Tmsh, Tdim}(params::ParamType{Tdim},
 end
 
 
-function getLambdaMaxRoe{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
+function getLambdaMaxRoe(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
-                      dir::AbstractVector{Tmsh})
+                      dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
 # compute lambda_max approximation from Carpenter's Entropy Stable Collocation
 # Schemes paper
 

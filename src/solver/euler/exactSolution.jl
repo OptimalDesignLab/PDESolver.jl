@@ -1,14 +1,14 @@
 
-abstract ExactSolutionType
+abstract type ExactSolutionType end
 
 export ExactSolutionType, calcErrorL2Norm
 
-type ExactPolynomial <: ExactSolutionType
+mutable struct ExactPolynomial <: ExactSolutionType
 end
-function (obj::ExactPolynomial){Tmsh, Tsol}(
+function (obj::ExactPolynomial)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   sigma = 0.5 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -37,12 +37,12 @@ function (obj::ExactPolynomial){Tmsh, Tsol}(
 end
 
 
-type ExactPolynomial_1 <: ExactSolutionType
+mutable struct ExactPolynomial_1 <: ExactSolutionType
 end
-function (obj::ExactPolynomial_1){Tmsh, Tsol}(
+function (obj::ExactPolynomial_1)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   sigma = 0.5
   gamma = params.gamma
@@ -72,12 +72,12 @@ function (obj::ExactPolynomial_1){Tmsh, Tsol}(
 end
 
 
-type ExactPolynomial_2 <: ExactSolutionType
+mutable struct ExactPolynomial_2 <: ExactSolutionType
 end
-function (obj::ExactPolynomial_2){Tmsh, Tsol}(
+function (obj::ExactPolynomial_2)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   sigma = 0.5
   gamma = params.gamma
@@ -108,12 +108,12 @@ end
 
 
 
-type ExactTrigonometric <: ExactSolutionType
+mutable struct ExactTrigonometric <: ExactSolutionType
 end
-function (obj::ExactTrigonometric){Tmsh, Tsol}(
+function (obj::ExactTrigonometric)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   sigma = 0.5
   pi = 3.14159265358979323846264338
   gamma = 1.4
@@ -165,10 +165,10 @@ global const ExactDict = Dict{String, ExactSolutionType}(
 )
 
 
-function calcErrorL2Norm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                          sbp::AbstractSBP,
-                          eqn::AbstractEulerData{Tsol, Tres},
-                          opts)
+function calcErrorL2Norm(mesh::AbstractMesh{Tmsh},
+        sbp::AbstractSBP,
+        eqn::AbstractEulerData{Tsol, Tres},
+        opts) where {Tmsh, Tsol, Tres}
   l2norm::Float64 = 0.
     lInfnorm::Float64 = 0.
     qe = Array(Tsol, mesh.numDofPerNode)

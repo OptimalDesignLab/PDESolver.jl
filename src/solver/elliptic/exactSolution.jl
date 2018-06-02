@@ -1,28 +1,28 @@
 
-abstract ExactSolutionType
+abstract type ExactSolutionType end
 
 export ExactSolutionType, ExactTrig, calcErrorL2Norm
 
-type ExactTrig <: ExactSolutionType
+mutable struct ExactTrig <: ExactSolutionType
 end
-function (obj::ExactTrig){Tmsh, Tsol}(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})  # (numDofPerNode))
+function (obj::ExactTrig)(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   k = 2.0
   q[:] = sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
   return nothing
 end
 
-type ExactExpTrig <: ExactSolutionType
+mutable struct ExactExpTrig <: ExactSolutionType
 end
-function (obj::ExactExpTrig){Tmsh, Tsol}(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})  # (numDofPerNode))
+function (obj::ExactExpTrig)(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   k = 2.0
   ex = exp(xy[1] + xy[2])
   q[:] = ex * sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
   return nothing
 end
 
-type ExactPoly2nd <: ExactSolutionType
+mutable struct ExactPoly2nd <: ExactSolutionType
 end
-function (obj::ExactPoly2nd){Tmsh, Tsol}(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})
+function (obj::ExactPoly2nd)(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   a = 1.0
   b = 1.0
   c = 1.0
@@ -38,10 +38,10 @@ global const ExactDict = Dict{String, ExactSolutionType}(
 )
 
 
-function calcErrorL2Norm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::AbstractEllipticData{Tsol, Tres},
-                                           opts)
+function calcErrorL2Norm(mesh::AbstractMesh{Tmsh},
+                         sbp::AbstractSBP,
+                         eqn::AbstractEllipticData{Tsol, Tres},
+                         opts) where {Tmsh, Tsol, Tres}
   l2norm::Float64 = 0.
   lInfnorm::Float64 = 0.
   qe = Array(Tsol, mesh.numDofPerNode)

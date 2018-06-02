@@ -3,11 +3,11 @@
 # Given PRIMITIVE variable and its 1st order and 
 # 2nd order derivatives, calculate the source terms 
 #
-function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
-                             q::AbstractArray{Tsrc, 1},
-                             q_x::AbstractArray{Tsrc, 2},
-                             q_xx::AbstractArray{Tsrc, 3},
-                             src::AbstractArray{Tsrc, 1})
+function calcMmsSource(params::ParamType{3, :conservative},
+                       q::AbstractArray{Tsrc, 1},
+                       q_x::AbstractArray{Tsrc, 2},
+                       q_xx::AbstractArray{Tsrc, 3},
+                       src::AbstractArray{Tsrc, 1}) where Tsrc
   gamma = params.gamma
   gamma_1 = params.gamma - 1
 
@@ -125,11 +125,11 @@ function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
   return nothing
 end
 
-function calcMmsSource{Tsrc}(params::ParamType{2, :conservative},
-                             q::AbstractArray{Tsrc, 1},
-                             q_x::AbstractArray{Tsrc, 2},
-                             q_xx::AbstractArray{Tsrc, 3},
-                             src::AbstractArray{Tsrc, 1})
+function calcMmsSource(params::ParamType{2, :conservative},
+                       q::AbstractArray{Tsrc, 1},
+                       q_x::AbstractArray{Tsrc, 2},
+                       q_xx::AbstractArray{Tsrc, 3},
+                       src::AbstractArray{Tsrc, 1}) where Tsrc
   gamma = params.gamma
   gamma_1 = params.gamma - 1
 
@@ -204,7 +204,7 @@ end
 # the rest into a function, which is less error prone, and 
 # will save a lot of space
 #
-type SRCPolynomial <: SRCType
+mutable struct SRCPolynomial <: SRCType
 end
 function (obj::SRCPolynomial)(
               src::AbstractVector,
@@ -439,7 +439,7 @@ function (obj::SRCPolynomial)(
   return nothing
 end
 
-type SRCChannel <: SRCType
+mutable struct SRCChannel <: SRCType
 end
 function (obj::SRCChannel)(
               src::AbstractVector,
@@ -653,7 +653,7 @@ end
 
 # This MMS is not working very well. 
 # (I don't remember clearly, but it's not converging).
-type SRCDoubleSquare <: SRCType
+mutable struct SRCDoubleSquare <: SRCType
 end
 function (obj::SRCDoubleSquare)(
               src::AbstractVector,
@@ -751,7 +751,7 @@ function (obj::SRCDoubleSquare)(
 end
 
 
-type SRCTrigonometric <: SRCType
+mutable struct SRCTrigonometric <: SRCType
 end
 function (obj::SRCTrigonometric)(
               src::AbstractVector,

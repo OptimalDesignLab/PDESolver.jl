@@ -9,14 +9,14 @@
   **Input/Output**
    * pMat: penalty matrix
 """
-function cmptIPMat{Tmsh, Tdim, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                           opts,
-                                           iface::Int,
-                                           GtL::AbstractArray{Tsol, 5},
-                                           GtR::AbstractArray{Tsol, 5},
-                                           pMat::AbstractArray{Tsol, 3})
+function cmptIPMat(mesh::AbstractMesh{Tmsh},
+                   sbp::AbstractSBP,
+                   eqn::EulerData{Tsol, Tres, Tdim},
+                   opts,
+                   iface::Int,
+                   GtL::AbstractArray{Tsol, 5},
+                   GtR::AbstractArray{Tsol, 5},
+                   pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tdim, Tsol, Tres}
   if opts["SAT_type"] == "Hartman"
     cmptIPMat_hartman(mesh, sbp, eqn, opts, iface, GtL, GtR, pMat)
   elseif opts["SAT_type"] == "SAT-SIPG"
@@ -26,36 +26,36 @@ function cmptIPMat{Tmsh, Tdim, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   end
 end
 
-function cmptIPMat_SIPG{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                          sbp::AbstractSBP,
-                                          eqn::EulerData{Tsol, Tres, 2},
-                                          opts,
-                                          iface::Int,
-                                          GtL::AbstractArray{Tsol, 5},
-                                          GtR::AbstractArray{Tsol, 5},
-                                          pMat::AbstractArray{Tsol, 3})
+function cmptIPMat_SIPG(mesh::AbstractMesh{Tmsh},
+                        sbp::AbstractSBP,
+                        eqn::EulerData{Tsol, Tres, 2},
+                        opts,
+                        iface::Int,
+                        GtL::AbstractArray{Tsol, 5},
+                        GtR::AbstractArray{Tsol, 5},
+                        pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
   error("SAT-SIPG not available yet")
 end
 
-function cmptIPMat_BR2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                         sbp::AbstractSBP,
-                                         eqn::EulerData{Tsol, Tres, 2},
-                                         opts,
-                                         iface::Int,
-                                         GtL::AbstractArray{Tsol, 5},
-                                         GtR::AbstractArray{Tsol, 5},
-                                         pMat::AbstractArray{Tsol, 3})
+function cmptIPMat_BR2(mesh::AbstractMesh{Tmsh},
+                       sbp::AbstractSBP,
+                       eqn::EulerData{Tsol, Tres, 2},
+                       opts,
+                       iface::Int,
+                       GtL::AbstractArray{Tsol, 5},
+                       GtR::AbstractArray{Tsol, 5},
+                       pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
   error("SAT-BR2 not available yet")
 end
 
-function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                             sbp::AbstractSBP,
-                                             eqn::EulerData{Tsol, Tres, 2},
-                                             opts,
-                                             iface::Int,
-                                             GtL::AbstractArray{Tsol, 5},
-                                             GtR::AbstractArray{Tsol, 5},
-                                             pMat::AbstractArray{Tsol, 3})
+function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, 2},
+                           opts,
+                           iface::Int,
+                           GtL::AbstractArray{Tsol, 5},
+                           GtR::AbstractArray{Tsol, 5},
+                           pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
 # Reference:
 #    Shahbazi, Mavriplis, Multigrid algorithms for high order discontinuous 
 #    Galerkin discretization of the compressible Navier-Stokes equations, 
@@ -169,14 +169,14 @@ function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function cmptIPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                             sbp::AbstractSBP,
-                                             eqn::EulerData{Tsol, Tres, 3},
-                                             opts,
-                                             iface::Int,
-                                             GtL::AbstractArray{Tsol, 5},
-                                             GtR::AbstractArray{Tsol, 5},
-                                             pMat::AbstractArray{Tsol, 3})
+function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, 3},
+                           opts,
+                           iface::Int,
+                           GtL::AbstractArray{Tsol, 5},
+                           GtR::AbstractArray{Tsol, 5},
+                           pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
   # in order to enhance/test stability, we try this factor on penalty terms
   factor = eqn.params.penalty_relaxation
   const_tii = eqn.params.const_tii
@@ -476,13 +476,13 @@ end
   **Input/Output**
    * pMat: penalty matrix
 """
-function cmptBPMat{Tmsh, Tdim, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                           opts,
-                                           iface::Int,
-                                           Gt::AbstractArray{Tsol, 5},
-                                           pMat::AbstractArray{Tsol, 3})
+function cmptBPMat(mesh::AbstractMesh{Tmsh},
+                   sbp::AbstractSBP,
+                   eqn::EulerData{Tsol, Tres, Tdim},
+                   opts,
+                   iface::Int,
+                   Gt::AbstractArray{Tsol, 5},
+                   pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tdim, Tsol, Tres}
   if opts["SAT_type"] == "Hartman"
     cmptBPMat_hartman(mesh, sbp, eqn, opts, iface, Gt, pMat)
   elseif opts["SAT_type"] == "SAT-SIPG"
@@ -492,33 +492,33 @@ function cmptBPMat{Tmsh, Tdim, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   end
 end
 
-function cmptBPMat_SIPG{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                          sbp::AbstractSBP,
-                                          eqn::EulerData{Tsol, Tres, 2},
-                                          opts,
-                                          iface::Int,
-                                          Gt::AbstractArray{Tsol, 5},
-                                          pMat::AbstractArray{Tsol, 3})
+function cmptBPMat_SIPG(mesh::AbstractMesh{Tmsh},
+                        sbp::AbstractSBP,
+                        eqn::EulerData{Tsol, Tres, 2},
+                        opts,
+                        iface::Int,
+                        Gt::AbstractArray{Tsol, 5},
+                        pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
   error("SAT-SIPG not available yet")
 end
 
-function cmptBPMat_BR2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                         sbp::AbstractSBP,
-                                         eqn::EulerData{Tsol, Tres, 2},
-                                         opts,
-                                         iface::Int,
-                                         Gt::AbstractArray{Tsol, 5},
-                                         pMat::AbstractArray{Tsol, 3})
+function cmptBPMat_BR2(mesh::AbstractMesh{Tmsh},
+                       sbp::AbstractSBP,
+                       eqn::EulerData{Tsol, Tres, 2},
+                       opts,
+                       iface::Int,
+                       Gt::AbstractArray{Tsol, 5},
+                       pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
   error("SAT-BR2 not available yet")
 end
 
-function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                             sbp::AbstractSBP,
-                                             eqn::EulerData{Tsol, Tres, 2},
-                                             opts,
-                                             iface::Int,
-                                             Gt::AbstractArray{Tsol, 5},
-                                             pMat::AbstractArray{Tsol, 3})
+function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, 2},
+                           opts,
+                           iface::Int,
+                           Gt::AbstractArray{Tsol, 5},
+                           pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
 # Reference:
 #    Shahbazi, Mavriplis, Multigrid algorithms for high order discontinuous 
 #    Galerkin discretization of the compressible Navier-Stokes equations, 
@@ -628,13 +628,13 @@ function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function cmptBPMat_hartman{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                             sbp::AbstractSBP,
-                                             eqn::EulerData{Tsol, Tres, 3},
-                                             opts,
-                                             iface::Int,
-                                             Gt::AbstractArray{Tsol, 5},
-                                             pMat::AbstractArray{Tsol, 3})
+function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, 3},
+                           opts,
+                           iface::Int,
+                           Gt::AbstractArray{Tsol, 5},
+                           pMat::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tres}
   # in order to enhance/test stability, we try this factor on penalty terms
   factor = eqn.params.penalty_relaxation
   const_tii = eqn.params.const_tii

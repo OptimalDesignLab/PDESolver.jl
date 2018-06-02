@@ -4,8 +4,8 @@
 # by Shakib, Hughes, and Johan
 
 # this *should* work for both conservative and entropy variables, I think
-function applyGLS2{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                   sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function applyGLS2(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("----- Entered applyGLS2 -----")
   # extract some constants
@@ -256,18 +256,18 @@ end  # end function
 
             
 """->
-function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
-                    params_c::ParamType{Tdim, :conservative},
-                    q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
-                    dxidx_hat::AbstractArray{Tmsh, 3}, 
-                    jac::AbstractArray{Tmsh, 1},
-                    D::AbstractArray{Float64, 3},  
-                    A_mats::AbstractArray{Tsol, 4}, # begin outputs
-                    qtranspose::AbstractArray{Tsol, 2}, 
-                    qxitranspose::AbstractArray{Tsol, 3}, 
-                    qxi::AbstractArray{Tsol, 3},
-                    dxidx::AbstractArray{Tmsh, 3}, 
-                    tau::AbstractArray{Tres, 3})
+function getGLSVars(params::ParamType{Tdim},
+params_c::ParamType{Tdim, :conservative},
+q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
+dxidx_hat::AbstractArray{Tmsh, 3}, 
+jac::AbstractArray{Tmsh, 1},
+D::AbstractArray{Float64, 3},  
+A_mats::AbstractArray{Tsol, 4}, # begin outputs
+qtranspose::AbstractArray{Tsol, 2}, 
+qxitranspose::AbstractArray{Tsol, 3}, 
+qxi::AbstractArray{Tsol, 3},
+dxidx::AbstractArray{Tmsh, 3}, 
+tau::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # who cares about performance?
@@ -413,7 +413,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 
 =#
 
-function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function applyGLS3(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tsol, Tres, Tdim, Tmsh}
 
   numDofPerNode = mesh.numDofPerNode
   numNodesPerElement = mesh.numNodesPerElement
@@ -622,15 +622,15 @@ function applyGLS3{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::E
 end
 
 
-function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim}, 
-                     params_c::ParamType{Tdim, :conservative}, 
-                     q::AbstractArray{Tsol, 2}, 
-                     aux_vars::AbstractArray{Tsol, 2}, 
-                     dxidx_hat::AbstractArray{Tmsh, 3}, 
-                     jac::AbstractArray{Tmsh, 1}, D::AbstractArray{Float64, 3},
-                     # begin output parameters
-                     Dx::AbstractArray{Tmsh, 3}, A_mats::AbstractArray{Tsol, 4},
-                     dxidx::AbstractArray{Tmsh,3}, tau::AbstractArray{Tres, 3})
+function getGLSVars3(params::ParamType{Tdim}, 
+params_c::ParamType{Tdim, :conservative}, 
+q::AbstractArray{Tsol, 2}, 
+aux_vars::AbstractArray{Tsol, 2}, 
+dxidx_hat::AbstractArray{Tmsh, 3}, 
+jac::AbstractArray{Tmsh, 1}, D::AbstractArray{Float64, 3},
+# begin output parameters
+Dx::AbstractArray{Tmsh, 3}, A_mats::AbstractArray{Tsol, 4},
+dxidx::AbstractArray{Tmsh,3}, tau::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
 
   numDofPerNode = size(q, 1)
@@ -747,7 +747,7 @@ function getGLSVars3{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
 end  # end function
 
 
-function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+function test_GLS(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts) where {Tsol, Tres, Tmsh}
 
   eqn.params.tau_type = 2
   Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]
@@ -882,10 +882,10 @@ end  # end function
 
 
 """->
-function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
-                params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
-                q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
-                dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2})
+function getTau(
+params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
+q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
+dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2}) where {Tdim, var_type, Tsol, Tres, Tmsh}
 
 #  println("----- Entered getTau original-----")
 
@@ -954,7 +954,7 @@ function getTau{Tdim, var_type, Tsol, Tres, Tmsh}(
   return nothing
 end  # end function
 
-function getTau{Tres}(params::ParamType, jac::Number, tau::AbstractArray{Tres, 2})
+function getTau(params::ParamType, jac::Number, tau::AbstractArray{Tres, 2}) where Tres
 
   fac = 1.0
   for i=1:size(tau, 1)
@@ -966,9 +966,9 @@ end
 
 # not sure if this works with conservative variables
 # A_mats must be the entropy variable flux jacobians
-function getTau{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim, :entropy}, 
-                q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
-                dxidx::AbstractArray{Tmsh, 2}, p::Integer, tau::AbstractArray{Tres, 2})
+function getTau(params::ParamType{Tdim, :entropy}, 
+q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
+dxidx::AbstractArray{Tmsh, 2}, p::Integer, tau::AbstractArray{Tres, 2}) where {Tsol, Tres, Tmsh, Tdim}
 
   B_d = params.Rmat1  # storeage for B_i
   B_p = params.Rmat2  # storage for the accumulation of the B_ia

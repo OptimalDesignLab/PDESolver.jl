@@ -23,9 +23,9 @@ evaluation.
 
  * val: functional value
 """->
-function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractFunctional)
+function evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
+            functionalData::AbstractFunctional) where {Tmsh, Tsol}
 #=
   if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
@@ -64,10 +64,10 @@ to the if statement to further extend this function.
 
 """->
 
-function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
+function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
                         functionalData::AbstractFunctional,
-                        functionalName::String)
+                        functionalName::String) where {Tmsh, Tsol}
 
 
   if opts["parallel_type"] == 1
@@ -137,11 +137,11 @@ Compute the complete derivative of a functional w.r.t angle of attack
 
 """->
 
-function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                 eqn::EulerData{Tsol}, opts,
-                                 functionalData::BoundaryForceData,
-                                 functionalName::String,
-                                 adjoint_vec::AbstractArray{Tsol,1})
+function eval_dJdaoa(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                     eqn::EulerData{Tsol}, opts,
+                     functionalData::BoundaryForceData,
+                     functionalName::String,
+                     adjoint_vec::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   if functionalName == "lift"
     ∂J∂aoa = functionalData.dLiftdaoa
@@ -165,9 +165,9 @@ function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return dJdaoa
 end
 
-function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, functionalData::MassFlowData)
+function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
+     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, functionalData::MassFlowData) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
 
@@ -231,9 +231,9 @@ boundary functional type or parameters.
                       computed and holds all the relevant data.
 
 """->
-function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, functionalData::BoundaryForceData)
+function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
+     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, functionalData::BoundaryForceData) where {Tmsh, Tsol, Tres, Tdim}
 
   local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
   bndry_force = functionalData.bndry_force
@@ -305,9 +305,9 @@ function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
   end
 end
 
-function calcBndryFunctional{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, functionalData::LiftCoefficient)
+function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
+     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, functionalData::LiftCoefficient) where {Tmsh, Tsol, Tres, Tdim}
 
   val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData.lift)
   fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
@@ -341,10 +341,10 @@ lines indicate the line being reverse diffed.
 
 """
 
-function calcBndryFunctional_revm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                                       opts, functionalData::BoundaryForceData,
-                                       bndry_force_bar::AbstractArray{Tsol, 1})
+function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
+               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+               opts, functionalData::BoundaryForceData,
+               bndry_force_bar::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
 
 #  phys_nrm = zeros(Tmsh, Tdim)
   aoa = eqn.params.aoa # Angle of attack
@@ -426,13 +426,13 @@ integrand. The type of the functional object, which is a subtype of
 *  `val` : Function output value
 
 """->
-function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
-                                         q::AbstractArray{Tsol,1},
-                                         aux_vars::AbstractArray{Tres, 1},
-                                         nrm::AbstractArray{Tmsh},
-                                         node_info::AbstractArray{Int},
-                                         objective::BoundaryForceData,
-                                         val::AbstractArray{Tsol,1})
+function calcBoundaryFunctionalIntegrand(params::ParamType{2},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
+                       nrm::AbstractArray{Tmsh},
+                       node_info::AbstractArray{Int},
+                       objective::BoundaryForceData,
+                       val::AbstractArray{Tsol,1}) where {Tsol, Tres, Tmsh}
 
   # Compute the numerical flux for the euler equation and extract the X & Y
   # momentum values. The normal vector supplied has already been converted
@@ -460,13 +460,13 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
   return nothing
 end # End calcBoundaryFunctionalIntegrand 2D
 
-function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
-                                         q::AbstractArray{Tsol,1},
-                                         aux_vars::AbstractArray{Tres, 1},
-                                         nrm::AbstractArray{Tmsh},
-                                         node_info::AbstractArray{Int},
-                                         objective::BoundaryForceData,
-                                         val::AbstractArray{Tsol,1})
+function calcBoundaryFunctionalIntegrand(params::ParamType{3},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
+                       nrm::AbstractArray{Tmsh},
+                       node_info::AbstractArray{Int},
+                       objective::BoundaryForceData,
+                       val::AbstractArray{Tsol,1}) where {Tsol, Tres, Tmsh}
 
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]))
   # normalize normal vector
@@ -490,13 +490,13 @@ function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{3},
   return nothing
 end # End calcBoundaryFunctionalIntegrand 3D
 
-function calcBoundaryFunctionalIntegrand{Tsol, Tres, Tmsh}(params::ParamType{2},
-                                         q::AbstractArray{Tsol,1},
-                                         aux_vars::AbstractArray{Tres, 1},
-                                         nrm::AbstractArray{Tmsh},
-                                         node_info::AbstractArray{Int},
-                                         objective::MassFlowData,
-                                         val::AbstractArray{Tsol,1})
+function calcBoundaryFunctionalIntegrand(params::ParamType{2},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
+                       nrm::AbstractArray{Tmsh},
+                       node_info::AbstractArray{Int},
+                       objective::MassFlowData,
+                       val::AbstractArray{Tsol,1}) where {Tsol, Tres, Tmsh}
 
   val[1] = q[2]*nrm[1] + q[3]*nrm[2]
 
@@ -522,14 +522,14 @@ val_bar and return nrm_bar for further reverse propagation.
 
 """->
 
-function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params::ParamType{2},
+function calcBoundaryFunctionalIntegrand_revm(params::ParamType{2},
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
                                          nrm::AbstractArray{Tmsh},
                                          node_info::AbstractArray{Int},
                                          objective::BoundaryForceData,
                                          nrm_bar::AbstractArray{Tmsh,1},
-                                         val_bar::AbstractArray{Tres, 1})
+                                         val_bar::AbstractArray{Tres, 1}) where {Tsol, Tres, Tmsh}
 
   #---- Forward sweep
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
@@ -593,14 +593,14 @@ function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params::ParamTyp
   return nothing
 end # End calcBoundaryFunctionalIntegrand_revm 2D
 
-function calcBoundaryFunctionalIntegrand_revm{Tsol, Tres, Tmsh}(params::ParamType{3},
+function calcBoundaryFunctionalIntegrand_revm(params::ParamType{3},
                                          q::AbstractArray{Tsol,1},
                                          aux_vars::AbstractArray{Tres, 1},
                                          nrm::AbstractArray{Tmsh},
                                          node_info::AbstractArray{Int},
                                          objective::BoundaryForceData,
                                          nrm_bar::AbstractArray{Tmsh,1},
-                                         val_bar::AbstractArray{Tres, 1})
+                                         val_bar::AbstractArray{Tres, 1}) where {Tsol, Tres, Tmsh}
 
   # Forward Sweep
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]))

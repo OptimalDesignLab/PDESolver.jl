@@ -8,7 +8,7 @@ Output:
   rmu         : dynamic viscosity
 
 """->
-function getMuK{Tsol}(temp::Tsol, rMuK::AbstractArray{Tsol, 1})
+function getMuK(temp::Tsol, rMuK::AbstractArray{Tsol, 1}) where Tsol
   @assert(length(rMuK) == 2)
 
   Tref = 460.0
@@ -30,7 +30,7 @@ Output:
   rmu         : dynamic viscosity
 
 """->
-function getMuK{Tsol}(temp::AbstractArray{Tsol, 1}, rMuK::AbstractArray{Tsol, 2})
+function getMuK(temp::AbstractArray{Tsol, 1}, rMuK::AbstractArray{Tsol, 2}) where Tsol
   @assert(size(rMuK, 1) == 2)
   @assert(size(rMuK, 2) == length(temp))
 
@@ -62,12 +62,12 @@ end
 #   Fv       : viscous flux
 # """->
 #
-function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
-                                          sbp::AbstractSBP,
-                                          q::AbstractArray{Tsol, 2},
-                                          dxidx::AbstractArray{Tmsh, 3},
-                                          jac::AbstractArray{Tmsh, 1},
-                                          Fv::AbstractArray{Tsol, 3})
+function calcFvis_elem_direct(params::ParamType{2, :conservative},
+                              sbp::AbstractSBP,
+                              q::AbstractArray{Tsol, 2},
+                              dxidx::AbstractArray{Tmsh, 3},
+                              jac::AbstractArray{Tmsh, 1},
+                              Fv::AbstractArray{Tsol, 3}) where {Tsol, Tmsh}
   @assert(size(q, 2) == sbp.numnodes)        # number of element nodes
   @assert(size(dxidx, 1) == size(dxidx, 2))  # dimension
   @assert(size(dxidx, 3) == size(q, 2))      # node
@@ -156,12 +156,12 @@ function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{2, :conservative},
   return nothing
 end
 
-function calcFvis_elem_direct{Tsol, Tmsh}(params::ParamType{3, :conservative},
-                                          sbp::AbstractSBP,
-                                          q::AbstractArray{Tsol, 2},
-                                          dxidx::AbstractArray{Tmsh, 3},
-                                          jac::AbstractArray{Tmsh, 1},
-                                          Fv::AbstractArray{Tsol, 3})
+function calcFvis_elem_direct(params::ParamType{3, :conservative},
+                              sbp::AbstractSBP,
+                              q::AbstractArray{Tsol, 2},
+                              dxidx::AbstractArray{Tmsh, 3},
+                              jac::AbstractArray{Tmsh, 1},
+                              Fv::AbstractArray{Tsol, 3}) where {Tsol, Tmsh}
   @assert(size(q, 2) == sbp.numnodes)        # number of element nodes
   @assert(size(dxidx, 1) == size(dxidx, 2))  # dimension
   @assert(size(dxidx, 3) == size(q, 2))      # node
@@ -278,17 +278,17 @@ end
    * FvR : viscous flux on left side of interface
 
 """
-function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
-                                        sbp::AbstractSBP,
-                                        sbpface::AbstractFace,
-                                        qL::AbstractArray{Tsol, 2},
-                                        qR::AbstractArray{Tsol, 2},
-                                        dxidxL::AbstractArray{Tmsh, 3},
-                                        jacL::AbstractArray{Tmsh, 1},
-                                        dxidxR::AbstractArray{Tmsh, 3},
-                                        jacR::AbstractArray{Tmsh, 1},
-                                        face::Interface,
-                                        Fv_face::AbstractArray{Tsol, 4})
+function calcFaceFvis(params::ParamType{Tdim, :conservative},
+                      sbp::AbstractSBP,
+                      sbpface::AbstractFace,
+                      qL::AbstractArray{Tsol, 2},
+                      qR::AbstractArray{Tsol, 2},
+                      dxidxL::AbstractArray{Tmsh, 3},
+                      jacL::AbstractArray{Tmsh, 1},
+                      dxidxR::AbstractArray{Tmsh, 3},
+                      jacR::AbstractArray{Tmsh, 1},
+                      face::Interface,
+                      Fv_face::AbstractArray{Tsol, 4}) where {Tsol, Tmsh, Tdim}
 
   #
   # method-1 NOT FINISHED!!!
@@ -361,10 +361,10 @@ end
 # Output:
 #   Fv    : viscous flux
 # """->
-function calcFvis{Tsol, Tdim}(params::ParamType{Tdim, :conservative},
-                              q::AbstractArray{Tsol, 2},
-                              dqdx::AbstractArray{Tsol, 3},
-                              Fv::AbstractArray{Tsol, 3})
+function calcFvis(params::ParamType{Tdim, :conservative},
+                  q::AbstractArray{Tsol, 2},
+                  dqdx::AbstractArray{Tsol, 3},
+                  Fv::AbstractArray{Tsol, 3}) where {Tsol, Tdim}
 
   @assert(size(q, 2) == size(dqdx, 3)) # number of nodes per element
   @assert(size(q, 1) == size(dqdx, 2)) # number of dof per node
@@ -394,10 +394,10 @@ end
 # Output:
 #   Fv      : viscous flux
 # """->
-function calcFvis{Tsol}(params::ParamType{2, :conservative},
-                        Gv::AbstractArray{Tsol, 5},
-                        dqdx::AbstractArray{Tsol, 3},
-                        Fv::AbstractArray{Tsol, 3})
+function calcFvis(params::ParamType{2, :conservative},
+                  Gv::AbstractArray{Tsol, 5},
+                  dqdx::AbstractArray{Tsol, 3},
+                  Fv::AbstractArray{Tsol, 3}) where Tsol
 
   @assert(size(Gv, 5) == size(dqdx, 3)) # number of nodes per element
   @assert(size(Gv, 4) == size(dqdx, 1)) # spatial dimension
@@ -453,10 +453,10 @@ function calcFvis{Tsol}(params::ParamType{2, :conservative},
 
   return nothing
 end
-function calcFvis{Tsol}(params::ParamType{3, :conservative},
-                        Gv::AbstractArray{Tsol, 5},
-                        dqdx::AbstractArray{Tsol, 3},
-                        Fv::AbstractArray{Tsol, 3})
+function calcFvis(params::ParamType{3, :conservative},
+                  Gv::AbstractArray{Tsol, 5},
+                  dqdx::AbstractArray{Tsol, 3},
+                  Fv::AbstractArray{Tsol, 3}) where Tsol
 
   @assert(size(Gv, 5) == size(dqdx, 3)) # number of nodes per element
   @assert(size(Gv, 4) == size(dqdx, 1)) # spatial dimention 
@@ -558,12 +558,12 @@ Input:
 Output
   jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcFvis_elem{Tsol, Tmsh}(params::ParamType,
-                                   sbp::AbstractSBP,
-                                   q::AbstractArray{Tsol, 2},
-                                   dxidx::AbstractArray{Tmsh, 3},
-                                   jac::AbstractArray{Tmsh, 1},
-                                   Fv::AbstractArray{Tsol, 3})
+function calcFvis_elem(params::ParamType,
+                       sbp::AbstractSBP,
+                       q::AbstractArray{Tsol, 2},
+                       dxidx::AbstractArray{Tmsh, 3},
+                       jac::AbstractArray{Tmsh, 1},
+                       Fv::AbstractArray{Tsol, 3}) where {Tsol, Tmsh}
 
   @assert(size(dxidx, 1) == size(dxidx, 2))    # dimension
   @assert(size(dxidx, 3) == size(q, 2))        # node
@@ -594,9 +594,9 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor{Tsol}(params::ParamType{2, :conservative},
-                                   q::AbstractArray{Tsol, 2},
-                                   Gv::AbstractArray{Tsol, 5})
+function calcDiffusionTensor(params::ParamType{2, :conservative},
+                             q::AbstractArray{Tsol, 2},
+                             Gv::AbstractArray{Tsol, 5}) where Tsol
   @assert(size(q, 2) == size(Gv, 5))
   @assert(size(Gv, 4) == 2)
   @assert(size(Gv, 3) == 2)
@@ -739,9 +739,9 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor{Tsol}(params::ParamType{3, :conservative},
-                                   q::AbstractArray{Tsol, 2},
-                                   Gv::AbstractArray{Tsol, 5})
+function calcDiffusionTensor(params::ParamType{3, :conservative},
+                             q::AbstractArray{Tsol, 2},
+                             Gv::AbstractArray{Tsol, 5}) where Tsol
   Tdim = 3
   @assert(size(q, 2) == size(Gv, 5))
   @assert(size(Gv, 4) == Tdim)
@@ -1103,10 +1103,10 @@ Input:
 Output
   jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensorOnAdiabaticWall{Tmsh, Tsol}(params::ParamType{2, :conservative},
-                                                       q::AbstractArray{Tsol, 2},
-                                                       nrm::AbstractArray{Tmsh, 2},
-                                                       Gv::AbstractArray{Tsol, 5})
+function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2, :conservative},
+                                           q::AbstractArray{Tsol, 2},
+                                           nrm::AbstractArray{Tmsh, 2},
+                                           Gv::AbstractArray{Tsol, 5}) where {Tmsh, Tsol}
 
   Tdim = 2
   @assert(size(q, 2) == size(Gv, 5))
@@ -1257,9 +1257,9 @@ end
 # NOTE: this is incorrect. states that grad T = 0 always by setting gamma_pr to 0, but what actually is
 #       necessary is that n dot grad T = 0.
 # TODO: extend the correct version of cDTOnAdiabaticWall (above) to 3D
-function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{3, :conservative},
-                                                 q::AbstractArray{Tsol, 2},
-                                                 Gv::AbstractArray{Tsol, 5})
+function calcDiffusionTensor_adiabaticWall(params::ParamType{3, :conservative},
+                                           q::AbstractArray{Tsol, 2},
+                                           Gv::AbstractArray{Tsol, 5}) where Tsol
 
   Tdim = 3
   @assert(size(q, 2) == size(Gv, 5))
@@ -1619,7 +1619,7 @@ function calcDiffusionTensor_adiabaticWall{Tsol}(params::ParamType{3, :conservat
   return nothing
 end
 
-abstract AbstractBoundaryValueType
+abstract type AbstractBoundaryValueType end
 
 @doc """
 
@@ -1632,14 +1632,14 @@ Output:
 q_bnd    :: the boundary value
 
 """->
-type AdiabaticWall <: AbstractBoundaryValueType
+mutable struct AdiabaticWall <: AbstractBoundaryValueType
 end
-function (obj::AdiabaticWall){Tsol, Tmsh, Tdim}(
-                                q_in::AbstractArray{Tsol, 2},
-                                xy::AbstractArray{Tmsh, 2},
-                                norm::AbstractArray{Tmsh, 2},
-                                params::ParamType{Tdim, :conservative},
-                                q_bnd::AbstractArray{Tsol, 2})
+function (obj::AdiabaticWall)(
+              q_in::AbstractArray{Tsol, 2},
+              xy::AbstractArray{Tmsh, 2},
+              norm::AbstractArray{Tmsh, 2},
+              params::ParamType{Tdim, :conservative},
+              q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh, Tdim}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
   @assert( size(q_in, 2) == size(norm,  2))
@@ -1657,14 +1657,14 @@ function (obj::AdiabaticWall){Tsol, Tmsh, Tdim}(
   return nothing
 end
 
-type ExactChannel<: AbstractBoundaryValueType
+mutable struct ExactChannel<: AbstractBoundaryValueType
 end
-function (obj::ExactChannel){Tsol, Tmsh}(
+function (obj::ExactChannel)(
                           q_in::AbstractArray{Tsol, 2},
                           xyz::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
                           params::ParamType{3, :conservative},
-                          qg::AbstractArray{Tsol, 2})
+                          qg::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
 
   gamma = params.gamma
   gamma_1 = params.gamma - 1
@@ -1716,12 +1716,12 @@ end
 
 
 
-function (obj::ExactChannel){Tsol, Tmsh}(
+function (obj::ExactChannel)(
                           q_in::AbstractArray{Tsol, 2},
                           xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
                           params::ParamType{2, :conservative},
-                          q_bnd::AbstractArray{Tsol, 2})
+                          q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
   @assert( size(q_in, 2) == size(norm,  2))
@@ -1775,15 +1775,15 @@ Output:
 q_bnd    :: the boundary value
 
 """->
-type Farfield <: AbstractBoundaryValueType
+mutable struct Farfield <: AbstractBoundaryValueType
 end
 
-function (obj::Farfield){Tsol, Tmsh}(
-                          q_in::AbstractArray{Tsol, 2},
-                          xy::AbstractArray{Tmsh, 2},
-                          norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{2, :conservative},
-                          q_bnd::AbstractArray{Tsol, 2})
+function (obj::Farfield)(
+              q_in::AbstractArray{Tsol, 2},
+              xy::AbstractArray{Tmsh, 2},
+              norm::AbstractArray{Tmsh, 2},
+              params::ParamType{2, :conservative},
+              q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
   @assert( size(q_in, 2) == size(norm,  2))
@@ -1851,12 +1851,12 @@ end
 # TODO: combine this with the 2D version. The only difference
 # between 2D and 3D is the freestream conditions.
 #
-function (obj::Farfield){Tsol, Tmsh}(
-                          q_in::AbstractArray{Tsol, 2},
-                          xy::AbstractArray{Tmsh, 2},
-                          norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{3, :conservative},
-                          q_bnd::AbstractArray{Tsol, 2})
+function (obj::Farfield)(
+              q_in::AbstractArray{Tsol, 2},
+              xy::AbstractArray{Tmsh, 2},
+              norm::AbstractArray{Tmsh, 2},
+              params::ParamType{3, :conservative},
+              q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
   @assert( size(q_in, 2) == size(norm,  2))

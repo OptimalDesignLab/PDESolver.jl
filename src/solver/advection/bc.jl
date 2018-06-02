@@ -36,11 +36,11 @@
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
-                          functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1}, 
-                          bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux( mesh::AbstractCGMesh{Tmsh}, 
+       sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+       functor::BCType, idx_range::UnitRange,
+       bndry_facenums::AbstractArray{Boundary,1}, 
+       bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
 #  println("enterted calcBoundaryFlux CG")
@@ -71,11 +71,11 @@ end
 
 
 # DG version
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
-                          functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1}, 
-                          bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux( mesh::AbstractDGMesh{Tmsh}, 
+       sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+       functor::BCType, idx_range::UnitRange,
+       bndry_facenums::AbstractArray{Boundary,1}, 
+       bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
 
   
 # calculate the boundary flux for the boundary condition evaluated by the functor
@@ -108,11 +108,11 @@ end
 
   See calcBoundaryFlux for the meaning of the arguments
 """
-function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
+function calcBoundaryFlux_nopre( mesh::AbstractDGMesh{Tmsh}, 
                           sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}, 
-                          bndryflux::AbstractArray{Tres, 3})
+                          bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
 
   t = eqn.t
   nfaces = length(bndry_facenums)
@@ -164,12 +164,12 @@ level function.
 
 """->
 
-type x5plusy5BC <: BCType
+mutable struct x5plusy5BC <: BCType
 end
 
-function (obj::x5plusy5BC){Tmsh, Tsol}(params::ParamType2, u::Tsol, 
+function (obj::x5plusy5BC)(params::ParamType2, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, 
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_x5plusy5(params, coords, t) # Calculate the actual analytic value of u at the bondary
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -177,12 +177,12 @@ function (obj::x5plusy5BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
   return bndryflux
 end
 
-type constantBC <: BCType
+mutable struct constantBC <: BCType
 end
 
-function (obj::constantBC){Tmsh, Tsol}(params::ParamTypes, u::Tsol, 
+function (obj::constantBC)(params::ParamTypes, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, 
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = 2
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -211,12 +211,12 @@ level function.
 *  None
 
 """->
-type exp_xplusyBC <: BCType
+mutable struct exp_xplusyBC <: BCType
 end
 
-function (obj::exp_xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol, 
+function (obj::exp_xplusyBC)(params::ParamType2, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, 
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_exp_xplusy(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -230,12 +230,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_sinewave to
   get the boundary state
 """->
-type sinwave_BC <: BCType
+mutable struct sinwave_BC <: BCType
 end
 
-function (obj::sinwave_BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::sinwave_BC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_sinwave(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -250,12 +250,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_sinewavey to
   get the boundary state
 """->
-type sinwavey_BC <: BCType
+mutable struct sinwavey_BC <: BCType
 end
 
-function (obj::sinwavey_BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::sinwavey_BC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_sinwavey(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -271,12 +271,12 @@ end
   get the boundary state
 """->
 
-type sinwavey_pertBC <: BCType
+mutable struct sinwavey_pertBC <: BCType
 end
 
-function (obj::sinwavey_pertBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::sinwavey_pertBC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_sinwavey_pert(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -291,11 +291,11 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_sinewave_ampl to
   get the boundary state
 """->
-type sinwave_ampl_BC <: BCType
+mutable struct sinwave_ampl_BC <: BCType
 end
 
-function (obj::sinwave_ampl_BC){Tmsh, Tsol}(params::ParamType2, u::Tsol, 
-              coords::AbstractArray{Tmsh,1}, nrm_scaled::AbstractArray{Tmsh,1}, t)
+function (obj::sinwave_ampl_BC)(params::ParamType2, u::Tsol, 
+              coords::AbstractArray{Tmsh,1}, nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_sinwave_ampl(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -309,12 +309,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_mms1 to get
   the boundary state.
 """->
-type mms1BC <: BCType
+mutable struct mms1BC <: BCType
 end
 
-function (obj::mms1BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::mms1BC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_mms1(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -329,12 +329,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_x4 to
   get the boundary state.
 """->
-type x4BC <: BCType
+mutable struct x4BC <: BCType
 end
 
-function (obj::x4BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::x4BC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_x4(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -350,12 +350,12 @@ end
   get the boundary state
 """->
 
-type p0BC <: BCType
+mutable struct p0BC <: BCType
 end
 
-function (obj::p0BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
+function (obj::p0BC)(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_p0(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -371,12 +371,12 @@ end
   get the boundary state
 """->
 
-type p1BC <: BCType
+mutable struct p1BC <: BCType
 end
 
-function (obj::p1BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
+function (obj::p1BC)(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_p1(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -390,12 +390,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_p2 to
   get the boundary state
 """->
-type p2BC <: BCType
+mutable struct p2BC <: BCType
 end
 
-function (obj::p2BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol, 
+function (obj::p2BC)(params::ParamTypes, u::Tsol, 
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_p2(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -410,12 +410,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_p3 to
   get the boundary state
 """->
-type p3BC <: BCType
+mutable struct p3BC <: BCType
 end
 
-function (obj::p3BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
+function (obj::p3BC)(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_p3(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -431,12 +431,12 @@ end
   Uses the Roe solver to calculate the boundary flux using calc_p4 to
   get the boundary state.
 """->
-type p4BC <: BCType
+mutable struct p4BC <: BCType
 end
 
-function (obj::p4BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
+function (obj::p4BC)(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_p4(params, coords, t)
 #  println("  u_bc = ", u_bc)
@@ -452,12 +452,12 @@ end
   get the boundary state.
 """->
 
-type p5BC <: BCType
+mutable struct p5BC <: BCType
 end
 
-function (obj::p5BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
+function (obj::p5BC)(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
   # this is really slow: use Horner's rule!
   u_bc = calc_p5(params, coords, t)
 #  println("calc_p5 @time printed above")
@@ -476,12 +476,12 @@ to get the boundary state.
 
 """->
 
-type exp5xplus4yplus2BC <: BCType
+mutable struct exp5xplus4yplus2BC <: BCType
 end
 
-function (obj::exp5xplus4yplus2BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::exp5xplus4yplus2BC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_exp5xplus4yplus2(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -497,12 +497,12 @@ the boundary state.
 
 """->
 
-type exp5xplusyBC <:BCType
+mutable struct exp5xplusyBC <:BCType
 end
 
-function (obj::exp5xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::exp5xplusyBC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_exp5xplusy(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -518,12 +518,12 @@ the boundary state.
 
 """->
 
-type exp3xplusyBC <:BCType
+mutable struct exp3xplusyBC <:BCType
 end
 
-function (obj::exp3xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::exp3xplusyBC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_exp3xplusy(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -539,12 +539,12 @@ the boundary state.
 
 """->
 
-type exp2xplus2yBC <:BCType
+mutable struct exp2xplus2yBC <:BCType
 end
 
-function (obj::exp2xplus2yBC){Tmsh, Tsol}(params::ParamType2,  u::Tsol,
+function (obj::exp2xplus2yBC)(params::ParamType2,  u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_exp2xplus2y(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -560,12 +560,12 @@ boundary state
 
 """->
 
-type exp_xyBC <: BCType
+mutable struct exp_xyBC <: BCType
 end
 
-function (obj::exp_xyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::exp_xyBC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_exp_xy(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -581,12 +581,12 @@ boundary state
 
 """->
 
-type xplusyBC <: BCType
+mutable struct xplusyBC <: BCType
 end
 
-function (obj::xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
+function (obj::xplusyBC)(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_xplusy(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -598,12 +598,12 @@ end
 """
   BC for unsteadymms
 """
-type unsteadymmsBC <: BCType
+mutable struct unsteadymmsBC <: BCType
 end
 
-function (obj::unsteadymmsBC){Tmsh, Tsol}(params::ParamType, u::Tsol,
+function (obj::unsteadymmsBC)(params::ParamType, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_unsteadymms(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -614,12 +614,12 @@ end
 """
   BC for unsteadypoly
 """
-type unsteadypolyBC <: BCType
+mutable struct unsteadypolyBC <: BCType
 end
 
-function (obj::unsteadypolyBC){Tmsh, Tsol}(params::ParamType, u::Tsol,
+function (obj::unsteadypolyBC)(params::ParamType, u::Tsol,
               coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol}
 
   u_bc = calc_unsteadypoly(params, coords, t)
   bndryflux = RoeSolver(params, u, u_bc, nrm_scaled)
@@ -631,12 +631,12 @@ end
   Default BC to calculate the boundary face integral (no numerical flux
   functions)
 """
-type defaultBC <: BCType
+mutable struct defaultBC <: BCType
 end
 
-function (obj::defaultBC){Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
+function (obj::defaultBC)(params::ParamType{Tdim},
               u::Tsol, coords::AbstractArray{Tmsh,1},
-              nrm_scaled::AbstractArray{Tmsh,1}, t)
+              nrm_scaled::AbstractArray{Tmsh,1}, t) where {Tmsh, Tsol, Tdim}
 
   alpha_nrm = params.alpha_x*nrm_scaled[1] + params.alpha_y*nrm_scaled[2]
   if Tdim == 3  # static analysis
@@ -703,8 +703,8 @@ This is a high level function.
 
 """->
 # use this function to populate access the needed values in BCDict
-function getBCFunctors{Tmsh, Tsol, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-                       eqn::AdvectionData{Tsol, Tdim}, opts)
+function getBCFunctors(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+     eqn::AdvectionData{Tsol, Tdim}, opts) where {Tmsh, Tsol, Tdim}
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
   println("Entered getBCFunctors")

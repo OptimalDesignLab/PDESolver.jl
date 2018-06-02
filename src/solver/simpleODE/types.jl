@@ -1,6 +1,6 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
 
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+mutable struct ParamType{Tsol, Tres, Tdim} <: AbstractParamType
 
   f::BufferedIO     # TODO: needed?
 
@@ -24,9 +24,9 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
 
 end   # end of ParamType type def
 
-typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
-typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
-typealias ParamTypes Union{ParamType2, ParamType3}
+ParamType2{Tsol, Tres} =  ParamType{Tsol, Tres, 2}
+ParamType3{Tsol, Tres} =  ParamType{Tsol, Tres, 3}
+const ParamTypes = Union{ParamType2, ParamType3}
 
 @doc """
 ### SimpleODEMod.SimpleODEData_
@@ -37,7 +37,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 
 """->
-type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
+mutable struct SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
   params::ParamType{Tsol, Tres, Tdim}
@@ -146,7 +146,7 @@ Gets the type parameters for mesh and equation objects.
 * `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
 
 """->
-function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::SimpleODEData_{Tsol, Tres, Tdim, Tmsh}, opts)
+function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::SimpleODEData_{Tsol, Tres, Tdim, Tmsh}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   tuple = (Tsol, Tres, Tdim, Tmsh)
 

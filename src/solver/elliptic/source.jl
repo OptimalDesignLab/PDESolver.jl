@@ -1,5 +1,5 @@
 
-type SRC0 <: SRCType
+mutable struct SRC0 <: SRCType
 end
 function (obj::SRC0)(
               xy::AbstractVector, 
@@ -8,7 +8,7 @@ function (obj::SRC0)(
   return nothing
 end
 
-type SRC1 <: SRCType
+mutable struct SRC1 <: SRCType
 end
 function (obj::SRC1, 
               xy::AbstractVector, 
@@ -20,7 +20,7 @@ end
 #
 # a scalar diffusion coefficient, 10
 #
-type SrcExpTrigPoly0thDiffn <: SRCType
+mutable struct SrcExpTrigPoly0thDiffn <: SRCType
 end
 function (obj::SrcExpTrigPoly0thDiffn)(
               xy::AbstractVector, 
@@ -37,7 +37,7 @@ end
 #
 # a scalar diffusion coefficient, 10
 #
-type SrcTrigPoly0thDiffn <: SRCType
+mutable struct SrcTrigPoly0thDiffn <: SRCType
 end
 function (obj::SrcTrigPoly0thDiffn)(
               xy::AbstractVector, 
@@ -54,7 +54,7 @@ end
 #
 # a 2nd order diffusion coefficient tensor
 #
-type SrcTrigPoly2ndDiffn <: SRCType
+mutable struct SrcTrigPoly2ndDiffn <: SRCType
 end
 function (obj::SrcTrigPoly2ndDiffn)(
               xy::AbstractVector, 
@@ -80,7 +80,7 @@ end
 #
 # a 6th order diffusion coefficient tensor
 #
-type SrcTrigPoly6thDiffn <: SRCType
+mutable struct SrcTrigPoly6thDiffn <: SRCType
 end
 function (obj::SrcTrigPoly6thDiffn)(
               xy::AbstractVector, 
@@ -119,11 +119,11 @@ function getSrcFuntors(mesh::AbstractMesh,
   return nothing
 end
 
-function calcSource{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                            sbp::AbstractSBP,
-                                            eqn::EllipticData{Tsol, Tres, Tdim},
-                                            srcFunc::SRCType,
-                                            src::AbstractArray{Tres, 3})
+function calcSource(mesh::AbstractMesh{Tmsh},
+                    sbp::AbstractSBP,
+                    eqn::EllipticData{Tsol, Tres, Tdim},
+                    srcFunc::SRCType,
+                    src::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
   numElems = mesh.numEl
   numNodesPerElement = mesh.numNodesPerElement

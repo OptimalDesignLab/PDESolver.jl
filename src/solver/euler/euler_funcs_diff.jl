@@ -14,12 +14,12 @@
    * assembler: used to assemble the contribution of each element into the
                 Jacobian
 """
-function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+function calcVolumeIntegrals_nopre_diff(
                                    mesh::AbstractMesh{Tmsh},
                                    sbp::AbstractSBP,
                                    eqn::EulerData{Tsol, Tres, Tdim},
                                    opts,
-                                   assembler::AssembleElementData)
+                                   assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
 
@@ -95,12 +95,12 @@ end  # end function
                 Jacobian
   
 """
-function calcVolumeIntegralsStrong_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+function calcVolumeIntegralsStrong_nopre_diff(
                                    mesh::AbstractMesh{Tmsh},
                                    sbp::AbstractSBP,
                                    eqn::EulerData{Tsol, Tres, Tdim},
                                    opts,
-                                   assembler::AssembleElementData)
+                                   assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
   @assert eqn.params.use_Minv != 1  # use_Minv not supported
@@ -177,10 +177,10 @@ end  # end function
 
   Aliasing restrictions: params.p_dot is overwritten
 """
-function calcEulerFlux_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
+function calcEulerFlux_diff(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1},
                       aux_vars::AbstractArray{Tres, 1},
-                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2})
+                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres}
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -230,10 +230,10 @@ function calcEulerFlux_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative
 end
 
 
-function calcEulerFlux_diff{Tmsh, Tsol, Tres}(params::ParamType{3},
+function calcEulerFlux_diff(params::ParamType{3},
                       q::AbstractArray{Tsol,1},
                       aux_vars::AbstractArray{Tres, 1},
-                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2})
+                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres}
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -307,8 +307,8 @@ end
    * pdot: vector of length numDofPerNode, overwritten with derivative of `p` 
            wrt `q`
 """
-function calcPressure_diff{Tsol}(params::ParamType{2, :conservative},
-                            q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} )
+function calcPressure_diff(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} ) where Tsol
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
@@ -326,8 +326,8 @@ end
 
 
 
-function calcPressure_diff{Tsol}(params::ParamType{3, :conservative},
-                            q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} )
+function calcPressure_diff(params::ParamType{3, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} ) where Tsol
   # calculate pressure for a node
 
   t1 = 1/(q[1]*q[1])

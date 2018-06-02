@@ -472,7 +472,7 @@ import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
 
 # define matrix-free precondtioner for testing
 # diagonal preconditioning
-type TestMatFreePC <: AbstractPetscMatFreePC
+mutable struct TestMatFreePC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
   diag::Array{Float64, 1}  # inverse of diagonal of matrix
 end
@@ -535,7 +535,7 @@ end
 
 #------------------------------------------------------------------------------
 # define matrix-explicit PC
-type TestMatPC <: AbstractPetscMatPC
+mutable struct TestMatPC <: AbstractPetscMatPC
   pc_inner::PetscMatPC
 end
 
@@ -570,7 +570,7 @@ end
 # define LO
 
 # define fake matrix-free linear operator for testing
-type TestMatFreeLO <: AbstractPetscMatFreeLO
+mutable struct TestMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::PetscMatFreeLO
   vals::Array{Float64, 2}  # the matrix
 end

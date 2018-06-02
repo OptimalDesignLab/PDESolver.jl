@@ -37,7 +37,7 @@ simpleMesh is a mesh type which generates a rectangular mesh in 2D with triangul
 
 """->
 
-type simpleMesh{T <: FloatingPoint}
+mutable struct simpleMesh{T <: FloatingPoint}
 
   lengthx::FloatingPoint
   lengthy::FloatingPoint
@@ -65,7 +65,7 @@ type simpleMesh{T <: FloatingPoint}
   # numBC::Int  # number of boundary conditions
   
 
-  function simpleMesh(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode)
+  function simpleMesh{T <: FloatingPoint}(lengthx,lengthy,nedx,nedy,nnpe,numDofPerNode) where T <: FloatingPoint
   order = nnpe-1 # Calculate the mesh order
 
   # calculating the members of the type using functions

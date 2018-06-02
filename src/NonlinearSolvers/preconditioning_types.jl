@@ -24,7 +24,7 @@
    * is_factored: if true, volume_jac has been factored (LU with partial
                   pivoting), false otherwise
 """
-type NewtonVolumePC <: AbstractPetscMatFreePC
+mutable struct NewtonVolumePC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
   volume_jac::Array{Float64, 3}
   ipiv::Array{BlasInt, 2}

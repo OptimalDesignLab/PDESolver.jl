@@ -42,7 +42,7 @@ export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
 
     tag_list: collection of all known tags
 """
-type TestList
+mutable struct TestList
   funcs::Vector{Function}  # functions containing the tests
   func_tags::Vector{Vector{String}}  # tags associated with each function
   func_type::Vector{Int}  # enum defining how to run the functino

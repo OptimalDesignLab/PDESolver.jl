@@ -2,7 +2,7 @@
   This function tests GLS for a given state loaded in the eqn object.
   This function is not a test function, but is called by test functions.
 """
-function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+function test_GLS(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts) where {Tsol, Tres, Tmsh}
 
   eqn.params.tau_type = 2
   Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]

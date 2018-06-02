@@ -18,8 +18,8 @@ export ICDict              # exported from ic.jl
 export ode_pre_func, ode_post_func    # exported from simpleODE_func.jl
 
 
-abstract AbstractSimpleODEData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
-abstract SimpleODEData{Tsol, Tres, Tdim} <: AbstractSimpleODEData{Tsol, Tres}
+abstract type AbstractSimpleODEData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres} end
+abstract type SimpleODEData{Tsol, Tres, Tdim} <: AbstractSimpleODEData{Tsol, Tres} end
 
 
 # TODO: which of these
@@ -51,8 +51,8 @@ register_physics(PhysicsName, SimpleODEMod, createObjects, checkOptions)
     M: vector containing mass matrix
 
 """->
-function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                        sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim})
+function calcMassMatrix(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim}) where {Tmsh,  Tsol, Tres, Tdim}
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M
 
@@ -73,16 +73,16 @@ function calcMassMatrix{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 end     # end of calcMassMatrix function
 
 # functions needed to make it compatible with the NonLinearSolvers module
-function matVecA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh}, 
-                     sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
-                     opts, res_arr::AbstractArray{Tsol, 3})
+function matVecA0inv(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
+opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end
 
-function matVecA0{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                  sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
-                  res_arr::AbstractArray{Tsol, 3})
+function matVecA0(mesh::AbstractMesh{Tmsh},
+sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
+res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end

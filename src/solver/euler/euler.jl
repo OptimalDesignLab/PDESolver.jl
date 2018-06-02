@@ -182,8 +182,8 @@ end  # end evalResidual
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
   # println("\nInitializing Euler module")
 
@@ -216,8 +216,8 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
   # Get functors for the boundary conditions
   getBCFunctors_revm(mesh, sbp, eqn, opts)
@@ -231,10 +231,10 @@ function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
-                               mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP,
-                               eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
+function majorIterationCallback(itr::Integer,
+       mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP,
+       eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("Performing major Iteration Callback")
 
@@ -495,8 +495,8 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                     eqn::AbstractEulerData{Tsol, Tres}, opts)
+function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                   eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 # this is almost the exact list of everything we *shouldn't* be storing, but
@@ -635,7 +635,7 @@ end # end function dataPrep
   This is a mid level function.
 """->
 # mid level function
-function checkDensity{Tsol}(eqn::EulerData{Tsol}, mesh)
+function checkDensity(eqn::EulerData{Tsol}, mesh) where Tsol
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -720,8 +720,8 @@ end
 
   This is a mid level function.
 """
-function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
+    sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
   if integral_type == 1  # regular volume integrals
@@ -764,8 +764,8 @@ end  # end evalVolumeIntegrals
   This is a mid level function
 
 """
-function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   #TODO: remove conditional
   if mesh.isDG
@@ -800,8 +800,8 @@ end  # end evalBoundaryIntegrals
   This is a mid level function
 """->
 # mid level function
-function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+function addStabilization(mesh::AbstractMesh{Tmsh},
+             sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
 
@@ -862,8 +862,8 @@ end
     none
 
 """->
-function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+function evalFaceIntegrals(mesh::AbstractDGMesh{Tmsh},
+               sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -982,9 +982,9 @@ end
   Aliasing restrictions: none
 
 """
-function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalSourceTerm(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                     opts)
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # placeholder for multiple source term functionality (similar to how

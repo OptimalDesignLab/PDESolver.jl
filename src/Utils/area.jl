@@ -18,9 +18,9 @@ The Gauss-Divergence theorem is applied to (1/3) ∫∫∫ ∇⋅(x,y,z) dΩ = v
 * `vol`: the updated value for the volume
 
 """->
-function calcVolumeContribution!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
-                                            xsbp::AbstractArray{Tmsh,3},
-                                            nrm::AbstractArray{Tmsh,3})
+function calcVolumeContribution!(sbpface::AbstractFace{Tsbp},
+                                 xsbp::AbstractArray{Tmsh,3},
+                                 nrm::AbstractArray{Tmsh,3}) where {Tsbp,Tmsh}
   @assert( sbpface.numnodes == size(xsbp,2) == size(nrm,2) )
   @assert( size(xsbp,3) == size(nrm,3) )
   @assert( size(xsbp,1) == size(nrm,1) )
@@ -39,7 +39,7 @@ end
   This function computes the volume contribution of a set of faces, where the
   set of faces is given by which boundary condition they have applied to them.
 """
-function calcVolumeContribution!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1})
+function calcVolumeContribution!(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}) where Tmsh
 # compute the volume contribution for the faces associated with a set of
 # boundary conditions
 
@@ -62,7 +62,7 @@ function calcVolumeContribution!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSo
   return vol
 end
 
-function calcVolumeContribution_rev!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, vol_bar::Tmsh)
+function calcVolumeContribution_rev!(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, vol_bar::Tmsh) where Tmsh
 
   vol = zero(Tmsh)
   for i=1:length(bndry_nums)
@@ -101,9 +101,9 @@ end
   Outputs: nrm: mesh.dim x mesh.numNodesPerFace x length(bndryfaces) array 
                 containing the normal vectors
 """
-function computeNormal{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData,
-                             bndryfaces::AbstractArray{Boundary, 1},
-                             dxidx::AbstractArray{Tmsh, 4})
+function computeNormal(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData,
+                       bndryfaces::AbstractArray{Boundary, 1},
+                       dxidx::AbstractArray{Tmsh, 4}) where Tmsh
 
   if typeof(mesh) <: AbstractDGMesh
     @assert mesh.coord_order == 1
@@ -129,11 +129,11 @@ end
   This function uses reverse mode to back propigate perturbations in nrm to 
   dxidx_bndry
 """
-function computeNormal_rev{Tmsh}(mesh::AbstractMesh, eqn::AbstractSolutionData,
-                                 bndryfaces::AbstractArray{Boundary, 1},
-                                 nrm_bar::Abstract3DArray{Tmsh},
-                                 dxidx::AbstractArray{Tmsh, 4},
-                                 dxidx_bar::AbstractArray{Tmsh, 4})
+function computeNormal_rev(mesh::AbstractMesh, eqn::AbstractSolutionData,
+                           bndryfaces::AbstractArray{Boundary, 1},
+                           nrm_bar::Abstract3DArray{Tmsh},
+                           dxidx::AbstractArray{Tmsh, 4},
+                           dxidx_bar::AbstractArray{Tmsh, 4}) where Tmsh
   if typeof(mesh) <: AbstractDGMesh
     @assert mesh.coord_order == 1
   end
@@ -174,12 +174,12 @@ variables.
 * `nrm_bar`: result of vector Jacobian product; [component, sbp node, face]
 
 """->
-function calcVolumeContribution_rev!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
-                                                xsbp::AbstractArray{Tmsh,3},
-                                                xsbp_bar::AbstractArray{Tmsh,3},
-                                                nrm::AbstractArray{Tmsh,3},
-                                                nrm_bar::AbstractArray{Tmsh,3},
-                                                vol_bar::Tmsh)
+function calcVolumeContribution_rev!(sbpface::AbstractFace{Tsbp},
+                                     xsbp::AbstractArray{Tmsh,3},
+                                     xsbp_bar::AbstractArray{Tmsh,3},
+                                     nrm::AbstractArray{Tmsh,3},
+                                     nrm_bar::AbstractArray{Tmsh,3},
+                                     vol_bar::Tmsh) where {Tsbp,Tmsh}
   @assert( sbpface.numnodes == size(xsbp,2) == size(xsbp_bar,2) == size(nrm,2)
            == size(nrm_bar,2) )
   @assert( size(xsbp,3) == size(xsbp_bar,3) == size(nrm,3) == size(nrm_bar,3) )
@@ -217,9 +217,9 @@ end
 * `projarea`: the updated value for projected area
 
 """->
-function calcProjectedAreaContribution!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp},
-                                                   nrm::AbstractArray{Tmsh,3},
-                                                   di::Int)
+function calcProjectedAreaContribution!(sbpface::AbstractFace{Tsbp},
+                                        nrm::AbstractArray{Tmsh,3},
+                                        di::Int) where {Tsbp,Tmsh}
   @assert( sbpface.numnodes == size(nrm,2) )
   projarea = zero(Tmsh)
   for f = 1:size(nrm,3)
@@ -234,7 +234,7 @@ end
   This function computes the volume contribution of a set of faces, where the
   set of faces is given by which boundary condition they have applied to them.
 """
-function calcProjectedAreaContribution!{Tmsh}(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, di::Int)
+function calcProjectedAreaContribution!(mesh::AbstractMesh{Tmsh}, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, di::Int) where Tmsh
 
   proj_area = zero(Tmsh)
   for i=1:length(bndry_nums)
@@ -276,8 +276,8 @@ method.  This function is differentiated with respect to the primal version's
 * `nrm_bar`: result of vector Jacobian product; [component, sbp node, face]
 
 """->
-function calcProjectedAreaContribution_rev!{Tsbp,Tmsh}(sbpface::AbstractFace{Tsbp}, nrm::AbstractArray{Tmsh,3},
-    nrm_bar::AbstractArray{Tmsh,3}, di::Int, projarea_bar::Tmsh)
+function calcProjectedAreaContribution_rev!(sbpface::AbstractFace{Tsbp}, nrm::AbstractArray{Tmsh,3},
+    nrm_bar::AbstractArray{Tmsh,3}, di::Int, projarea_bar::Tmsh) where {Tsbp,Tmsh}
   @assert( sbpface.numnodes == size(nrm,2) == size(nrm_bar,2) )
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
@@ -296,7 +296,7 @@ end
 """
   Back propigate projarea_bar to mesh.dxidx_bndry_bar
 """
-function calcProjectedAreaContribution_rev!{Tmsh}(mesh::AbstractMesh, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, di::Int,  projarea_bar::Tmsh)
+function calcProjectedAreaContribution_rev!(mesh::AbstractMesh, eqn::AbstractSolutionData, bndry_nums::Array{Int, 1}, di::Int,  projarea_bar::Tmsh) where Tmsh
 
   
   for i=1:length(bndry_nums)
@@ -319,16 +319,16 @@ function calcProjectedAreaContribution_rev!{Tmsh}(mesh::AbstractMesh, eqn::Abstr
 end
   
 
-function crossProd{T}(x::AbstractArray{T,1}, y::AbstractArray{T,1},
-                      cp::AbstractArray{T,1})
+function crossProd(x::AbstractArray{T,1}, y::AbstractArray{T,1},
+                   cp::AbstractArray{T,1}) where T
   cp[1] = x[2]*y[3] - y[2]*x[3]
   cp[2] = x[3]*y[1] - y[3]*x[1]
   cp[3] = x[1]*y[2] - y[1]*x[2]
 end
 
-function crossProd_rev{T}(x::AbstractArray{T,1}, x_bar::AbstractArray{T,1},
-                          y::AbstractArray{T,1}, y_bar::AbstractArray{T,1},
-                          cp_bar::AbstractArray{T,1})
+function crossProd_rev(x::AbstractArray{T,1}, x_bar::AbstractArray{T,1},
+                       y::AbstractArray{T,1}, y_bar::AbstractArray{T,1},
+                       cp_bar::AbstractArray{T,1}) where T
   #cp[1] = x[2]*y[3] - y[2]*x[3]
   x_bar[2] +=  y[3]*cp_bar[1]
   y_bar[3] +=  x[2]*cp_bar[1]

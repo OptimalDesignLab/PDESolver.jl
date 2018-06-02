@@ -1,4 +1,4 @@
-type twoxBC <: BCType
+mutable struct twoxBC <: BCType
 end
 function (obj::twoxBC)(params::AdvectionEquationMod.ParamType, u, coords, nrm, t)
   u_bc = 2*coords[1]

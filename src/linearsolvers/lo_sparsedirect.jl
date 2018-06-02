@@ -8,7 +8,7 @@
 
    * A: the matrix
 """
-type SparseDirectLO <: AbstractSparseDirectLO
+mutable struct SparseDirectLO <: AbstractSparseDirectLO
   A::SparseMatrixCSC{Float64, Int64}
   fac::UmfpackLU{Float64, Int64}
   is_setup::Array{Bool, 1}

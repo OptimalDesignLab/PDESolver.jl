@@ -33,7 +33,7 @@ global const CheckpointData_fname = "checkpointdata"
 
   There are no required fields for this type
 """
-abstract AbstractCheckpointData
+abstract type AbstractCheckpointData end
 
 
 """
@@ -63,7 +63,7 @@ abstract AbstractCheckpointData
               used, unused entries set to -1
 
 """
-type Checkpointer
+mutable struct Checkpointer
   ncheckpoints::Int  # number of checkpoints
   paths::Array{String, 1}  # paths to the directories
   status::Array{Int, 1}  # is checkpoint free

@@ -58,11 +58,11 @@ end
   face via complex step (using eqn.params_complex).  This should be replaced
   with dual numbers eventually
 """
-function calcBoundaryFlux_nopre_diff{Tsol1, Tres1, Tmsh}(mesh::AbstractDGMesh{Tmsh},
+function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol1, Tres1},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
-                          assembler::AssembleElementData)
+                          assembler::AssembleElementData) where {Tsol1, Tres1, Tmsh}
   # calculate the jacobian of the boundary flux for the boundary condition
   # evaluated by the functor
   # because we are complex stepping the boundary condition and Tsol is usually

@@ -1,16 +1,16 @@
 # test Utils module
-type TestParams{Tdim} <: AbstractParamType{Tdim}
+mutable struct TestParams{Tdim} <: AbstractParamType{Tdim}
   time::Timings
 end
 
-type TestData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+mutable struct TestData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
   params::TestParams{2}
   M::Array{Float64, 1}
   Minv::Array{Float64, 1}
   comm::MPI.Comm
 end
 
-type TestMesh{Tmsh} <: AbstractMesh{Tmsh}
+mutable struct TestMesh{Tmsh} <: AbstractMesh{Tmsh}
   jac::AbstractArray{Float64, 2}
   dofs::AbstractArray{Int, 3}
   comm::MPI.Comm
@@ -23,7 +23,7 @@ type TestMesh{Tmsh} <: AbstractMesh{Tmsh}
   dim::Int
 end
 
-type FakeSBP
+mutable struct FakeSBP
 end
 
 """

@@ -3,7 +3,7 @@ function TestIC(mesh, sbp, eqn, opts, q_vec)
   println("hello world")
 end
 
-type TestBCType <: BCType
+mutable struct TestBCType <: BCType
 end
 
 function (obj::TestBCType)()

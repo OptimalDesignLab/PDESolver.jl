@@ -26,13 +26,13 @@ export AdvectionData, AdvectionData_, run_advection #getMass, array3DTo1D, array
   Direct subtype of [`AbstractSolutionData`](@ref), inheriting `Tsol` and
   `Tres` as static parameter
 """
-abstract AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
+abstract type AbstractAdvectionData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres} end
 
 """
   Subtype of [`AbstractAdvectionData`](@ref), inheriting its static parameters
   and adding `Tdim`.
 """
-abstract AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres}
+abstract type AdvectionData{Tsol, Tres, Tdim} <: AbstractAdvectionData{Tsol, Tres} end
 
 include("types.jl")
 include("functionals.jl")

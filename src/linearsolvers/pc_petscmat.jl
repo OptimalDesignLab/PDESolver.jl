@@ -7,7 +7,7 @@
 
    * A: a PetscMat object used to calculate the preconditioner
 """
-type PetscMatPC <: AbstractPetscMatPC
+mutable struct PetscMatPC <: AbstractPetscMatPC
   pc::PC  # Petsc PC object
   A::PetscMat  # Petsc Mat object
   xtmp::PetscVec  # reusable temporary vector

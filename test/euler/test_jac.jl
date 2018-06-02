@@ -228,7 +228,7 @@ end
 add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
-function test_pressure{Tdim}(params::AbstractParamType{Tdim})
+function test_pressure(params::AbstractParamType{Tdim}) where Tdim
 
 
   if Tdim == 2
@@ -259,7 +259,7 @@ function test_pressure{Tdim}(params::AbstractParamType{Tdim})
 end
 
 
-function test_eulerflux{Tdim}(params::AbstractParamType{Tdim})
+function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
 
   if Tdim == 2
     nrm = [0.45, 0.55]
@@ -296,8 +296,8 @@ function test_eulerflux{Tdim}(params::AbstractParamType{Tdim})
   @fact maximum(abs(res - res2)) --> roughly(0.0, atol=1e-14)
 end
 
-function test_lambda{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
-                           nrm::AbstractVector)
+function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
+                     nrm::AbstractVector) where Tdim
 
 
   lambda_dot = zeros(qL)
@@ -318,9 +318,9 @@ function test_lambda{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
   return nothing
 end
 
-function test_lambdasimple{Tdim}(params::AbstractParamType{Tdim}, qL::AbstractVector,
-                                 qR::AbstractVector,
-                                 nrm::AbstractVector)
+function test_lambdasimple(params::AbstractParamType{Tdim}, qL::AbstractVector,
+                           qR::AbstractVector,
+                           nrm::AbstractVector) where Tdim
 
 
   lambda_dotL = zeros(qL)
@@ -366,8 +366,8 @@ end
    * func: the original function
    * func_diff: the differentiated version
 """
-function test_ad_inner{Tdim}(params::AbstractParamType{Tdim}, qL, qR, nrm,
-                             func, func_diff, output=false)
+function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
+                       func, func_diff, output=false) where Tdim
 
   # compute jacobian with complex step and AD, compare results
 

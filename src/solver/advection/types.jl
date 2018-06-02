@@ -12,7 +12,7 @@
   This is a container passed to all low level function, useful for storing
   miscellaneous parameters or constants
 """
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
+mutable struct ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
   alpha_y::Float64
@@ -102,17 +102,17 @@ end
 """
   Convenient alias for all 2D ParamTypes
 """
-typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
+ParamType2{Tsol, Tres} =  ParamType{Tsol, Tres, 2}
 
 """
   Convenient alias for all 3D ParamTypes
 """
-typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
+ParamType3{Tsol, Tres} =  ParamType{Tsol, Tres, 3}
 
 """
   All ParamTypes, without static parameters specified
 """
-typealias ParamTypes Union{ParamType2, ParamType3}
+const ParamTypes = Union{ParamType2, ParamType3}
 
 """
 ### AdvectionEquationMod.AdvectionData_
@@ -126,7 +126,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
   This type is (ultimately) a subtype of [`AbstractSolutionData`](@ref) 
   and contains all the required fields.
 """
-type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
+mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
   params::ParamType{Tsol, Tres, Tdim}
@@ -273,7 +273,7 @@ Gets the type parameters for mesh and equation objects.
 * `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
 
 """->
-function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts)
+function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   tuple = (Tsol, Tres, Tdim, Tmsh)
 

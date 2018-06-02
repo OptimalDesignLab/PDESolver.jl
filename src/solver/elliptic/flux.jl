@@ -4,11 +4,11 @@ export interpolateFace
 # TODO: a higher level function
 #
 
-function calcGradient{Tmsh, Tsol, Tres, Tdim, Tsbp}(mesh::AbstractDGMesh{Tmsh},
-                                                    sbp::AbstractSBP{Tsbp},
-                                                    eqn::EllipticData{Tsol, Tres, Tdim},
-                                                    q::AbstractArray{Tsol, 3},
-                                                    q_grad::AbstractArray{Tsol, 4})
+function calcGradient(mesh::AbstractDGMesh{Tmsh},
+                      sbp::AbstractSBP{Tsbp},
+                      eqn::EllipticData{Tsol, Tres, Tdim},
+                      q::AbstractArray{Tsol, 3},
+                      q_grad::AbstractArray{Tsol, 4}) where {Tmsh, Tsol, Tres, Tdim, Tsbp}
   @assert(size(q, 3) == mesh.numEl)
   @assert(size(q, 2) == mesh.numNodesPerElement)
   @assert(size(q, 1) == mesh.numDofPerNode)
@@ -44,22 +44,22 @@ function calcGradient{Tmsh, Tsol, Tres, Tdim, Tsbp}(mesh::AbstractDGMesh{Tmsh},
   end
 end
 
-function interpolateFace{Tsol}(mesh::AbstractDGMesh,
-                               sbp,
-                               eqn,
-                               opts,
-                               q::Abstract3DArray,
-                               q_face::AbstractArray{Tsol, 4})
+function interpolateFace(mesh::AbstractDGMesh,
+                         sbp,
+                         eqn,
+                         opts,
+                         q::Abstract3DArray,
+                         q_face::AbstractArray{Tsol, 4}) where Tsol
   # interpolate solution
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, q, q_face)
 end
 
-function interpolateFace{Tsol, Tres, Tdim}(mesh::AbstractDGMesh,
-                                           sbp,
-                                           eqn::EllipticData{Tsol, Tres, Tdim},
-                                           opts,
-                                           grad::AbstractArray{Tsol, 4},
-                                           grad_face::AbstractArray{Tsol, 5})
+function interpolateFace(mesh::AbstractDGMesh,
+                         sbp,
+                         eqn::EllipticData{Tsol, Tres, Tdim},
+                         opts,
+                         grad::AbstractArray{Tsol, 4},
+                         grad_face::AbstractArray{Tsol, 5}) where {Tsol, Tres, Tdim}
   # interpolate gradient of solution
   for d=1: Tdim
     dqdx = sview(grad, :, :, :, d)
@@ -71,14 +71,14 @@ end
 #
 # Calculate flux at edge cubature points using face-based form.
 #
-function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                                     sbp::AbstractSBP,
-                                                     eqn::EllipticData{Tsol, Tres, Tdim},
-                                                     opts,
-                                                     interfaces::AbstractArray{Interface,1},
-                                                     xflux_face::AbstractArray{Tres, 3},
-                                                     yflux_face::AbstractArray{Tres, 3},
-                                                     flux_face::AbstractArray{Tres, 3})
+function calcFaceFlux(mesh::AbstractDGMesh{Tmsh},
+                             sbp::AbstractSBP,
+                             eqn::EllipticData{Tsol, Tres, Tdim},
+                             opts,
+                             interfaces::AbstractArray{Interface,1},
+                             xflux_face::AbstractArray{Tres, 3},
+                             yflux_face::AbstractArray{Tres, 3},
+                             flux_face::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
   nfaces = length(interfaces)
   penalty_method = opts["Flux_name"]

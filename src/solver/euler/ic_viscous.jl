@@ -20,11 +20,11 @@ Aliasing restrictions: none.
 
 """->
 
-function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                        sbp::AbstractSBP{Tsbp}, 
-                                        eqn::EulerData{Tsol, Tsol, 3}, 
-                                        opts, 
-                                        u0::AbstractVector{Tsol})
+function ICPolynomial(mesh::AbstractMesh{Tmsh}, 
+                      sbp::AbstractSBP{Tsbp}, 
+                      eqn::EulerData{Tsol, Tsol, 3}, 
+                      opts, 
+                      u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   sigma = 0.01
   params = eqn.params
   gamma = params.gamma
@@ -73,11 +73,11 @@ function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   end
 end
 
-function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                        sbp::AbstractSBP{Tsbp}, 
-                                        eqn::EulerData{Tsol, Tsol, 2}, 
-                                        opts, 
-                                        u0::AbstractVector{Tsol})
+function ICPolynomial(mesh::AbstractMesh{Tmsh}, 
+                      sbp::AbstractSBP{Tsbp}, 
+                      eqn::EulerData{Tsol, Tsol, 2}, 
+                      opts, 
+                      u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
   sigma   = 0.01
@@ -128,11 +128,11 @@ function ICPolynomial{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end
 
-function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                     operator::AbstractSBP{Tsbp}, 
-                                     eqn::EulerData{Tsol, Tsol, 3}, 
-                                     opts, 
-                                     u0::AbstractVector{Tsol})
+function ICChannel(mesh::AbstractMesh{Tmsh}, 
+                   operator::AbstractSBP{Tsbp}, 
+                   eqn::EulerData{Tsol, Tsol, 3}, 
+                   opts, 
+                   u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
   Tdim = 3
@@ -195,11 +195,11 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
-function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                     operator::AbstractSBP{Tsbp}, 
-                                     eqn::EulerData{Tsol, Tsol, 2}, 
-                                     opts, 
-                                     u0::AbstractVector{Tsol})
+function ICChannel(mesh::AbstractMesh{Tmsh}, 
+                   operator::AbstractSBP{Tsbp}, 
+                   eqn::EulerData{Tsol, Tsol, 2}, 
+                   opts, 
+                   u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
   dim = 2
@@ -252,11 +252,11 @@ function ICChannel{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
-function ICDoubleSquare{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                          operator::AbstractSBP{Tsbp}, 
-                                          eqn::EulerData{Tsol, Tsol, 2}, 
-                                          opts, 
-                                          u0::AbstractVector{Tsol})
+function ICDoubleSquare(mesh::AbstractMesh{Tmsh}, 
+                        operator::AbstractSBP{Tsbp}, 
+                        eqn::EulerData{Tsol, Tsol, 2}, 
+                        opts, 
+                        u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
   sigma = 0.01
@@ -331,11 +331,11 @@ function ICDoubleSquare{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
-function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                                           operator::AbstractSBP{Tsbp}, 
-                                           eqn::EulerData{Tsol, Tsol, 2}, 
-                                           opts, 
-                                           u0::AbstractVector{Tsol})
+function ICTrigonometric(mesh::AbstractMesh{Tmsh}, 
+                         operator::AbstractSBP{Tsbp}, 
+                         eqn::EulerData{Tsol, Tsol, 2}, 
+                         opts, 
+                         u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
   sigma = 0.01
@@ -400,11 +400,11 @@ function ICTrigonometric{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
-function ICTrigonometric{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                                                 operator::AbstractSBP{Tsbp}, 
-                                                 eqn::EulerData{Tsol, Tres, 3}, 
-                                                 opts, 
-                                                 u0::AbstractVector{Tsol})
+function ICTrigonometric(mesh::AbstractMesh{Tmsh}, 
+                         operator::AbstractSBP{Tsbp}, 
+                         eqn::EulerData{Tsol, Tres, 3}, 
+                         opts, 
+                         u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
   # populate u0 with initial values
   # this is a template for all other initial conditions
   sigma = 0.0001

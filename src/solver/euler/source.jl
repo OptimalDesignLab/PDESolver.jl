@@ -52,7 +52,7 @@ end
 
 
 
-type SRC0 <: SRCType  # dummy source functor, it should nevery actually be called
+mutable struct SRC0 <: SRCType  # dummy source functor, it should nevery actually be called
 end
 
 @doc """
@@ -61,7 +61,7 @@ end
   This is the zero source term.  This is the default of source term
   is specified
 """->
-type SRCExp <: SRCType
+mutable struct SRCExp <: SRCType
 end
 
 function (obj::SRCExp)(q::AbstractVector, coords::AbstractVector, params::ParamType{2}, t)
@@ -181,7 +181,7 @@ end
 """
   Functor for source term corresponding to ICPeriodicMMS
 """
-type SRCPeriodicMMS <: SRCType
+mutable struct SRCPeriodicMMS <: SRCType
 end
 
 function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector, 
