@@ -1,7 +1,7 @@
 # convergence/runtests.jl
 # this file runs all the convergence tests
 
-include("calc_line_old.jl")
+include("calc_line.jl")
 include("calc_line2.jl")
 
 include("./p1/conservative/runtests.jl")
