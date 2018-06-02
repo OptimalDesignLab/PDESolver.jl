@@ -38,11 +38,11 @@ function installPDESolver()
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
   std_pkgs = [
-              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "master";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "master";
-              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.4"
+#              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "upgrade_0.5";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_update_0.5";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "update_0.5";
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "upgrade_v0.5"
               ]
 
 
@@ -99,7 +99,7 @@ function installPDESolver()
 #              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
               ]
               
-  
+#=  
     println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)
 
@@ -120,7 +120,7 @@ function installPDESolver()
     end
 
     println(f, "\n---Finished manual package installations---\n")
-
+=#
   close(f)
 
   # generate the known_keys dictonary
