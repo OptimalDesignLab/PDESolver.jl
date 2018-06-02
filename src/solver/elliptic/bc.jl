@@ -4,7 +4,7 @@ export isDirichlet, isNeumann
 
 type DirichletAllZero <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletAllZero,
+function (obj::DirichletAllZero){Tmsh, Tsol}(
                           xy::AbstractArray{Tmsh},
                           gD::AbstractArray{Tsol, 1})  # (numDofPerNode))
   gD[:] = 0.0
@@ -13,7 +13,7 @@ end
 
 type DirichletAllOne <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletAllOne,
+function (obj::DirichletAllOne){Tmsh, Tsol}(
                           xy::AbstractArray{Tmsh},
                           gD::AbstractArray{Tsol, 1})  # (numDofPerNode)
   gD[:] = 1.0
@@ -22,7 +22,7 @@ end
 
 type DirichletTrig <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletTrig, 
+function (obj::DirichletTrig){Tmsh, Tsol}(
                           xy::AbstractArray{Tmsh}, 
                           q::AbstractArray{Tsol, 1})  # (numDofPerNode))
   k = 2.0
@@ -35,7 +35,7 @@ end
 
 type DirichletPolynial2nd <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletPolynial2nd,
+function (obj::DirichletPolynial2nd){Tmsh, Tsol}(
                           xy::AbstractArray{Tmsh},
                           gD::AbstractArray{Tsol, 1})  # (numDofPerNode)
   a = 1.0
@@ -49,7 +49,7 @@ end
 type NeumannAllZero <: AbstractNeumannBC
 end
 
-function call{Tmsh, Tsol}(obj::NeumannAllZero,
+function (obj::NeumannAllZero){Tmsh, Tsol}(
                           xy::AbstractArray{Tmsh, 1},
                           gN::AbstractArray{Tsol, 1})  # (numDofPerNode)
   gN[:] = 1.0
@@ -59,7 +59,7 @@ end
 type NeumannAllOne <: AbstractNeumannBC
 end
 
-function call{Tmsh, Tsol}(obj::NeumannAllOne,
+function (obj::NeumannAllOne){Tmsh, Tsol}(
                           xy::AbstractArray{Tmsh, 1},
                           gN::AbstractArray{Tsol, 1})  # (numDofPerNode)
   gN[:] = 1.0

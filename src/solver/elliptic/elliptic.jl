@@ -25,9 +25,9 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   # interpolate diffusion from elements to faces
   for d2 = 1 : dim
     for d1 = 1 : dim
-      lambda_elem = slice(eqn.lambda, d1, d2, :, :, :)
-      lambda_face = slice(eqn.lambda_face, d1, d2, :, :, :, :)
-      lambda_bndry = slice(eqn.lambda_bndry, d1, d2, :, :, :)
+      lambda_elem = Base.view(eqn.lambda, d1, d2, :, :, :)
+      lambda_face = Base.view(eqn.lambda_face, d1, d2, :, :, :, :)
+      lambda_bndry = Base.view(eqn.lambda_bndry, d1, d2, :, :, :)
       interpolateFace(mesh, sbp, eqn, opts, lambda_elem, lambda_face)
       interpolateBoundary(mesh, sbp, eqn, opts, lambda_elem, lambda_bndry)
 
@@ -104,9 +104,9 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 
   # for d2 = 1 : dim
   # for d1 = 1 : dim
-  # lambda_elem = slice(eqn.lambda, d1, d2, :, :, :)
-  # lambda_face = slice(eqn.lambda_face, d1, d2, :, :, :, :)
-  # lambda_bndry = slice(eqn.lambda_bndry, d1, d2, :, :, :)
+  # lambda_elem = view(eqn.lambda, d1, d2, :, :, :)
+  # lambda_face = view(eqn.lambda_face, d1, d2, :, :, :, :)
+  # lambda_bndry = view(eqn.lambda_bndry, d1, d2, :, :, :)
   # interpolateFace(mesh, sbp, eqn, opts, lambda_elem, lambda_face)
   # interpolateBoundary(mesh, sbp, eqn, opts, lambda_elem, lambda_bndry)
 

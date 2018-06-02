@@ -300,16 +300,16 @@ function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
   # calcGradient(mesh, sbp, elemL, qL, dqdx_eL)
   # calcGradient(mesh, sbp, elemR, qR, dqdx_eR)
   # for d = 1 : Tdim
-    # dqdxL = slice(dqdx_elemL, d, :, :)
-    # dqdxR = slice(dqdx_elemR, d, :, :)
-    # dqdx_f = slice(dqdx_face, d, :, :, :)
+    # dqdxL = Base.view(dqdx_elemL, d, :, :)
+    # dqdxR = Base.view(dqdx_elemR, d, :, :)
+    # dqdx_f = Base.view(dqdx_face, d, :, :, :)
     # interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
   # end
   # # Now both G and dqdx are avaiable at face nodes  
-  # dqdx_faceL = slice(dqdx_face, :, :, 1, :)
-  # dqdx_faceR = slice(dqdx_face, :, :, 2, :)
-  # Fv_faceL = slice(Fv_face, :, :, 1, :)
-  # Fv_faceR = slice(Fv_face, :, :, 2, :)
+  # dqdx_faceL = Base.view(dqdx_face, :, :, 1, :)
+  # dqdx_faceR = Base.view(dqdx_face, :, :, 2, :)
+  # Fv_faceL = Base.view(Fv_face, :, :, 1, :)
+  # Fv_faceR = Base.view(Fv_face, :, :, 2, :)
   # calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
   # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
   # return nothing
@@ -324,9 +324,9 @@ function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
   # calcFvis_elem_direct(params, sbp, qL, dxidxL, jacL, Fv_eL)
   # calcFvis_elem_direct(params, sbp, qR, dxidxR, jacR, Fv_eR)
   # for d = 1 : Tdim
-    # Fv_eL_d = slice(Fv_eL, d, :, :)
-    # Fv_eR_d = slice(Fv_eR, d, :, :)
-    # Fv_face_d = slice(Fv_face, d, :, :, :)
+    # Fv_eL_d = Base.view(Fv_eL, d, :, :)
+    # Fv_eR_d = Base.view(Fv_eR, d, :, :)
+    # Fv_face_d = Base.view(Fv_face, d, :, :, :)
     # interiorfaceinterpolate(sbpface, face, Fv_eL_d, Fv_eR_d, Fv_face_d)
   # end
 
@@ -341,9 +341,9 @@ function calcFaceFvis{Tsol, Tmsh, Tdim}(params::ParamType{Tdim, :conservative},
   # dimension, then we will not need slice here any more.
   #
   for d = 1 : Tdim
-    Fv_eL_d = slice(Fv_eL, d, :, :)
-    Fv_eR_d = slice(Fv_eR, d, :, :)
-    Fv_face_d = slice(Fv_face, d, :, :, :)
+    Fv_eL_d = Base.view(Fv_eL, d, :, :)
+    Fv_eR_d = Base.view(Fv_eR, d, :, :)
+    Fv_face_d = Base.view(Fv_face, d, :, :, :)
     interiorfaceinterpolate(sbpface, face, Fv_eL_d, Fv_eR_d, Fv_face_d)
   end
 

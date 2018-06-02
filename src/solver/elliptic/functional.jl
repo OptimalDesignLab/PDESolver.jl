@@ -2,7 +2,7 @@ abstract AbstractFunctional
 
 type volumeAverage <: AbstractFunctional
 end
-function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
+function (obj::volumeAverage){Tmsh, Tsol, Tres, Tdim}(
                                       mesh::AbstractMesh{Tmsh},
                                       sbp::AbstractSBP,
                                       eqn::EllipticData{Tsol, Tres, Tdim},
@@ -26,7 +26,7 @@ end
 
 type volumeEnergy <: AbstractFunctional
 end
-function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeEnergy,
+function (obj::volumeEnergy){Tmsh, Tsol, Tres, Tdim}(
                                       mesh::AbstractMesh{Tmsh},
                                       sbp::AbstractSBP,
                                       eqn::EllipticData{Tsol, Tres, Tdim},

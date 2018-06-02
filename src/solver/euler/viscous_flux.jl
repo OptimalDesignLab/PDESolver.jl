@@ -70,8 +70,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # It's logically simple but computationally expensive.
 
     # compute viscous flux and diffusion tensor
-    q_faceL = slice(eqn.q_face, :, 1, :, f)
-    q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
+    # Arrayviews returns a n x 1 x m array (ie. 3D, not 2D), so don't use it
+    q_faceL = Base.view(eqn.q_face, :, 1, :, f)
+    q_faceR = Base.view(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
     q_elemL = sview(eqn.q, :, :, elemL)
     q_elemR = sview(eqn.q, :, :, elemR)
     calcDiffusionTensor(eqn.params, q_faceL, GtL)
@@ -93,15 +94,15 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # then we will not need slice here any more.
     #
     # for d = 1 : Tdim
-      # dqdxL = slice(dqdx_elemL, d, :, :)
-      # dqdxR = slice(dqdx_elemR, d, :, :)
-      # dqdx_f = slice(dqdx_face, d, :, :, :)
+      # dqdxL = view(dqdx_elemL, d, :, :)
+      # dqdxR = view(dqdx_elemR, d, :, :)
+      # dqdx_f = view(dqdx_face, d, :, :, :)
       # interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
     # end
 
     # # Now both G and dqdx are avaiable at face nodes  
-    # dqdx_faceL = slice(dqdx_face, :, :, 1, :)
-    # dqdx_faceR = slice(dqdx_face, :, :, 2, :)
+    # dqdx_faceL = view(dqdx_face, :, :, 1, :)
+    # dqdx_faceR = view(dqdx_face, :, :, 2, :)
     # calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
     # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
 
@@ -113,8 +114,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
     Fv_faceL = sview(Fv_face, :,:,1,:)
     Fv_faceR = sview(Fv_face, :,:,2,:)
-    # diffL = maximum(abs(real(slice(Fv_face, :, :, 1, :) - Fv_faceL)))
-    # diffR = maximum(abs(real(slice(Fv_face, :, :, 2, :) - Fv_faceR)))
+    # diffL = maximum(abs(real(view(Fv_face, :, :, 1, :) - Fv_faceL)))
+    # diffR = maximum(abs(real(view(Fv_face, :, :, 2, :) - Fv_faceR)))
     # if (diffL > 1.e-8)
         # println(diffL)
     # end
@@ -309,8 +310,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       # then we will not need slice here any more.
       #
       for d = 1 : Tdim
-        q_x_node = slice(dqdx_elem, d, :, :)
-        q_x_face = slice(dqdx_face, d, :, :)
+        q_x_node = Base.view(dqdx_elem, d, :, :)
+        q_x_face = Base.view(dqdx_face, d, :, :)
         boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
       end
 

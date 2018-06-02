@@ -5,7 +5,7 @@ export ExactSolutionType, ExactTrig, calcErrorL2Norm
 
 type ExactTrig <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactTrig, xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})  # (numDofPerNode))
+function (obj::ExactTrig){Tmsh, Tsol}(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})  # (numDofPerNode))
   k = 2.0
   q[:] = sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
   return nothing
@@ -13,7 +13,7 @@ end
 
 type ExactExpTrig <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactExpTrig, xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})  # (numDofPerNode))
+function (obj::ExactExpTrig){Tmsh, Tsol}(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})  # (numDofPerNode))
   k = 2.0
   ex = exp(xy[1] + xy[2])
   q[:] = ex * sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
@@ -22,7 +22,7 @@ end
 
 type ExactPoly2nd <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPoly2nd, xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})
+function (obj::ExactPoly2nd){Tmsh, Tsol}(xy::AbstractArray{Tmsh}, q::AbstractArray{Tsol, 1})
   a = 1.0
   b = 1.0
   c = 1.0

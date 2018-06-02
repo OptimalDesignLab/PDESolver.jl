@@ -48,8 +48,8 @@ function test_viscous()
         fill!(GtL, 0.0)
         fill!(GtR, 0.0)
 
-        q_faceL = slice(eqn.q_face, :, 1, :, interface)
-        q_faceR = slice(eqn.q_face, :, 2, :, interface)
+        q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
+        q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
 
         EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
         EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)

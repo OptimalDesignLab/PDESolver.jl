@@ -1,7 +1,7 @@
 
 type SRC0 <: SRCType
 end
-function call(obj::SRC0, 
+function (obj::SRC0)(
               xy::AbstractVector, 
               f::AbstractArray)
   f[:] = 0.0
@@ -10,7 +10,7 @@ end
 
 type SRC1 <: SRCType
 end
-function call(obj::SRC1, 
+function (obj::SRC1, 
               xy::AbstractVector, 
               f::AbstractArray)
   f[:] = 1.0
@@ -22,7 +22,7 @@ end
 #
 type SrcExpTrigPoly0thDiffn <: SRCType
 end
-function call(obj::SrcExpTrigPoly0thDiffn, 
+function (obj::SrcExpTrigPoly0thDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   k = 2.0
@@ -39,7 +39,7 @@ end
 #
 type SrcTrigPoly0thDiffn <: SRCType
 end
-function call(obj::SrcTrigPoly0thDiffn, 
+function (obj::SrcTrigPoly0thDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   n = 2.0
@@ -56,7 +56,7 @@ end
 #
 type SrcTrigPoly2ndDiffn <: SRCType
 end
-function call(obj::SrcTrigPoly2ndDiffn, 
+function (obj::SrcTrigPoly2ndDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   n = 2.0
@@ -82,7 +82,7 @@ end
 #
 type SrcTrigPoly6thDiffn <: SRCType
 end
-function call(obj::SrcTrigPoly6thDiffn, 
+function (obj::SrcTrigPoly6thDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   n = 2.0

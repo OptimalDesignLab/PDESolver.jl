@@ -336,8 +336,7 @@ function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, mesh.numNodesPerFace, Tdim)
   area = zeros(Tmsh, mesh.numNodesPerFace)
-  face_area::Tmsh
-  face_area = 0.0
+  face_area = zero(Tmsh)
   sbpface = mesh.sbpface
 
   #

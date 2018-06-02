@@ -2,9 +2,9 @@ abstract AbstractDiffn
 
 type DiffnPoly2nd<: AbstractDiffn
 end
-function call{Tmsh, Tsol}(obj::DiffnPoly2nd,
-						  xy::AbstractArray{Tmsh},
-						  lambda::AbstractArray{Tsol, 3})
+function (obj::DiffnPoly2nd){Tmsh, Tsol}(
+                                         xy::AbstractArray{Tmsh},
+					 lambda::AbstractArray{Tsol, 3})
 	# @assert(size(lambda, 1) == Tdim)
 	# @assert(size(lambda, 2) == Tdim)
 	# the 3rd dimension should be dof per node	
@@ -19,9 +19,9 @@ end
 
 type DiffnPoly6th<: AbstractDiffn
 end
-function call{Tmsh, Tsol}(obj::DiffnPoly6th,
-						  xy::AbstractArray{Tmsh},
-						  lambda::AbstractArray{Tsol, 3})
+function (obj::DiffnPoly6th){Tmsh, Tsol}(
+                                         xy::AbstractArray{Tmsh},
+					 lambda::AbstractArray{Tsol, 3})
 	# @assert(size(lambda, 1) == Tdim)
 	# @assert(size(lambda, 2) == Tdim)
 	# the 3rd dimension should be dof per node	
@@ -37,9 +37,9 @@ end
 type DiffnPoly0th<: AbstractDiffn
 end
 
-function call{Tmsh, Tsol}(obj::DiffnPoly0th,
-						  xy::AbstractArray{Tmsh},
-						  lambda::AbstractArray{Tsol, 3})
+function (obj::DiffnPoly0th){Tmsh, Tsol}(
+                                          xy::AbstractArray{Tmsh},
+					  lambda::AbstractArray{Tsol, 3})
 	# @assert(size(lambda, 1) == Tdim)
 	# @assert(size(lambda, 2) == Tdim)
 	# the 3rd dimension should be dof per node	
