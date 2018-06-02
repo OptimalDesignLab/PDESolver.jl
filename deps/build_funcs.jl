@@ -19,7 +19,7 @@ function is_commit(pkg_dir::AbstractString, hash::AbstractString)
   
   iscommit = false
   try
-    vals = readall(`git show-ref | grep $hash`)
+    vals = readstring(`git show-ref | grep $hash`)
     # make sure this is an exact match
     name = split(vals, '/')[end]
     if name[1:end-1] == hash
@@ -52,7 +52,7 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 
   start_dir = pwd()
   cd(pkg_dir)
-#  branch_name = readall(`git rev-parse --abbrev-ref HEAD`)
+#  branch_name = readstring(`git rev-parse --abbrev-ref HEAD`)
 #  if branch_name[1:end-1] != new_branchname
 #    run(`git checkout -b pdesolver_version $hash`)
 #  end
@@ -153,7 +153,7 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
 
   try
     run(`git clone $git_url`)
-    println(f, "ls of pwd() = ", readall(`ls`))
+    println(f, "ls of pwd() = ", readstring(`ls`))
     name_ext = string(pkg_name, ".jl")
     run(`mv -v ./$name_ext ./$pkg_name`)
     set_hash("./$pkg_name", git_commit)
