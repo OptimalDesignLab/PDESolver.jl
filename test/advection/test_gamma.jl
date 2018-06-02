@@ -44,7 +44,7 @@ add_func2!(AdvectionTests, test_gamma_sbp, test_gamma_inputfile, [TAG_SHORTTEST]
   Test boundary conditions.  This is not a test function, but is used
   by test functions.
 """
-function test_bc(flux_exp, mesh, sbp, eqn, opts)
+function test_bc_gamma(flux_exp, mesh, sbp, eqn, opts)
 # test summing boundary condition
  fill!(eqn.bndryflux, 0.0)
  AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
@@ -132,21 +132,21 @@ function test_gamma_bcflux(mesh, sbp, eqn, opts)
      opts["numBC"] = 1
      AdvectionEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
-     test_bc(8.0, mesh, sbp, eqn, opts)
+     test_bc_gamma(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 0.0
 
-     test_bc(8.0, mesh, sbp, eqn, opts)
+     test_bc_gamma(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 0.0
      eqn.params.alpha_y = 0.0
      eqn.params.alpha_z = 1.0
 
-     test_bc(8.0, mesh, sbp, eqn, opts)
+     test_bc_gamma(8.0, mesh, sbp, eqn, opts)
      eqn.params.alpha_x = 1.0
      eqn.params.alpha_y = 1.0
      eqn.params.alpha_z = 1.0
-     test_bc(3*8.0, mesh, sbp, eqn, opts)
+     test_bc_gamma(3*8.0, mesh, sbp, eqn, opts)
    end  # end facts block
 
   return nothing

@@ -260,12 +260,12 @@ end
   
   The constructors must have the signature:
 
-    MyPolicyName(opts::Dict, prefix::ASCIIString)
+    MyPolicyName(opts::Dict, prefix::String)
 
   where `opts` is the options dictionary and `prefix` is the prefix passed into
   [`getRecalculationPolicy`](@ref).
 """
-global const RecalculationPolicyDict = Dict{ASCIIString, Any}(
+global const RecalculationPolicyDict = Dict{String, Any}(
 "RecalculateFixedIntervals" => RecalculateFixedIntervals,
 "RecalculateNever"          => RecalculateNever,
 )

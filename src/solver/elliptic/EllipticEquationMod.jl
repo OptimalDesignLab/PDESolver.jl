@@ -2,6 +2,7 @@ module EllipticEquationMod
 
 using PDESolver
 using ArrayViews
+import ArrayViews.view
 using SolverCommon
 using ODLCommonTools
 using SummationByParts

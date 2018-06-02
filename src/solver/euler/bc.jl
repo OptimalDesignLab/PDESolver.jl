@@ -418,7 +418,7 @@ end
 type isentropicVortexBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
+function (obj::isentropicVortexBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -466,7 +466,7 @@ end
 
 #=
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
+function (obj::isentropicVortexBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
                nrm::AbstractArray{Tmsh,1},
@@ -508,7 +508,7 @@ Reverse mode for isentropicVortexBC.
 type isentropicVortexBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, params::ParamType2,
+function (obj::isentropicVortexBC_revm){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
@@ -572,7 +572,7 @@ end
 type isentropicVortexBC_physical <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
+function (obj::isentropicVortexBC_physical){Tmsh, Tsol, Tres}(
               params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
@@ -612,7 +612,7 @@ type noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
+function (obj::noPenetrationBC){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -658,7 +658,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
 end
 
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
+function (obj::noPenetrationBC){Tmsh, Tsol, Tres}(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -714,7 +714,7 @@ type noPenetrationESBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType2,
+function (obj::noPenetrationESBC){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -752,7 +752,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType2,
   return nothing
 end
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType3,
+function (obj::noPenetrationESBC){Tmsh, Tsol, Tres}(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -815,7 +815,7 @@ Reverse mode for noPenetrationBC.
 type noPenetrationBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
+function (obj::noPenetrationBC_revm){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
@@ -890,7 +890,7 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
   return nothing
 end
 #=
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
+function (obj::noPenetrationBC_revm){Tmsh, Tsol, Tres}(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
@@ -1011,7 +1011,7 @@ type unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType,
+function (obj::unsteadyVortexBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1035,7 +1035,7 @@ type unsteadyVortex2BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortex2BC, params::ParamType,
+function (obj::unsteadyVortex2BC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1083,7 +1083,7 @@ type Rho1E2U1VW0BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U1VW0BC, params::ParamType,
+function (obj::Rho1E2U1VW0BC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
@@ -1129,7 +1129,7 @@ type Rho1E2BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2BC, params::ParamType,
+function (obj::Rho1E2BC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
@@ -1175,7 +1175,7 @@ type Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType,
+function (obj::Rho1E2U3BC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
@@ -1222,7 +1222,7 @@ end
 type FreeStreamBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, params::ParamType,
+function (obj::FreeStreamBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1263,7 +1263,7 @@ Reverse mode for FreeStreamBC.
 type FreeStreamBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, params::ParamType,
+function (obj::FreeStreamBC_revm){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
@@ -1302,7 +1302,7 @@ end
 type FreeStreamBC_dAlpha <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, params::ParamType2,
+function (obj::FreeStreamBC_dAlpha){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
@@ -1330,7 +1330,7 @@ end
 type allOnesBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::allOnesBC, params::ParamType2,
+function (obj::allOnesBC){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1358,7 +1358,7 @@ end # end function call
 type allZerosBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::allZerosBC, params::ParamType2,
+function (obj::allZerosBC){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1372,12 +1372,12 @@ function call{Tmsh, Tsol, Tres}(obj::allZerosBC, params::ParamType2,
 
   # println("bndryflux = ", bndryflux)
   return nothing
-end # end function call
+end # end function
 
 type ExpBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC, params::ParamType, q::AbstractArray{Tsol,1},
+function (obj::ExpBC){Tmsh, Tsol, Tres}(params::ParamType, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
@@ -1389,12 +1389,12 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC, params::ParamType, q::AbstractArray{
 
   # println("bndryflux = ", bndryflux)
   return nothing
-end # end function call
+end # end function
 
 type ExpBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, params::ParamType,
+function (obj::ExpBC_revm){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
@@ -1416,7 +1416,7 @@ end
 type PeriodicMMSBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, params::ParamType,
+function (obj::PeriodicMMSBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1432,12 +1432,12 @@ function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, params::ParamType,
 
   # println("bndryflux = ", bndryflux)
   return nothing
-end # end function call
+end # end function
 
 type ChannelMMSBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, params::ParamType,
+function (obj::ChannelMMSBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1451,13 +1451,13 @@ function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, params::ParamType,
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
-end # end function call
+end # end function
 
 
 type defaultBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::defaultBC, params::ParamType,
+function (obj::defaultBC){Tmsh, Tsol, Tres}(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1472,7 +1472,7 @@ end
 type SubsonicInflowBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
+function (obj::SubsonicInflowBC){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1554,7 +1554,7 @@ end
 type SubsonicOutflowBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
+function(obj::SubsonicOutflowBC){Tmsh, Tsol, Tres}(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -1593,7 +1593,7 @@ type inviscidChannelFreeStreamBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::inviscidChannelFreeStreamBC,
+function(obj::inviscidChannelFreeStreamBC){Tmsh, Tsol, Tres}(             
               params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1638,7 +1638,7 @@ function reanalysisBC()
   return reanalysisBC{Float64}(bc_vals)
 end
 
-function call{Tmsh, Tsol, Tres, Tdim}(obj::reanalysisBC, params::AbstractParamType{Tdim},
+function (obj::reanalysisBC){Tmsh, Tsol, Tres, Tdim}(params::AbstractParamType{Tdim},
                                 q::AbstractArray{Tsol, 1},
                                 aux_vars::AbstractArray{Tres, 1},
                                 coords::AbstractVector{Tmsh},
@@ -1665,7 +1665,7 @@ include("bc_viscous.jl")
   Maps boundary conditions names to the functor objects.
   Each functor should be callable with the signature
 """
-global const BCDict = Dict{ASCIIString, BCType}(
+global const BCDict = Dict{String, BCType}(
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
 "noPenetrationESBC" => noPenetrationESBC(),
@@ -1722,7 +1722,7 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   return nothing
 end # ENd function getBCFunctors
 
-global const BCDict_revm = Dict{ASCIIString, BCType_revm}(
+global const BCDict_revm = Dict{String, BCType_revm}(
 "noPenetrationBC" => noPenetrationBC_revm(),
 "FreeStreamBC" => FreeStreamBC_revm(),
 "ExpBC" => ExpBC_revm(),

@@ -322,7 +322,6 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
       eqn.nstages = 5
     end
 
-    # @bp
     # TODO: parallel related variables
     #
     eqn.q_face_send = Array(Array{Tsol, 3}, 1)

@@ -101,7 +101,7 @@ function call(obj::SrcTrigPoly6thDiffn,
   return nothing
 end
 
-global const SRCDict = Dict{ASCIIString, SRCType}(
+global const SRCDict = Dict{String, SRCType}(
  "SRC0" => SRC0(),
  "SRC1" => SRC1(),
  "SrcTrigPoly0thDiffn" => SrcTrigPoly0thDiffn(),
@@ -130,7 +130,6 @@ function calcSource{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   # xy = Array(Tmsh, Tdim)
   src_tmp = Array(eltype(src), size(src, 1))
   for elem = 1:numElems
-    # @bp
     for n = 1:numNodesPerElement
       xy = sview(mesh.coords, :, n, elem)
 

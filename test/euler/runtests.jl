@@ -13,6 +13,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 using EulerEquationMod
 using Utils
 using MPI
@@ -63,9 +64,9 @@ include("test_viscous.jl")
 facts("----- Running Euler tests -----") do
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array(String, nargs)
     copy!(tags, ARGS)
   end
 

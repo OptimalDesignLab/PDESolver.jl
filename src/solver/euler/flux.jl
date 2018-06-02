@@ -800,7 +800,7 @@ end
 type ErrorFlux <: FluxType
 end
 
-function call{Tsol, Tres}(obj::ErrorFlux, params::ParamType,
+function (obj::ErrorFlux){Tsol, Tres}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -817,7 +817,7 @@ end
 type IdentityFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
+function (obj::IdentityFlux){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -831,7 +831,7 @@ function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
   return nothing
 end
 
-function call{Tsol, Tres, Tmsh}(obj::IdentityFlux, params::ParamType,
+function (obj::IdentityFlux){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -856,7 +856,7 @@ end
 type RoeFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::RoeFlux, params::ParamType,
+function (obj::RoeFlux){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -873,7 +873,7 @@ end
 type LFFlux <: FluxType
 end
 
-function call{Tsol, Tres, Tmsh}(obj::LFFlux, params::ParamType,
+function (obj::LFFlux){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -888,7 +888,7 @@ end
 type StandardFlux <: FluxType
 end
 
-function call{Tsol, Tres}(obj::StandardFlux, params::ParamType,
+function (obj::StandardFlux){Tsol, Tres}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -905,7 +905,7 @@ end
 type DucrosFlux <: FluxType
 end
 
-function call{Tsol, Tres}(obj::DucrosFlux, params::ParamType,
+function (obj::DucrosFlux){Tsol, Tres}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -922,7 +922,7 @@ end
 type IRFlux <: FluxType
 end
 
-function call{Tsol, Tres}(obj::IRFlux, params::ParamType,
+function (obj::IRFlux){Tsol, Tres}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -940,7 +940,7 @@ end
 type IRSLFFlux <: FluxType
 end
 
-function call{Tsol, Tres}(obj::IRSLFFlux, params::ParamType,
+function (obj::IRSLFFlux){Tsol, Tres}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -957,14 +957,14 @@ end
 type SIPGViscousFlux <: FluxType
 end
 
-# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
+# function (obj::SIPGViscousFlux){Tsol, Tres, Tmsh}(params::ParamType,
               # uL::AbstractArray{Tsol,1},
               # uR::AbstractArray{Tsol,1},
               # aux_vars::AbstractVector{Tres},
               # nrm::AbstractVector{Tmsh},
               # F::AbstractVector{Tres})
-# function call{Tsol, Tres, Tmsh}(obj::SIPGViscousFlux, params::ParamType,
-function call{Tsol, Tres}(obj::SIPGViscousFlux, params::ParamType,
+# function (obj::SIPGViscousFlux){Tsol, Tres, Tmsh}(params::ParamType,
+function (obj::SIPGViscousFlux){Tsol, Tres}(params::ParamType,
               sbp::AbstractSBP,
               sbpface,    # TODO: type
               uL::AbstractArray{Tsol,1},
@@ -986,7 +986,7 @@ end
 @doc """
 ### EulerEquationMod.FluxDict
 
-  This dictonary maps the names of the fluxes (ASCIIStrings) to the
+  This dictonary maps the names of the fluxes (Strings) to the
   functor object itself.  All flux functors should be added to the dictionary.
 
   All fluxes have one method that calculates the flux in a particular direction
@@ -1000,7 +1000,7 @@ end
   TODO: document signature of the functors here
 
 """->
-global const FluxDict = Dict{ASCIIString, FluxType}(
+global const FluxDict = Dict{String, FluxType}(
 "ErrorFlux" => ErrorFlux(),
 "IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
@@ -1039,7 +1039,7 @@ end
 type RoeFlux_revm <: FluxType_revm
 end
 
-function call{Tsol, Tres, Tmsh}(obj::RoeFlux_revm, params::ParamType,
+function (obj::RoeFlux_revm){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
               nrm::AbstractVector{Tmsh},
               flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1})
@@ -1049,7 +1049,7 @@ function call{Tsol, Tres, Tmsh}(obj::RoeFlux_revm, params::ParamType,
   return nothing
 end
 
-global const FluxDict_revm = Dict{ASCIIString, FluxType_revm}(
+global const FluxDict_revm = Dict{String, FluxType_revm}(
 "RoeFlux" => RoeFlux_revm(),
 )
 

@@ -891,7 +891,7 @@ end
 type ECFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ECFaceIntegral, 
+function (obj::ECFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -912,7 +912,7 @@ end
 type ESLFFaceIntegral <: FaceElementIntegralType
 end
 
-@inline function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLFFaceIntegral, 
+function (obj::ESLFFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -931,7 +931,7 @@ end
 type ELFPenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ELFPenaltyFaceIntegral, 
+function (obj::ELFPenaltyFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -950,7 +950,7 @@ end
 type ESLWFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLWFaceIntegral, 
+function (obj::ESLWFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -969,7 +969,7 @@ end
 type ELWPenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ELWPenaltyFaceIntegral, 
+function (obj::ELWPenaltyFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -988,7 +988,7 @@ end
 type ESLW2FaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ESLW2FaceIntegral, 
+function (obj::ESLW2FaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -1006,7 +1006,7 @@ end
 type ELW2PenaltyFaceIntegral <: FaceElementIntegralType
 end
 
-function call{Tsol, Tres, Tmsh, Tdim}(obj::ELW2PenaltyFaceIntegral, 
+function (obj::ELW2PenaltyFaceIntegral){Tsol, Tres, Tmsh, Tdim}(
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -1021,7 +1021,7 @@ end
 
 
 
-global const FaceElementDict = Dict{ASCIIString, FaceElementIntegralType}(
+global const FaceElementDict = Dict{String, FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral(),
 "ESLFFaceIntegral" => ESLFFaceIntegral(),
 "ELFPenaltyFaceIntegral" => ELFPenaltyFaceIntegral(),

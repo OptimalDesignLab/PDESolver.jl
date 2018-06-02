@@ -9,7 +9,7 @@ where input_file_name.jl is in your current directory.
 # The following keys are used for the options dictionary in the input file,
 #  and do not have default values, so the user must specify them if needed
 
-"physics" : which physics to run, ASCIIString, must match the name each
+"physics" : which physics to run, String, must match the name each
             physics module uses to register itself with the PDESolver module
 
 "run_type"  : what type of run:
@@ -66,14 +66,14 @@ where input_file_name.jl is in your current directory.
                        regular face integrals, 2 --> entropy stable form
 
 "Volume_flux_name" : name of the numerical flux function to use for the
-                     split form volume integrals, (ASCIIString), default
+                     split form volume integrals, (String), default
                      "StandardFlux"
 "Viscous_flux_name" : name of the numerical flux function to use for the 
-                     viscous flux, (ASCIIString), default "ErrorFlux" (which should be defined somewhere)
+                     viscous flux, (String), default "ErrorFlux" (which should be defined somewhere)
                      TODO
 
 "FaceElementIntegral_name": name of integral type for "face_integral_type" == 2,
-                            (ASCIIString), default "EDissipativeFaceIntegral",
+                            (String), default "EDissipativeFaceIntegral",
                             note that for integrals that require a numerical flux
                             function, "Flux_name" is used.
 # Solver options
@@ -90,13 +90,13 @@ where input_file_name.jl is in your current directory.
 "res_reltol0"  : value to use for relative residual calculation, use -1.0 to use residual at initial condition, (floatingpoint), default -1.0
 "step_tol" : step size tolerance for Newton methods (floating point), default -1
 "itermax" : maximum number of iterations for Newton methods or rk4 (integer), for rk4, it is ignored if not specified
-"Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (ASCIIString), defualt "none".  Note that this function will override res_reltol0 = -1.0
+"Reltol_funcs"  : an initial condition function name, the residual of the equation using this as the input is used for the relative residual calculation, (String), defualt "none".  Note that this function will override res_reltol0 = -1.0
 "Relfunc_name": the name of an initial condtion, the residual of which is used
                 for computing the relative residual for solver stopping
-                criteria, "ASCIIString", default "none".
+                criteria, "String", default "none".
 
 # DG Flux options
-"Flux_name" : the name of the flux to use, (ASCIIString)
+"Flux_name" : the name of the flux to use, (String)
 "LFalpha" : the alpha parameter for the Lax-Friedrich flux, 1 = centered,
             0 = upwinded, (Float64), default 0.0
 "precompute_volume_flux": precompute the volume flux or calculate it as needed,
@@ -118,12 +118,12 @@ where input_file_name.jl is in your current directory.
 # i must have values 1 through numBC
 
 # source term specification
-"SRCname": the name of the source term to use, (ASCIIString), default SRC0
+"SRCname": the name of the source term to use, (String), default SRC0
 
 # misc options
 "calc_error"  : calculate error norm of values in a file compared to the initial condition, number of values in the file must equal the number of dofs in the mesh, (Bool), default false
-"calc_error_infname"  : name of file to load, (ASCIIString),
-"calc_error_outfname"  : name of file to write value to, (ASCIIString), default error_calc.dat
+"calc_error_infname"  : name of file to load, (String),
+"calc_error_outfname"  : name of file to write value to, (String), default error_calc.dat
 "calc_trunc_error"  : calculate truncation error, IC must be exact solution for this to work, writes value to file error_trunc.dat, (Bool), default false
 "calc_havg" : calculate the average minimum distance between nodes (ie. the
               mesh spacing) and write it to the file "havg.dat", (Bool), default
@@ -171,9 +171,9 @@ where input_file_name.jl is in your current directory.
 "edgestab_gamma" edge stabilization paramater gamma, (floatingpoint), default -0.1
 "use_filter" : use a filtering technique, (Bool), default false
 "use_res_filter" : apply the transposed filter to the residual, (Bool), default false
-"filter_name", name of filter to apply, (ASCIIString), default "raisedCosineFilter"
+"filter_name", name of filter to apply, (String), default "raisedCosineFilter"
 "use_dissipation" : use artificial dissipation, (Bool), default false
-"dissipation_name" : name of artificial dissipation kernel to use, (ASCIIString), default "none"
+"dissipation_name" : name of artificial dissipation kernel to use, (String), default "none"
 "dissipation_const" : constant to multiply dissipation filter by, (Float64), default 0.0
 "use_GLS" : use Galerkin Least-Squares stabilization, (Bool), default false
 "use_GLS2": use Hughes' formulation of Galerkin Least-Squares, (Bool), default false
@@ -191,12 +191,12 @@ Note that any values associated with these options are shared with the regular
 "write_entropy_freq" : write the entropy every this many timesteps if
                        "write_entropy" is true, (Integer), default 1
 "write_entropy_fname" : file name (with extension) to write entropy to,
-                        (ASCIIString), default "entropy.dat"
+                        (String), default "entropy.dat"
 "write_integralq": write the integral of the q variables to a file every
                    iteration, (Bool), default false, currently only supported
                    by Euler module
 
-"write_integralq_fname": file name to write integral of q to, (ASCIIString),
+"write_integralq_fname": file name to write integral of q to, (String),
                          default "integralq.dat"
 
 "write_enstrophy" : write the integral of the enstrophy during every major
@@ -204,7 +204,7 @@ Note that any values associated with these options are shared with the regular
 "write_enstrophy_freq" : write the enstrophy every this many timesteps if
                        "write_enstrophy" is true, (Integer), default 1
 "write_enstrophy_fname" : file name (with extension) to write enstrophy to,
-                        (ASCIIString), default "enstrophy.dat"
+                        (String), default "enstrophy.dat"
 
 "write_kinetic_energy" : write the norm of the kinetic_energy during every
                          major iteration, (Bool), default false
@@ -212,7 +212,7 @@ Note that any values associated with these options are shared with the regular
                               timesteps if "write_kinetic_energy" is true,
                               (Integer), default 1
 "write_kinetic_energy_fname" : file name (with extension) to write
-                               kinetic_energy to, (ASCIIString), default
+                               kinetic_energy to, (String), default
                                "kinetic_energy.dat"
 
 "write_kinetic_energydt" : write the norm of the kinetic_energydt during every
@@ -221,7 +221,7 @@ Note that any values associated with these options are shared with the regular
                               timesteps if "write_kinetic_energydt" is true,
                               (Integer), default 1
 "write_kinetic_energydt_fname" : file name (with extension) to write
-                               kinetic_energydt to, (ASCIIString), default
+                               kinetic_energydt to, (String), default
                                "kinetic_energydt.dat"
 
 "write_drag" : write drag every time iteration. Bool. Default false.
@@ -314,7 +314,7 @@ Note that any values associated with these options are shared with the regular
 "output_freq" : write paraview files every this many iterations, subject to write_vis, (Integer), default 1
 
 "newton_recalculation_policy": how often to recalculate the jacobian during
-                               Newton's method, (ASCIIString), default
+                               Newton's method, (String), default
                                every iteration.
 "cleansheet_CN_newton" : use the Newton's method internal to CN. Only for debugging - it supports dense FD Jacs only
 
@@ -343,7 +343,7 @@ Note that any values associated with these options are shared with the regular
 
 # Homotopy options
 "homotopy_recalculation_policy": jacobian recalculation policy for homotopy,
-                                 (ASCIIString), default "RecalculateNever"
+                                 (String), default "RecalculateNever"
 "homotopy_addBoundaryIntegrals": add boundary term to homotopy, (Bool), default
                                  false (the boundary terms slow convergence
                                  in some cases)
@@ -351,7 +351,7 @@ Note that any values associated with these options are shared with the regular
                             on the final step of homotopy (when lambda == 0),
                             (Bool), default false
 # Crank-Nicolson options
-"CN_recalculation_policy": jacbian recalculation policy for CN, (ASCIIString),
+"CN_recalculation_policy": jacbian recalculation policy for CN, (String),
                            default "RecalculateNever"
 
 # majorIterationCallback options
@@ -375,7 +375,7 @@ Note that any values associated with these options are shared with the regular
 # postprocessing options
 "do_postproc" : do postprocessing of any kind, (Bool), default false
 "exact_soln_func" : one of the IC functions used to compute the exact solution,
-                    (ASCIIString), default "nothing"
+                    (String), default "nothing"
 
 # functional computation options
 "calc_functional" : calculate functional on geometric boundary edge(s)
@@ -383,7 +383,7 @@ Note that any values associated with these options are shared with the regular
 "functional_error" : Boolean option for input dictionary to specify whether to compare against
                      analytical functional value and write the error.
 "functional_error_outfname" : name of file which stores the error in functional at a
-                         geometric boundary, (ASCIIString), default functional_error, while
+                         geometric boundary, (String), default functional_error, while
                          writing the file a numerical suffix and .dat extension is added
 "analytical_functional_val" : The analytical functional value of the functional over
                               the specified geometric edges.
@@ -392,7 +392,7 @@ Note that any values associated with these options are shared with the regular
                    number)
 
 "functional_namei" : Name of the ith functional that needs to be computed over specified
-                     geometric edges(2D)/faces(3D), (ASCIIString)
+                     geometric edges(2D)/faces(3D), (String)
 
 # Adjoint computation options
 "write_adjoint" : writes the adjoint vector for a particular functional. default false

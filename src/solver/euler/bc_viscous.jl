@@ -1,7 +1,7 @@
 type nonslipBC <: BCType
 end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::nonslipBC, 
+function (obj::nonslipBC){Tmsh, Tsol, Tres}(
                                 params::ParamType,
                                 q::AbstractArray{Tsol,1},  
                                 aux_vars::AbstractArray{Tres, 1},  
@@ -34,7 +34,7 @@ end
 type ExactChannelBC <: BCType
 end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC, 
+function (obj::ExactChannelBC){Tmsh, Tsol, Tres}(
                                 params::ParamType{3},
                                 q::AbstractArray{Tsol,1},  
                                 aux_vars::AbstractArray{Tres, 1},  
@@ -95,10 +95,8 @@ function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC,
 	return nothing
 end
 
-type ExactChannelBC <: BCType
-end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC, 
+function (obj::ExactChannelBC){Tmsh, Tsol, Tres}(
                                 params::ParamType{2, :conservative},
                                 q::AbstractArray{Tsol,1},  
                                 aux_vars::AbstractArray{Tres, 1},  
@@ -126,7 +124,7 @@ type zeroPressGradientBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::zeroPressGradientBC,
+function (obj::zeroPressGradientBC){Tmsh, Tsol, Tres}(
                                 params::ParamType,
                                 q::AbstractArray{Tsol,1},
                                 aux_vars::AbstractArray{Tres, 1},

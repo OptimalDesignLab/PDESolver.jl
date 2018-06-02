@@ -187,7 +187,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
     @fact A0_c --> eye(4)
 
    # test calcIRA0
-   A03 = scale(A0, eqn.params.gamma_1)
+   A03 = A0 *eqn.params.gamma_1
    A04_test = zeros(A02)
    A04_code = zeros(A02)
    EulerEquationMod.getIRA0(eqn.params, q, A04_code)

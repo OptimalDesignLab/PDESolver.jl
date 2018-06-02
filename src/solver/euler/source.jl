@@ -64,7 +64,7 @@ end
 type SRCExp <: SRCType
 end
 
-function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::ParamType{2}, t)
+function (obj::SRCExp)(q::AbstractVector, coords::AbstractVector, params::ParamType{2}, t)
   x = coords[1]
   y = coords[2]
   gamma_1 = params.gamma_1
@@ -97,7 +97,7 @@ global const MMSExp_d3 = 0.15
 global const MMSExp_d4 = 0.25
 global const MMSExp_d5 = 1
 
-function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::ParamType{3}, t)
+function (obj::SRCExp)(q::AbstractVector, coords::AbstractVector, params::ParamType{3}, t)
 
   x = coords[1]
   y = coords[2]
@@ -184,7 +184,7 @@ end
 type SRCPeriodicMMS <: SRCType
 end
 
-function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
+function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector, 
               params::ParamType{2}, t)
 
   x = coords[1]
@@ -206,7 +206,7 @@ function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
+function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector, 
               params::ParamType{3}, t)
 
   x = coords[1]
@@ -266,7 +266,7 @@ include("source_viscous.jl")
   of the node, t is the current time, and q is the vector to be populated with
   the source term values.
 """->
-global const SRCDict = Dict{ASCIIString, SRCType}(
+global const SRCDict = Dict{String, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),

@@ -8,6 +8,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
 import ODLCommonTools.sview
 using ArrayViews
+import ArrayViews.view
 using MPI
 using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
@@ -574,7 +575,7 @@ function write_timings(t::Timings, fname::AbstractString)
   nbarriers = length(t.t_barriers)
   nvals = length(timing_names) + nbarriers - 1
   vals = Array(Float64, nvals)
-  val_names = Array(ASCIIString, nvals)
+  val_names = Array(String, nvals)
 
   # put all values except those from t_barriers into array
   pos = 1

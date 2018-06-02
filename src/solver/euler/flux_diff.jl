@@ -245,7 +245,7 @@ end
 type RoeFlux_diff <: FluxType_diff
 end
 
-function call{Tsol, Tres, Tmsh}(obj::RoeFlux_diff, params::ParamType,
+function (obj::RoeFlux_diff){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -261,7 +261,7 @@ end
 type LFFlux_diff <: FluxType_diff
 end
 
-function call{Tsol, Tres, Tmsh}(obj::LFFlux_diff, params::ParamType,
+function (obj::LFFlux_diff){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -279,7 +279,7 @@ end
 type ErrorFlux_diff <: FluxType_diff
 end
 
-function call{Tsol, Tres, Tmsh}(obj::ErrorFlux_diff, params::ParamType,
+function (obj::ErrorFlux_diff){Tsol, Tres, Tmsh}(params::ParamType,
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
@@ -296,7 +296,7 @@ end
   Container for all differentiated flux functors.  Maps name to object.
   The names are exactly the same as the non-differentiated functor.
 """
-global const FluxDict_diff = Dict{ASCIIString, FluxType_diff}(
+global const FluxDict_diff = Dict{String, FluxType_diff}(
 "RoeFlux" => RoeFlux_diff(),
 "LFFlux" => LFFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),

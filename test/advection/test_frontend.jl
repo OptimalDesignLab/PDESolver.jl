@@ -6,7 +6,7 @@ end
 type TestBCType <: BCType
 end
 
-function call(obj::TestBCType)
+function (obj::TestBCType)()
   println("hello edge of the world")
 end
 

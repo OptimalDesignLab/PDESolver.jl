@@ -17,7 +17,6 @@ function test_convergence_p2_dg()
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
-    include("calc_line.jl")
 
     slope = calc_line()
     println("slope = ", slope)
@@ -42,5 +41,3 @@ function test_convergence_p2_dg()
 
   return nothing
 end
-
-test_convergence_p2_dg()

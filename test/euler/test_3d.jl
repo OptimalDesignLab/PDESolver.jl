@@ -449,7 +449,7 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
     end
 
     # test IRA0 against A0 and a jacobian computed with complex step
-    A03 = scale(A0, eqn.params.gamma_1)
+    A03 = A0 * eqn.params.gamma_1
     A04_test = zeros(A02)
     A04_code = zeros(A02)
     EulerEquationMod.getIRA0(eqn.params, q, A04_code)

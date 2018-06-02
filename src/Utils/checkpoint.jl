@@ -65,7 +65,7 @@ abstract AbstractCheckpointData
 """
 type Checkpointer
   ncheckpoints::Int  # number of checkpoints
-  paths::Array{ASCIIString, 1}  # paths to the directories
+  paths::Array{String, 1}  # paths to the directories
   status::Array{Int, 1}  # is checkpoint free
   history::Array{Int, 1}  # list of checkpoints, from most recently used
                           # (first) to least recently used
@@ -101,9 +101,9 @@ end
    * a Checkpointer object, fully initialized
 """
 function Checkpointer(myrank::Integer, ncheckpoints::Integer=2,
-                      prefix::ASCIIString="")
+                      prefix::String="")
 
-  paths = Array(ASCIIString, ncheckpoints)
+  paths = Array(String, ncheckpoints)
   status = Array(Int, ncheckpoints)
   history = Array(Int, ncheckpoints)
   fill!(history, -1)

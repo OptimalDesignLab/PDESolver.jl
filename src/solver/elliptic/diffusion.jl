@@ -52,7 +52,7 @@ function call{Tmsh, Tsol}(obj::DiffnPoly0th,
 	return nothing
 end
 
-global const DiffnDict = Dict{ASCIIString, AbstractDiffn}(
+global const DiffnDict = Dict{String, AbstractDiffn}(
 	"poly0th" => DiffnPoly0th(),
 	"poly2nd" => DiffnPoly2nd(),
 	"poly6th" => DiffnPoly6th()
@@ -75,7 +75,6 @@ function calcDiffn{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 	numNodesPerElement = mesh.numNodesPerElement
 
 	for elem = 1:numElems
-		# @bp
 		for n = 1:numNodesPerElement
 			xy = sview(mesh.coords, :, n, elem)
 

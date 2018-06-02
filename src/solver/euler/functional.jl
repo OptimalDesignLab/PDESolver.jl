@@ -2,8 +2,7 @@ abstract AbstractFunctional
 
 type volumeAverage <: AbstractFunctional
 end
-function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
-                                      mesh::AbstractMesh{Tmsh},
+function (obj::volumeAverage){Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                       sbp::AbstractSBP,
                                       eqn::EulerData{Tsol, Tres, Tdim},
                                       opts,
@@ -27,7 +26,7 @@ function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
   return nothing
 end
 
-global const VolumeFunctionalDict = Dict{ASCIIString, AbstractFunctional}(    
+global const VolumeFunctionalDict = Dict{String, AbstractFunctional}(    
   "volumeAverage" => volumeAverage(),
 )
 

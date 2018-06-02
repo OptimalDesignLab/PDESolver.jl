@@ -69,13 +69,13 @@ end
 
 
 using Input
-using Debug
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using LinearSolvers
 #using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+import ArrayViews.view
 using Utils
 import ODLCommonTools.sview
 using Input

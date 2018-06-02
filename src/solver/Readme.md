@@ -104,7 +104,7 @@ the working variables to the natural variables.
 Many of the components of PDESolver have different options that control how they
 work and what they do.
 In order to  provide a unified method of specifying these options, an dictionary
- of type `Dict{ASCIIString, Any}` is read in from a disk file.
+ of type `Dict{String, Any}` is read in from a disk file.
 This dictionary (called `opts` in function signatures), is passed to all high
 and mid level function so they can use values in the dictionary to determine their
  control flow.

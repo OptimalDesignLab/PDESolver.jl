@@ -163,7 +163,7 @@ function test_gls_channel(mesh, sbp, eqn, opts)
 end
 
 test_gls_channel_inputname = "input_vals_channel.jl"
-test_gls_channel_moddict = Dict{ASCIIString, Any}("solve" => false, "variable_type" => :entropy, "new_fname" => "input_vals_channel_gls")
+test_gls_channel_moddict = Dict{String, Any}("solve" => false, "variable_type" => :entropy, "new_fname" => "input_vals_channel_gls")
 #test_gls_channel(mesh, sbp, eqn, opts)
 add_func3!(EulerTests, test_gls_channel, test_gls_channel_inputname, test_gls_channel_moddict, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 

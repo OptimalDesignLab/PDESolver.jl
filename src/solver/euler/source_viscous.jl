@@ -206,7 +206,7 @@ end
 #
 type SRCPolynomial <: SRCType
 end
-function call(obj::SRCPolynomial, 
+function (obj::SRCPolynomial)(
               src::AbstractVector,
               xyz::AbstractVector, 
               params::ParamType{3}, 
@@ -355,9 +355,7 @@ function call(obj::SRCPolynomial,
   return nothing
 end
 
-type SRCPolynomial <: SRCType
-end
-function call(obj::SRCPolynomial, 
+function (obj::SRCPolynomial)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 
@@ -443,7 +441,7 @@ end
 
 type SRCChannel <: SRCType
 end
-function call(obj::SRCChannel, 
+function (obj::SRCChannel)(
               src::AbstractVector,
               xyz::AbstractVector, 
               params::ParamType{3}, 
@@ -553,9 +551,7 @@ function call(obj::SRCChannel,
   return nothing
 end
 
-type SRCChannel <: SRCType
-end
-function call(obj::SRCChannel, 
+function (obj::SRCChannel)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 
@@ -659,7 +655,7 @@ end
 # (I don't remember clearly, but it's not converging).
 type SRCDoubleSquare <: SRCType
 end
-function call(obj::SRCDoubleSquare, 
+function (obj::SRCDoubleSquare)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 
@@ -757,7 +753,7 @@ end
 
 type SRCTrigonometric <: SRCType
 end
-function call(obj::SRCTrigonometric, 
+function (obj::SRCTrigonometric)(
               src::AbstractVector,
               xyz::AbstractVector, 
               params::ParamType{3}, 
@@ -910,9 +906,7 @@ function call(obj::SRCTrigonometric,
   return nothing
 end
 
-type SRCTrigonometric <: SRCType
-end
-function call(obj::SRCTrigonometric, 
+function (obj::SRCTrigonometric)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 

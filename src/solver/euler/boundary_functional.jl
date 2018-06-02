@@ -67,7 +67,7 @@ to the if statement to further extend this function.
 function evalFunctional_revm{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
                         functionalData::AbstractFunctional,
-                        functionalName::ASCIIString)
+                        functionalName::String)
 
 
   if opts["parallel_type"] == 1
@@ -140,7 +140,7 @@ Compute the complete derivative of a functional w.r.t angle of attack
 function eval_dJdaoa{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                                  eqn::EulerData{Tsol}, opts,
                                  functionalData::BoundaryForceData,
-                                 functionalName::ASCIIString,
+                                 functionalName::String,
                                  adjoint_vec::AbstractArray{Tsol,1})
 
   if functionalName == "lift"

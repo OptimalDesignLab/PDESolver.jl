@@ -14,6 +14,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 import MPI
 using Input
 using PETSc2
@@ -37,9 +38,9 @@ facts("----- Running Euler 4 process tests -----") do
 
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array(String, nargs)
     copy!(tags, ARGS)
   end
 

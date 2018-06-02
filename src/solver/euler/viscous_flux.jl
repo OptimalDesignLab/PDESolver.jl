@@ -246,7 +246,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
 
     # specify boundary value function
     # TODO: Put it into a function 
-    bnd_functor::AbstractBoundaryValueType
+    local bnd_functor::AbstractBoundaryValueType
     key_i = string("BC", iBC, "_name")
     val = opts[key_i]
     Gt_functor = calcDiffusionTensor

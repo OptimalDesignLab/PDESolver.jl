@@ -67,7 +67,7 @@ end
     sbp
     eqn
     opts
-    dissipation_name: an ASCIIString of the function name used to retrieve
+    dissipation_name: an String of the function name used to retrieve
                       the function that generates the matrix filt from a
                       dictonary
 
@@ -79,7 +79,7 @@ end
 """->
 function calcDissipationOperator{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, 
                                  sbp::AbstractSBP, eqn::AbstractEulerData{Tsol},
-                                 opts, dissipation_name::ASCIIString)
+                                 opts, dissipation_name::String)
 # calculates and returns the artificial dissipation operator array
 
   epsilon = eqn.params.dissipation_const  # dissipation constant
@@ -194,7 +194,7 @@ end
 
 
 
-global const dissipation_dict = Dict{ASCIIString, Function}(
+global const dissipation_dict = Dict{String, Function}(
 "damp1" => damp1
 )
 

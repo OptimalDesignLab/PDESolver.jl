@@ -15,6 +15,7 @@ using NonlinearSolvers   # non-linear solversa
 using OptimizationInterface
 using ArrayViews
 import ODLCommonTools.sview
+import ArrayViews.view
 using Input
 using LinearSolvers
 using PETSc2
@@ -60,9 +61,9 @@ include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
 facts("----- Running Advection tests -----") do
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array(String, nargs)
     copy!(tags, ARGS)
   end
 

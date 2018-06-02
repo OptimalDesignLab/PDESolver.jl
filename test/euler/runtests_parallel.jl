@@ -14,6 +14,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 import MPI
 using Input
 
@@ -40,7 +41,7 @@ function test_parallel2()
     start_dir = pwd()
 
     # test rk4
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
@@ -51,7 +52,7 @@ function test_parallel2()
     @fact datas[2] --> roughly(datap[2], atol=1e-13)
 
     # test staggered_parallel
-    cd ("../staggered_parallel")
+    cd("../staggered_parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
@@ -64,7 +65,7 @@ function test_parallel2()
 
     cd("../../")
 
-    cd ("./lserk/parallel")
+    cd("./lserk/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
@@ -155,7 +156,7 @@ function test_restart()
     start_dir = pwd()
 
     # test rk4
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_restart"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
@@ -193,9 +194,9 @@ add_func1!(EulerTests, test_restart, [TAG_SHORTTEST])
 facts("----- Running Euler 2 process tests -----") do
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array(String, nargs)
     copy!(tags, ARGS)
   end
 

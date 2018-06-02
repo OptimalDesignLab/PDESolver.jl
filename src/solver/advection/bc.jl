@@ -167,7 +167,7 @@ level function.
 type x5plusy5BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::x5plusy5BC, params::ParamType2, u::Tsol, 
+function (obj::x5plusy5BC){Tmsh, Tsol}(params::ParamType2, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, 
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -180,7 +180,7 @@ end
 type constantBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::constantBC, params::ParamTypes, u::Tsol, 
+function (obj::constantBC){Tmsh, Tsol}(params::ParamTypes, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, 
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -214,7 +214,7 @@ level function.
 type exp_xplusyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp_xplusyBC, params::ParamType2, u::Tsol, 
+function (obj::exp_xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, 
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -233,7 +233,7 @@ end
 type sinwave_BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwave_BC, params::ParamType2, u::Tsol,
+function (obj::sinwave_BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -253,7 +253,7 @@ end
 type sinwavey_BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwavey_BC, params::ParamType2, u::Tsol,
+function (obj::sinwavey_BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -274,7 +274,7 @@ end
 type sinwavey_pertBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwavey_pertBC, params::ParamType2, u::Tsol,
+function (obj::sinwavey_pertBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -294,7 +294,7 @@ end
 type sinwave_ampl_BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::sinwave_ampl_BC, params::ParamType2, u::Tsol, 
+function (obj::sinwave_ampl_BC){Tmsh, Tsol}(params::ParamType2, u::Tsol, 
               coords::AbstractArray{Tmsh,1}, nrm_scaled::AbstractArray{Tmsh,1}, t)
 
   u_bc = calc_sinwave_ampl(params, coords, t)
@@ -312,7 +312,7 @@ end
 type mms1BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::mms1BC, params::ParamType2, u::Tsol,
+function (obj::mms1BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -332,7 +332,7 @@ end
 type x4BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::x4BC, params::ParamType2, u::Tsol,
+function (obj::x4BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -353,7 +353,7 @@ end
 type p0BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p0BC, params::ParamTypes, u::Tsol,
+function (obj::p0BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -374,7 +374,7 @@ end
 type p1BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p1BC, params::ParamTypes, u::Tsol,
+function (obj::p1BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -393,7 +393,7 @@ end
 type p2BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p2BC, params::ParamTypes, u::Tsol, 
+function (obj::p2BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol, 
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -413,7 +413,7 @@ end
 type p3BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p3BC, params::ParamTypes, u::Tsol,
+function (obj::p3BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -434,7 +434,7 @@ end
 type p4BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p4BC, params::ParamTypes, u::Tsol,
+function (obj::p4BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -455,7 +455,7 @@ end
 type p5BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::p5BC, params::ParamTypes, u::Tsol,
+function (obj::p5BC){Tmsh, Tsol}(params::ParamTypes, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
   # this is really slow: use Horner's rule!
@@ -479,7 +479,7 @@ to get the boundary state.
 type exp5xplus4yplus2BC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp5xplus4yplus2BC, params::ParamType2, u::Tsol,
+function (obj::exp5xplus4yplus2BC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -500,7 +500,7 @@ the boundary state.
 type exp5xplusyBC <:BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp5xplusyBC, params::ParamType2, u::Tsol,
+function (obj::exp5xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -521,7 +521,7 @@ the boundary state.
 type exp3xplusyBC <:BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp3xplusyBC, params::ParamType2, u::Tsol,
+function (obj::exp3xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -542,7 +542,7 @@ the boundary state.
 type exp2xplus2yBC <:BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp2xplus2yBC, params::ParamType2,  u::Tsol,
+function (obj::exp2xplus2yBC){Tmsh, Tsol}(params::ParamType2,  u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -563,7 +563,7 @@ boundary state
 type exp_xyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::exp_xyBC, params::ParamType2, u::Tsol,
+function (obj::exp_xyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -584,7 +584,7 @@ boundary state
 type xplusyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::xplusyBC, params::ParamType2, u::Tsol,
+function (obj::xplusyBC){Tmsh, Tsol}(params::ParamType2, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -601,7 +601,7 @@ end
 type unsteadymmsBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::unsteadymmsBC, params::ParamType, u::Tsol,
+function (obj::unsteadymmsBC){Tmsh, Tsol}(params::ParamType, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -617,7 +617,7 @@ end
 type unsteadypolyBC <: BCType
 end
 
-function call{Tmsh, Tsol}(obj::unsteadypolyBC, params::ParamType, u::Tsol,
+function (obj::unsteadypolyBC){Tmsh, Tsol}(params::ParamType, u::Tsol,
               coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -634,7 +634,7 @@ end
 type defaultBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tdim}(obj::defaultBC, params::ParamType{Tdim},
+function (obj::defaultBC){Tmsh, Tsol, Tdim}(params::ParamType{Tdim},
               u::Tsol, coords::AbstractArray{Tmsh,1},
               nrm_scaled::AbstractArray{Tmsh,1}, t)
 
@@ -654,7 +654,7 @@ It stores all the possible boundary condition dictionary options. Whenever a
 new boundary condition is created, it should get added to BCDict.
 
 """->
-global const BCDict = Dict{ASCIIString, BCType}(
+global const BCDict = Dict{String, BCType}(
 "constantBC" => constantBC(),
 "x5plusy5BC" => x5plusy5BC(),
 "exp_xplusyBC" => exp_xplusyBC(),

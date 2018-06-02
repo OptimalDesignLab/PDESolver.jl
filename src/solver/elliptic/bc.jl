@@ -66,7 +66,7 @@ function call{Tmsh, Tsol}(obj::NeumannAllOne,
   return nothing
 end
 
-global const BCDict = Dict{ASCIIString, BCType}(
+global const BCDict = Dict{String, BCType}(
                                                 "DirichletAllZero" => DirichletAllZero(),
                                                 "DirichletAllOne" => DirichletAllOne(),
                                                 "NeumannAllZero" => NeumannAllZero(),
@@ -122,7 +122,7 @@ function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
   end
 end
 
-@debug function getBCFluxes{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function getBCFluxes{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
                                                     sbp::AbstractSBP,
                                                     eqn::EllipticData{Tsol, Tres, Tdim},
                                                     opts)
@@ -311,7 +311,6 @@ end
           end 
         elseif penalty_method == "SAT"
 
-          # @bp
           lambda = sview(eqn.lambda, :,:,:,:,elem)
           Sat[:,:,:] = 0.0  
 
@@ -337,7 +336,6 @@ end
               end
             end
           end
-          # @bp
 
           #
           # Left multiply by numFacesPerElem*B

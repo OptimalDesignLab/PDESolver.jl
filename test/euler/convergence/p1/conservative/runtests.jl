@@ -1,6 +1,7 @@
 function run_convergence_p1_conservative()
   facts("---- P1 Conservative Convergence Tests -----") do
     start_dir = pwd()
+    println("pwd = ", pwd())
 
     resize!(ARGS, 1)
 
@@ -42,5 +43,3 @@ function run_convergence_p1_conservative()
 
   return nothing
 end
-
-run_convergence_p1_conservative()

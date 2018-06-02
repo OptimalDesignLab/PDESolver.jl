@@ -15,7 +15,7 @@ using ODLCommonTools
     Lines not meeting this specification are ignored.
 
     Inputs:
-      fin: an ASCIIString containing the name (or path) of the file to be read
+      fin: an String containing the name (or path) of the file to be read
       fout: name of file to write the dictonary to
     
     Keyword Args:
@@ -26,7 +26,7 @@ using ODLCommonTools
     them to a single output file
 
 """->
-function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=true)
+function extractKeys(fin::String, fout::String; header=true, footer=true)
 
   println("reading file ", fin)
   f = open(fin, "r")
@@ -129,7 +129,7 @@ The corresponding output to file is
 "hello3" => true
 `
 """->
-function write_arbitrary_keys(fout, stringval::ASCIIString, counts::Int)
+function write_arbitrary_keys(fout, stringval::String, counts::Int)
 
   fw = open(fout, "a")
   if counts == 0

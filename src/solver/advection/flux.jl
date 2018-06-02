@@ -496,7 +496,7 @@ end
 type avgFlux <: FluxType
 end
 
-function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType2, uL::Tsol, uR::Tsol,
+function (obj::avgFlux){Tmsh, Tsol}(params::ParamType2, uL::Tsol, uR::Tsol,
               nrm::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
@@ -511,7 +511,7 @@ function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType2, uL::Tsol, uR::Tsol,
   return u
 end
 
-function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType3, uL::Tsol, uR::Tsol,
+function (obj::avgFlux){Tmsh, Tsol}(params::ParamType3, uL::Tsol, uR::Tsol,
               nrm::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
@@ -549,7 +549,7 @@ end
 type LFFlux <: FluxType
 end
 
-function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType2, uL::Tsol, uR::Tsol,
+function (obj::LFFlux){Tmsh, Tsol}(params::ParamType2, uL::Tsol, uR::Tsol,
               nrm_scaled::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
@@ -565,7 +565,7 @@ function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType2, uL::Tsol, uR::Tsol,
   return u
 end
 
-function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType3, uL::Tsol, uR::Tsol,
+function (obj::LFFlux){Tmsh, Tsol}(params::ParamType3, uL::Tsol, uR::Tsol,
               nrm::AbstractArray{Tmsh,1})
 
   alpha_x = params.alpha_x
@@ -585,7 +585,7 @@ end
 
 
 
-global const FluxDict = Dict{ASCIIString, FluxType}(
+global const FluxDict = Dict{String, FluxType}(
 "avgFlux" => avgFlux(),
 "LFFlux" => LFFlux(),
 )

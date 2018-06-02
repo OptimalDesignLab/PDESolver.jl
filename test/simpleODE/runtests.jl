@@ -12,6 +12,7 @@ using Utils
 using SimpleODEMod
 using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+import ArrayViews.view
 using Input
 
 function clean_dict(collection)
@@ -55,9 +56,9 @@ add_func1!(SimpleODETests, test_eq4, [TAG_SHORTTEST])
 facts("----- Running SimpleODE tests -----") do
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array(String, nargs)
     copy!(tags, ARGS)
   end
 

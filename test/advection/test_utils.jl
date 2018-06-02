@@ -86,7 +86,7 @@ function test_area(mesh, sbp, eqn, opts)
     @fact norm(jac[:, i] - jac2[:, i])/size(jac, 1) --> roughly(0.0, atol=1e-5)
   end
 
-i
+
 
 
   #----------------------------------------------------------------------------

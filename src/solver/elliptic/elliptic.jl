@@ -2,8 +2,6 @@
 
 import PDESolver.evalResidual
 
-using Debug
-
 function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
                                 sbp::AbstractSBP,
                                 eqn::AbstractEllipticData{Tsol, Tres},
@@ -65,7 +63,6 @@ function evalResidual(mesh::AbstractMesh,
   # if haskey(opts, "TimeAdvance") && opts["TimeAdvance"] == "BDF2"
   # BDF2(mesh, sbp, eqn, opts)
   # end
-  # @bp
   #
   # TODO: parallel commmunication
   #
@@ -188,7 +185,6 @@ function weakdifferentiate2!{Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}(mesh::AbstractMes
   Qx = Array(Tsbp, nNodesPerElem, nNodesPerElem, dim)
   lambda_dqdx = Array(Tres, dim, nDofsPerNode, nNodesPerElem)
   w = sview(sbp.w, :)
-  # @bp
   for elem=1:nElems
     # compute Λ∇q
     lambda = sview(eqn.lambda, :,:,:,:, elem)
@@ -202,7 +198,6 @@ function weakdifferentiate2!{Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}(mesh::AbstractMes
         end
       end
     end
-    # @bp
     jac = sview(mesh.jac, :, elem)
     calcQx(mesh, sbp, Int(elem), Qx)
     for d = 1:dim
@@ -256,7 +251,6 @@ function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
 
   # loop over all the boundaries
   nfaces = length(mesh.interfaces)
-  # @bp
   for f = 1:nfaces
     face = mesh.interfaces[f]
 

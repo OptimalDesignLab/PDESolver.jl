@@ -5,7 +5,7 @@ export ExactSolutionType, calcErrorL2Norm
 
 type ExactPolynomial <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPolynomial, 
+function (obj::ExactPolynomial){Tmsh, Tsol}(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
               qe::AbstractArray{Tsol, 1})
@@ -39,7 +39,7 @@ end
 
 type ExactPolynomial_1 <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPolynomial_1, 
+function (obj::ExactPolynomial_1){Tmsh, Tsol}(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
               qe::AbstractArray{Tsol, 1})
@@ -74,7 +74,7 @@ end
 
 type ExactPolynomial_2 <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPolynomial_2, 
+function (obj::ExactPolynomial_2){Tmsh, Tsol}(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
               qe::AbstractArray{Tsol, 1})
@@ -110,7 +110,7 @@ end
 
 type ExactTrigonometric <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactTrigonometric, 
+function (obj::ExactTrigonometric){Tmsh, Tsol}(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
               qe::AbstractArray{Tsol, 1})
@@ -157,7 +157,7 @@ function call{Tmsh, Tsol}(obj::ExactTrigonometric,
 end
 
 
-global const ExactDict = Dict{ASCIIString, ExactSolutionType}(
+global const ExactDict = Dict{String, ExactSolutionType}(
   "ExactTrigonometric" => ExactTrigonometric(),
   "ExactPolynomial"    => ExactPolynomial(),
   "ExactPolynomial_1"  => ExactPolynomial_1(),

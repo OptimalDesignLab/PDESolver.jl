@@ -615,7 +615,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   assembler::AssembleElementData  # temporary place to stash the assembler
 
-  file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
+  file_dict::Dict{String, IO}  # dictionary of all files used for logging
 
   #
   # variables for viscous terms
@@ -849,7 +849,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
    if open_files
      eqn.file_dict = openLoggingFiles(mesh, opts)
    else
-     eqn.file_dict = Dict{ASCIIString, IO}()
+     eqn.file_dict = Dict{String, IO}()
    end
 
    if eqn.params.isViscous
@@ -1057,8 +1057,7 @@ function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
   area = zeros(Tmsh, mesh.numNodesPerFace)
-  face_area::Tmsh
-  face_area = 0.0
+  face_area = zero(Tmsh)
   sbpface = mesh.sbpface
 
   #

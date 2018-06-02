@@ -16,11 +16,11 @@ The required interface for each physics module is fairly modest. It must
   * Extend the function `evalResidual(mesh::AbstractMesh, sbp::AbstractSBP,
     eqn::AbstractSolutionData, opts::Dict)` with a method that is more specific in
     the type of `eqn` and equally specific in all other arguments.
-  * Create (and *not* export) an `Associative{ASCIIString, BCType}` container
+  * Create (and *not* export) an `Associative{String, BCType}` container
     named BCDict that maps boundary conditions names to functors.
-  * Create (and *not* export) an `Associative{ASCIIString, Function}` container
+  * Create (and *not* export) an `Associative{String, Function}` container
     named ICDict that maps initial condition names to functions
-  * Call the function `register_physics(physics_name::ASCIIString, mod::Module,
+  * Call the function `register_physics(physics_name::String, mod::Module,
     startup_func::Function)` during module initialization
 
 ### `AbstractSolutionData` subtype
@@ -127,7 +127,7 @@ The recommended features are
     main objects.
   * A `checkOptions(opts::Dict)` function that checks for incompatible or
     unsupported options.
-  * A `const PhysicsName` ASCIIString which is the name of the physics module
+  * A `const PhysicsName` String which is the name of the physics module
   * A `postproc(mesh, sbp, eqn, opts)` function that does post-processing
 
 ### `init` function

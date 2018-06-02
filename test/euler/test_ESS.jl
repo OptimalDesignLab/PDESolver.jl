@@ -578,7 +578,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 
 end
 
-function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=false, zero_penalty=false)
+function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, zero_penalty=false)
 # run entropy stability tests
 # test_ref: whether or not to compare against the reference implementations above
 # zero_penalty: test whether the entropy stability penalty should be zero

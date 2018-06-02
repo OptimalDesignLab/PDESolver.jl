@@ -31,7 +31,7 @@ function call{Tmsh, Tsol}(obj::ExactPoly2nd, xy::AbstractArray{Tmsh}, q::Abstrac
 end
 
 
-global const ExactDict = Dict{ASCIIString, ExactSolutionType}(
+global const ExactDict = Dict{String, ExactSolutionType}(
  "ExactTrig" => ExactTrig(),
  "ExactPoly2nd" => ExactPoly2nd(),
  "ExactExpTrig" => ExactExpTrig()

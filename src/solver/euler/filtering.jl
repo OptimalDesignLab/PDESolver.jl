@@ -67,7 +67,7 @@ end
 
   Inputs:
     sbp: SBP operator used to compute the solutions
-    filter_name: and ASCIIString that matches the name of a filter function.
+    filter_name: and String that matches the name of a filter function.
                  This string is used to retrieve the function from a dictionary
                  of all supported filter function.
     opts:  options dictonary
@@ -76,7 +76,7 @@ end
     F_ret: a numNodesPerElement x numNodesPerElement filter operator
 
 """->
-function calcFilter(sbp::AbstractSBP, filter_name::ASCIIString, opts)
+function calcFilter(sbp::AbstractSBP, filter_name::String, opts)
 # calc the filter specified by filter_name
 
 
@@ -302,7 +302,7 @@ function calcLowPassFilter(sbp::AbstractSBP, opts)
 end
 
 
-global const filter_dict = Dict{ASCIIString, Function}(
+global const filter_dict = Dict{String, Function}(
 "raisedCosineFilter" => calcRaisedCosineFilter,
 "lowPassFilter" => calcLowPassFilter,
 )

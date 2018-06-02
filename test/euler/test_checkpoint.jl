@@ -1,5 +1,5 @@
 const test_checkpoint_inputfile = "input_vals_channel_dg.jl"
-#const test_checkpoint_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
+#const test_checkpoint_moddict = Dict{String, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
 
 type TestCheckpointData <: AbstractCheckpointData
   a::Int

@@ -157,7 +157,7 @@ end
 
   Note that the outer constructor name is the type name with the suffix "Constructor"
 """
-global const FunctionalDict = Dict{ASCIIString, Function}(
+global const FunctionalDict = Dict{String, Function}(
 "lift" => LiftForceDataConstructor,
 "drag" => DragForceDataConstructor,
 "massflow" => MassFlowDataConstructor,

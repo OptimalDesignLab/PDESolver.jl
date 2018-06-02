@@ -79,7 +79,7 @@ end
   See `FunctionalDict` in the Euler module for descriptions of the constructors
   and arguments.
 """
-global const FunctionalDict = Dict{ASCIIString, Function}(
+global const FunctionalDict = Dict{String, Function}(
 "qflux" => QfluxDataConstructor,
 "integralq" => IntegralQDataConstructor,
 )

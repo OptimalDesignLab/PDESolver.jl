@@ -32,7 +32,7 @@ using PETSc2
 
 import Utils.free
 # import SuiteSparse stuff
-import Base.SparseMatrix.UMFPACK: UmfpackLU, umfpack_free_numeric,
+import Base.SparseArrays.UMFPACK: UmfpackLU, umfpack_free_numeric,
                                   umfpack_free_symbolic, umfpack_symbolic!,
                                   umfpack_numeric!
 

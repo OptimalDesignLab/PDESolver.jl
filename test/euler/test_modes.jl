@@ -96,11 +96,6 @@ function test_modes()
   =#
   end
 
-  facts("-----  Testing rk4 -----") do
-
-    include("test_rk4.jl")
-  end
-
   return nothing
 end
 

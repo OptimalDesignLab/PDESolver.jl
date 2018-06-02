@@ -2118,6 +2118,7 @@ function calcMomentContribution_rev!{Tsbp,Tmsh,Tsol,Tres
   end
 end
 
+#=
 function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp},
     xsbp::AbstractArray{Tmsh,3},
     dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1})
@@ -2141,3 +2142,4 @@ function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp},
 
   return moment
 end
+=#

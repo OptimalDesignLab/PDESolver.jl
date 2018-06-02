@@ -1,6 +1,6 @@
 type twoxBC <: BCType
 end
-function call(obj::twoxBC, params::AdvectionEquationMod.ParamType, u, coords, nrm, t)
+function (obj::twoxBC)(params::AdvectionEquationMod.ParamType, u, coords, nrm, t)
   u_bc = 2*coords[1]
   bndryflux = AdvectionEquationMod.RoeSolver(params, u, u_bc, nrm)
   return bndryflux

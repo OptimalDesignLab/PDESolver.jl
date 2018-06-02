@@ -1,6 +1,7 @@
 function test_convergence_p1_dg()
   facts("---- P1 Conservative DG Convergence Tests -----") do
     start_dir = pwd()
+    println("pwd = ", pwd())
 
     resize!(ARGS, 1)
 
@@ -17,7 +18,6 @@ function test_convergence_p1_dg()
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
-    include("calc_line.jl")
 
     slope = calc_line()
     println("slope = ", slope)
@@ -42,5 +42,3 @@ function test_convergence_p1_dg()
 
   return nothing
 end
-
-test_convergence_p1_dg()

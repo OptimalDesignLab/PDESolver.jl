@@ -2,7 +2,7 @@
 
 # input file to modify, same for all test functions
 const test_dg_inputfile = "input_vals_channel_dg.jl"
-#const test_dg_moddict = Dict{ASCIIString, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
+#const test_dg_moddict = Dict{String, Any}("Flux_name" => "RoeFlux", "use_DG" => true, "new_fname" => "input_vals_channel_dg")
 
 """
   This functino tests tests calculating fluxes as used for the DG face

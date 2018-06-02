@@ -3,6 +3,7 @@ module SimpleODEMod
 using PDESolver
 using SolverCommon
 using ArrayViews
+import ArrayViews.view
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface

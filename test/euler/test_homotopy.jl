@@ -1,7 +1,7 @@
 # tests for homotopy.jl
 
 const test_homotopy_inputfile = "input_vals_channel.jl"
-const test_homotopy_moddict = Dict{ASCIIString, Any}(
+const test_homotopy_moddict = Dict{String, Any}(
   "Flux_name" => "RoeFlux", 
   "use_DG" => true, 
   "IC_name" => "ICFreeStream",

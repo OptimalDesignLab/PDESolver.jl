@@ -1634,7 +1634,7 @@ q_bnd    :: the boundary value
 """->
 type AdiabaticWall <: AbstractBoundaryValueType
 end
-function call{Tsol, Tmsh, Tdim}(obj::AdiabaticWall, 
+function (obj::AdiabaticWall){Tsol, Tmsh, Tdim}(
                                 q_in::AbstractArray{Tsol, 2},
                                 xy::AbstractArray{Tmsh, 2},
                                 norm::AbstractArray{Tmsh, 2},
@@ -1659,7 +1659,7 @@ end
 
 type ExactChannel<: AbstractBoundaryValueType
 end
-function call{Tsol, Tmsh}(obj::ExactChannel, 
+function (obj::ExactChannel){Tsol, Tmsh}(
                           q_in::AbstractArray{Tsol, 2},
                           xyz::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
@@ -1716,9 +1716,7 @@ end
 
 
 
-type ExactChannel<: AbstractBoundaryValueType
-end
-function call{Tsol, Tmsh}(obj::ExactChannel, 
+function (obj::ExactChannel){Tsol, Tmsh}(
                           q_in::AbstractArray{Tsol, 2},
                           xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
@@ -1780,7 +1778,7 @@ q_bnd    :: the boundary value
 type Farfield <: AbstractBoundaryValueType
 end
 
-function call{Tsol, Tmsh}(obj::Farfield,
+function (obj::Farfield){Tsol, Tmsh}(
                           q_in::AbstractArray{Tsol, 2},
                           xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
@@ -1853,7 +1851,7 @@ end
 # TODO: combine this with the 2D version. The only difference
 # between 2D and 3D is the freestream conditions.
 #
-function call{Tsol, Tmsh}(obj::Farfield,
+function (obj::Farfield){Tsol, Tmsh}(
                           q_in::AbstractArray{Tsol, 2},
                           xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
