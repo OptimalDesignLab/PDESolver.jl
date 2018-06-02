@@ -1,4 +1,15 @@
 # download and build all non metadata dependences
+
+# install PkgFix if not present
+if !isdir(joinpath(Pkg.dir(), "PkgFix"))
+  Pkg.clone("https://github.com/OptimalDesignLab/PkgFix.jl.git")
+end
+Pkg.checkout("PkgFix", "upgrade_0.6")
+
+using PkgFix
+
+
+
 include("build_funcs.jl")
 
 """
@@ -39,16 +50,12 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [
 #              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "upgrade_0.5";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_update_0.5";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "update_0.5";
-              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "upgrade_v0.5"
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "upgrade_0.6";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_update_0.6";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "update_0.6";
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "upgrade_0.6"
               ]
 
-
-  # manually install MPI until the package matures
-  # handle Petsc specially until we are using the new version
-  petsc_git = "https://github.com/JaredCrean2/Petsc.git"
 
   pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
@@ -120,7 +127,9 @@ function installPDESolver()
     end
 
     println(f, "\n---Finished manual package installations---\n")
-=#
+=#a
+
+  PkgFix.checkout("ArrayViews", "master")  # need the aview change
   close(f)
 
   # generate the known_keys dictonary
