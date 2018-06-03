@@ -6,7 +6,7 @@
 # $1 = "remove": move files out of the way
 # $1 = "restore": move files back to original location
 
-PETSC_DIR1=$HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6
+PETSC_DIR1=$HOME/.julia/v0.6/PETSc2/deps/petsc-3.7.6
 PETSC_ARCH1=arch-linux2-c-debug
 pth=$PETSC_DIR1/$PETSC_ARCH1
 
@@ -24,7 +24,7 @@ then
 
   # do this in either case because the directory gets created even if
   # the cache does not exist
-  rm -r $HOME/.julia/v0.4/PETSc2
+  rm -r $HOME/.julia/v0.6/PETSc2
 fi
 
 
