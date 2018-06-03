@@ -130,7 +130,7 @@ function installPDESolver()
     println(f, "\n---Finished manual package installations---\n")
 =#
 
-  PkgFix.checkout("ArrayViews", "master")  # need the aview change
+#  PkgFix.checkout("ArrayViews", "master")  # need the aview change
   close(f)
 
 end  # end function
