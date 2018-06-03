@@ -14,7 +14,7 @@ test and uses the input file called
 
 function test_adjoint()
 
-  facts("--- Testing Functional Computation On a Boundary ---") do
+  @testset "--- Testing Functional Computation On a Boundary ---" begin
 
     ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
     mesh, sbp, eqn, opts, pmesh = createObjects(ARGS[1])
@@ -22,39 +22,39 @@ function test_adjoint()
     @assert opts["jac_method"] == 2
     @assert opts["run_type"] == 5
 
-    context("Checking Functional Object Creation") do
+    @testset "Checking Functional Object Creation" begin
 
       lift = createFunctional(mesh, sbp, eqn, opts,
                                                    opts["num_functionals"])
-      @fact lift.bcnums --> [4]
-      @fact lift.ndof --> 2
-      @fact lift.bndry_force --> Complex{Float64}[0.0, 0.0]
-      @fact lift.lift_val --> zero(Complex{Float64})
-      @fact lift.drag_val --> zero(Complex{Float64})
-      @fact lift.dLiftdaoa --> zero(Complex{Float64})
-      @fact lift.dDragdaoa --> zero(Complex{Float64})
+      @test ( lift.bcnums )== [4]
+      @test ( lift.ndof )== 2
+      @test ( lift.bndry_force )== Complex{Float64}[0.0, 0.0]
+      @test ( lift.lift_val )== zero(Complex{Float64})
+      @test ( lift.drag_val )== zero(Complex{Float64})
+      @test ( lift.dLiftdaoa )== zero(Complex{Float64})
+      @test ( lift.dDragdaoa )== zero(Complex{Float64})
 
-    end # End context("Checking Functional Object Creation")
+    end # End  testset("Checking Functional Object Creation")
 
     drag = createFunctional(mesh, sbp, eqn, opts, "drag", [4])
 
-    context("Checking Objective Functional Object Creation") do
+    @testset "Checking Objective Functional Object Creation" begin
 
-      @fact drag.bcnums --> [4]
-      @fact drag.ndof --> 2
-      @fact drag.bndry_force --> Complex{Float64}[0.0, 0.0]
-      @fact drag.lift_val --> zero(Complex{Float64})
-      @fact drag.drag_val --> zero(Complex{Float64})
-      @fact drag.dLiftdaoa --> zero(Complex{Float64})
-      @fact drag.dDragdaoa --> zero(Complex{Float64})
+      @test ( drag.bcnums )== [4]
+      @test ( drag.ndof )== 2
+      @test ( drag.bndry_force )== Complex{Float64}[0.0, 0.0]
+      @test ( drag.lift_val )== zero(Complex{Float64})
+      @test ( drag.drag_val )== zero(Complex{Float64})
+      @test ( drag.dLiftdaoa )== zero(Complex{Float64})
+      @test ( drag.dDragdaoa )== zero(Complex{Float64})
 
 
-    end # context("Checking Objective Functional Object Creation")
+    end #  testset("Checking Objective Functional Object Creation")
 
-    context("Checking Functional Computation Before Solve") do
+    @testset "Checking Functional Computation Before Solve" begin
       massflow = EulerEquationMod.MassFlowDataConstructor(Complex128, mesh, sbp, eqn, opts, [3])
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, massflow)
-      @fact massflow.val --> roughly(0.0, atol=1e-13)
+      @test isapprox( massflow.val, 0.0) atol=1e-13
 
       # check derivative
       func_deriv = zeros(eqn.res)
@@ -71,24 +71,24 @@ function test_adjoint()
 
       EulerEquationMod.calcFunctionalDeriv(mesh, sbp, eqn, opts, massflow, func_deriv2)
 
-      @fact vecnorm(func_deriv - func_deriv2) --> roughly(0.0, atol=1e-13)
+      @test isapprox( vecnorm(func_deriv - func_deriv2), 0.0) atol=1e-13
     end  # context Checking Functional Computation Before Solve
 
 
     solvePDE(mesh, sbp, eqn, opts, pmesh)
     evalFunctional(mesh, sbp, eqn, opts, drag)
 
-    context("Checking Functional Computation") do
+    @testset "Checking Functional Computation" begin
 
       analytical_drag = -1/1.4
       drag_error = norm(drag.drag_val - analytical_drag, 2)
-      @fact drag_error --> roughly(0.0, atol = 1e-2)
+      @test isapprox( drag_error, 0.0) atol= 1e-2
 
-       end # End context("Checking Functional Computation")
+       end # End  testset("Checking Functional Computation")
 
-  end # End facts("--- Testing Functional Computation On a Boundary ---")
+  end # End testset("--- Testing Functional Computation On a Boundary ---")
 
-  facts("--- Tesing adjoint computation on the boundary for DG Meshes---") do
+  @testset "--- Tesing adjoint computation on the boundary for DG Meshes---" begin
     # println("testing adjoint functions\n")
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
@@ -99,7 +99,7 @@ function test_adjoint()
     lift = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
 
-    context("Checking functional derivative w.r.t angle of attack") do
+    @testset "Checking functional derivative w.r.t angle of attack" begin
       dLiftdaoa = lift.dLiftdaoa
       dDragdaoa = lift.dDragdaoa
       pert = complex(0, 1e-20)
@@ -110,7 +110,7 @@ function test_adjoint()
       error_lift = norm(dLiftdaoa - dLiftdaoa_c)
       error_drag = norm(dDragdaoa - dDragdaoa_c)
       eqn.params.aoa -= pert
-    end # End context("Checking functional derivative w.r.t angle of attack")
+    end # End  testset("Checking functional derivative w.r.t angle of attack")
 
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
     # Write the values of BoundaryForceData to file
@@ -127,7 +127,7 @@ function test_adjoint()
     orig_q_vec = deepcopy(eqn.q_vec)
     original_res_vec = deepcopy(eqn.res_vec)
 
-    context("Checking partial dJ/dq Calculation") do
+    @testset "Checking partial dJ/dq Calculation" begin
 
       func_deriv_arr = zeros(eqn.q)
       func_deriv = zeros(eqn.q_vec)
@@ -146,16 +146,16 @@ function test_adjoint()
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
       dJdu_fd = (lift.lift_val-orig_Ju)/1e-6
 
-      @fact norm(dJdu_fd - contract_val, 2) --> roughly(0.0, atol = 1e-8)
+      @test isapprox( norm(dJdu_fd - contract_val, 2), 0.0) atol= 1e-8
 
       # Restore q_vec
       for i = 1:length(eqn.q_vec)
         eqn.q_vec[i] = orig_q_vec[i]
       end
 
-    end # End context("--- Checking partial dJ/dq Calculation")
+    end # End  testset("--- Checking partial dJ/dq Calculation")
 
-    context("Checking complete derivative of a functional using adjoint vector") do
+    @testset "Checking complete derivative of a functional using adjoint vector" begin
 
       EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, lift)
       lift_val = lift.lift_val
@@ -179,11 +179,11 @@ function test_adjoint()
       dJdaoa_fd = (lift_pert - lift_val)/pert
       err_val = norm(dJdaoa - dJdaoa_fd, 2)
 
-      @fact err_val --> roughly(0.0, atol = 1e-6)
+      @test isapprox( err_val, 0.0) atol= 1e-6
 
-    end # End context("Checking complete derivative of a functional using adjoint vector")
+    end # End  testset("Checking complete derivative of a functional using adjoint vector")
 
-  end # End facts("--- Tesing adjoint computation on the boundary for DG Meshes---")
+  end # End testset("--- Tesing adjoint computation on the boundary for DG Meshes---")
 
 end # End function test_adjoint
 

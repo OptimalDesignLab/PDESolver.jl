@@ -1,4 +1,4 @@
-using FactCheck
+using Base.Test
 using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
@@ -34,7 +34,7 @@ include("test_conv_rate.jl")
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Elliptic tests -----") do
+@testset "----- Running Elliptic tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
     tags = String[TAG_DEFAULT]
@@ -51,5 +51,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()

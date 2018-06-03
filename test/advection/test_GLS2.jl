@@ -36,7 +36,7 @@ function getGLS_test(mesh, sbp, eqn, opts)
     AdvectionEquationMod.applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
 
     gls_code = reshape(eqn.res[:, :, i], 3)
-    @fact gls_code --> roughly(gls_test, atol=1e-14)
+    @test isapprox( gls_code, gls_test) atol=1e-14
   end
 
 #    println("----- finished get GLS_test -----")
@@ -50,7 +50,7 @@ end  # end function
   where it is known exactly.
 """
 function test_GLS2_term()
-  facts("----- Testing GLS2 -----") do
+  @testset "----- Testing GLS2 -----" begin
 
     ARGS[1] = "input_vals_GLS2.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
@@ -60,14 +60,14 @@ function test_GLS2_term()
     dxidx_true = mesh.dxidx[:, :, 1, 2]*mesh.jac[1,2]
     println("dxidx_true = ", dxidx_true)
     tau_code = AdvectionEquationMod.getTau(2.0, 1.0, dxidx_true, 2)
-    @fact tau_code --> roughly(1/sqrt(8), atol=1e-14)
+    @test isapprox( tau_code, 1/sqrt(8)) atol=1e-14
 
 
     fill!(eqn.q, 1.0)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.applyGLS2(mesh, sbp, eqn, opts, eqn.src_func)
     vals_code = reshape(eqn.res[:, :, 1], 3)
-    @fact vals_code --> roughly(zeros(Float64, 3), atol=1e-14)
+    @test isapprox( vals_code, zeros(Float64, 3)) atol=1e-14
 
 
     
@@ -127,7 +127,7 @@ add_func1!(AdvectionTests, test_GLS2_term, [TAG_SHORTTEST])
 """
 function test_GLS2_jac()
   # finite difference checks
-  facts("----- Performing GLS2 Finite Difference Checks -----") do
+  @testset "----- Performing GLS2 Finite Difference Checks -----" begin
 
     ARGS[1] = "input_vals_GLS2.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
@@ -212,7 +212,7 @@ function test_GLS2_jac()
       eqn.q[1, i, 1] -= eps_complex
     end
 
-    @fact jac_c --> roughly(jac_fd, atol=1e-6)
+    @test isapprox( jac_c, jac_fd) atol=1e-6
 
   end  # end facts block
 

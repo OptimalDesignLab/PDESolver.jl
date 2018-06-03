@@ -28,14 +28,14 @@ function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_nu
     functor(params, qL, qR, aux_vars, nrm, F_num)
     functor(params, qR, qL, aux_vars, nrm, F_num2)
     for i=1:length(F_num)
-      @fact F_num[i] --> roughly(F_num2[i], atol=1e-12)
+      @test isapprox( F_num[i], F_num2[i]) atol=1e-12
     end
   end
 
   # test consistency
   functor(params, qL, qL, aux_vars, nrm, F_num)
   for i=1:length(F_num)
-    @fact F_num[i] --> roughly(F_euler[i])
+    @test isapprox( F_num[i], F_euler[i]) 
   end
 
 end
@@ -60,7 +60,7 @@ function test_multiD_flux(functor, params, qL, qR, aux_vars, F_num, F_num2)
 
   for i=1:dim
     functor(params, qL, qR, aux_vars, nrm[:, i], F_num)
-    @fact F_num --> roughly(F_num2[:, i])
+    @test isapprox( F_num, F_num2[:, i]) 
   end
 
   return nothing
@@ -106,7 +106,7 @@ function test_flux_2d()
   ARGS[1] = "input_vals_channel_dg.jl"
   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
-  facts("----- Testing 2D Numerical Fluxes -----") do
+  @testset "----- Testing 2D Numerical Fluxes -----" begin
  
     qL = [1.0, 2.0, 3.0, 7.0]
     qR = qL + 1
@@ -145,7 +145,7 @@ function test_flux_2d()
 
     F_code = zeros(4)
     functor(eqn.params, qL, qR, aux_vars, nrm, F_code)
-    @fact F_code --> roughly(flux_test, atol=1e-12)
+    @test isapprox( F_code, flux_test) atol=1e-12
 
     # test calculating -Q*f = -(2*S_ij f_star_ij + Eij*f_star_ij)
     # set eqn.q to something interesting
@@ -166,7 +166,7 @@ function test_flux_2d()
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         for p=1:mesh.numDofPerNode
-          @fact eqn.res[p, j, i] --> roughly(res_split[p, j, i], atol=1e-12)
+          @test isapprox( eqn.res[p, j, i], res_split[p, j, i]) atol=1e-12
         end
       end
     end
@@ -179,7 +179,7 @@ function test_flux_2d()
     # S is skew symmetric and F_star is symmetric
     for i=1:mesh.numEl
       val = sum(res_split[:, :, i])
-      @fact val --> roughly(0.0, atol=1e-13)
+      @test isapprox( val, 0.0) atol=1e-13
     end
 
     opts["Q_transpose"] = false
@@ -187,7 +187,7 @@ function test_flux_2d()
     EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     opts["Q_transpose"] = true
 
-    @fact eqn.volume_flux_func --> EulerEquationMod.FluxDict["StandardFlux"]
+    @test ( eqn.volume_flux_func )== EulerEquationMod.FluxDict["StandardFlux"]
     E = zeros(sbp.Q)
     for dim=1:2
       E[:, :, dim] = sbp.Q[:, :, dim] + sbp.Q[:, :, dim].'
@@ -211,7 +211,7 @@ function test_flux_2d()
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         for k=1:size(res_split, 1)
-          @fact res_split[k, j, i] --> roughly(eqn.res[k, j, i], atol=1e-12)
+          @test isapprox( res_split[k, j, i], eqn.res[k, j, i]) atol=1e-12
         end
       end
     end
@@ -229,7 +229,7 @@ function test_flux_2d()
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         for k=1:mesh.numDofPerNode
-          @fact eqn.res[k, j, i] --> roughly(0.0, atol=1e-12)
+          @test isapprox( eqn.res[k, j, i], 0.0) atol=1e-12
         end
       end
     end
@@ -250,7 +250,7 @@ function test_flux_2d()
     opts["precompute_volume_flux"] = false
     EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
 
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
     # test face integrals
     opts["precompute_volume_flux"] = true # reset, to avoid failure cascade
@@ -263,7 +263,7 @@ function test_flux_2d()
     opts["precompute_face_flux"] = false
     EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
 
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
     # test face integrals
     opts["precompute_face_flux"] = true # reset, to avoid failure cascade
@@ -276,7 +276,7 @@ function test_flux_2d()
     opts["precompute_face_flux"] = false
     EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
 
     testRoe(mesh, sbp, eqn, opts)
@@ -317,16 +317,16 @@ function testRoe(mesh, sbp, eqn, opts)
 
   functor(eqn.params, qL, qR, aux_vars, nrm, flux)
   EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, flux2)
-  @fact norm(flux - flux2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(flux - flux2), 0.0) atol=1e-13
 
   # right state only
   functor(eqn.params, qR, qL, aux_vars, nrm, flux)
   EulerEquationMod.calcEulerFlux(eqn.params, qR, aux_vars, nrm, flux2)
-  @fact norm(flux - flux2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(flux - flux2), 0.0) atol=1e-13
 
   # reverse states, reverse norm -> negative flux
   functor(eqn.params, qL, qR, aux_vars, -nrm, flux2)
-  @fact norm(flux + flux2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(flux + flux2), 0.0) atol=1e-13
 
   # indefinite flux jacobian
   if mesh.numDofPerNode == 4
@@ -341,7 +341,7 @@ function testRoe(mesh, sbp, eqn, opts)
 
   functor(eqn.params, qL, qR, aux_vars, nrm, flux)
   functor(eqn.params, qR, qL, aux_vars, -nrm, flux2)
-  @fact norm(flux + flux2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(flux + flux2), 0.0) atol=1e-13
 
 
 
@@ -355,7 +355,7 @@ function test_flux_3d()
   # test 3D
   ARGS[1] = "input_vals_3d.jl"
   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-  facts("----- testing 3D  Numerical Fluxes -----") do
+  @testset "----- testing 3D  Numerical Fluxes -----" begin
 
     qL =  [1., 2, 3, 4, 15]
     qR =  qL + 1
@@ -417,7 +417,7 @@ function test_flux_3d()
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
         for k=1:size(res_split, 1)
-          @fact res_split[k, j, i] --> roughly(eqn.res[k, j, i], atol=1e-12)
+          @test isapprox( res_split[k, j, i], eqn.res[k, j, i]) atol=1e-12
         end
       end
     end

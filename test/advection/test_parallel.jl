@@ -8,7 +8,7 @@ function test_parallel_mpi()
   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
   # test the Utils parallel functions
-  facts("----- Testing Parallel Functions -----") do
+  @testset "----- Testing Parallel Functions -----" begin
     mesh.npeers = 1
     nfaces = length(mesh.bndryfaces)
     shared_data = Array{SharedFaceData}(mesh.npeers)
@@ -27,8 +27,8 @@ function test_parallel_mpi()
     end
 
     for i=1:mesh.npeers
-      @fact shared_data[i].send_req --> MPI.REQUEST_NULL
-      @fact shared_data[i].recv_req --> MPI.REQUEST_NULL
+      @test ( shared_data[i].send_req )== MPI.REQUEST_NULL
+      @test ( shared_data[i].recv_req )== MPI.REQUEST_NULL
     end
 
     data_i = shared_data[1]
@@ -42,7 +42,7 @@ function test_parallel_mpi()
       for j=1:mesh.numNodesPerFace
         coords = mesh.coords_bndry[:, j, i]
         val_exp = AdvectionEquationMod.calc_p4(eqn.params, coords, 0.0)
-        @fact buff[1, j, i] --> roughly(val_exp, atol=1e-13)
+        @test isapprox( buff[1, j, i], val_exp) atol=1e-13
       end
     end
 
@@ -53,7 +53,7 @@ function test_parallel_mpi()
     data_i.recv_status = MPI.Wait!(data_i.recv_req)
     # if the assertiosn do not trigger, then the test passes
     verifyReceiveCommunication(data_i)
-    @fact data_i.q_send --> roughly(data_i.q_recv, atol=1e-13)
+    @test isapprox( data_i.q_send, data_i.q_recv) atol=1e-13
 
     # test calcSharedFaceIntegrals
     mesh.npeers = 1
@@ -106,7 +106,7 @@ function test_parallel_mpi()
     AdvectionEquationMod.calcSharedFaceIntegrals(mesh, sbp, eqn, opts, data_i)
 
     for i=1:length(eqn.flux_sharedface[1])
-      @fact eqn.flux_sharedface[1][i] --> roughly(eqn.flux_face[i], atol=1e-13)
+      @test isapprox( eqn.flux_sharedface[1][i], eqn.flux_face[i]) atol=1e-13
     end
   end  # end facts block
 

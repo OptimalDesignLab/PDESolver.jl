@@ -14,49 +14,49 @@ global const test_lowlevel_inputfile = "input_vals_channel.jl"
   are calculated correctly.  This makes it dependent on the element ordering
 """
 function test_lowlevel_mesh(mesh, sbp, eqn, opts)
-  facts("--- Testing Mesh --- ") do
+  @testset "--- Testing Mesh --- " begin
 
-    @fact mesh.numVert --> 4
-    @fact mesh.numEdge --> 5
-    @fact mesh.numEl --> 2
-    @fact mesh.order --> 1
-    @fact mesh.numDof --> 4
-    @fact mesh.numNodes --> 4
-    @fact mesh.numDofPerNode --> 1
-    @fact mesh.numBoundaryFaces --> 4
-    @fact mesh.numInterfaces --> 1
-    @fact mesh.numNodesPerElement --> 3
-    @fact mesh.numNodesPerType --> [1, 0 , 0]
+    @test ( mesh.numVert )== 4
+    @test ( mesh.numEdge )== 5
+    @test ( mesh.numEl )== 2
+    @test ( mesh.order )== 1
+    @test ( mesh.numDof )== 4
+    @test ( mesh.numNodes )== 4
+    @test ( mesh.numDofPerNode )== 1
+    @test ( mesh.numBoundaryFaces )== 4
+    @test ( mesh.numInterfaces )== 1
+    @test ( mesh.numNodesPerElement )== 3
+    @test ( mesh.numNodesPerType )== [1, 0 , 0]
 
-    @fact mesh.bndry_funcs[1] --> AdvectionEquationMod.x5plusy5BC()
-    @fact mesh.bndryfaces[1].element --> 1
-    @fact mesh.bndryfaces[1].face --> 3
-    @fact mesh.bndryfaces[2].element --> 1
-    @fact mesh.bndryfaces[2].face --> 1
-    @fact mesh.bndryfaces[3].element --> 2
-    @fact mesh.bndryfaces[3].face --> 2
-    @fact mesh.bndryfaces[4].element --> 2
-    @fact mesh.bndryfaces[4].face --> 1
+    @test ( mesh.bndry_funcs[1] )== AdvectionEquationMod.x5plusy5BC()
+    @test ( mesh.bndryfaces[1].element )== 1
+    @test ( mesh.bndryfaces[1].face )== 3
+    @test ( mesh.bndryfaces[2].element )== 1
+    @test ( mesh.bndryfaces[2].face )== 1
+    @test ( mesh.bndryfaces[3].element )== 2
+    @test ( mesh.bndryfaces[3].face )== 2
+    @test ( mesh.bndryfaces[4].element )== 2
+    @test ( mesh.bndryfaces[4].face )== 1
 
-    @fact mesh.interfaces[1].elementL --> 1
-    @fact mesh.interfaces[1].elementR --> 2
-    @fact mesh.interfaces[1].faceL --> 2
-    @fact mesh.interfaces[1].faceR --> 3
+    @test ( mesh.interfaces[1].elementL )== 1
+    @test ( mesh.interfaces[1].elementR )== 2
+    @test ( mesh.interfaces[1].faceL )== 2
+    @test ( mesh.interfaces[1].faceR )== 3
 
     jac_fac = 0.25
     fac = 2
-    @fact mesh.coords[:, :, 2] --> roughly([4 4 0; 0 4 4.0])
-    @fact mesh.coords[:, :, 1] --> roughly([0.0 4 0; 0 0 4])
+    @test isapprox( mesh.coords[:, :, 2], [4 4 0; 0 4 4.0]) 
+    @test isapprox( mesh.coords[:, :, 1], [0.0 4 0; 0 0 4]) 
 
-    @fact mesh.dxidx[:, :, 1, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
-    @fact mesh.dxidx[:, :, 2, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
-    @fact mesh.dxidx[:, :, 3, 2] --> roughly(fac*[1 1; -1 0.0], atol=1e-14)
+    @test isapprox( mesh.dxidx[:, :, 1, 2], fac*[1 1; -1 0.0]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 2, 2], fac*[1 1; -1 0.0]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 3, 2], fac*[1 1; -1 0.0]) atol=1e-14
 
-    @fact mesh.dxidx[:, :, 1, 1] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
-    @fact mesh.dxidx[:, :, 2, 1] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
-    @fact mesh.dxidx[:, :, 3, 1] --> roughly(fac*[1 0; 0 1.0], atol=1e-14)
+    @test isapprox( mesh.dxidx[:, :, 1, 1], fac*[1 0; 0 1.0]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 2, 1], fac*[1 0; 0 1.0]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 3, 1], fac*[1 0; 0 1.0]) atol=1e-14
 
-    @fact mesh.jac --> roughly(jac_fac*ones(3,2))
+    @test isapprox( mesh.jac, jac_fac*ones(3,2)) 
 
   end  # end fact block
 
@@ -70,24 +70,24 @@ add_func2!(AdvectionTests, test_lowlevel_mesh, test_lowlevel_inputfile, [TAG_SHO
   Test some basic functionality: dissassmble solution, mass matrix, etc.
 """
 function test_lowlevel_core(mesh, sbp, eqn, opts)
-  facts("--- Testing Functions Within AdvectionData_--- ") do
+  @testset "--- Testing Functions Within AdvectionData_--- " begin
     Tsol = Float64
     u_vec = Tsol[1,2,3,4]
     u  = zeros(Tsol, 1, 3, 2)
 
     # checking array1DTo3D
     array1DTo3D(mesh, sbp, eqn, opts, u_vec, u)
-    @fact u[1,1,2] --> roughly(2.0)
-    @fact u[1,2,2] --> roughly(4.0)
-    @fact u[1,3,2] --> roughly(3.0)
-    @fact u[1,1,1] --> roughly(1.0)
-    @fact u[1,2,1] --> roughly(2.0)
-    @fact u[1,3,1] --> roughly(3.0)
+    @test isapprox( u[1,1,2], 2.0) 
+    @test isapprox( u[1,2,2], 4.0) 
+    @test isapprox( u[1,3,2], 3.0) 
+    @test isapprox( u[1,1,1], 1.0) 
+    @test isapprox( u[1,2,1], 2.0) 
+    @test isapprox( u[1,3,1], 3.0) 
 
     #checking array3DTo1D
     fill!(u_vec, 0.0)
     array3DTo1D(mesh, sbp, eqn, opts, u, u_vec)
-    @fact u_vec --> roughly([1.0,4.0,6.0,4.0])
+    @test isapprox( u_vec, [1.0,4.0,6.0,4.0]) 
 
     # check mass matrix
     # just for testing, make jac != 1
@@ -99,19 +99,19 @@ function test_lowlevel_core(mesh, sbp, eqn, opts)
     M4 = w_val/jac_val
     M_test = [M1, M2, M3, M4]
     M_code = AdvectionEquationMod.calcMassMatrix(mesh, sbp, eqn)
-    @fact M_code --> roughly(M_test, atol=1e-13)
+    @test isapprox( M_code, M_test) atol=1e-13
 
     Minv_test = 1./M_test
     Minv_test = AdvectionEquationMod.calcMassMatrixInverse(mesh, sbp, eqn)
-    @fact Minv_test --> roughly(Minv_test, atol=1e-13)
+    @test isapprox( Minv_test, Minv_test) atol=1e-13
 
     arr = rand(1, 3, 2)
     arr_orig = copy(arr)
     AdvectionEquationMod.matVecA0inv(mesh, sbp, eqn, opts, arr)
-    @fact arr --> roughly(arr_orig, atol=1e-14)
+    @test isapprox( arr, arr_orig) atol=1e-14
 
     AdvectionEquationMod.matVecA0(mesh, sbp, eqn, opts, arr)
-    @fact arr --> roughly(arr_orig, atol=1e-14)
+    @test isapprox( arr, arr_orig) atol=1e-14
   end
 
   return nothing
@@ -124,7 +124,7 @@ add_func2!(AdvectionTests, test_lowlevel_core, test_lowlevel_inputfile, [TAG_SHO
   Test things from common_funcs.jl
 """
 function test_lowlevel_common(mesh, sbp, eqn, opts)
-  facts("--- Testing common functions ---") do
+  @testset "--- Testing common functions ---" begin
 
     x = 1.
     y = 2.
@@ -133,10 +133,10 @@ function test_lowlevel_common(mesh, sbp, eqn, opts)
     eqn.params.alpha_y = 0.0
     t = 0.0
     val = AdvectionEquationMod.calc_x5plusy5(eqn.params, coords, t)
-    @fact val --> roughly(x^5 + y^5, atol=1e-14)
+    @test isapprox( val, x^5 + y^5) atol=1e-14
    
     val = AdvectionEquationMod.calc_exp_xplusy(eqn.params, coords, t)
-    @fact val --> roughly(exp(x + y), atol=1e-14)
+    @test isapprox( val, exp(x + y)) atol=1e-14
   end  # end facts block
 
   return nothing
@@ -150,7 +150,7 @@ add_func2!(AdvectionTests, test_lowlevel_common, test_lowlevel_inputfile, [TAG_S
   boundary flux values.
 """
 function test_lowlevel_bc(mesh, sbp, eqn, opts)
-  facts("--- Testing Boundary Function ---") do
+  @testset "--- Testing Boundary Function ---" begin
 
     # testing choice of u or u_bc
     u = 5.0
@@ -165,23 +165,23 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
 
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
 
-    @fact val --> roughly(u*eqn.params.alpha_x, atol=1e-14)
+    @test isapprox( val, u*eqn.params.alpha_x) atol=1e-14
 
     nrm = [-1.0, 0]
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
-    @fact val --> roughly(-u_bc*eqn.params.alpha_x, atol=1e-14)
+    @test isapprox( val, -u_bc*eqn.params.alpha_x) atol=1e-14
 
 
     nrm = [0, 1.0]
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
-    @fact val --> roughly(u*eqn.params.alpha_y, atol=1e-14)
+    @test isapprox( val, u*eqn.params.alpha_y) atol=1e-14
 
     nrm = [0, -1.0]
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
-    @fact val --> roughly(-u_bc*eqn.params.alpha_y, atol=1e-14)
+    @test isapprox( val, -u_bc*eqn.params.alpha_y) atol=1e-14
 
     # now test rotation using dxidx
     
@@ -210,7 +210,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     val_exp = alpha_eff*u
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
 
-    @fact val --> roughly(val_exp, atol=1e-14)
+    @test isapprox( val, val_exp) atol=1e-14
 
     # now check eta direction
     nrm = [0, 1.]
@@ -219,7 +219,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     val_exp = u*alpha_eff
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
 
-    @fact val --> roughly(val_exp, atol=1e-14)
+    @test isapprox( val, val_exp) atol=1e-14
 
     # now rotate the coordinate system so much that this becomes an inflow
     theta = 120*pi/180
@@ -231,7 +231,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     dxidx = get_rotation_matrix( theta)
     calcBCNormal(eqn.params, dxidx, nrm, nrm2)
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
-    @fact val --> roughly(val_exp, atol=1e-14)
+    @test isapprox( val, val_exp) atol=1e-14
 
     # check eta direction
     nrm = [0, 1]
@@ -240,7 +240,7 @@ function test_lowlevel_bc(mesh, sbp, eqn, opts)
     alpha_eff = alpha_mag*sin(angle_diff)
     val_exp = alpha_eff*u
     val = AdvectionEquationMod.RoeSolver(eqn.params, u, u_bc, nrm2)
-    @fact val --> roughly(val_exp, atol=1e-14)
+    @test isapprox( val, val_exp) atol=1e-14
   end  # end facts block
 
   return nothing
@@ -253,7 +253,7 @@ add_func2!(AdvectionTests, test_lowlevel_bc, test_lowlevel_inputfile, [TAG_BC, T
   Test computing volume integrals over entire mesh
 """
 function test_lowlevel_volumeintegrals()
-  facts("--- Testing Volume Integrals ---")  do
+  @testset "--- Testing Volume Integrals ---" begin
 
     # use the 8 element mesh
     ARGS[1] = "input_vals_8el.jl"
@@ -271,7 +271,7 @@ function test_lowlevel_volumeintegrals()
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
     array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    @fact eqn.res --> roughly(zeros(1, mesh.numNodesPerElement, mesh.numEl), atol=1e-12)
+    @test isapprox( eqn.res, zeros(1, mesh.numNodesPerElement, mesh.numEl)) atol=1e-12
 
 
     # check that Qx.'*q = 0 when q = ones(3)
@@ -297,8 +297,8 @@ function test_lowlevel_volumeintegrals()
     eta_flux = dxidx1[2, 1]*1*q
     eta_component = sbp.Q[:, :, 2].'*eta_flux
     val2_test = sum(xi_component + eta_component)
-    @fact val_test --> roughly(val2_test, atol=1e-14)
-    @fact val_test --> roughly(val_code, atol=1e-14)
+    @test isapprox( val_test, val2_test) atol=1e-14
+    @test isapprox( val_test, val_code) atol=1e-14
 
 
     # test that the integral of qx dOmega^e when q = 2*x works
@@ -326,11 +326,11 @@ function test_lowlevel_volumeintegrals()
     # check the boundry contribution
     AdvectionEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
 
-    @fact sum(eqn.res[:, :, 1]) --> roughly(-2.0, atol=1e-14)
-    @fact sum(eqn.res[:, :, 3]) --> roughly(-2.0, atol=1e-14)
+    @test isapprox( sum(eqn.res[:, :, 1]), -2.0) atol=1e-14
+    @test isapprox( sum(eqn.res[:, :, 3]), -2.0) atol=1e-14
 
-    @fact sum(eqn.res[:, :, 6]) --> roughly(-2.0, atol=1e-14)
-    @fact sum(eqn.res[:, :, 8]) --> roughly(-2.0, atol=1e-14)
+    @test isapprox( sum(eqn.res[:, :, 6]), -2.0) atol=1e-14
+    @test isapprox( sum(eqn.res[:, :, 8]), -2.0) atol=1e-14
 
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
@@ -339,8 +339,8 @@ function test_lowlevel_volumeintegrals()
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-      @fact sum(val_code) --> roughly(0.0, atol=1e-14)  # proven by hand calc
-      @fact val_code --> roughly(val_test, atol=1e-14)
+      @test isapprox( sum(val_code), 0.0) atol=1e-14# proven by hand calc
+      @test isapprox( val_code, val_test) atol=1e-14
     end
 
     println("----- Checking q=2*x^2 + 5 case -----")
@@ -362,7 +362,7 @@ function test_lowlevel_volumeintegrals()
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-      @fact val_code --> roughly(val_test, atol=1e-14)
+      @test isapprox( val_code, val_test) atol=1e-14
     end
 
 
@@ -387,7 +387,7 @@ function test_lowlevel_volumeintegrals()
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-      @fact val_code --> roughly(val_test, atol=1e-14)
+      @test isapprox( val_code, val_test) atol=1e-14
     end
 
     # back to the original mesh
@@ -415,7 +415,7 @@ function test_lowlevel_volumeintegrals()
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-      @fact val_code --> roughly(val_test, atol=1e-14)
+      @test isapprox( val_code, val_test) atol=1e-14
     end
 
     array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
@@ -447,7 +447,7 @@ function test_lowlevel_volumeintegrals()
       q_i = reshape(eqn.q[1, :, i], 3)
       val_test = Qx_i.'*q_i
       val_code = reshape(eqn.res[:, :, i], 3)
-      @fact val_code --> roughly(val_test, atol=1e-14)
+      @test isapprox( val_code, val_test) atol=1e-14
     end
   =#
   end # end facts block
@@ -458,7 +458,7 @@ end
 #test_lowlevel_volumeintegrals()
 add_func1!(AdvectionTests, test_lowlevel_volumeintegrals, [TAG_VOLUMEINTEGRALS, TAG_SHORTTEST])
   #=
-  context("--- Testing evalInteriorFlux ---") do
+  @testset "--- Testing evalInteriorFlux ---" begin
     
     fill!(eqn.res, 0.0)
     fill!(eqn.params.alpha_x, 1.0)
@@ -473,16 +473,16 @@ add_func1!(AdvectionTests, test_lowlevel_volumeintegrals, [TAG_VOLUMEINTEGRALS, 
 
 
 #=
- context("--- Testing dataPrep ---") do
+ @testset "--- Testing dataPrep ---" begin
  
   end
 
 
 
-  context("--- Testing evalBoundaryIntegrals ---") do
+  @testset "--- Testing evalBoundaryIntegrals ---" begin
   end
 
-  context("--- Testing evalEuler --- ")  do
+  @testset "--- Testing evalEuler --- " begin
 
 end # end facts block
 =#

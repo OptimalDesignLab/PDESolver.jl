@@ -3,7 +3,7 @@
   Test the entropy stable integrals in parallel
 """
 function test_ESS_parallel()
-  facts("----- testing ESS parallel -----") do
+  @testset "----- testing ESS parallel -----" begin
 
     if MPI.Comm_rank(MPI.COMM_WORLD) == 1
       rmfile("./entropy.dat")
@@ -20,11 +20,11 @@ function test_ESS_parallel()
     s_end = data[end, 3]
 
     # check total change in entropy function
-    @fact abs( (s_start - s_end)/s_start) --> less_than(1e-12)
+    @test  abs( (s_start - s_end)/s_start)  < 1e-12
 
     # check w^T * res at each timestep
     for i=1:npts
-      @fact abs(data[i, 4]) --> less_than(1e-13)
+      @test  abs(data[i, 4])  < 1e-13
     end
 
   end

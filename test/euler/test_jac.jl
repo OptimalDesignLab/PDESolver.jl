@@ -21,7 +21,7 @@ function test_jac_terms()
 
 
 
-  facts("----- Testing jacobian -----") do
+  @testset "----- Testing jacobian -----" begin
     test_pressure(eqn.params)
     test_pressure(eqn3.params)
 
@@ -133,7 +133,7 @@ add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
 """
 function test_jac_terms_long()
 
-  facts("----- Testing additional Jacobian calculation -----") do
+  @testset "----- Testing additional Jacobian calculation -----" begin
 
     fname3 = "input_vals_jac3d.jl"
     # SBPGamma, Petsc Mat
@@ -253,7 +253,7 @@ function test_pressure(params::AbstractParamType{Tdim}) where Tdim
   p_dot2 = zeros(q)
   EulerEquationMod.calcPressure_diff(params, q, p_dot2)
 
-  @fact maximum(abs.(p_dot - p_dot2)) --> roughly(0.0, atol=1e-14)
+  @test isapprox( maximum(abs.(p_dot - p_dot2)), 0.0) atol=1e-14
 
   return nothing
 end
@@ -293,7 +293,7 @@ function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
   res2 = zeros(res)
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
-  @fact maximum(abs.(res - res2)) --> roughly(0.0, atol=1e-14)
+  @test isapprox( maximum(abs.(res - res2)), 0.0) atol=1e-14
 end
 
 function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
@@ -312,7 +312,7 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
     qL[i] -= pert
   end
 
-  @fact norm(lambda_dot - lambda_dot2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(lambda_dot - lambda_dot2), 0.0) atol=1e-13
 
 
   return nothing
@@ -344,8 +344,8 @@ function test_lambdasimple(params::AbstractParamType{Tdim}, qL::AbstractVector,
   end
 
 
-  @fact norm(lambda_dotL - lambda_dotL2) --> roughly(0.0, atol=1e-13)
-  @fact norm(lambda_dotR - lambda_dotR2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(lambda_dotL - lambda_dotL2), 0.0) atol=1e-13
+  @test isapprox( norm(lambda_dotR - lambda_dotR2), 0.0) atol=1e-13
 
 
   return nothing
@@ -423,8 +423,8 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
   end
 
 
-  @fact maximum(abs.(resL - resL2)) --> roughly(0.0, atol=1e-14)
-  @fact maximum(abs.(resR - resR2)) --> roughly(0.0, atol=1e-14)
+  @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-14
 
   return nothing
 end
@@ -459,7 +459,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @fact maximum(abs.(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-14
 
 
   # test face integrals
@@ -478,7 +478,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @fact maximum(abs.(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-14
 
   # test boundary integral
   # test face integrals
@@ -498,7 +498,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @fact maximum(abs.(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-14
 
 
   return nothing
@@ -570,16 +570,16 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-11)
+    @test isapprox( norm(b1 - b2), 0.0) atol=1e-11
   end
 
   A = getBaseLO(lo2).A
   if typeof(A) <: PetscMat
     matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
     if is_prealloc_exact
-      @fact matinfo.nz_unneeded --> 0
+      @test ( matinfo.nz_unneeded )== 0
     else
-      @fact matinfo.nz_unneeded --> greater_than(0)
+      @test  matinfo.nz_unneeded  > 0
     end
       
 
@@ -674,7 +674,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(b1 - b2), 0.0) atol=1e-12
   end
 
   free(lo1)
@@ -736,7 +736,7 @@ function test_diagjac(mesh, sbp, eqn, opts)
   # order where each node of each element is numbered 1:n
   for block=1:nblocks
     idx = ((block - 1)*blocksize + 1):(block*blocksize)
-    @fact norm(jac2_full[idx, idx] - jac1.A[:, :, block]) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(jac2_full[idx, idx] - jac1.A[:, :, block]), 0.0) atol=1e-13
   end
 
   # zero out the off diagonal parts of jac2_full
@@ -762,7 +762,7 @@ function test_diagjac(mesh, sbp, eqn, opts)
     NonlinearSolvers.diagMatVec(jac1, mesh, x, b)
     b2 = jac2_full * x
 
-    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(b2 - b), 0.0) atol=1e-12
   end
 
 
@@ -818,7 +818,7 @@ function test_strongdiagjac(mesh, sbp, eqn, _opts)
     b = jac1 * x
     NonlinearSolvers.diagMatVec(jac2, mesh, x, b2)
 
-    @fact norm(b2 - b) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(b2 - b), 0.0) atol=1e-12
   end
 
 

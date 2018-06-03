@@ -4,7 +4,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -36,7 +36,7 @@ include("test_parallel2.jl")
   Test energy stability in parallel
 """
 function runtests_parallel4()
-  facts("----- Testing Parallel 4 -----") do
+  @testset "----- Testing Parallel 4 -----" begin
 
     start_dir = pwd()
     cd("./energy")
@@ -52,7 +52,7 @@ add_func1!(AdvectionTests, runtests_parallel4, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Advection 4 processor tests -----") do
+@testset "----- Running Advection 4 processor tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
     tags = String[TAG_DEFAULT]
@@ -68,6 +68,4 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()
 

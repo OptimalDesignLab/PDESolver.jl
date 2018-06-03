@@ -9,7 +9,8 @@ include("tags.jl")
 
 global const EmptyDict = Dict{Any, Any}()
 
-export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
+export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist,
+       not_isapprox
 
 """
   This type stores all the data that describes a set of tests and their
@@ -312,6 +313,18 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
 
   return nothing
 end
+
+"""
+  Helper function to compute !isapprox(args..., kwargs) in @test macros because
+
+  @test !isapprox(args..., kwargs...)
+
+  doesn't work.
+"""
+function not_isapprox(args...; kwargs...)
+  return !isapprox(args...; kwargs...)
+end
+
 
 
 end  # end module

@@ -5,22 +5,22 @@
 """
 function test_complexify()
 
-  facts("----- Testing Complexify.jl ------") do
+  @testset "----- Testing Complexify.jl ------" begin
 
     a = 1.0
     b = -1.0
-    @fact absvalue(a) --> roughly(abs(a), atol=1e-15)
-    @fact absvalue(b) --> roughly(abs(b), atol=1e-15)
+    @test isapprox( absvalue(a), abs(a)) atol=1e-15
+    @test isapprox( absvalue(b), abs(b)) atol=1e-15
 
     c = complex(1.0, 1.0)
     d = complex(1.0, -1.0)
     f = complex(-1.0, 1.0)
     g = complex(-1.0, -1.0)
 
-    @fact absvalue(c) --> roughly(complex(1.0, 1.0), atol=1e-15)
-    @fact absvalue(d) --> roughly(complex(1.0, -1.0), atol=1e-15)
-    @fact absvalue(f) --> roughly(complex(1.0, -1.0), atol=1e-15)
-    @fact absvalue(g) --> roughly(complex(1.0, 1.0), atol=1e-15)
+    @test isapprox( absvalue(c), complex(1.0, 1.0)) atol=1e-15
+    @test isapprox( absvalue(d), complex(1.0, -1.0)) atol=1e-15
+    @test isapprox( absvalue(f), complex(1.0, -1.0)) atol=1e-15
+    @test isapprox( absvalue(g), complex(1.0, 1.0)) atol=1e-15
 
   end
 end

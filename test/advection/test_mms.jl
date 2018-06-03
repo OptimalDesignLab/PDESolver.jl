@@ -56,8 +56,7 @@ function test_mms_poly(opts::Dict, maxdegree::Integer)
     fill!(eqn.res, 0.0)
     AdvectionEquationMod.evalResidual(mesh, sbp, eqn, opts)
     array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-    @fact calcNorm(eqn, eqn.res_vec) --> roughly(0.0, atol=1e-12)
-#    @fact eqn.res_vec --> roughly(zeros(mesh.numDof), atol=1e-12)
+    @test isapprox( calcNorm(eqn, eqn.res_vec), 0.0) atol=1e-12
   end
 
   return nothing
@@ -69,7 +68,7 @@ end
   gamma and omega operators.
 """
 function test_mms()
-  facts("----- Testing using manufactured polynomials -----") do
+  @testset "----- Testing using manufactured polynomials -----" begin
 
     # test 2d DG
     println("  ----- Testing 2d -----")

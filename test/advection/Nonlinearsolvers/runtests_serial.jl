@@ -1,7 +1,7 @@
 include(joinpath(dirname(@__FILE__), "crank_nicolson_CS", "calc_line.jl"))
 
 function test_CN()
-  facts("---- Crank-Nicolson Convergence Tests, Complex Step Jacobian -----") do
+  @testset "---- Crank-Nicolson Convergence Tests, Complex Step Jacobian -----" begin
     start_dir = pwd()
 
     cd(dirname(@__FILE__))
@@ -41,14 +41,14 @@ function test_CN()
     slope_val = 2.00
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
     err_val = 0.09095728504176116 
     slope_fac = 1.25
     # println("err_vals[1] = ", err_vals[1])
-    @fact err_vals[1] --> greater_than(err_val/slope_fac)
-    @fact err_vals[1] --> less_than(err_val*slope_fac)
+    @test  err_vals[1]  > err_val/slope_fac
+    @test  err_vals[1]  < err_val*slope_fac
 
     cd("../")
     # =================== CN, FD tests ===================
@@ -80,14 +80,14 @@ function test_CN()
     slope_val = 2.00
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
     err_val = 0.09095728504176116 
     slope_fac = 1.25
     # println("err_vals[1] = ", err_vals[1])
-    @fact err_vals[1] --> greater_than(err_val/slope_fac)
-    @fact err_vals[1] --> less_than(err_val*slope_fac)
+    @test  err_vals[1]  > err_val/slope_fac
+    @test  err_vals[1]  < err_val*slope_fac
 
     cd("../")
     # =================== CN, PETSc CS tests =================== 
@@ -119,14 +119,14 @@ function test_CN()
     slope_val = 2.00
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
     err_val = 0.09095728504176116 
     slope_fac = 1.25
     # println("err_vals[1] = ", err_vals[1])
-    @fact err_vals[1] --> greater_than(err_val/slope_fac)
-    @fact err_vals[1] --> less_than(err_val*slope_fac)
+    @test  err_vals[1]  > err_val/slope_fac
+    @test  err_vals[1]  < err_val*slope_fac
 
     cd(start_dir)
   end  # end facts block

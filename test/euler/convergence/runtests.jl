@@ -28,7 +28,7 @@ include("./p4/entropy/runtests.jl")
 
 
 function run_convergence_tests()
-  facts("----- testing convergence rates -----") do
+  @testset "----- testing convergence rates -----" begin
 
     original_dir = pwd()
     cd(dirname(@__FILE__))

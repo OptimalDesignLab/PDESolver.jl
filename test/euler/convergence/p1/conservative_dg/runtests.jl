@@ -1,5 +1,5 @@
 function test_convergence_p1_dg()
-  facts("---- P1 Conservative DG Convergence Tests -----") do
+  @testset "---- P1 Conservative DG Convergence Tests -----" begin
     start_dir = pwd()
     println("pwd = ", pwd())
 
@@ -29,14 +29,14 @@ function test_convergence_p1_dg()
     slope_val = 2.00
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
     err_val = 0.01200
     slope_fac = 1.25
     println("err_vals[1] = ", err_vals[1])
-    @fact err_vals[1] --> greater_than(err_val/slope_fac)
-    @fact err_vals[1] --> less_than(err_val*slope_fac)
+    @test  err_vals[1]  > err_val/slope_fac
+    @test  err_vals[1]  < err_val*slope_fac
 
   end  # end facts block
 

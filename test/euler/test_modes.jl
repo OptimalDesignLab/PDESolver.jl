@@ -1,5 +1,5 @@
 function test_modes()
-  facts("--- Testing Sparse/Dense Jacobian ---") do
+  @testset "--- Testing Sparse/Dense Jacobian ---" begin
 
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_vortex1.jl"
@@ -8,7 +8,7 @@ function test_modes()
     mesh, sbp, eqn, opts = run_solver(ARGS[1])
 #    include("../src/solver/euler/startup.jl")
 
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
 
     println("\n\n----- Testing jacobian vector product -----")
@@ -37,7 +37,7 @@ function test_modes()
 
     # check the two products are equal
     for i=1:mesh.numDof
-      @fact result1[i] --> roughly(result2[i], atol=1e-13)
+      @test isapprox( result1[i], result2[i]) atol=1e-13
     end
 =#
   #  results_all = hcat(result1, result2)
@@ -53,46 +53,46 @@ function test_modes()
     println("\n\ntesting ", ARGS[1])
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
     =#
 
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_vortex2.jl"
     println("\n\ntesting ", ARGS[1])
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
   #=
     # test entropy variables
     ARGS[1] = "input_vals_vortex2a.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
   =#
 
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_vortex3dg.jl"
     println("\n\ntesting ", ARGS[1])
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
   #=
     # test entropy variables
     ARGS[1] = "input_vals_vortex3a.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
   =#
 
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_vortex4.jl"
     println("\n\ntesting ", ARGS[1])
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
   #=
     # test entropy variables
     ARGS[1] = "input_vals_vortex4a.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    @fact calcNorm(eqn, eqn.res_vec) --> less_than(1e-9)
+    @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
   =#
   end
 

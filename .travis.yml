@@ -27,12 +27,16 @@ before_install:
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
   - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
+  - sudo ./deps/travis-install-mpi.sh $MPI_IMPL
+  # setting these variables will help cmake find MPI
+  - export CC=mpicc
+  - export FC=mpif90
+  - export CXX=mpicxx
+
 
 script:
   -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd())'
-  - cd ~/.julia/v0.4/PDESolver/deps
-  - ./travis-install-mpi.sh $MPI_IMPL
   # the cached files interfere with the build system, move them temporarily
   - ls ~/.julia/v0.4/
   - ls ~/.julia/v0.4/PETSc2/deps

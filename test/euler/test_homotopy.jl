@@ -13,7 +13,7 @@ const test_homotopy_moddict = Dict{String, Any}(
 
 function test_homotopy(mesh, sbp, eqn, opts)
 
-  facts("----- Testing Homotopy operators ------") do
+  @testset "----- Testing Homotopy operators ------" begin
   # the initial condition is uniform flow, so the residual of the homotopy
   # should be zero
 
@@ -23,11 +23,11 @@ function test_homotopy(mesh, sbp, eqn, opts)
   EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res)
 
   for i=1:mesh.numEl
-    @fact norm(res[:, :, i]) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(res[:, :, i]), 0.0) atol=1e-12
   end
 
   for i=1:length(eqn.res)
-    @fact eqn.res[i] --> 42
+    @test ( eqn.res[i] )== 42
   end
 
   # make homotopy look like a physics
@@ -55,8 +55,8 @@ function test_homotopy(mesh, sbp, eqn, opts)
 
   lo2_dense = getBaseLO(ls_dense.lo)
   lo2_sparse = getBaseLO(ls_sparse.lo)
-  @fact typeof(lo2_dense.A) <: Array --> true
-  @fact typeof(lo2_sparse.A) <: SparseMatrixCSC -->  true
+  @test ( typeof(lo2_dense.A) <: Array )== true
+  @test ( typeof(lo2_sparse.A) <: SparseMatrixCSC )==  true
 
   calcLinearOperator(ls_dense.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   calcLinearOperator(ls_sparse.lo, mesh, sbp, eqn, opts2, ctx_residual, t)
@@ -69,7 +69,7 @@ function test_homotopy(mesh, sbp, eqn, opts)
 
   for i=1:mesh.numDof
     for j=1:mesh.numDof
-      @fact jac_dense2[j, i] --> roughly(jac_dense[j, i], atol=1e-12)
+      @test isapprox( jac_dense2[j, i], jac_dense[j, i]) atol=1e-12
     end
   end
 
@@ -88,7 +88,7 @@ function test_homotopy(mesh, sbp, eqn, opts)
   applyLinearOperator(ls_dense.lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
   applyLinearOperator(lo_free, mesh, sbp, eqn, opts2, ctx_residual, t, x, b2)
 
-  @fact norm(b - b2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(b - b2), 0.0) atol=1e-13
 
 
 #=
@@ -104,7 +104,7 @@ function test_homotopy(mesh, sbp, eqn, opts)
 
   A = getBaseLO(lo).A
   A2 = getBaseLO(lo2).A
-  @fact norm(full(A) - full(A2)) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(full(A) - full(A2)), 0.0) atol=1e-13
 =#
 
  
@@ -129,7 +129,7 @@ function test_homotopy_convergence()
   mesh, sbp, eqn, opts = run_solver("input_vals_homotopy_tmp.jl")
   mesh2, sbp2, eqn2, opts2 = run_solver("input_vals_homotopy_tmp2.jl")
 
-  @fact calcNorm(eqn, eqn.q) --> roughly(calcNorm(eqn2, eqn2.q), atol=1e-13)
+  @test isapprox( calcNorm(eqn, eqn.q), calcNorm(eqn2, eqn2.q)) atol=1e-13
 
 
   # now run a full case
@@ -137,10 +137,10 @@ function test_homotopy_convergence()
   rmfile("convergence.dat")
   mesh, sbp, eqn, opts = run_solver("input_vals_homotopy.jl")
 
-  @fact calcNorm(eqn, eqn.res_vec, strongres=true) --> less_than(opts["res_abstol"])
+  @test  calcNorm(eqn, eqn.res_vec, strongres=true)  < opts["res_abstol"]
   data = readdlm("convergence.dat")
 
-  @fact size(data, 1) --> less_than(30)  # 16 iterations to convergence
+  @test  size(data, 1)  < 30# 16 iterations to convergence
 
   return nothing
 end

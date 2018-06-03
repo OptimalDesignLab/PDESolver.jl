@@ -1,4 +1,4 @@
-using FactCheck
+using Base.Test
 using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
@@ -61,7 +61,7 @@ include("test_viscous.jl")
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Euler tests -----") do
+@testset "----- Running Euler tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
     tags = String[TAG_DEFAULT]
@@ -78,5 +78,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()

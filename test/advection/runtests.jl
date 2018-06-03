@@ -5,7 +5,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 using MPI
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using Utils
 using PdePumiInterface  # common mesh interface - pumi
@@ -58,7 +58,7 @@ include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Advection tests -----") do
+@testset "----- Running Advection tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
     tags = String[TAG_DEFAULT]
@@ -76,5 +76,3 @@ println("finished running tests")
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()

@@ -6,14 +6,14 @@ global const test_gamma_inputfile = "input_vals_3d_gamma.jl"
   Test weakdifferentiate and that uniform flow goes to zero residual
 """
 function test_gamma_sbp(mesh, sbp, eqn, opts)
-  facts("----- Testing SummationByParts -----") do
+  @testset "----- Testing SummationByParts -----" begin
     q = ones(1, mesh.numNodesPerElement, 2)
     res = zeros(q)
     weakdifferentiate!(sbp, 1, q, res, trans=false)
 
     for i=1:2
       for j=1:mesh.numNodesPerElement
-        @fact res[1, j, i] --> roughly(0.0, atol=1e-13)
+        @test isapprox( res[1, j, i], 0.0) atol=1e-13
       end
     end
 
@@ -29,7 +29,7 @@ function test_gamma_sbp(mesh, sbp, eqn, opts)
     evalResidual(mesh, sbp, eqn, opts)
 
     for i=1:length(eqn.res)
-      @fact eqn.res[i] --> roughly(0.0, atol=1e-13)
+      @test isapprox( eqn.res[i], 0.0) atol=1e-13
     end
 
   end  # end facts block
@@ -64,15 +64,15 @@ function test_bc_gamma(flux_exp, mesh, sbp, eqn, opts)
  end
 
  # flux = area of face * solution * alpha
- @fact abs(flux_in) --> roughly(flux_exp, atol=1e-13)
- @fact abs(flux_out) --> roughly(abs(flux_in), atol=1e-13)
+ @test isapprox( abs(flux_in), flux_exp) atol=1e-13
+ @test isapprox( abs(flux_out), abs(flux_in)) atol=1e-13
 end
 
 """
   Test the Roe solver used for boundary flux calculations.
 """
 function test_gamma_bcsolver(mesh, sbp, eqn, opts)
-  facts("----- Testing BCSolver -----") do
+  @testset "----- Testing BCSolver -----" begin
     # check that the solver produces the regular flux when qL = qR
     q2 = rand(1, mesh.numNodesPerElement, mesh.numEl)
     q1 = eqn.q
@@ -101,10 +101,10 @@ function test_gamma_bcsolver(mesh, sbp, eqn, opts)
         end
 
         for d=1:3
-          @fact eqn.flux_parametric[1, j, i, d] --> roughly(flux_parametric[d], atol=1e-13)
+          @test isapprox( eqn.flux_parametric[1, j, i, d], flux_parametric[d]) atol=1e-13
         end
 
-        @fact bndryflux_calc --> roughly(net_flux, atol=1e-13)
+        @test isapprox( bndryflux_calc, net_flux) atol=1e-13
       end
     end
     eqn.q = q1
@@ -120,7 +120,7 @@ add_func2!(AdvectionTests, test_gamma_bcsolver, test_gamma_inputfile, [TAG_BC, T
   Test boundary flux calculation in all 3 directions
 """
 function test_gamma_bcflux(mesh, sbp, eqn, opts)
-   facts("----- Testing boundary flux calculation -----") do
+   @testset "----- Testing boundary flux calculation -----" begin
      # set alpha_x = 1. all others zero, q = constant, check flux
      fill!(eqn.q, 2.0)
      fill!(eqn.res, 0.0)
@@ -159,7 +159,7 @@ add_func2!(AdvectionTests, test_gamma_bcflux, test_gamma_inputfile, [TAG_BC, TAG
   Test face flux calculation
 """
 function test_gamma_faceflux(mesh, sbp, eqn, opts)
-  facts("----- Testing face flux -----") do
+  @testset "----- Testing face flux -----" begin
     # the interpolation should be exact for this case
     AdvectionEquationMod.ICp1(mesh, sbp, eqn, opts, eqn.q_vec)
     fill!(eqn.q_face, 0.0)
@@ -180,8 +180,8 @@ function test_gamma_faceflux(mesh, sbp, eqn, opts)
         q_exp = AdvectionEquationMod.calc_p1(eqn.params, coords_j, 0.0)
         q_calc = eqn.q_face[1, 1, j, i]
         q_calc2 = eqn.q_face[1, 2, j, i]
-        @fact q_calc --> roughly(q_exp, atol=1e-13)
-        @fact q_calc2 --> roughly(q_exp, atol=1e-13)
+        @test isapprox( q_calc, q_exp) atol=1e-13
+        @test isapprox( q_calc2, q_exp) atol=1e-13
       end
     end
   end  # end facts block

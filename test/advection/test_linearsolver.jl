@@ -6,7 +6,7 @@ function test_linearsolver()
   fname = "input_vals_linear.jl"
   mesh, sbp, eqn, opts = solvePDE(fname)
 
-  facts("----- Testing Linear Solver -----") do
+  @testset "----- Testing Linear Solver -----" begin
     test_dense(mesh, sbp, eqn, opts)
     test_sparsedirect(mesh, sbp, eqn, opts)
     test_petscmat(mesh, sbp, eqn, opts)
@@ -38,43 +38,43 @@ function test_dense(mesh, sbp, eqn, opts)
   c = lo.A*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product
   c = lo.A.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test solve
   x = lo.A\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC
   x3 = zeros(x2)
   applyPC(ls, mesh, sbp, eqn, opts, t, b, x3)
-  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x3 - x2), 0.0) atol=1e-12
 
   # test transpose solve
   x = A_orig.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC
   x3 = zeros(x2)
   applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x3)
-  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x3 - x2), 0.0) atol=1e-12
 
 
   
   # test product (again)
   c = A_orig*b
   c2 = zeros(c)
-  @fact_throws applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @test_throws Exception  applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
   #=
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
   println("c = \n", c)
   println("c2 = \n", c2)
   println("diff = \n", c2 - c)
@@ -83,16 +83,16 @@ function test_dense(mesh, sbp, eqn, opts)
   
 
   # transpose product throws
-  @fact_throws applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
+  @test_throws Exception  applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
 
   # test that the factorization is not performed again
 
   x = A_orig\b
   x3 = zeros(x2)
   linearSolve(ls, b, x3)
-  @fact norm(x3 - x) --> roughly(0.0, atol=1e-12)
-  @fact ls.lo.nfactorizations --> 1
-  @fact ls.lo.nsolves --> 3
+  @test isapprox( norm(x3 - x), 0.0) atol=1e-12
+  @test ( ls.lo.nfactorizations )== 1
+  @test ( ls.lo.nsolves )== 3
 
   free(ls)
 
@@ -123,34 +123,34 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   c = lo.A*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product
   c = A_orig.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test solve
   x = factorize(lo.A)\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC
   x3 = zeros(x2)
   applyPC(ls, mesh, sbp, eqn, opts, t, b, x3)
-  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x3 - x2), 0.0) atol=1e-12
 
   # test transpose solve
   x = A_orig.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC
   x3 = zeros(x2)
   applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x3)
-  @fact norm(x3 - x2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x3 - x2), 0.0) atol=1e-12
 
 
 
@@ -160,28 +160,28 @@ function test_sparsedirect(mesh, sbp, eqn, opts)
   c = lo.A*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product (again)
   c = A_orig.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test solve (again)
   x = factorize(lo.A)\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
-  @fact ls.lo.nfactorizations --> 1
-  @fact ls.lo.nsolves --> 3
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
+  @test ( ls.lo.nfactorizations )== 1
+  @test ( ls.lo.nsolves )== 3
 
   # test transpose solve
   x = lo.A.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
-  @fact ls.lo.nfactorizations --> 1
-  @fact ls.lo.ntsolves --> 3
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
+  @test ( ls.lo.nfactorizations )== 1
+  @test ( ls.lo.ntsolves )== 3
 
 
   free(ls)
@@ -219,60 +219,60 @@ function test_petscmat(mesh, sbp, eqn, opts)
 
   b = rand(mesh.numDof)
 
-  @fact ls.shared_mat --> true
+  @test ( ls.shared_mat )== true
   # test product
   c = vals*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product
   c = vals.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   setTolerances(ls, 1e-16, 1e-16, -1, -1)
   # test solve
   x = vals\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test transpose solve
   x = vals.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test product (again)
   c = vals*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
-  @fact lo.nassemblies[1] --> 1
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
+  @test ( lo.nassemblies[1] )== 1
 
   # test transpose product (again)
   c = vals.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
-  @fact lo.nassemblies[1] --> 1
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
+  @test ( lo.nassemblies[1] )== 1
 
   # test solve (again)
   x = vals\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
-  @fact lo.nassemblies[1] --> 1
-  @fact lo.nsolves --> 2
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
+  @test ( lo.nassemblies[1] )== 1
+  @test ( lo.nsolves )== 2
 
   # test transpose solve (again)
   x = vals.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
-  @fact lo.nassemblies[1] --> 1
-  @fact lo.ntsolves --> 2
-  @fact pc.nsetups --> 1
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
+  @test ( lo.nassemblies[1] )== 1
+  @test ( lo.ntsolves )== 2
+  @test ( pc.nsetups )== 1
 
 
 
@@ -313,36 +313,36 @@ function test_petscmatfree(mesh, sbp, eqn, opts)
   c = vals*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product
   c = vals.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test PC product
   x = inv(diagm(diag(vals)))*b
   x2 = zeros(x)
   applyPC(ls, mesh, sbp, eqn, opts, t, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC transpose product
   x = inv(diagm(diag(vals)))*b
   x2 = zeros(x)
   applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test solve
   x = vals\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test transpose solve
   x = vals.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   ### Test everything again
 
@@ -350,38 +350,38 @@ function test_petscmatfree(mesh, sbp, eqn, opts)
   c = vals*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product
   c = vals.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test PC product
   x = inv(diagm(diag(vals)))*b
   x2 = zeros(x)
   applyPC(ls, mesh, sbp, eqn, opts, t, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC transpose product
   x = inv(diagm(diag(vals)))*b
   x2 = zeros(x)
   applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test solve
   x = vals\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
-  @fact lo.lo_inner.nsolves --> 2
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
+  @test ( lo.lo_inner.nsolves )== 2
 
   # test transpose solve
   x = vals.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
-  @fact lo.lo_inner.ntsolves --> 2
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
+  @test ( lo.lo_inner.ntsolves )== 2
 
 
   free(ls)
@@ -427,36 +427,36 @@ function test_petscmat_matfree(mesh, sbp, eqn, opts)
   c = vals*b
   c2 = zeros(c)
   applyLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test transpose product
   c = vals.'*b
   applyLinearOperatorTranspose(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t, b, c2)
-  @fact norm(c - c2) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(c - c2), 0.0) atol=1e-12
 
   # test PC product
   x = inv(diagm(diag(vals)))*b
   x2 = zeros(x)
   applyPC(ls, mesh, sbp, eqn, opts, t, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test PC transpose product
   x = inv(diagm(diag(vals)))*b
   x2 = zeros(x)
   applyPCTranspose(ls, mesh, sbp, eqn, opts, t, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test solve
   x = vals\b
   x2 = zeros(x)
   linearSolve(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
   # test transpose solve
   x = vals.'\b
   x2 = zeros(x)
   linearSolveTranspose(ls, b, x2)
-  @fact norm(x2 - x) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm(x2 - x), 0.0) atol=1e-12
 
 
   free(ls)

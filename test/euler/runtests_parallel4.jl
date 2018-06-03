@@ -4,7 +4,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -34,7 +34,7 @@ include("test_jacp.jl")
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Euler 4 process tests -----") do
+@testset "----- Running Euler 4 process tests -----" begin
 
   nargs = length(ARGS)
   if nargs == 0
@@ -51,7 +51,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()
-
-

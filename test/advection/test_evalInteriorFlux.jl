@@ -21,12 +21,12 @@ fill!(eqn.res_vec, 0.0)
 println("eqn.q_vec = \n", eqn.q_vec)
 println("eqn.q = \n", eqn.q)
 
-facts("--- Testing evalInteriorFlux ---") do
+@testset "--- Testing evalInteriorFlux ---" begin
 
   for (findex, face) in enumerate(mesh.interfaces)
     
     nbrnodeindex = Array(sbp.numfacenodes:-1:1)
-    @fact nbrnodeindex --> [2,1]
+    @test ( nbrnodeindex )== [2,1]
 
     iL = Array{Int}(2)
     iR = Array{Int}(2)
@@ -35,10 +35,10 @@ facts("--- Testing evalInteriorFlux ---") do
     iR[1] = mesh.facenodes[nbrnodeindex[1], face.faceR]
     iR[2] = mesh.facenodes[nbrnodeindex[2], face.faceR]
     
-    @fact iL[1] --> 2
-    @fact iL[2] --> 3
-    @fact iR[1] --> 1
-    @fact iR[2] --> 3
+    @test ( iL[1] )== 2
+    @test ( iL[2] )== 3
+    @test ( iR[1] )== 1
+    @test ( iR[2] )== 3
 
     evalInteriorFlux(mesh, sbp, eqn, opts)
     println("eqn.res = \n", eqn.res)

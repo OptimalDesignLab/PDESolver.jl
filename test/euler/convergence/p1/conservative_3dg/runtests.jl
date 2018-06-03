@@ -1,5 +1,5 @@
 function test_convergence_p1_3dg()
-  facts("---- P1 Conservative DG Convergence Tests -----") do
+  @testset "---- P1 Conservative DG Convergence Tests -----" begin
     start_dir = pwd()
 
     resize!(ARGS, 1)
@@ -24,8 +24,8 @@ function test_convergence_p1_3dg()
     slope_val = 2.12
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
   end  # end facts block
 

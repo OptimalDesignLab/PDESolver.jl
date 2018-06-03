@@ -7,11 +7,11 @@ facts ("---- Testing input processing ------") do
   include(extract_path)
   include(extract_path2)
   include("known_keys.jl")
-  @fact haskey(known_keys, "key1") --> true
-  @fact haskey(known_keys, "smb_name") --> true
-  @fact haskey(known_keys, "var1") --> false
+  @test ( haskey(known_keys, "key1") )== true
+  @test ( haskey(known_keys, "smb_name") )== true
+  @test ( haskey(known_keys, "var1") )== false
 
   include("input_test.jl")
-  @fact Input.checkKeys(arg_dict, known_keys) --> 1
+  @test ( Input.checkKeys(arg_dict, known_keys) )== 1
 
 end

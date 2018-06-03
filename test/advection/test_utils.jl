@@ -39,7 +39,7 @@ function test_calcBCNormal(mesh, eqn)
     nrm2_bar[i] = 0
   end
 
-  @fact norm(jac - jac2) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(jac - jac2), 0.0) atol=1e-13
 end
 
 function test_area(mesh, sbp, eqn, opts)
@@ -83,7 +83,7 @@ function test_area(mesh, sbp, eqn, opts)
   end
 
   for i=1:nin
-    @fact norm(jac[:, i] - jac2[:, i])/size(jac, 1) --> roughly(0.0, atol=1e-5)
+    @test isapprox( norm(jac[:, i] - jac2[:, i])/size(jac, 1), 0.0) atol=1e-5
   end
 
 
@@ -93,7 +93,7 @@ function test_area(mesh, sbp, eqn, opts)
   # test computeVolumeContribution
 #  println("testing computeVolumecontribution")
   vol = calcVolumeContribution!(mesh, eqn, [1])
-  @fact vol --> roughly(8, atol=1e-12)
+  @test isapprox( vol, 8) atol=1e-12
 
 
   # test computeVolumeContrib
@@ -117,14 +117,14 @@ function test_area(mesh, sbp, eqn, opts)
   fill!(mesh.nrm_bndry_bar, 0.0)
   Utils.calcVolumeContribution_rev!(mesh, eqn, [1], 1.0)
 
-  @fact norm(jac - reshape(mesh.nrm_bndry_bar, 1, nin))/size(jac, 2) --> roughly(0.0, atol=1e-5)
+  @test isapprox( norm(jac - reshape(mesh.nrm_bndry_bar, 1, nin))/size(jac, 2), 0.0) atol=1e-5
 
   #----------------------------------------------------------------------------
   # test calcProjectedAreaContribution
 #  println("testing calcProjectedAreaContribution")
 
   proj_area = calcProjectedAreaContribution!(mesh, eqn, [1], 1)
-  @fact proj_area --> roughly(4, atol=1e-12)
+  @test isapprox( proj_area, 4) atol=1e-12
 
   nout = 1
   nin = mesh.dim*mesh.numNodesPerFace*mesh.numBoundaryFaces
@@ -164,7 +164,7 @@ function test_area(mesh, sbp, eqn, opts)
   end
 
   diffnorm = sqrt(diffnorm)/cnt
-  @fact diffnorm --> roughly(0.0, atol=1e-5)
+  @test isapprox( diffnorm, 0.0) atol=1e-5
 
   # check the other method
 #  println("testing other method")
@@ -197,7 +197,7 @@ function test_area(mesh, sbp, eqn, opts)
   end
 
   diffnorm = sqrt(diffnorm)/length(jac)
-  @fact diffnorm --> roughly(0.0, atol=1e-5)
+  @test isapprox( diffnorm, 0.0) atol=1e-5
 
   return nothing
 end
@@ -208,7 +208,7 @@ function test_norms(mesh, sbp, eqn, opts)
   v = ones(mesh.numDof)
 
   # mesh is [0, 4] x [0, 4]
-  @fact calcNorm(eqn, u) --> roughly(sqrt(mesh.numDofPerNode*16), atol=1e-13)
+  @test isapprox( calcNorm(eqn, u), sqrt(mesh.numDofPerNode*16)) atol=1e-13
   
   # test linear
   u_arr = zeros(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
@@ -222,11 +222,11 @@ function test_norms(mesh, sbp, eqn, opts)
   end
 
 
-#  @fact calcNorm(eqn, u) --> roughly(112, atol=1e-13)
+#  @test isapprox( calcNorm(eqn, u), 112) atol=1e-13
 
   # check inner product
-  @fact calcL2InnerProduct(eqn, u, v) --> roughly(112, atol=1e-13)
-  @fact calcL2InnerProduct(eqn, v, u) --> roughly(112, atol=1e-13)
+  @test isapprox( calcL2InnerProduct(eqn, u, v), 112) atol=1e-13
+  @test isapprox( calcL2InnerProduct(eqn, v, u), 112) atol=1e-13
 
   return nothing
 end
@@ -234,7 +234,7 @@ end
 
 function test_utils2(mesh, sbp, eqn, opts)
 
-  facts("----- Testing Utils 2D -----") do
+  @testset "----- Testing Utils 2D -----" begin
 
     test_calcBCNormal(mesh, eqn)
     test_norms(mesh, sbp, eqn, opts)
@@ -247,7 +247,7 @@ end
 
 function test_utils3(mesh, sbp, eqn, opts)
 
-  facts("----- Testing Utils 3D -----") do
+  @testset "----- Testing Utils 3D -----" begin
 
     test_calcBCNormal(mesh, eqn)
     test_area(mesh, sbp, eqn, opts)

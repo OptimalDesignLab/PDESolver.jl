@@ -4,7 +4,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -33,14 +33,14 @@ global const SimpleODETests = TestList()
 
 
 function test_eq4()
-  facts("---- testing SimpleODE ----") do
+  @testset "---- testing SimpleODE ----" begin
     start_dir = pwd()
     cd("./eqn4/")
     ARGS[1] = "input_vals_simpleODE.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     for i = 1:length(eqn.q_vec)
-      @fact eqn.q_vec[i] --> roughly(4.0, atol=1e-10)
+      @test isapprox( eqn.q_vec[i], 4.0) atol=1e-10
     end
 
     cd(start_dir)
@@ -53,7 +53,7 @@ add_func1!(SimpleODETests, test_eq4, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running SimpleODE tests -----") do
+@testset "----- Running SimpleODE tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
     tags = String[TAG_DEFAULT]
@@ -70,6 +70,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()
-

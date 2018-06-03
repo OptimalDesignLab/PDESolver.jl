@@ -24,7 +24,7 @@ function test_parallel2_comm()
     return nothing
   end
 
-  facts("----- Testing Parallel Communication -----") do
+  @testset "----- Testing Parallel Communication -----" begin
     peer_up = wrap(myrank+1, commsize)
     peer_down = wrap(myrank-1, commsize)
 
@@ -52,13 +52,13 @@ function test_parallel2_comm()
 
     # peer down: the sent to its peer up
     data = shared_data[1]
-    @fact data.q_recv[1] --> peer_down + 2
-    @fact data.q_recv[2] --> peer_down + 3
+    @test ( data.q_recv[1] )== peer_down + 2
+    @test ( data.q_recv[2] )== peer_down + 3
 
     # peer up: sent to its peer down
     data = shared_data[2]
-    @fact data.q_recv[1] --> peer_up + 1
-    @fact data.q_recv[2] --> peer_up + 2
+    @test ( data.q_recv[1] )== peer_up + 1
+    @test ( data.q_recv[2] )== peer_up + 2
 
 
     # test exchangeElementData
@@ -79,11 +79,11 @@ function test_parallel2_comm()
 
     data = shared_data[1].q_recv
     for j in data
-      @fact j --> peer_down + 2
+      @test ( j )== peer_down + 2
     end
     data = shared_data[2].q_recv
     for j in data
-      @fact j --> peer_up + 1
+      @test ( j )== peer_up + 1
     end
 
 

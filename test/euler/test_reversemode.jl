@@ -16,7 +16,7 @@ function test_reversemode()
   Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 
 
-  facts("--- Testing Pressure derivative in reverse mode in 2D ---") do
+  @testset "--- Testing Pressure derivative in reverse mode in 2D ---" begin
 
     press_bar = complex(rand(Float64),0)
     q_bar = zeros(Complex128, mesh.numDofPerNode)
@@ -36,18 +36,18 @@ function test_reversemode()
           q_bar_complex[k] = press_complex*press_bar
           q_vals[k] -= pert
           error = norm(q_bar_complex[k] - q_bar[k], 2)
-          @fact error --> roughly(0.0, atol=1e-10)
+          @test isapprox( error, 0.0) atol=1e-10
         end
       end # End for j = 1:mesh.numNodesPerElement
     end   # End for i = 1:mesh.numEl
 
-  end # facts("--- Testing Pressure derivative in reverse mode in 2D---")
+  end # testset("--- Testing Pressure derivative in reverse mode in 2D---")
 
-  facts("--- Testing Euler Flux derivative in Reverse mode ---") do
+  @testset "--- Testing Euler Flux derivative in Reverse mode ---" begin
 
     Tdim = mesh.dim
 
-    context("Checking reversemode derivative w.r.t mesh metrics") do
+    @testset "Checking reversemode derivative w.r.t mesh metrics" begin
       # Create a random vector
       F_bar = rand(mesh.numDofPerNode) # For 2D
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
@@ -79,15 +79,15 @@ function test_reversemode()
               nrm[p] -= pert
               dir_bar_complex[p] = dot(F_bar, flux)
               error = norm(dir_bar_complex[p] - dir_bar[p], 2)
-              @fact error --> roughly(0.0, atol=1e-10)
+              @test isapprox( error, 0.0) atol=1e-10
             end # End for p = 1:Tdim
           end # End for k=1:Tdim
         end # End for j = 1:mesh.numNodesPerElement
       end   # End for i = 1:mesh.numEl
 
-    end # End context("Checking reversemode derivative w.r.t mesh metrics")
+    end # End  testset("Checking reversemode derivative w.r.t mesh metrics")
 
-    context("Checking reverse mode derivative w.r.t solution q") do
+    @testset "Checking reverse mode derivative w.r.t solution q" begin
 
       # Create a random vector
       F_bar = rand(mesh.numDofPerNode) + zeros(Complex128, mesh.numDofPerNode) # For 2D
@@ -120,24 +120,24 @@ function test_reversemode()
               flux[:] = imag(flux[:])/imag(pert)
               q_bar_complex[p] = dot(F_bar, flux)
               error = norm(q_bar_complex[p] - q_bar[p],2)
-              @fact error --> roughly(0.0, atol=1e-10)
+              @test isapprox( error, 0.0) atol=1e-10
               q_vals[p] -= pert
             end # End for p = 1:mesh.numDofPerNode
           end   # End for k = 1:Tdim
         end     # End for j = 1:mesh.numNodesPerElement
       end       # End for i = 1:mesh.numEl
 
-    end # End context("Cehcking reverse mode derivative w.r.t solution q") do
+    end # End  testset("Cehcking reverse mode derivative w.r.t solution q") do
 
-  end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
+  end # End testset("--- Testing Euler Flux computation in Reverse mode ---")
 
-  facts("--- Testing Boundary Functional In Reverse Mode ---") do
+  @testset "--- Testing Boundary Functional In Reverse Mode ---" begin
 
     # Create functional object
     drag = createFunctional(mesh, sbp, eqn, opts, 2)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
 
-    context("Checking Boundary Functional Integrand w.r.t nrm") do
+    @testset "Checking Boundary Functional Integrand w.r.t nrm" begin
 
       # Uses conservative variables
       Tdim = mesh.dim
@@ -183,13 +183,13 @@ function test_reversemode()
             nxny_bar_complex[k] = dot(boundary_integrand, val_bar)
             phys_nrm[k] -= pert
             error = norm(nxny_bar_complex[k] - nxny_bar[k], 2)
-            @fact error --> roughly(0.0, atol=1e-10)
+            @test isapprox( error, 0.0) atol=1e-10
           end # End for k = 1:Tdim
         end # End for j = 1:mesh.sbpface.numnodes
       end   # End for i = 1:nfaces
-    end # End context("Checking Boundary Functional Integrand w.r.t nrm")
+    end # End  testset("Checking Boundary Functional Integrand w.r.t nrm")
 
-    context("Checking Complete boundary functional lift in reverse") do
+    @testset "Checking Complete boundary functional lift in reverse" begin
 
       fill!(mesh.nrm_bndry_bar, 0.0)
       EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "lift")
@@ -222,7 +222,7 @@ function test_reversemode()
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
               dlift_dm = imag(drag.lift_val)/imag(pert)
               error = norm(nrm_bar[k] - dlift_dm, 2)
-              @fact error --> roughly(0.0, atol=1e-12)
+              @test isapprox( error, 0.0) atol=1e-12
               nrm[k] -= pert
             end
           end  # End for j = 1:mesh.sbpface.numnodes
@@ -230,9 +230,9 @@ function test_reversemode()
       end # End for itr = 1:length(functional_faces)
 
 
-    end # End context("Checking Complete boundary functional lift in reverse")
+    end # End  testset("Checking Complete boundary functional lift in reverse")
 
-    context("Checking Complete boundary functional drag in reverse") do
+    @testset "Checking Complete boundary functional drag in reverse" begin
       fill!(mesh.nrm_bndry_bar, 0.0)
       EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "drag")
 
@@ -264,7 +264,7 @@ function test_reversemode()
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
               ddrag_dm = imag(drag.drag_val)/imag(pert)
               error = norm(nrm_bar[k] - ddrag_dm, 2)
-              @fact error --> roughly(0.0, atol=1e-12)
+              @test isapprox( error, 0.0) atol=1e-12
               nrm[k] -= pert
             end
           end  # End for j = 1:mesh.sbpface.numnodes
@@ -272,12 +272,12 @@ function test_reversemode()
       end # End for itr = 1:length(functional_faces)
 
 
-    end # End context("Checking Complete boundary functional drag in reverse")
+    end # End  testset("Checking Complete boundary functional drag in reverse")
 
-  end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
+  end # End testset("--- Testing Boundary Functional In Reverse Mode ---")
 
 
-  facts("--- Testing SAT terms in Reverse Mode ---") do
+  @testset "--- Testing SAT terms in Reverse Mode ---" begin
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
     nrm2 = Complex128[-0.07115741913664266,-0.005089279059529922]
@@ -304,12 +304,12 @@ function test_reversemode()
       complex_valbar_SAT = dot(psi, dSat)
       nrm2[k] -= pert
       error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
-      @fact error --> roughly(0.0, atol=1e-10)
+      @test isapprox( error, 0.0) atol=1e-10
     end # End for k = 1:length(nrm2)
 
-  end # End facts("--- Testing SAT terms in Reverse Mode ---")
+  end # End testset("--- Testing SAT terms in Reverse Mode ---")
 
-  facts("--- Testing Roe Solver in Reverse Mode ---") do
+  @testset "--- Testing Roe Solver in Reverse Mode ---" begin
 
     fill!(mesh.nrm_bndry_bar, 0.0)
     params = eqn.params
@@ -345,7 +345,7 @@ function test_reversemode()
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
           error = norm(nrm_bar[k] - complex_psi_dRoeFlux, 2)
-          @fact error --> roughly(0.0, atol = 1e-12)
+          @test isapprox( error, 0.0) atol= 1e-12
           nrm[k] -= pert
         end # End for k = 1:Tdim
       end
@@ -353,7 +353,7 @@ function test_reversemode()
 
   end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
 
-  facts("--- Testing reverse mode for BC functors ---") do
+  @testset "--- Testing reverse mode for BC functors ---" begin
 
     # Populate eqn.bndryflux_bar
     for i = 1:length(eqn.bndryflux_bar)
@@ -362,7 +362,7 @@ function test_reversemode()
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     fill!(mesh.nrm_bndry_bar, 0.0)
 
-    context("Checking reverse mode for noPenetrationBC") do
+    @testset "Checking reverse mode for noPenetrationBC" begin
 
       # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       functor_rev = mesh.bndry_funcs_revm[4]
@@ -399,15 +399,15 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
       end
 
-    end # End context("Checking noPenetrationBC_revm")
+    end # End  testset("Checking noPenetrationBC_revm")
 
-    context("Checking reverse mode for isentropicVortexBC") do
+    @testset "Checking reverse mode for isentropicVortexBC" begin
 
       # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       functor_rev = mesh.bndry_funcs_revm[2]
@@ -442,15 +442,15 @@ function test_reversemode()
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
             # println("error = $error")
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
       end
 
-    end # End context("Checking reverse mode for isentropicVortexBC")
+    end # End  testset("Checking reverse mode for isentropicVortexBC")
 
-    context("Checking reverse mode for ExpBC") do
+    @testset "Checking reverse mode for ExpBC" begin
       functor_rev = EulerEquationMod.ExpBC_revm()
       functor = EulerEquationMod.ExpBC()
       q = ro_sview(eqn.q_bndry, :, 1, 1)
@@ -470,15 +470,15 @@ function test_reversemode()
         tmpflux[:] = imag(tmpflux[:])/imag(pert)
         dot_product = dot(real(bndryflux_bar), real(tmpflux))
         error = norm(nrm_bar[k] - dot_product, 2)
-        @fact error --> roughly(0.0, atol = 1e-12)
+        @test isapprox( error, 0.0) atol= 1e-12
         nrm[k] -= pert
       end
 
-    end # End context("Checking reverse mode for ExpBC")
+    end # End  testset("Checking reverse mode for ExpBC")
 
-  end # Endfacts("--- Testing reverse mode for BC functors ---")
+  end # Endtestset("--- Testing reverse mode for BC functors ---")
 
-  facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---") do
+  @testset "--- Testing reverse mode for face fluxes w.r.t mesh metrics ---" begin
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     fill!(mesh.nrm_face_bar, 0.0)
     for i = 1:length(eqn.flux_face_bar)
@@ -516,15 +516,15 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @fact error --> roughly(0.0, atol = 1e-12)
+          @test isapprox( error, 0.0) atol= 1e-12
           nrm[k] -= pert
         end # End for k = 1:length(dxidx)
       end
     end
 
-  end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
+  end # End testset("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
 
-  facts("--- Testing evalrevm_transposeproduct ---") do
+  @testset "--- Testing evalrevm_transposeproduct ---" begin
 
     adjoint_vec = zeros(Complex128, mesh.numDof)
     for i = 1:mesh.numDof
@@ -580,7 +580,7 @@ function test_reversemode()
             nrm[p] -= pert
             dir_bar_complex[p] = dot(F_bar, flux)
             error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
           end # End for p = 1:Tdim
         end # End for k=1:Tdim
       end # End for j = 1:mesh.numNodesPerElement
@@ -612,7 +612,7 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @fact error --> roughly(0.0, atol = 1e-12)
+          @test isapprox( error, 0.0) atol= 1e-12
           nrm[k] -= pert
         end # End for k = 1:length(dxidx)
       end
@@ -647,20 +647,20 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
       end
     end
 
-  end # End facts("--- Testing evalrevm_transposeproduct ---")
+  end # End testset("--- Testing evalrevm_transposeproduct ---")
 
-  facts("--- Testing 3D Euler Flux derivative in Reverse mode ---") do
+  @testset "--- Testing 3D Euler Flux derivative in Reverse mode ---" begin
 
     Tdim = mesh.dim
 
-    context("Checking reversemode derivative w.r.t mesh metrics") do
+    @testset "Checking reversemode derivative w.r.t mesh metrics" begin
       # Create a random vector
       F_bar = rand(mesh.numDofPerNode) + zeros(Complex128, mesh.numDofPerNode) # For 2D
       flux = zeros(Complex128, mesh.numDofPerNode) # For complex step
@@ -692,15 +692,15 @@ function test_reversemode()
               nrm[p] -= pert
               dir_bar_complex[p] = dot(F_bar, flux)
               error = norm(dir_bar_complex[p] - dir_bar[p], 2)
-              @fact error --> roughly(0.0, atol=1e-10)
+              @test isapprox( error, 0.0) atol=1e-10
             end # End for p = 1:Tdim
           end # End for k=1:Tdim
         end # End for j = 1:mesh.numNodesPerElement
       end   # End for i = 1:mesh.numEl
 
-    end # End context("Checking reversemode derivative w.r.t mesh metrics")
+    end # End  testset("Checking reversemode derivative w.r.t mesh metrics")
 
-    context("Checking reverse mode derivative w.r.t solution q") do
+    @testset "Checking reverse mode derivative w.r.t solution q" begin
 
       # Create a random vector
       F_bar = rand(mesh.numDofPerNode) + zeros(Complex128, mesh.numDofPerNode)
@@ -733,18 +733,18 @@ function test_reversemode()
               flux[:] = imag(flux[:])/imag(pert)
               q_bar_complex[p] = dot(F_bar, flux)
               error = norm(q_bar_complex[p] - q_bar[p],2)
-              @fact error --> roughly(0.0, atol=1e-10)
+              @test isapprox( error, 0.0) atol=1e-10
               q_vals[p] -= pert
             end # End for p = 1:mesh.numDofPerNode
           end   # End for k = 1:Tdim
         end     # End for j = 1:mesh.numNodesPerElement
       end       # End for i = 1:mesh.numEl
 
-    end # End context("Checking reverse mode derivative w.r.t solution q") do
+    end # End  testset("Checking reverse mode derivative w.r.t solution q") do
 
-  end # End facts("--- Testing Euler Flux computation in Reverse mode ---")
+  end # End testset("--- Testing Euler Flux computation in Reverse mode ---")
 
-  facts("--- Testing Roe Solver in Reverse Mode ---") do
+  @testset "--- Testing Roe Solver in Reverse Mode ---" begin
 
     # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
     params = eqn.params
@@ -781,7 +781,7 @@ function test_reversemode()
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
           error = norm(nrm_bar[k] - complex_psi_dRoeFlux, 2)
-          @fact error --> roughly(0.0, atol = 1e-12)
+          @test isapprox( error, 0.0) atol= 1e-12
           nrm[k] -=pert
         end
       end
@@ -789,7 +789,7 @@ function test_reversemode()
 
   end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
 
-  facts("--- Testing reverse mode for BC functors ---") do
+  @testset "--- Testing reverse mode for BC functors ---" begin
 
     # Populate eqn.bndryflux_bar
     for i = 1:length(eqn.bndryflux_bar)
@@ -798,7 +798,7 @@ function test_reversemode()
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     fill!(mesh.dxidx_bndry_bar, 0.0)
 
-    context("Checking reverse mode for noPenetrationBC") do
+    @testset "Checking reverse mode for noPenetrationBC" begin
 
       # EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
       functor_rev = mesh.bndry_funcs_revm[2]
@@ -836,17 +836,17 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
             nrm[k] -= pert
           end
         end
       end
 
-    end # End context("Checking noPenetrationBC_revm")
+    end # End  testset("Checking noPenetrationBC_revm")
 
-  end # Endfacts("--- Testing reverse mode for BC functors ---")
+  end # Endtestset("--- Testing reverse mode for BC functors ---")
 
-  facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---") do
+  @testset "--- Testing reverse mode for face fluxes w.r.t mesh metrics ---" begin
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     for i = 1:length(eqn.flux_face_bar)
       eqn.flux_face_bar[:] = randn() + 0.0im
@@ -882,15 +882,15 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @fact error --> roughly(0.0, atol = 1e-12)
+          @test isapprox( error, 0.0) atol= 1e-12
           nrm[k] -= pert
         end
       end
     end
 
-  end # End facts("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
+  end # End testset("--- Testing reverse mode for face fluxes w.r.t mesh metrics ---")
 
-  facts("--- Testing evalrevm_transposeproduct ---") do
+  @testset "--- Testing evalrevm_transposeproduct ---" begin
 
     adjoint_vec = zeros(Complex128, mesh.numDof)
     for i = 1:mesh.numDof
@@ -936,7 +936,7 @@ function test_reversemode()
             nrm[p] -= pert
             dir_bar_complex[p] = dot(F_bar, flux)
             error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
           end # End for p = 1:Tdim
         end # End for k=1:Tdim
       end # End for j = 1:mesh.numNodesPerElement
@@ -968,7 +968,7 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @fact error --> roughly(0.0, atol = 1e-12)
+          @test isapprox( error, 0.0) atol= 1e-12
           nrm[k] -= pert
         end
       end
@@ -1004,21 +1004,21 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @fact error --> roughly(0.0, atol = 1e-12)
+            @test isapprox( error, 0.0) atol= 1e-12
             nrm[k] -= pert
           end
         end
       end
     end
 
-  end # End facts("--- Testing evalrevm_transposeproduct ---")
+  end # End testset("--- Testing evalrevm_transposeproduct ---")
 
   resize!(ARGS, 1)
   ARGS[1] = "input_vals_3d_reversemode.jl"
   include("../../src/solver/euler/startup.jl")
   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
-  facts("--- Testing Pressure derivative in reverse mode in 3D ---") do
+  @testset "--- Testing Pressure derivative in reverse mode in 3D ---" begin
 
     press_bar = complex(rand(Float64),0)
     q_bar = zeros(Complex128, mesh.numDofPerNode)
@@ -1038,12 +1038,12 @@ function test_reversemode()
           q_bar_complex[k] = press_complex*press_bar
           q_vals[k] -= pert
           error = norm(q_bar_complex[k] - q_bar[k], 2)
-          @fact error --> roughly(0.0, atol=1e-10)
+          @test isapprox( error, 0.0) atol=1e-10
         end
       end # End for j = 1:mesh.numNodesPerElement
     end   # End for i = 1:mesh.numEl
 
-  end # facts("--- Testing Pressure derivative in reverse mode ---")
+  end # testset("--- Testing Pressure derivative in reverse mode ---")
 
   return nothing
 end # End function test_reversemode
