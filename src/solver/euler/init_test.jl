@@ -19,7 +19,7 @@ for i = 1:length(g_edges)
   g_edge_number = g_edges[i] # Extract geometric edge number
   nface_arr[i] = EulerEquationMod.getnFaces(mesh, g_edge_number)
 end
-pressCoeffArrWrite = Array(Array{Float64,2},length(g_edges))
+pressCoeffArrWrite = Array{Array{Float64,2}}(length(g_edges))
 for i = 1:length(g_edges)
   pressCoeffArrWrite[i] = zeros(Float64, mesh.sbpface.numnodes, nface_arr[i])
 end

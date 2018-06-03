@@ -76,7 +76,7 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
   Tres = promote_type(Tsol, Tmsh)
 
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-  aux_vars = Array(Tres, 1)
+  aux_vars = Array{Tres}(1)
   flux_k = zeros(Tres, mesh.numDofPerNode)
   flux_jac = params.flux_dotL
   res_jac = params.res_jacLL

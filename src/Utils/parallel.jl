@@ -347,7 +347,7 @@ function checkBufferConsistency(mesh, sbp, eqn::AbstractSolutionData{Tsol}, opts
 
   # copy buffers
   nbufs = length(eqn.shared_data)
-  old_bufs = Array(Array{Tsol, 3}, nbufs)
+  old_bufs = Array{Array{Tsol, 3}}(nbufs)
   for i=1:nbufs
     old_bufs[i] = copy(eqn.shared_data[i].q_recv)
     println(f, "initially, norm of buffer ", i, " = ", vecnorm(old_bufs[i]))

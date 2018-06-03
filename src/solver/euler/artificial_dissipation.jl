@@ -93,7 +93,7 @@ function calcDissipationOperator(mesh::AbstractMesh{Tmsh},
 
     
   # filter matrix for a non-reference element
-  filt_i = Array(Tmsh, sbp.numnodes, sbp.numnodes)
+  filt_i = Array{Tmsh}(sbp.numnodes, sbp.numnodes)
   hinv = inv(diagm(sbp.w))
   h = diagm(sbp.w)
   for i=1:mesh.numEl

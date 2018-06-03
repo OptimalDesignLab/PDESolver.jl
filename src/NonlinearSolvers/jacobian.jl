@@ -141,7 +141,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else
         println(BSTDOUT, "calculating jacobian with coloring")
-        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+        res_dummy = Array{Float64}(0, 0, 0)  # not used, so don't allocation memory
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn, 
                                             opts, func, res_dummy, pert, jac, t)
       end
@@ -153,7 +153,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else
-        res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
+        res_dummy = Array{Float64}(0, 0, 0)  # not used, so don't allocation memory
 
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn,
                                             opts, func, res_dummy, pert, jac, t)
@@ -760,24 +760,24 @@ function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
 end
 
 function _AssembleElementData()
-  A = Array(PetscScalar, 0, 0)
-  idx = Array(PetscInt, 0)
-  idy = Array(PetscInt, 0)
-  vals = Array(PetscScalar, 0, 0)
-  idx_b = Array(PetscInt, 0)
-  idy_b = Array(PetscInt, 0)
-  vals_b = Array(PetscScalar, 0, 0)
+  A = Array{PetscScalar}(0, 0)
+  idx = Array{PetscInt}(0)
+  idy = Array{PetscInt}(0)
+  vals = Array{PetscScalar}(0, 0)
+  idx_b = Array{PetscInt}(0)
+  idy_b = Array{PetscInt}(0)
+  vals_b = Array{PetscScalar}(0, 0)
 
-  idx_i = Array(PetscInt, 0)
-  idy_i = Array(PetscInt, 0)
-  vals_i = Array(PetscScalar, 0, 0)
-  idx_ib = Array(PetscInt, 0)
-  idy_ib = Array(PetscInt, 0)
+  idx_i = Array{PetscInt}(0)
+  idy_i = Array{PetscInt}(0)
+  vals_i = Array{PetscScalar}(0, 0)
+  idx_ib = Array{PetscInt}(0)
+  idy_ib = Array{PetscInt}(0)
 
-  vals_sf = Array(PetscScalar, 0, 0)
+  vals_sf = Array{PetscScalar}(0, 0)
 
-  idx_bb = Array(PetscInt, 0)
-  idy_bb = Array(PetscInt, 0)
+  idx_bb = Array{PetscInt}(0)
+  idy_bb = Array{PetscInt}(0)
 
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,

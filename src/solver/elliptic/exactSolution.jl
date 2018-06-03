@@ -44,7 +44,7 @@ function calcErrorL2Norm(mesh::AbstractMesh{Tmsh},
                          opts) where {Tmsh, Tsol, Tres}
   l2norm::Float64 = 0.
   lInfnorm::Float64 = 0.
-  qe = Array(Tsol, mesh.numDofPerNode)
+  qe = Array{Tsol}(mesh.numDofPerNode)
   exactFunc = ExactDict[opts["exactSolution"]]
 
   lInfnorm = -1.0

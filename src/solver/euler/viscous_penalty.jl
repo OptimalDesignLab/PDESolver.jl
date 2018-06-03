@@ -187,8 +187,8 @@ function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
   elemR = face.elementR
 
   # Compute geometric info on face
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
   for n = 1 : mesh.numNodesPerFace
     nrm_xy = ro_sview(mesh.nrm_face, :, n, iface)
     area[n] = norm(nrm_xy)
@@ -644,8 +644,8 @@ function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
   elem = face.element
 
   # Compute geometric info on face
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
   for n = 1 : mesh.numNodesPerFace
     nrm_xy = ro_sview(mesh.nrm_bndry, :, n, iface)
     area[n] = norm(nrm_xy)

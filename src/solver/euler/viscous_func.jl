@@ -87,17 +87,17 @@ function calcFvis_elem_direct(params::ParamType{2, :conservative},
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscosity
+  rMuK = Array{Tsol}(2, numNodes)          # dynamic viscosity
   dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
   dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
-  tau = Array(Tsol, dim, dim, numNodes)       # stress    
-  Dx  = Array(Tmsh, numNodes, numNodes, dim)  # derivative operators in physical domain
+  tau = Array{Tsol}(dim, dim, numNodes)       # stress    
+  Dx  = Array{Tmsh}(numNodes, numNodes, dim)  # derivative operators in physical domain
 
   #
   # primitive variables
   #
-  T = Array(Tsol, numNodes)
-  v = Array(Tsol, dim, numNodes)
+  T = Array{Tsol}(numNodes)
+  v = Array{Tsol}(dim, numNodes)
   for n = 1:numNodes
     v[1, n] = q[2, n]/q[1, n]
     v[2, n] = q[3, n]/q[1, n]
@@ -180,17 +180,17 @@ function calcFvis_elem_direct(params::ParamType{3, :conservative},
   #
   # we need μ, κ, V, dVdx, dTdx
   #
-  rMuK = Array(Tsol, 2, numNodes)          # dynamic viscosity
+  rMuK = Array{Tsol}(2, numNodes)          # dynamic viscosity
   dVdx = zeros(Tsol, dim, dim, numNodes)   # gradient of velocity, (velocity, dimension, node)
   dTdx = zeros(Tsol, dim, numNodes)        # gradient of velocity, (dimension, node)
-  tau  = Array(Tsol, dim, dim, numNodes)       # stress    
-  Dx   = Array(Tmsh, numNodes, numNodes, dim)  # derivative operators in physical domain
+  tau  = Array{Tsol}(dim, dim, numNodes)       # stress    
+  Dx   = Array{Tmsh}(numNodes, numNodes, dim)  # derivative operators in physical domain
 
   #
   # primitive variables
   #
-  T = Array(Tsol, numNodes)
-  v = Array(Tsol, dim, numNodes)
+  T = Array{Tsol}(numNodes)
+  v = Array{Tsol}(dim, numNodes)
   for n = 1:numNodes
     v[1, n] = q[2, n]/q[1, n]
     v[2, n] = q[3, n]/q[1, n]
@@ -295,8 +295,8 @@ function calcFaceFvis(params::ParamType{Tdim, :conservative},
   #
   # elemL = face.elementL
   # elemR = face.elementL
-  # dqdx_eL = Array(Tsol, Tdim, numDofs, numNodes)
-  # dqdx_eR = Array(Tsol, Tdim, numDofs, numNodes)
+  # dqdx_eL = Array{Tsol}(Tdim, numDofs, numNodes)
+  # dqdx_eR = Array{Tsol}(Tdim, numDofs, numNodes)
   # calcGradient(mesh, sbp, elemL, qL, dqdx_eL)
   # calcGradient(mesh, sbp, elemR, qR, dqdx_eR)
   # for d = 1 : Tdim
@@ -610,12 +610,12 @@ function calcDiffusionTensor(params::ParamType{2, :conservative},
   one3rd = 1.0/3.0
   two3rd = 2.0/3.0
   four3rd = 4.0/3.0
-  E    = Array(Tsol, numNodes)
-  T    = Array(Tsol, numNodes)
-  v2   = Array(Tsol, numNodes)
-  v1v2 = Array(Tsol, numNodes)
-  v    = Array(Tsol, 2, numNodes)
-  rmuk = Array(Tsol, 2, numNodes)
+  E    = Array{Tsol}(numNodes)
+  T    = Array{Tsol}(numNodes)
+  v2   = Array{Tsol}(numNodes)
+  v1v2 = Array{Tsol}(numNodes)
+  v    = Array{Tsol}(2, numNodes)
+  rmuk = Array{Tsol}(2, numNodes)
 
   for n = 1 : numNodes
     v[1, n] = q[2,n]/q[1,n]
@@ -756,14 +756,14 @@ function calcDiffusionTensor(params::ParamType{3, :conservative},
   one3rd = 1.0/3.0
   two3rd = 2.0/3.0
   four3rd = 4.0/3.0
-  E    = Array(Tsol, numNodes)
-  T    = Array(Tsol, numNodes)
-  v2   = Array(Tsol, numNodes)
-  v1v2 = Array(Tsol, numNodes)
-  v1v3 = Array(Tsol, numNodes)
-  v2v3 = Array(Tsol, numNodes)
-  v    = Array(Tsol, 3, numNodes)
-  rmuk = Array(Tsol, 2, numNodes)
+  E    = Array{Tsol}(numNodes)
+  T    = Array{Tsol}(numNodes)
+  v2   = Array{Tsol}(numNodes)
+  v1v2 = Array{Tsol}(numNodes)
+  v1v3 = Array{Tsol}(numNodes)
+  v2v3 = Array{Tsol}(numNodes)
+  v    = Array{Tsol}(3, numNodes)
+  rmuk = Array{Tsol}(2, numNodes)
 
   for n = 1 : numNodes
     v[1, n] = q[2,n]/q[1,n]
@@ -1123,12 +1123,12 @@ function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2, :conservative},
   one3rd = 1.0/3.0
   two3rd = 2.0/3.0
   four3rd = 4.0/3.0
-  E    = Array(Tsol, numNodes)
-  T    = Array(Tsol, numNodes)
-  v2   = Array(Tsol, numNodes)
-  v1v2 = Array(Tsol, numNodes)
-  v    = Array(Tsol, 2, numNodes)
-  rmuk = Array(Tsol, 2, numNodes)
+  E    = Array{Tsol}(numNodes)
+  T    = Array{Tsol}(numNodes)
+  v2   = Array{Tsol}(numNodes)
+  v1v2 = Array{Tsol}(numNodes)
+  v    = Array{Tsol}(2, numNodes)
+  rmuk = Array{Tsol}(2, numNodes)
 
   for n = 1 : numNodes
     v[1, n] = q[2,n]/q[1,n]
@@ -1281,14 +1281,14 @@ function calcDiffusionTensor_adiabaticWall(params::ParamType{3, :conservative},
   one3rd = 1.0/3.0
   two3rd = 2.0/3.0
   four3rd = 4.0/3.0
-  E    = Array(Tsol, numNodes)
-  T    = Array(Tsol, numNodes)
-  v2   = Array(Tsol, numNodes)
-  v1v2 = Array(Tsol, numNodes)
-  v1v3 = Array(Tsol, numNodes)
-  v2v3 = Array(Tsol, numNodes)
-  v    = Array(Tsol, Tdim, numNodes)
-  rmuk = Array(Tsol, 2, numNodes)
+  E    = Array{Tsol}(numNodes)
+  T    = Array{Tsol}(numNodes)
+  v2   = Array{Tsol}(numNodes)
+  v1v2 = Array{Tsol}(numNodes)
+  v1v3 = Array{Tsol}(numNodes)
+  v2v3 = Array{Tsol}(numNodes)
+  v    = Array{Tsol}(Tdim, numNodes)
+  rmuk = Array{Tsol}(2, numNodes)
 
   for n = 1 : numNodes
     v[1, n] = q[2,n]/q[1,n]

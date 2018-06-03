@@ -211,7 +211,7 @@ function getSharedFaceData( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, 
 
   @assert mesh.isDG
 
-  data_vec = Array(SharedFaceData{Tsol}, mesh.npeers)
+  data_vec = Array{SharedFaceData{Tsol}}(mesh.npeers)
   if opts["parallel_data"] == "face"
     dim2 =  mesh.numNodesPerFace
     dim3_send = mesh.peer_face_counts
@@ -226,8 +226,8 @@ function getSharedFaceData( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, 
   end
 
   for i=1:mesh.npeers
-    qsend = Array(Tsol, mesh.numDofPerNode, dim2,dim3_send[i])
-    qrecv = Array(Tsol, mesh.numDofPerNode, dim2, dim3_recv[i])
+    qsend = Array{Tsol}(mesh.numDofPerNode, dim2,dim3_send[i])
+    qrecv = Array{Tsol}(mesh.numDofPerNode, dim2, dim3_recv[i])
     data_vec[i] = SharedFaceData(mesh, i, qsend, qrecv)
   end
 
@@ -311,7 +311,7 @@ function waitAllSends(shared_data::Vector{SharedFaceData{T}}) where T
 
   # MPI.Requests are (currently) mutable, and therefore have reference semantics
   npeers = length(shared_data)
-  send_reqs = Array(MPI.Request, npeers)
+  send_reqs = Array{MPI.Request}(npeers)
   for i=1:npeers
     send_reqs[i] = shared_data[i].send_req
   end
@@ -338,7 +338,7 @@ function waitAllReceives(shared_data::Vector{SharedFaceData{T}}) where T
 
   # MPI.Requests are (currently) mutable, and therefore have reference semantics
   npeers = length(shared_data)
-  recv_reqs = Array(MPI.Request, npeers)
+  recv_reqs = Array{MPI.Request}(npeers)
   for i=1:npeers
     recv_reqs[i] = shared_data[i].recv_req
   end
@@ -359,7 +359,7 @@ end
 
 
 # static buffer of Request objects
-_waitall_reqs = Array(MPI.Request, 50)
+_waitall_reqs = Array{MPI.Request}(50)
 """
   Like MPI.WaitAny, but operates on the receives of  a vector of SharedFaceData.
   Only the index of the Request that was waited on is returned, 

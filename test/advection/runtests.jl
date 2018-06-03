@@ -63,7 +63,7 @@ facts("----- Running Advection tests -----") do
   if nargs == 0
     tags = String[TAG_DEFAULT]
   else
-    tags = Array(String, nargs)
+    tags = Array{String}(nargs)
     copy!(tags, ARGS)
   end
 

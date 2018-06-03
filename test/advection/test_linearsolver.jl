@@ -481,7 +481,7 @@ function TestMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
                        eqn::AbstractSolutionData, opts)
 
   pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
-  diag = Array(Float64, mesh.numDof)
+  diag = Array{Float64}(mesh.numDof)
 
   return TestMatFreePC(pc_inner, diag)
 end

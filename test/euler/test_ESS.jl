@@ -192,7 +192,7 @@ function contractLHS(params, qL::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres
 
   wL = zeros(Tsol, numDofPerNode, numNodesPerElement)
 
-  aux_vars = Array(Tsol, 1)
+  aux_vars = Array{Tsol}(1)
 #  w_tmp = zeros(Tsol, numDofPerNode)
   for i=1:numNodesPerElement
     qL_i = qL[:, i]

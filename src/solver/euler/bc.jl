@@ -1634,7 +1634,7 @@ mutable struct reanalysisBC{Tsol} <: BCType
 end
 
 function reanalysisBC()
-  bc_vals = Array(Float64, 0, 0, 0)
+  bc_vals = Array{Float64}(0, 0, 0)
   return reanalysisBC{Float64}(bc_vals)
 end
 

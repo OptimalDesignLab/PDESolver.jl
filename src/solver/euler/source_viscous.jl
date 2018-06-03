@@ -48,7 +48,7 @@ function calcMmsSource(params::ParamType{3, :conservative},
     return nothing
   end
 
-  muK = Array(typeof(q[5]), 2)
+  muK = Array{typeof(q[5])}(2)
   getMuK(q[5], muK)
   rmu = muK[1]
   rK = muK[2]
@@ -166,7 +166,7 @@ function calcMmsSource(params::ParamType{2, :conservative},
   q_xx[2,1,2] = q_xx[1,2,2]
   q_xx[2,1,3] = q_xx[1,2,3]
 
-  muK = Array(typeof(q[4]), 2)
+  muK = Array{typeof(q[4])}(2)
   getMuK(q[4], muK)
   rmu = muK[1]
   rK = muK[2]

@@ -574,8 +574,8 @@ function write_timings(t::Timings, fname::AbstractString)
   timing_names = fieldnames(t)
   nbarriers = length(t.t_barriers)
   nvals = length(timing_names) + nbarriers - 1
-  vals = Array(Float64, nvals)
-  val_names = Array(String, nvals)
+  vals = Array{Float64}(nvals)
+  val_names = Array{String}(nvals)
 
   # put all values except those from t_barriers into array
   pos = 1

@@ -127,8 +127,8 @@ function calcSource(mesh::AbstractMesh{Tmsh},
 
   numElems = mesh.numEl
   numNodesPerElement = mesh.numNodesPerElement
-  # xy = Array(Tmsh, Tdim)
-  src_tmp = Array(eltype(src), size(src, 1))
+  # xy = Array{Tmsh}(Tdim)
+  src_tmp = Array{eltype(src)}(size(src, 1))
   for elem = 1:numElems
     for n = 1:numNodesPerElement
       xy = sview(mesh.coords, :, n, elem)

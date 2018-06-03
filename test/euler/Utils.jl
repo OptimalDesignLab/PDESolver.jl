@@ -125,7 +125,7 @@ function test_utils_misc()
     norm2 = sqrt(sum(data.*Minv.*data))
 
 
-    data = complex(rand(10), rand(10))
+    data = complex.(rand(10), rand(10))
     norm1 = calcNorm(obj, data)
     norm2 = sqrt(sum(real(data).*M.*real(data)))
 
@@ -252,7 +252,7 @@ function test_utils_projection()
       nrm[2] = sin(theta)
 
       t1, t2 = Utils.getOrthogonalVector(params, nrm)
-      dot_val = abs(t1*nrm[1] + t2*nrm[2])
+      dot_val = abs.(t1*nrm[1] + t2*nrm[2])
       # check normal vector calculation
       @fact sqrt(t1*t1 + t2*t2) --> roughly(1.0, atol=1e-12)
       @fact dot_val --> less_than(1e-13)
@@ -290,7 +290,7 @@ function test_utils_projection()
         nrm3[3] = cos(theta)
 
         t1, t2, t3 = Utils.getOrthogonalVector(params3, nrm3)
-        dot_val = abs(t1*nrm3[1] + t2*nrm3[2] + t3*nrm3[3])
+        dot_val = abs.(t1*nrm3[1] + t2*nrm3[2] + t3*nrm3[3])
         @fact t1*t1 + t2*t2 + t3*t3 --> roughly(1.0, atol=1e-12)
         @fact dot_val --> roughly(0.0, atol=1e-13)
 

@@ -225,7 +225,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   penalty_relaxation::Float64
   const_tii::Float64
 
-  function ParamType(mesh, sbp, opts, order::Integer)
+  function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer) where {Tdim, var_type, Tsol, Tres, Tmsh} 
   # create values, apply defaults
 
     # all the spatial computations happen on the *flux* grid when using
@@ -627,7 +627,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 	vecflux_bndry::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 
   # inner constructor
-  function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true)
+  function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
 
     println("\nConstruction EulerData object")
     println("  Tsol = ", Tsol)
@@ -683,7 +683,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     # Must initialize them because some datatypes (BigFloat)
     #   don't automatically initialize them
     # Taking a sview(A,...) of undefined values is illegal
-    # I think its a bug that Array(Float64, ...) initializes values
+    # I think its a bug that Array{Float64}(...) initializes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
     if opts["use_staggered_grid"]
@@ -764,12 +764,12 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 
     # send and receive buffers
     if opts["precompute_face_flux"]
-      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+      eqn.flux_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
     else
-      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
     end
 
-    eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    eqn.aux_vars_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
     if mesh.isDG
       for i=1:mesh.npeers
         if opts["precompute_face_flux"]
@@ -781,7 +781,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       end
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
     else
-      eqn.shared_data = Array(SharedFaceData, 0)
+      eqn.shared_data = Array{SharedFaceData}(0)
     end
 
     if eqn.params.use_edgestab
@@ -809,8 +809,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
-      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
-      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
+      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
 
       if mesh.isDG
         for i=1:mesh.npeers
@@ -836,9 +836,9 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
 
-      eqn.shared_data_bar = Array(SharedFaceData, 0)
-      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, 0)
-      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, 0)
+      eqn.shared_data_bar = Array{SharedFaceData}(0)
+      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(0)
+      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(0)
 
       eqn.flux_face_bar = zeros(Tres, 0, 0, 0)
       eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
@@ -864,11 +864,11 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
      eqn.area_sum = zeros(Tmsh, mesh.numEl)
      calcElemSurfaceArea(mesh, sbp, eqn)
    else
-     # eqn.vecflux_face  = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_faceR = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_bndry = Array(Tsol, 0, 0, 0, 0)
-     eqn.area_sum = Array(Tsol, 0)
+     # eqn.vecflux_face  = Array{Tsol}(0, 0, 0, 0)
+     eqn.vecflux_faceL = Array{Tsol}(0, 0, 0, 0)
+     eqn.vecflux_faceR = Array{Tsol}(0, 0, 0, 0)
+     eqn.vecflux_bndry = Array{Tsol}(0, 0, 0, 0)
+     eqn.area_sum = Array{Tsol}(0)
    end
    return eqn
 
@@ -1119,7 +1119,7 @@ Output:
 function calcTraceInverseInequalityConst(sbp::AbstractSBP{Tsbp},
                                          sbpface::AbstractFace{Tsbp}) where Tsbp
   R = sview(sbpface.interp, :,:)
-  BsqrtRHinvRtBsqrt = Array(Tsbp, sbpface.numnodes, sbpface.numnodes)
+  BsqrtRHinvRtBsqrt = Array{Tsbp}(sbpface.numnodes, sbpface.numnodes)
   perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)
   Hinv = zeros(Tsbp, sbp.numnodes, sbp.numnodes)
   Bsqrt = zeros(Tsbp, sbpface.numnodes, sbpface.numnodes)

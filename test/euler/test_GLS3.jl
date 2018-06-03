@@ -9,7 +9,7 @@ function test_GLS(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol,
   Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
 
   # create indices
-  idx_range = Array(UnitRange{Int64}, mesh.numNodesPerElement)
+  idx_range = Array{UnitRange{Int64}}(mesh.numNodesPerElement)
   for i=1:mesh.numNodesPerElement
     start_idx = (i-1)*mesh.numDofPerNode + 1
     end_idx = i*mesh.numDofPerNode
@@ -103,7 +103,7 @@ function test_GLS(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol,
     gls_operator = fancy_L.'*middle_tilde*fancy_L
     
     @fact isSymmetric(gls_operator, 1e-12) --> true
-    #println("max asymmetry = ", maximum(abs(gls_operator - gls_operator.')))
+    #println("max asymmetry = ", maximum(abs.(gls_operator - gls_operator.')))
 
     gls_test = -gls_operator*q_el
 

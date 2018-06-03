@@ -308,7 +308,7 @@ function calcVolumeIntegralsSplitFormCurvilinear(
   aux_vars = eqn.aux_vars
   F_d = eqn.params.flux_valsD
 #  S = eqn.params.S
-  S = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  S = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
   params = eqn.params
 
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
@@ -434,7 +434,7 @@ function calcVolumeIntegralsSplitFormCurvilinear(
   qf = eqn.q_flux
   nrm = eqn.params.nrmD
   F_d = eqn.params.flux_valsD
-  S = Array(Tmsh, mesh_f.numNodesPerElement, mesh_f.numNodesPerElement, Tdim)
+  S = Array{Tmsh}(mesh_f.numNodesPerElement, mesh_f.numNodesPerElement, Tdim)
   params = eqn.params
 
 
@@ -1529,9 +1529,9 @@ eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts,
 res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
-  A0inv = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
-  res_vals = Array(Tsol, mesh.numDofPerNode)
-  q_vals = Array(Tsol, mesh.numDofPerNode)
+  A0inv = Array{Tsol}(mesh.numDofPerNode, mesh.numDofPerNode)
+  res_vals = Array{Tsol}(mesh.numDofPerNode)
+  q_vals = Array{Tsol}(mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       # copy values into workvec
@@ -1573,9 +1573,9 @@ opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
 # a non-alias tolerant implemention wold avoid copying q_vals
-  A0 = Array(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
-  res_vals = Array(Tsol, mesh.numDofPerNode)
-  q_vals = Array(Tsol, mesh.numDofPerNode)
+  A0 = Array{Tsol}(mesh.numDofPerNode, mesh.numDofPerNode)
+  res_vals = Array{Tsol}(mesh.numDofPerNode)
+  q_vals = Array{Tsol}(mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       # copy values into workvec
@@ -1954,7 +1954,7 @@ function calcMomentContribution!(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArra
       for di = 1:3
         rvec[di] = xsbp[di,i,f] - xyz_about[di]
       end
-      crossProd(rvec, view(dforce,:,i,f), dM)
+      crossProd(rvec, sview(dforce,:,i,f), dM)
       for di = 1:3
         moment[di] += dM[di]*sbpface.wface[i]
       end
@@ -2107,9 +2107,9 @@ function calcMomentContribution_rev!(sbpface::AbstractFace{Tsbp}, xsbp::Abstract
         # moment[di] += dM[di]*sbpface.wface[i]
         dM_bar[di] += moment_bar[di]*sbpface.wface[i]
       end
-      # crossProd(rvec, view(dforce,:,i,f), dM)
-      crossProd_rev(rvec, rvec_bar, view(dforce,:,i,f),
-                       view(dforce_bar,:,i,f), dM_bar)
+      # crossProd(rvec, sview(dforce,:,i,f), dM)
+      crossProd_rev(rvec, rvec_bar, sview(dforce,:,i,f),
+                       sview(dforce_bar,:,i,f), dM_bar)
       for di = 1:3
         # rvec[di] = xsbp[di,i,f] - xyz_about[di]
         xsbp_bar[di,i,f] += rvec_bar[di]
@@ -2133,7 +2133,7 @@ function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp},
       for di = 1:3
         rvec[di] = xsbp[di,i,f] - xyz_about[di]
       end
-      crossProd(rvec, view(dforce,:,i,f), dM)
+      crossProd(rvec, sview(dforce,:,i,f), dM)
       for di = 1:3
         moment[di] += dM[di]*sbpface.wface[i]
       end

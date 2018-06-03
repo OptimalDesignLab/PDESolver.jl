@@ -295,13 +295,13 @@ end
 """
 macro newtonfields()
   # compute something c = f(a, b)
-  return quote
+  return esc(quote
     res_norm_i::Float64  # current step residual norm
     res_norm_i_1::Float64  # previous step residual norm
     # Pseudo-transient continuation Euler
     tau_l::Float64  # current pseudo-timestep
     tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
-  end
+  end)
 end
 
 """

@@ -77,7 +77,7 @@ function (obj::ExactChannelBC)(
     w += 0.2 * wInf
   end
 
-  qg = Array(Tsol, 5)
+  qg = Array{Tsol}(5)
 	qg[1] = rho
 	qg[2] = rho*u
 	qg[3] = rho*v

@@ -141,22 +141,22 @@ function getBCFluxes(mesh::AbstractMesh{Tmsh},
   Cip = opts["Cip"]
   penalty_method = opts["Flux_name"]
   sbpface = mesh.sbpface
-  dq = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)  
+  dq = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)  
   penalty_factor_shahbazi = 0.5*Float64(p + 1.0)*Float64(p + Tdim)/Float64(Tdim)
-  penalty = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_shahbazi = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_shahbazi = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   sbpface = mesh.sbpface
   numFacesPerElem = 3
-  nrm = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
+  nrm = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
   numFacesPerElem = 3
 
-  eigMax = Array(Tmsh, mesh.numDofPerNode)
-  lambda_dqdx = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  eigMax = Array{Tmsh}(mesh.numDofPerNode)
+  lambda_dqdx = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  Sat = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace) 
-  RLR = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  Sat = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace) 
+  RLR = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
   R = sview(sbpface.interp, :,:)
   RR = R.'*R
   area_sum = sview(eqn.area_sum, :)
@@ -184,9 +184,9 @@ function getBCFluxes(mesh::AbstractMesh{Tmsh},
   for iBC = 1:mesh.numBC
     indx0 = mesh.bndry_offsets[iBC]
     indx1 = mesh.bndry_offsets[iBC+1] - 1
-    gD = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    gg = Array(Tsol, mesh.numDofPerNode)
-    gN = Array(Tsol, mesh.numDofPerNode)
+    gD = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+    gg = Array{Tsol}(mesh.numDofPerNode)
+    gN = Array{Tsol}(mesh.numDofPerNode)
 
     for f = indx0:indx1
       xflux = sview(eqn.xflux_bndry, :,:,f)

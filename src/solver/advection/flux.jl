@@ -333,8 +333,8 @@ function calcSharedFaceIntegrals_element_inner(
 
 
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   workarr = zeros(q_faceR)
   q = eqn.q
   params = eqn.params
@@ -352,9 +352,9 @@ function calcSharedFaceIntegrals_element_inner(
   start_elnum = mesh.shared_element_offsets[idx]
 
   @debug2 begin
-    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
     flush(params.f)
   end
@@ -414,8 +414,8 @@ function calcSharedFaceIntegrals_element_inner_nopre(
   end
 
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   workarr = zeros(q_faceR)
   q = eqn.q
   params = eqn.params
@@ -434,9 +434,9 @@ function calcSharedFaceIntegrals_element_inner_nopre(
   start_elnum = mesh.shared_element_offsets[idx]
 
   @debug2 begin
-    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
     flush(params.f)
   end

@@ -48,7 +48,7 @@ mutable struct ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   t_barrier3::Float64
   t_barriers::Array{Float64, 1}
   =#
-  function ParamType(mesh, sbp, opts)
+  function ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts) where {Tsol, Tres, Tdim} 
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
@@ -165,7 +165,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+  function AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -229,24 +229,24 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
       eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
 
       if mesh.isDG
-        eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+        eqn.flux_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
         for i=1:mesh.npeers
           eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
                                          mesh.peer_face_counts[i])
         end
       else
-        eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+        eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
       end  # end if isDG
 
     else
       eqn.flux_face = zeros(Tres, 0, 0, 0)
-      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
     end  # end if precompute_face_flux
 
     if mesh.isDG
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
     else
-      eqn.shared_data = Array(SharedFaceData, 0)
+      eqn.shared_data = Array{SharedFaceData}(0)
     end
 
     return eqn

@@ -145,8 +145,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
   res_jacRR = params.res_jacRR
   #=
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
   flux_dotR = zeros(flux_dotL)
 

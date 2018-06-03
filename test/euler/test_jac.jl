@@ -253,7 +253,7 @@ function test_pressure(params::AbstractParamType{Tdim}) where Tdim
   p_dot2 = zeros(q)
   EulerEquationMod.calcPressure_diff(params, q, p_dot2)
 
-  @fact maximum(abs(p_dot - p_dot2))  --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(p_dot - p_dot2)) --> roughly(0.0, atol=1e-14)
 
   return nothing
 end
@@ -293,7 +293,7 @@ function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
   res2 = zeros(res)
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
-  @fact maximum(abs(res - res2)) --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(res - res2)) --> roughly(0.0, atol=1e-14)
 end
 
 function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
@@ -423,8 +423,8 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
   end
 
 
-  @fact maximum(abs(resL - resL2)) --> roughly(0.0, atol=1e-14)
-  @fact maximum(abs(resR - resR2)) --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(resL - resL2)) --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(resR - resR2)) --> roughly(0.0, atol=1e-14)
 
   return nothing
 end
@@ -459,7 +459,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
 
 
   # test face integrals
@@ -478,7 +478,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
 
   # test boundary integral
   # test face integrals
@@ -498,7 +498,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @fact maximum(abs(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
+  @fact maximum(abs.(jac1d - jac2)) --> roughly(0.0, atol=1e-14)
 
 
   return nothing

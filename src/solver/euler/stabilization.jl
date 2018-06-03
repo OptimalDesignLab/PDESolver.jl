@@ -74,7 +74,7 @@ function edgestabilize!(sbp::AbstractSBP{T}, ifaces::Array{Interface},
 
   numNodesPerFace = size(stabscale, 2)
   # JEH: temporary, until nbrnodeindex is part of sbp type
-  nbrnodeindex = Array(numNodesPerFace:-1:1)
+  nbrnodeindex = collect(numNodesPerFace:-1:1)
 
   Dn = zero(T)
   dirL = zeros(T, (dim))
@@ -159,7 +159,7 @@ function edgestabilize!(sbp::AbstractSBP,
 
   numNodesPerFace = size(stabscale, 2)
   # JEH: temporary, until nbrnodeindex is part of sbp type
-  nbrnodeindex = Array(numNodesPerFace:-1:1)
+  nbrnodeindex = collect(numNodesPerFace:-1:1)
 
   Dn = zeros(Tsol, size(u,1))
   dirL = zeros(Tmsh, (dim))
@@ -267,7 +267,7 @@ function edgestabilize!(mesh, sbp::AbstractSBP, eqn,
 
 
   # JEH: temporary, until nbrnodeindex is part of sbp type
-  nbrnodeindex = Array(numNodesPerFace:-1:1)
+  nbrnodeindex = collect(numNodesPerFace:-1:1)
 
   Dn = zeros(Tsol, size(u,1))
   dirL = zeros(Tmsh, (dim))
@@ -560,7 +560,7 @@ function stabscale(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                    eqn::EulerData{Tsol}) where {Tmsh,  Tsol}
 # calculate stabscale for entire mesh
 
-  nbrnodeindex = Array(mesh.numNodesPerFace:-1:1)
+  nbrnodeindex = collect(mesh.numNodesPerFace:-1:1)
 
   for i=1:mesh.numInterfaces
     face_i = mesh.interfaces[i]

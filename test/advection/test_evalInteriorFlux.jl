@@ -28,8 +28,8 @@ facts("--- Testing evalInteriorFlux ---") do
     nbrnodeindex = Array(sbp.numfacenodes:-1:1)
     @fact nbrnodeindex --> [2,1]
 
-    iL = Array(Int, 2)
-    iR = Array(Int, 2)
+    iL = Array{Int}(2)
+    iR = Array{Int}(2)
     iL[1] = mesh.facenodes[1, face.faceL]
     iL[2] = mesh.facenodes[2, face.faceL]
     iR[1] = mesh.facenodes[nbrnodeindex[1], face.faceR]

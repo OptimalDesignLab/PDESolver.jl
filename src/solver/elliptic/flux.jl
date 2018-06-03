@@ -27,7 +27,7 @@ function calcGradient(mesh::AbstractDGMesh{Tmsh},
 
   q_grad[:,:,:,:] = 0.0
 
-  Dx = Array(Tsbp, numNodesPerElement, numNodesPerElement, 2)
+  Dx = Array{Tsbp}(numNodesPerElement, numNodesPerElement, 2)
   for e=1:numElems
     # First compute Dx for this element
     calcDx(mesh, sbp, Int(e), Dx)
@@ -84,39 +84,39 @@ function calcFaceFlux(mesh::AbstractDGMesh{Tmsh},
   penalty_method = opts["Flux_name"]
   p = opts["order"]
   Cip = opts["Cip"]
-  dq = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  dq = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   factor_shahbazi = Float64(p + 1.0)*Float64(p + Tdim)/(2.0*Tdim)
   sbpface = mesh.sbpface
   numFacesPerElem = 3
-  nrm = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
-  lambda_dqdxL = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  lambda_dqdxR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  eigMaxL = Array(Tmsh, mesh.numDofPerNode)
-  eigMaxR = Array(Tmsh, mesh.numDofPerNode)
+  nrm = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
+  lambda_dqdxL = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  lambda_dqdxR = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  eigMaxL = Array{Tmsh}(mesh.numDofPerNode)
+  eigMaxR = Array{Tmsh}(mesh.numDofPerNode)
 
   #
   # For scalar penalty, we use penalty;
   # for matrix penalty, we use Sat.
   #
-  penalty      = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_sat0 = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_sat  = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_shahbazi = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty      = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_sat0 = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_sat  = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_shahbazi = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  Sat = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  Sat = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
   #
   # |R 0| |Λxx Λxy| |R 0|^T
   # |0 R| |Λyx Λyy| |0 R|
   #
   sbpface = mesh.sbpface
   R = sview(sbpface.interp, :,:)
-  RLR_L = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  RLR_R = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  RLR = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  BsqrtRHinvRtBsqrt = Array(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  HRBRH = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  RLR_L = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  RLR_R = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  RLR = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  BsqrtRHinvRtBsqrt = Array{Tmsh}(mesh.numNodesPerFace, mesh.numNodesPerFace)
+  HRBRH = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement)
   area_sum = sview(eqn.area_sum, :)
   perm = zeros(Tmsh, sbp.numnodes, sbpface.stencilsize)
   Hinv = zeros(Tmsh, sbp.numnodes, sbp.numnodes)

@@ -25,7 +25,7 @@ function test_modes()
     epsilon = 1e-20
     pert = complex(0, epsilon)
     newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)
-    NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalResidual, Array(Float64, 0,0,0), pert, jac)
+    NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, EulerEquationMod.evalResidual, Array{Float64}( 0,0,0), pert, jac)
 
     # to mat-vec product
     newton_data = NonlinearSolvers.NewtonData{Tsol, Tres}(mesh, sbp, eqn, opts)

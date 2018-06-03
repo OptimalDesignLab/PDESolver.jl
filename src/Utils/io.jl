@@ -73,7 +73,7 @@ write(io::BufferedIO, x::UInt8) = write(io.fbuf, x)
   `Base` function `flush` extended for BufferedIO
 """
 function flush(io::BufferedIO)
-  write(io.fstream, takebuf_array(io.fbuf))
+  write(io.fstream, take!(io.fbuf))
   flush(io.fstream)
 end
 

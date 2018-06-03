@@ -151,7 +151,7 @@ function calcGradient(sbp::AbstractSBP{Tsbp},
   numDofs = size(q, 1)
   dim = size(q_grad, 1)
 
-  Dx = Array(Tsbp, numNodes, numNodes, dim)
+  Dx = Array{Tsbp}(numNodes, numNodes, dim)
 
   calcDx(sbp, dxidx, jac, Dx)
 
@@ -199,7 +199,7 @@ function calcGradient(mesh::AbstractDGMesh{Tmsh},
   numDofs = mesh.numDofPerNode
   dim = size(q_grad, 1)
 
-  Dx = Array(Tsbp, numNodes, numNodes, dim)
+  Dx = Array{Tsbp}(numNodes, numNodes, dim)
   # for e=1:numElems
   # First compute Dx for this element
   calcDx(mesh, sbp, elem, Dx)

@@ -1,3 +1,5 @@
+include("calc_line.jl")
+
 function test_CN_parallel()
     
   start_dir = pwd()
@@ -17,7 +19,7 @@ function test_CN_parallel()
 #    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
-    include(joinpath(pwd(), "calc_line.jl"))
+#    include(joinpath(pwd(), "calc_line.jl"))
 
     MPI.Barrier(mesh.comm)
     slope = calc_line()

@@ -754,7 +754,7 @@ function test_GLS(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol,
   Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
 
   # create indices
-  idx_range = Array(UnitRange{Int64}, mesh.numNodesPerElement)
+  idx_range = Array{UnitRange{Int64}}(mesh.numNodesPerElement)
   for i=1:mesh.numNodesPerElement
     start_idx = (i-1)*mesh.numDofPerNode + 1
     end_idx = i*mesh.numDofPerNode

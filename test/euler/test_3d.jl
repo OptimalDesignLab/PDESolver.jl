@@ -67,7 +67,7 @@ function test_3d_eigensystem(mesh, sbp, eqn, opts)
     q = [1., 2, 3, 4, 15]
     numDofPerNode = length(q)
     qc = convert(Array{Complex128}, q)
-    aux_vars = Array(Complex128, 1)
+    aux_vars = Array{Complex128}(1)
     qg = deepcopy(q)
     dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
     F = zeros(Complex128, numDofPerNode)

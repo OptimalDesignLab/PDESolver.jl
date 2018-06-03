@@ -31,21 +31,21 @@ function test_parallel2_comm()
     mesh.npeers = 2
     mesh.peer_parts = [peer_down, peer_up]
     #=
-    mesh.send_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.recv_waited= Array(Bool, mesh.npeers)
-    mesh.send_waited = Array(Bool, mesh.npeers)
+    mesh.send_reqs = Array{MPI.Request}(mesh.npeers)
+    mesh.recv_reqs = Array{MPI.Request}(mesh.npeers)
+    mesh.recv_waited= Array{Bool}(mesh.npeers)
+    mesh.send_waited = Array{Bool}(mesh.npeers)
 
     initMPIStructures(mesh, opts)
     =#
 
     shared_data = getSharedFaceData(Float64, mesh, sbp, opts)
 
-#    send_data = Array(Array{Float64, 1}, mesh.npeers)
-#    recv_data = Array(Array{Float64, 1}, mesh.npeers)
+#    send_data = Array{Array{Float64, 1}}(mesh.npeers)
+#    recv_data = Array{Array{Float64, 1}}(mesh.npeers)
     for i=1:mesh.npeers
       shared_data[i].q_send = reshape(Float64[myrank + i, myrank + i + 1], 2, 1, 1)
-      shared_data[i].q_recv = reshape(Array(Float64, mesh.npeers), 2, 1, 1)
+      shared_data[i].q_recv = reshape(Array{Float64}(mesh.npeers), 2, 1, 1)
     end
 
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer, wait=true)

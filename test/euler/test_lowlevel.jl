@@ -374,7 +374,7 @@ function test_lowlevel_eigsystem(mesh, sbp, eqn, opts)
     params = eqn.params
     q = [1.0, 2.0, 3.0, 7.0]
     qc = convert(Array{Complex128}, q)
-    aux_vars = Array(Complex128, 1)
+    aux_vars = Array{Complex128}(1)
     qg = deepcopy(q)
     dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
     F = zeros(Complex128, 4)

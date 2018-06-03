@@ -52,11 +52,11 @@ mutable struct TestList
 
   function TestList()
     sizehint = 0  # initial length of vectors
-    funcs = Array(Function, sizehint)
-    func_tags = Array(Vector{String}, sizehint)
-    func_type = Array(Int, sizehint)
-    input_name = Array(String, sizehint)
-    input_mod = Array(Dict, sizehint)
+    funcs = Array{Function}(sizehint)
+    func_tags = Array{Vector{String}}(sizehint)
+    func_type = Array{Int}(sizehint)
+    input_name = Array{String}(sizehint)
+    input_mod = Array{Dict}(sizehint)
     tag_list = Set{String}()
     push!(tag_list, TAG_DEFAULT)
 
@@ -87,7 +87,7 @@ function add_func1!(testlist::TestList, func::Function, tags::Array{String}=Stri
   push!(testlist.funcs, func)
 
   # tags
-  tag_list_full = Array(String, length(tags)+1)
+  tag_list_full = Array{String}(length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
   push!(testlist.func_tags, tag_list_full)
@@ -131,7 +131,7 @@ function add_func2!(testlist::TestList, func::Function, input_name::String,
   push!(testlist.funcs, func)
 
   # tags
-  tag_list_full = Array(String, length(tags)+1)
+  tag_list_full = Array{String}(length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
   push!(testlist.func_tags, tag_list_full)
@@ -175,7 +175,7 @@ function add_func3!(testlist::TestList, func::Function, input_name::String,
   push!(testlist.funcs, func)
 
   # tags
-  tag_list_full = Array(String, length(tags)+1)
+  tag_list_full = Array{String}(length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
   push!(testlist.func_tags, tag_list_full)

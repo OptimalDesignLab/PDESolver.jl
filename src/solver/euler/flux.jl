@@ -292,7 +292,7 @@ function calcSharedFaceElementIntegrals_element_inner(
   q = eqn.q
   params = eqn.params
   # we don't care about elementR here, so use this throwaway array
-  resR = Array(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  resR = Array{Tres}(mesh.numDofPerNode, mesh.numNodesPerElement)
 
   # get the data for the parallel interface
   idx = data.peeridx
@@ -369,7 +369,7 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
   resR_f = params.res_el2
   resL_s = params.ress_el1
   # we don't care about resR here
-  aux_vars = Array(Tres, 1, mesh_f.numNodesPerElement)
+  aux_vars = Array{Tres}(1, mesh_f.numNodesPerElement)
 
   # get the data for the parallel interface
   idx = data.peeridx
@@ -590,15 +590,15 @@ function calcSharedFaceIntegrals_element_inner(
   params = eqn.params
 
   @debug2 begin
-    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
+    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
+    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
   end 
 
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
 
   idx = data.peeridx
   interfaces = data.interfaces
@@ -664,15 +664,15 @@ function calcSharedFaceIntegrals_nopre_element_inner(
   params = eqn.params
 
   @debug2 begin       # probably don't work anymore. only used for sharedFaceLogging at the end of this function
-    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
+    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace,
+    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
                                      mesh.peer_face_counts[i])
   end 
 
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
 
   idx = data.peeridx
   interfaces = data.interfaces

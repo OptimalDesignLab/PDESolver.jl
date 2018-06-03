@@ -103,9 +103,9 @@ end
 function Checkpointer(myrank::Integer, ncheckpoints::Integer=2,
                       prefix::String="")
 
-  paths = Array(String, ncheckpoints)
-  status = Array(Int, ncheckpoints)
-  history = Array(Int, ncheckpoints)
+  paths = Array{String}(ncheckpoints)
+  status = Array{Int}(ncheckpoints)
+  history = Array{Int}(ncheckpoints)
   fill!(history, -1)
 
   if prefix != ""
