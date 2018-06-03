@@ -766,7 +766,7 @@ function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts,
   # recalculte aux_vars
   for i=1:mesh.numInterfaces
     for j=1:mesh.numNodesPerFace
-      q_vals = ro_sview(q_face, :, 1, j, i) # always use elementL
+      q_vals = view(q_face, :, 1, j, i) # always use elementL  #TODO: ro_sview
       eqn.aux_vars_face[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end

@@ -1,3 +1,5 @@
 # log of performance results
 # date    time  branch name   elapsed time  bytes allocated
 2016-5-28 21:52 view_fix 58.948828611 140288158
+2018-6-3 14:54 upgrade_0.6 472.71038898 59768608542
+2018-6-3 15:2 upgrade_0.6 155.072292446 52962069215

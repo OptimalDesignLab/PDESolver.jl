@@ -548,13 +548,12 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   if opts["check_density"]
     checkDensity(eqn, mesh)
-#    println("  checkDensity @time printed above")
+    # println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
-#    throw(ErrorException("I'm done"))
     checkPressure(eqn, mesh)
-#    println("  checkPressure @time printed above")
+    # println("  checkPressure @time printed above")
   end
 
   # calculate fluxes
@@ -570,27 +569,31 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
+    # println("  getEulerFlux @time printed above")
   end
-#  println("  getEulerFlux @time printed above")
 
 
   if mesh.isDG
     if opts["precompute_q_face"]
+      @code_warntype interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+      # println("  interpolateFace @time printed above")
     end
 
     if opts["precompute_face_flux"]
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+      #  println("  interpolateFace @time printed above")
     end
     if opts["precompute_q_bndry"]
       interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+      # println("  interpolateFace @time printed above")
     end
   end
 
   if opts["precompute_boundary_flux"]
     fill!(eqn.bndryflux, 0.0)
     getBCFluxes(mesh, sbp, eqn, opts)
-#     println("  getBCFluxes @time printed above")
+    # println("  getBCFluxes @time printed above")
   end
   
   if eqn.params.isViscous == true

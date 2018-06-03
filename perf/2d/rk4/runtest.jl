@@ -1,4 +1,3 @@
-using Coverage
 using ODLCommonTools
 #push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using PDESolver
@@ -15,7 +14,7 @@ function runtest_rk(;fname="input_vals_vortex3.jl", outname="perf_hist.txt")
   val, telapsed, tgc, gc_bytes = @time_all run_solver(fname)
 
   println("----- Final run -----")
-  val, telapsed, tgc, gc_bytes = @time_all include(startup_path)
+  val, telapsed, tgc, gc_bytes = @time_all run_solver(fname)
 
   f = open(outname, "a+")
   tstr = getTimeString()

@@ -4,7 +4,7 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{Any, Any} (
+arg_dict = Dict{Any, Any}(
 "physics" => "Euler",
 "var1" => 1,
 "var2" => "a",
@@ -14,8 +14,8 @@ arg_dict = Dict{Any, Any} (
 "run_type" => 1,
 "jac_type" => 2,
 "order" => 1,
-#"use_DG" => true,
-#"Flux_name" => "RoeFlux",
+"use_DG" => true,
+"Flux_name" => "RoeFlux",
 "IC_name" => "ICIsentropicVortex",
 "variable_type" => :conservative,
 #"IC_name" => "ICFile",
@@ -34,7 +34,7 @@ arg_dict = Dict{Any, Any} (
 "res_abstol" => 1e-12,
 "res_reltol" => 1e-10,
 "step_tol" => 1e-10,
-"itermax" => 3000,
+"itermax" => 500,  #3000,
 #"calc_error" => true,
 #"calc_error_infname" => "solution_final.dat",
 #"writeq" => true,
@@ -52,5 +52,6 @@ arg_dict = Dict{Any, Any} (
 "write_finalresidual" => false,
 "write_counts" => false,
 "write_rhs" => false,
+"write_timing" => true,
 "solve" => true,
 )
