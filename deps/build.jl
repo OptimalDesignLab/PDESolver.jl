@@ -50,6 +50,7 @@ function installPDESolver()
   # [pkg_name, git url, commit identified]
   std_pkgs = [
 #              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
+              "ArrayViews"   "https://github.com/JaredCrean2/ArrayViews.jl.git" "fix_depwarn"
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "upgrade_0.6";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_update_0.6";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "update_0.6";
@@ -99,7 +100,7 @@ function installPDESolver()
   pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "fa0053b241fee05dcc8d1840f0015dfeb2450bf4";
               "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
               "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
-              "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "93e80390aeedb1dbcd90281b6dff7f760f430bc8";
+#              "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "93e80390aeedb1dbcd90281b6dff7f760f430bc8";
               "SHA" "https://github.com/staticfloat/SHA.jl.git" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
               "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
               "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
