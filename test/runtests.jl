@@ -28,5 +28,3 @@ TestFinalizeMPI = true
 include(joinpath(pwd(), "runtests.jl"))
 
 cd("../")
-
-FactCheck.exitstatus()

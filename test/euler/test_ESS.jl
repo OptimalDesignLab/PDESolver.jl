@@ -411,8 +411,8 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
 
-      @test isapprox( norm(vec(resL_code - resL_test2)), 0.0) atol=1e-12*length(resL_code
-      @test isapprox( norm(vec(resR_code - resR_test2)), 0.0) atol=1e-12*length(resR_code
+      @test isapprox( norm(vec(resL_code - resL_test2)), 0.0) atol=1e-12*length(resL_code)
+      @test isapprox( norm(vec(resR_code - resR_test2)), 0.0) atol=1e-12*length(resR_code)
 
       #=
       for j=1:size(resL_code, 1)
