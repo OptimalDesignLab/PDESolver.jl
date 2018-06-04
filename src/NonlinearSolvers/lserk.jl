@@ -154,6 +154,15 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       Bv = zeros(Complex128, length(q_vec))
       dqimag_vec = zeros(Bv)
       @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
+
+    end
+    if opts["write_L2vnorm"]
+      # for visualization of element level DS energy
+      old_q_vec = zeros(q_vec)
+      R_stab = zeros(q_vec)
+      v_energy = zeros(q_vec)
+
+      @mpi_master f_v_energy = open("v_energy_data.dat", "w")
     end
 
     # Note: no stabilization of q_vec at the IC
@@ -264,12 +273,22 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv)   # q_vec now obtained from eqn.q_vec
     end
 
+    if opts["write_L2vnorm"]
+      # for visualization of element level DS energy
+      fill!(old_q_vec, 0.0)
+      for j = 1:length(q_vec)
+        old_q_vec[j] = q_vec[j]
+      end
+    end
+
     # Stage 1 update
     fac = b_coeffs[1]
     for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
       q_vec[j] += fac*dq_vec[j]
     end
+
+    # div by (fac*delta_t) ---- put v_energy calc here
 
     if opts["stabilize_v"]
 
@@ -286,6 +305,47 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j])) 
       end
       @mpi_master println(f_stabilize_v, "i: $i   stage: 1   sum of stab update:", update_tmp)
+    end
+
+    # for visualization of element level DS energy
+    if opts["write_L2vnorm"]
+      # special case for calculating v_energy:
+      #   Need to calculate v_vec after the first stage for use in the first-stage-only v_energy calculation.
+      #   Previously, this would only be done at the end of all the stages
+      for v_ix = 1:length(v_vec)
+        v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
+      end
+      fill!(R_stab, 0.0)
+      for j = 1:length(q_vec)
+        R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)
+      end
+      fill!(v_energy, 0.0)
+      for j = 1:length(q_vec)
+        v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+      end
+
+      if (i % output_freq) == 0
+        saveSolutionToMesh(mesh, v_energy)
+        fname = string("v_energy_", i)
+        writeVisFiles(mesh, fname)
+      end
+
+      # i  calcNorm    avg   min   max
+      v_energy_mean_local = mean(v_energy)
+      v_energy_min_local = minimum(v_energy)      # not doing abs on purpose
+      v_energy_max_local = maximum(v_energy)
+
+      v_energy_mean = MPI.Allreduce(v_energy_mean_local, MPI.SUM, mesh.comm)
+      v_energy_min = MPI.Allreduce(v_energy_min_local, MPI.SUM, mesh.comm)
+      v_energy_max = MPI.Allreduce(v_energy_max_local, MPI.SUM, mesh.comm)
+
+      v_energy_norm = calcNorm(eqn, v_energy)
+
+      @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm), "  ", real(v_energy_mean), "  ", real(v_energy_min), "  ", real(v_energy_max))
+      if (i % 500) == 0
+        @mpi_master flush(f_v_energy)
+      end
+
     end
 
     #--------------------------------------------------------------------------
@@ -477,6 +537,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
   if opts["write_L2vnorm"]
     @mpi_master close(f_L2vnorm)
+    @mpi_master close(f_v_energy)
   end
 
 
