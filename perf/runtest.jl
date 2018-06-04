@@ -1,6 +1,15 @@
 # this file lists all the input and output file names for the performance
 # tests and then runs them
 
+# If this script is run with no arguments, all tests are run.
+# Alternatively, the names of input file from the list below can be supplied.
+# In this case, only those tests will be run
+
+# Note that this script does not return non-zero exit status if a test is
+# slower than the previous run (in general, this is hard for the computer to
+# assess because of machine differences, software configuration differences,
+# etc.)  All it does is update the perf_history*.txt files
+
 include("test_funcs.jl")
 
 tests = [ "input_vals_2d_rk4.jl"    "perf_history_2d_rk4.txt";
