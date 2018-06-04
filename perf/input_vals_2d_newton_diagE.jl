@@ -3,7 +3,7 @@
 arg_dict = Dict{Any, Any}(
 "physics" => "Euler",
 "run_type" => 5,
-"jac_type" => 2,
+"jac_type" => 3,
 "jac_method" => 2,
 "operator_type" => "SBPDiagonalE",
 "order" => 1,
