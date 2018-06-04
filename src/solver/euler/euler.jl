@@ -575,7 +575,6 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   if mesh.isDG
     if opts["precompute_q_face"]
-      @code_warntype interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       # println("  interpolateFace @time printed above")
     end
@@ -740,7 +739,6 @@ function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
           weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
         end
       end  # end if Q_transpose
-
     else  # not precomputing the volume flux
       calcVolumeIntegrals_nopre(mesh, sbp, eqn, opts)
     end  # end if precompute_volume _flux
