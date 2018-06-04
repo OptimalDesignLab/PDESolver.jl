@@ -54,9 +54,9 @@ crank_nicolson
 
    TODO: fully document eqn/eqn_nextstep
 """
-# function crank_nicolson{Tmsh, Tsol}(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
+# function crank_nicolson(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         # mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
-                        # opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false)
+                        # opts, res_tol=-1.0; neg_time=false, obj_fn=obj_zero, store_u_to_disk=false) where {Tmsh, Tsol}
 function crank_nicolson_uadj(physics_func::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                         opts, 

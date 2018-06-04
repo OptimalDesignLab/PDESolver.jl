@@ -957,13 +957,6 @@ end
 mutable struct SIPGViscousFlux <: FluxType
 end
 
-# function (obj::SIPGViscousFlux){Tsol, Tres, Tmsh}(params::ParamType,
-              # uL::AbstractArray{Tsol,1},
-              # uR::AbstractArray{Tsol,1},
-              # aux_vars::AbstractVector{Tres},
-              # nrm::AbstractVector{Tmsh},
-              # F::AbstractVector{Tres})
-# function (obj::SIPGViscousFlux){Tsol, Tres, Tmsh}(params::ParamType,
 function (obj::SIPGViscousFlux)(params::ParamType,
               sbp::AbstractSBP,
               sbpface,    # TODO: type

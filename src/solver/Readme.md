@@ -86,8 +86,8 @@ Only when low level functions need to dispatch based on which implementation is
 
 Some equations can be written in different variables, and need to convert
 between them.  To do this, it is
-`function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},
-               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})`
+`function convertFromNaturalToWorkingVars(params::ParamType{2, :var_type},
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1}) where {Tsol}`
 
 that converts from the "natural" variables in which to write an equation to
 some other set of variables at a node.  For the Euler equations, the "natural"

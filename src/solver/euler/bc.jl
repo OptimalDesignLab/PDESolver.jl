@@ -466,12 +466,12 @@ end
 
 #=
 # low level function
-function (obj::isentropicVortexBC){Tmsh, Tsol, Tres}(params::ParamType,
+function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
                nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = params.qg
   calcIsentropicVortex(params, coords, qg)
@@ -890,12 +890,12 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   return nothing
 end
 #=
-function (obj::noPenetrationBC_revm){Tmsh, Tsol, Tres}(params::ParamType3,
+function (obj::noPenetrationBC_revm)(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
   nx = zero(Tmsh)

@@ -398,7 +398,7 @@ tau::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 end  # end function
 
 #=
-function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
+function getGLSVars(params::ParamType{Tdim},
                     params_c::ParamType{Tdim, :conservative},
                     q::AbstractArray{Tsol, 2}, aux_vars::AbstractArray{Tsol, 2},
                     dxidx_hat::AbstractArray{Tmsh, 3}, 
@@ -409,7 +409,7 @@ function getGLSVars{Tmsh, Tsol, Tres, Tdim}(params::ParamType{Tdim},
                     qxitranspose::AbstractArray{Tsol, 3}, 
                     qxi::AbstractArray{Tsol, 3},
                     dxidx::AbstractArray{Tmsh, 3}, 
-                    tau::AbstractArray{Tres, 3})
+                    tau::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
 =#
 
@@ -882,10 +882,9 @@ end  # end function
 
 
 """->
-function getTau(
-params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
-q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
-dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2}) where {Tdim, var_type, Tsol, Tres, Tmsh}
+function getTau(params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh}, 
+                q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
+                dxidx::AbstractArray{Tmsh, 2}, tau::AbstractArray{Tres, 2}) where {Tdim, var_type, Tsol, Tres, Tmsh}
 
 #  println("----- Entered getTau original-----")
 

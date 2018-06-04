@@ -1918,28 +1918,6 @@ function calcMaxWaveSpeed(mesh, sbp,
 end  # end function
 
 
-#------------------------------------------------------------------------------
-# some old experimental functions
-#------------------------------------------------------------------------------
-#=
-# this is a test for an algorithmic differentiation package
-function getEulerJac_wrapper{T}(q::AbstractArray{T,1}, F::AbstractArray{T,1})
-
-  dir = [1.0, 0.0]
-#  F = zeros(T, 4)
-  sbp = TriSBP{Float64}()
-  mesh = PumiMesh2{Float64}(".null", "../../mesh_files/quarter_vortex3l.smb", 1, sbp; dofpernode=4)
-  eqn = EulerData1{T, T}(mesh, sbp)
-
-  @time getEulerFlux(eqn, q, dir, F)
-
-  return F
-
-end
-
-fluxJac = forwarddiff_jacobian!(getEulerJac_wrapper, Float64, fadtype=:dual; n=4, m=4)
-=#
-
 function calcMomentContribution!(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},
     dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1}) where {Tsbp,Tmsh,Tres
                                              }
@@ -2119,9 +2097,9 @@ function calcMomentContribution_rev!(sbpface::AbstractFace{Tsbp}, xsbp::Abstract
 end
 
 #=
-function calcMomentContribution!{Tsbp,Tmsh,Tres}(sbpface::AbstractFace{Tsbp},
+function calcMomentContribution!(sbpface::AbstractFace{Tsbp},
     xsbp::AbstractArray{Tmsh,3},
-    dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1})
+    dforce::AbstractArray{Tres,3}, xyz_about::AbstractArray{Tmsh,1}) where {Tsbp,Tmsh,Tres}
   @assert( sbpface.numnodes == size(xsbp,2) == size(dforce,2) )
   @assert( size(xsbp,3) == size(dforce,3) )
   @assert( size(xsbp,1) == size(dforce,1) == size(xyz_about,1) )

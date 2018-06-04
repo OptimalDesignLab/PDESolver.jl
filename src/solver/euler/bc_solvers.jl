@@ -1062,11 +1062,11 @@ dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres,
 end
 
 #=
-function calcEulerFlux_standard{Tmsh, Tsol, Tres}(params::ParamType,
+function calcEulerFlux_standard(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
@@ -1254,12 +1254,12 @@ end
 
 
 #=
-function calcEulerFlux_Ducros{Tmsh, Tsol, Tres}(
+function calcEulerFlux_Ducros(
                       params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
@@ -1349,11 +1349,11 @@ function calcEulerFlux_Ducros(params::ParamType{3, :conservative},
 end
 
 #=
-function calcEulerFlux_IR{Tmsh, Tsol, Tres}(params::ParamType,
+function calcEulerFlux_IR(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)
@@ -1573,11 +1573,11 @@ end
 """
 =#
 #=
-function calcEulerFlux_IRSLF{Tmsh, Tsol, Tres}(params::ParamType,
+function calcEulerFlux_IRSLF(params::ParamType,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
 
   nrm2 = params.nrm2
   calcBCNormal(params, dxidx, nrm, nrm2)

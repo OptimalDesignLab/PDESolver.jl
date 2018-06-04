@@ -845,8 +845,8 @@ end
 
 # non-tiled version using MatSetValuesBlocked
 #=
-function assembleElement{T}(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
-                            elnum::Integer, jac::AbstractArray{T, 4})
+function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
+                            elnum::Integer, jac::AbstractArray{T, 4})  where {T}
 
   numNodesPerElement = size(jac, 4)
   numDofPerNode = size(jac, 1)

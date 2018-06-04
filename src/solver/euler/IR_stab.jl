@@ -146,11 +146,11 @@ end
 
   Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
 """
-function getEntropyLWStab{Tmsh, Tsol, Tres, Tdim}(
+function getEntropyLWStab(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
   q_avg = params.q_vals3
   for i=1:length(q_avg)
@@ -413,11 +413,11 @@ end
               v_vals2, Lambda, S2, res_vals1, res_vals2
 
 """
-function getEntropyLWStab_inner{Tmsh, Tsol, Tres, Tdim}(
+function getEntropyLWStab_inner(
                       params::ParamType{Tdim, :conservative}, 
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1})
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 #  println("entered getEntropyLFStab_inner")
 
   Y = params.A0  # eigenvectors of flux jacobian

@@ -644,9 +644,9 @@ end # end calcStabilizationTerm
 
 #=
 # Stabilization Term 1
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+                               tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # q in the parametric space. Since everything happens in this space
   q_param = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
@@ -703,9 +703,9 @@ end # end calcStabilizationTerm
 
 #=
 # Stabilization term 2
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+                               tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # Reference for stabilization: http://enu.kz/repository/2010/AIAA-2010-1183.pdf
 
@@ -740,9 +740,9 @@ end # end calcStabilizationTerm
 =#
 #=
 # Stabilization term 4
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+                               tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
 
   # Reference: Three-Dimensional Stabilized Finite Elements for Compressible 
   #            Navier–Stokes, T. Taylor Erwin, AIAA Journal Vol 51, No. 6,

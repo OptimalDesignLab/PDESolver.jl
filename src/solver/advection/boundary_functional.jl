@@ -60,8 +60,8 @@ different boundary functional type.
 """->
 #=  TODO: uncomment and run test when mesh.bndry_geo_nums gets added to CG meshes
 
-function calcBndryFunctional{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
-                         eqn::AdvectionData{Tsol}, opts, functor, functional_edges)
+function calcBndryFunctional(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
+                         eqn::AdvectionData{Tsol}, opts, functor, functional_edges) where {Tmsh, Tsol}
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary
