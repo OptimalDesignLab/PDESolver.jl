@@ -43,12 +43,15 @@ include("build_funcs.jl")
 """
 function installPDESolver()
 
+  checkInput()
+
   f = open("install.log", "w")
   #------------------------------------------------------------------------------
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
   std_pkgs = [
+              "PkgFix" "https://github.com/OptimalDesignLab/PkgFix.jl.git" "upgrade_0.6";
               "ArrayViews"   "https://github.com/JaredCrean2/ArrayViews.jl.git" "work"
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "v0.4";
               "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_v0.3";
@@ -65,9 +68,9 @@ function installPDESolver()
   global const FORCE_INSTALL_ALL = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_ALL")
 
   # figure out the package directory
-  if haskey(ENV, "PDESOLVER_PKGDIR")
+  if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
     pkgdir = ENV["PDESOLVER_PKGDIR"]
-  else
+  else  # unbundling deps
     pkgdir = Pkg.dir()
   end
 
@@ -96,13 +99,14 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, git_url,  commit_hash/tag/branch]
-  pkg_list = ["BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "v0.8.8";
+  # these must be in dependency order for unbundling to work
+  pkg_list = [
               "Compat" "https://github.com/JuliaLang/Compat.jl.git" "v0.66.0";
-              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "v0.4.3";
-              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "v0.6.0";
-              "PkgFix" "https://github.com/OptimalDesignLab/PkgFix.jl.git" "upgrade_0.6";
               "SHA" "https://github.com/staticfloat/SHA.jl.git" "v0.5.7";
               "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "v0.3.1";
+              "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "v0.8.8";
+              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "v0.4.3";
+              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "v0.6.0";
               ]
               
   
