@@ -1,15 +1,5 @@
 # download and build all non metadata dependences
 
-# install PkgFix if not present
-if !isdir(joinpath(Pkg.dir(), "PkgFix"))
-  Pkg.clone("https://github.com/OptimalDesignLab/PkgFix.jl.git")
-end
-Pkg.checkout("PkgFix", "upgrade_0.6")
-
-using PkgFix
-
-
-
 include("build_funcs.jl")
 
 """
@@ -30,7 +20,8 @@ include("build_funcs.jl")
           name of a dependency, forces the installation of only that dependency.
 
     PDESOLVER_BUNDLE_DEPS: download packages to a specified directory, do not
-                           install
+                           install.  Also copies this version of PDESolver
+                           to the directory
 
     PDESOLVER_PKGDIR: the specified directory for PDESOLVER_BUNDLE_DEPS
 
@@ -70,7 +61,7 @@ function installPDESolver()
   # figure out the package directory
   if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
     pkgdir = ENV["PDESOLVER_PKGDIR"]
-  else  # unbundling deps
+  else  # unbundling deps or regular install
     pkgdir = Pkg.dir()
   end
 
@@ -131,6 +122,10 @@ function installPDESolver()
 
     println(f, "\n---Finished manual package installations---\n")
 
+    if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+      # PDESolver isn't really a dependency, but copy it anyways
+      run(`cp -r ../../PDESolver $pkgdir`)
+    end
 
   close(f)
 
