@@ -716,7 +716,7 @@ function test_ESSBC(mesh, sbp, eqn, opts)
 
   func = EulerEquationMod.BCDict["noPenetrationESBC"]
 
-  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
 
   bndry_flux = zeros(eltype(eqn.res), mesh.numDofPerNode)
   w = zeros(eltype(eqn.q), mesh.numDofPerNode)

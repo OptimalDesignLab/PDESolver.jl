@@ -73,7 +73,7 @@ function test_dg_boundary(mesh, sbp, eqn, opts)
   @testset "----- Testing DG Boundary -----" begin
 
     EulerEquationMod.ICRho1E2U3(mesh, sbp, eqn, opts, eqn.q_vec)
-    EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+    EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
     mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"]
 
     # check that the interpolation worked
