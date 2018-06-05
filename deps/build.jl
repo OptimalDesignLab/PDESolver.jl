@@ -49,12 +49,11 @@ function installPDESolver()
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
   std_pkgs = [
-#              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
               "ArrayViews"   "https://github.com/JaredCrean2/ArrayViews.jl.git" "work"
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "upgrade_0.6";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_update_0.6";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "update_0.6";
-              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "upgrade_0.6"
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "v0.4";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_v0.3";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "v0.8";
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.2"
               ]
 
 
@@ -96,18 +95,17 @@ function installPDESolver()
   # mechanism fails
   #------------------------------------------------------------------------------
 
-  # array of [pkg_name, commit_hash]
-  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "fa0053b241fee05dcc8d1840f0015dfeb2450bf4";
-              "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
-              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
-#              "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "93e80390aeedb1dbcd90281b6dff7f760f430bc8";
-              "SHA" "https://github.com/staticfloat/SHA.jl.git" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
-              "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
-              "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
-#              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
+  # array of [pkg_name, git_url,  commit_hash/tag/branch]
+  pkg_list = ["BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git", "v0.8.8";
+              "Compat" "https://github.com/JuliaLang/Compat.jl.git" "v0.66.0";
+              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "v0.4.3";
+              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "v0.6.0";
+              "PkgFix" "https://github.com/OptimalDesignLab/PkgFix.jl.git" "upgrade_0.6";
+              "SHA" "https://github.com/staticfloat/SHA.jl.git" "v0.5.7";
+              "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "v0.3.1";
               ]
               
-#=  
+  
     println(f, "\n---Considering manual package installations---\n")
     for i=1:size(pkg_list, 1)
 
@@ -128,9 +126,8 @@ function installPDESolver()
     end
 
     println(f, "\n---Finished manual package installations---\n")
-=#
 
-#  PkgFix.checkout("ArrayViews", "master")  # need the aview change
+
   close(f)
 
 end  # end function
