@@ -89,7 +89,7 @@ The required fields of an `AbstractSolutionData` are:
 
 ### Optional Fields
 ```
-  file_dict::ASCIIString, IO}
+  file_dict::String, IO}
 ```
 
 ### Field Meanings
@@ -600,7 +600,7 @@ The mesh module must also defines and exports the functions
 
 ```
 saveSolutionToMesh(mesh::MeshImplementationType, vec::AbstractVector)
-writeVisFiles(mesh::MeshImplementationType, fname::ASCIIString)
+writeVisFiles(mesh::MeshImplementationType, fname::String)
 ```
 
 where the first function takes a vector of length `numDof` and saves it to the

@@ -37,7 +37,7 @@ tolerance) as the entries that are preserved.
 
 ```@docs
 Checkpointer
-Checkpointer(::Integer, ::Integer, ::ASCIIString)
+Checkpointer(::Integer, ::Integer, ::String)
 Checkpointer(::Dict, ::Integer)
 copy(::Checkpointer)
 copy!(::Checkpointer, ::Checkpointer)
