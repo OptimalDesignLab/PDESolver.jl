@@ -96,7 +96,7 @@ function installPDESolver()
   #------------------------------------------------------------------------------
 
   # array of [pkg_name, git_url,  commit_hash/tag/branch]
-  pkg_list = ["BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git", "v0.8.8";
+  pkg_list = ["BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "v0.8.8";
               "Compat" "https://github.com/JuliaLang/Compat.jl.git" "v0.66.0";
               "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "v0.4.3";
               "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "v0.6.0";
