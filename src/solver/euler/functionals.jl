@@ -10,7 +10,7 @@ lift and drag values
 
 """->
 
-type BoundaryForceData{Topt, fname} <: AbstractIntegralFunctional
+mutable struct BoundaryForceData{Topt, fname} <: AbstractIntegralFunctional{Topt}
   bcnums::Array{Int,1}  #TODO: make this non-abstract
   ndof::Int
   bndry_force::Array{Topt,1}
@@ -25,7 +25,7 @@ end
 """
   Constructor for BoundaryForceData{Topt, :lift}
 """
-function LiftForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums)
+function LiftForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, bcnums) where Topt
 
   ndof = mesh.dim
   bndry_force = zeros(Topt, mesh.dim)
@@ -43,8 +43,8 @@ end
 """
   Constructor for BoundaryForceData{Topt, :drag}
 """
-function DragForceDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
-                             bcnums)
+function DragForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                             bcnums) where Topt
 
   ndof = mesh.dim
   bndry_force = zeros(Topt, mesh.dim)
@@ -64,7 +64,7 @@ end
   compute the force and then divides by the (non-dimensional) dynamic pressure
   0.5*rho_free*Ma^2.  Note that this assumes the chord length (in 2d) is 1
 """
-type LiftCoefficient{Topt} <: AbstractIntegralFunctional
+mutable struct LiftCoefficient{Topt} <: AbstractIntegralFunctional{Topt}
   lift::BoundaryForceData{Topt, :lift}
   val::Topt
   bcnums::Array{Int, 1}
@@ -73,8 +73,8 @@ end
 """
   Constructor for LiftCoefficient functional
 """
-function LiftCoefficientConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
-                                          bcnums)
+function LiftCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                    bcnums) where Topt
 
   lift = LiftForceDataConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
   val = 0.0
@@ -89,7 +89,7 @@ end
   Type for computing the mass flow rate over a boundary (integral rho*u dot n
   dGamma)
 """
-type MassFlowData{Topt} <: AbstractIntegralFunctional
+mutable struct MassFlowData{Topt} <: AbstractIntegralFunctional{Topt}
   bcnums::Array{Int, 1}
   ndof::Int
   val::Topt
@@ -99,8 +99,8 @@ end
   Constructor for MassFlowData.  This needs to have a different name from
   the type so it can be put in a dictionary
 """
-function MassFlowDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, 
-                            bcnums)
+function MassFlowDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
   return MassFlowData{Topt}(bcnums, 1, 0.0)
 end
 
@@ -118,10 +118,10 @@ end
  * `functional_bcs`: the boundary condition numbers the functional is
                      computed on.
 """
-function createFunctional{Tsol, I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                    eqn::EulerData{Tsol}, opts,
-                                    functional_name::AbstractString,
-                                    functional_bcs::Vector{I})
+function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+                  eqn::EulerData{Tsol}, opts,
+                  functional_name::AbstractString,
+                  functional_bcs::Vector{I}) where {Tsol, I<:Integer}
 
   func_constructor = FunctionalDict[functional_name]
   objective = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
@@ -157,7 +157,7 @@ end
 
   Note that the outer constructor name is the type name with the suffix "Constructor"
 """
-global const FunctionalDict = Dict{ASCIIString, Function}(
+global const FunctionalDict = Dict{String, Function}(
 "lift" => LiftForceDataConstructor,
 "drag" => DragForceDataConstructor,
 "massflow" => MassFlowDataConstructor,

@@ -120,7 +120,7 @@ println("entered evalBndry")
 bndry_edges = getBoundaryEdgeNums(mesh)
 num_bndry_edges = length(bndry_edges)
 
-bndry_faces = Array(Boundary, num_bndry_edges)
+bndry_faces = Array{Boundary}( num_bndry_edges)
 bndry_sign = zeros(Int, num_bndry_edges)
 bndry_orientation = zeros(Int, num_bndry_edges)
 #println("getting boundary edge numbers")

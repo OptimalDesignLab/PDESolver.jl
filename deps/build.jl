@@ -1,4 +1,5 @@
 # download and build all non metadata dependences
+
 include("build_funcs.jl")
 
 """
@@ -19,7 +20,8 @@ include("build_funcs.jl")
           name of a dependency, forces the installation of only that dependency.
 
     PDESOLVER_BUNDLE_DEPS: download packages to a specified directory, do not
-                           install
+                           install.  Also copies this version of PDESolver
+                           to the directory
 
     PDESOLVER_PKGDIR: the specified directory for PDESOLVER_BUNDLE_DEPS
 
@@ -32,23 +34,22 @@ include("build_funcs.jl")
 """
 function installPDESolver()
 
+  checkInput()
+
   f = open("install.log", "w")
   #------------------------------------------------------------------------------
   # these packages are always installed manually
   #-----------------------------------------------------------------------------
   # [pkg_name, git url, commit identified]
   std_pkgs = [
-              "MPI" "https://github.com/JaredCrean2/MPI.jl.git" "e256e63656f61d3cae48a82a9b50f4cd031f4716"
-              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "master";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
-              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "master";
-              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.4"
+              "PkgFix" "https://github.com/OptimalDesignLab/PkgFix.jl.git" "upgrade_0.6";
+              "ArrayViews"   "https://github.com/JaredCrean2/ArrayViews.jl.git" "work"
+              "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "v0.4";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_v0.3";
+              "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "v0.8";
+              "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.2"
               ]
 
-
-  # manually install MPI until the package matures
-  # handle Petsc specially until we are using the new version
-  petsc_git = "https://github.com/JaredCrean2/Petsc.git"
 
   pkg_dict = Pkg.installed()  # get dictionary of installed package names to version numbers
 
@@ -58,9 +59,9 @@ function installPDESolver()
   global const FORCE_INSTALL_ALL = haskey(ENV, "PDESOLVER_FORCE_DEP_INSTALL_ALL")
 
   # figure out the package directory
-  if haskey(ENV, "PDESOLVER_PKGDIR")
+  if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
     pkgdir = ENV["PDESOLVER_PKGDIR"]
-  else
+  else  # unbundling deps or regular install
     pkgdir = Pkg.dir()
   end
 
@@ -88,15 +89,15 @@ function installPDESolver()
   # mechanism fails
   #------------------------------------------------------------------------------
 
-  # array of [pkg_name, commit_hash]
-  pkg_list = ["Compat" "https://github.com/JuliaLang/Compat.jl.git" "fa0053b241fee05dcc8d1840f0015dfeb2450bf4";
-              "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "1c4c5f2af17e57617c018ad060f0ec3c9dc5946b";
-              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "e3739d5fdf0e54bc1e74957c060c693cd8ce9cd6";
-              "ArrayViews" "https://github.com/JuliaLang/ArrayViews.jl.git" "93e80390aeedb1dbcd90281b6dff7f760f430bc8";
-              "SHA" "https://github.com/staticfloat/SHA.jl.git" "90144b2c9e6dd41582901ca0b311215b6bfb3f10";
-              "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "ce03a36a969eedc5641aff1c6d7f8f886a17cc98";
-              "Debug" "https://github.com/toivoh/Debug.jl.git" "0e733093cd71c67bd40ac1295e54153c3db0c751";
-#              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "c546ee896f314340dc61e8bf7ab71f979c57d73c";
+  # array of [pkg_name, git_url,  commit_hash/tag/branch]
+  # these must be in dependency order for unbundling to work
+  pkg_list = [
+              "Compat" "https://github.com/JuliaLang/Compat.jl.git" "v0.66.0";
+              "SHA" "https://github.com/staticfloat/SHA.jl.git" "v0.5.7";
+              "URIParser" "https://github.com/JuliaWeb/URIParser.jl.git" "v0.3.1";
+              "BinDeps" "https://github.com/JuliaLang/BinDeps.jl.git" "v0.8.8";
+              "FactCheck" "https://github.com/JuliaLang/FactCheck.jl.git" "v0.4.3";
+              "MPI" "https://github.com/JuliaParallel/MPI.jl.git" "v0.6.0";
               ]
               
   
@@ -121,19 +122,26 @@ function installPDESolver()
 
     println(f, "\n---Finished manual package installations---\n")
 
-  close(f)
+    if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+      # PDESolver isn't really a dependency, but copy it anyways
+      run(`cp -r ../../PDESolver $pkgdir`)
+    end
 
-  # generate the known_keys dictonary
-  if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
-    start_dir = pwd()
-    input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
-    cd(input_path)
-    include(joinpath(input_path, "extract_keys.jl"))
-    cd(start_dir)
-  end
+  close(f)
 
 end  # end function
 
 
 # run the installation
 installPDESolver()
+
+# generate the known_keys dictonary
+if !haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+  start_dir = pwd()
+  input_path = joinpath(Pkg.dir("PDESolver"), "src/input")
+  cd(input_path)
+  include(joinpath(input_path, "extract_keys.jl"))
+  cd(start_dir)
+end
+
+

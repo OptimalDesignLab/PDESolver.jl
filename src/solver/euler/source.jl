@@ -1,3 +1,8 @@
+#
+#TODO: As far as we know `q`, `q_x`, `q_xx`, we can move
+# the rest into a function, which is less error prone, and 
+# will save a lot of space
+#
 @doc """
 ### EulerEquationMod.applySourceTerm
 
@@ -47,7 +52,7 @@ end
 
 
 
-type SRC0 <: SRCType  # dummy source functor, it should nevery actually be called
+mutable struct SRC0 <: SRCType  # dummy source functor, it should nevery actually be called
 end
 
 @doc """
@@ -56,10 +61,10 @@ end
   This is the zero source term.  This is the default of source term
   is specified
 """->
-type SRCExp <: SRCType
+mutable struct SRCExp <: SRCType
 end
 
-function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::ParamType{2}, t)
+function (obj::SRCExp)(q::AbstractVector, coords::AbstractVector, params::ParamType{2}, t)
   x = coords[1]
   y = coords[2]
   gamma_1 = params.gamma_1
@@ -92,7 +97,7 @@ global const MMSExp_d3 = 0.15
 global const MMSExp_d4 = 0.25
 global const MMSExp_d5 = 1
 
-function call(obj::SRCExp, q::AbstractVector, coords::AbstractVector, params::ParamType{3}, t)
+function (obj::SRCExp)(q::AbstractVector, coords::AbstractVector, params::ParamType{3}, t)
 
   x = coords[1]
   y = coords[2]
@@ -176,10 +181,10 @@ end
 """
   Functor for source term corresponding to ICPeriodicMMS
 """
-type SRCPeriodicMMS <: SRCType
+mutable struct SRCPeriodicMMS <: SRCType
 end
 
-function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
+function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector, 
               params::ParamType{2}, t)
 
   x = coords[1]
@@ -201,7 +206,7 @@ function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector, 
+function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector, 
               params::ParamType{3}, t)
 
   x = coords[1]
@@ -245,7 +250,7 @@ function call(obj::SRCPeriodicMMS, q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-
+include("source_viscous.jl")
 
 @doc """
 ### EulerEquationMod.SRCDict
@@ -261,10 +266,14 @@ end
   of the node, t is the current time, and q is the vector to be populated with
   the source term values.
 """->
-global const SRCDict = Dict{ASCIIString, SRCType}(
+global const SRCDict = Dict{String, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
+"SRCTrigonometric" => SRCTrigonometric(),
+"SRCDoubleSquare" => SRCDoubleSquare(),
+"SRCPolynomial" => SRCPolynomial(),
+"SRCChannel" => SRCChannel(),
 )
 
 

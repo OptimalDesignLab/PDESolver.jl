@@ -2,10 +2,10 @@
   A test of the test system itself
 """
 function test_empty()
-  facts("Testing empty...") do
+  @testset "Testing empty..." begin
 
-    context("Testing if 1 == 1") do
-      @fact 1 --> 1
+    @testset "Testing if 1 == 1" begin
+      @test ( 1 )== 1
     end
 
   end

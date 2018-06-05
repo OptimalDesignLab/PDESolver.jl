@@ -162,6 +162,11 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
+
+  if eqn.params.isViscous == true
+    evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
+    evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
+  end
   
   return nothing
 end  # end evalResidual
@@ -177,10 +182,10 @@ end  # end evalResidual
   residual evaluation should go in dataPrep
 """
 # high level functions
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
-#  println("\nInitializing Euler module")
+  # println("\nInitializing Euler module")
 
   # get BC functors
   getBCFunctors(mesh, sbp, eqn, opts)
@@ -211,8 +216,8 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh)
+function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
   # Get functors for the boundary conditions
   getBCFunctors_revm(mesh, sbp, eqn, opts)
@@ -226,10 +231,10 @@ function init_revm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function majorIterationCallback{Tmsh, Tsol, Tres, Tdim}(itr::Integer,
-                               mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP,
-                               eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO)
+function majorIterationCallback(itr::Integer,
+       mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP,
+       eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("Performing major Iteration Callback")
 
@@ -490,8 +495,8 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                     eqn::AbstractEulerData{Tsol, Tres}, opts)
+function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                   eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 # this is almost the exact list of everything we *shouldn't* be storing, but
@@ -543,13 +548,12 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   if opts["check_density"]
     checkDensity(eqn, mesh)
-#    println("  checkDensity @time printed above")
+    # println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
-#    throw(ErrorException("I'm done"))
     checkPressure(eqn, mesh)
-#    println("  checkPressure @time printed above")
+    # println("  checkPressure @time printed above")
   end
 
   # calculate fluxes
@@ -565,27 +569,41 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
+    # println("  getEulerFlux @time printed above")
   end
-#  println("  getEulerFlux @time printed above")
 
 
   if mesh.isDG
     if opts["precompute_q_face"]
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
+      # println("  interpolateFace @time printed above")
     end
 
     if opts["precompute_face_flux"]
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
+      #  println("  interpolateFace @time printed above")
     end
     if opts["precompute_q_bndry"]
       interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+      # println("  interpolateFace @time printed above")
     end
   end
 
   if opts["precompute_boundary_flux"]
     fill!(eqn.bndryflux, 0.0)
     getBCFluxes(mesh, sbp, eqn, opts)
-#     println("  getBCFluxes @time printed above")
+    # println("  getBCFluxes @time printed above")
+  end
+  
+  if eqn.params.isViscous == true
+		# fill!(eqn.vecflux_face, 0.0)
+		fill!(eqn.vecflux_faceL, 0.0)
+		fill!(eqn.vecflux_faceR, 0.0)
+
+		calcViscousFlux_interior(mesh, sbp, eqn, opts)
+
+		fill!(eqn.vecflux_bndry, 0.0)
+		calcViscousFlux_boundary(mesh, sbp, eqn, opts)
   end
 
   # is this needed for anything besides edge stabilization?
@@ -619,7 +637,7 @@ end # end function dataPrep
   This is a mid level function.
 """->
 # mid level function
-function checkDensity{Tsol}(eqn::EulerData{Tsol}, mesh)
+function checkDensity(eqn::EulerData{Tsol}, mesh) where Tsol
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -704,8 +722,8 @@ end
 
   This is a mid level function.
 """
-function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
+    sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
   if integral_type == 1  # regular volume integrals
@@ -721,7 +739,6 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
           weakdifferentiate!(sbp, i, sview(eqn.flux_parametric, :, :, :, i), eqn.res, SummationByParts.Subtract(), trans=false)
         end
       end  # end if Q_transpose
-
     else  # not precomputing the volume flux
       calcVolumeIntegrals_nopre(mesh, sbp, eqn, opts)
     end  # end if precompute_volume _flux
@@ -732,6 +749,9 @@ function evalVolumeIntegrals{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
+  if eqn.params.isViscous == true
+    weakdifferentiate2!(mesh, sbp, eqn, eqn.res)
+  end
   # artificialViscosity(mesh, sbp, eqn)
 
 end  # end evalVolumeIntegrals
@@ -745,8 +765,8 @@ end  # end evalVolumeIntegrals
   This is a mid level function
 
 """
-function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts)
+function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
+       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   #TODO: remove conditional
   if mesh.isDG
@@ -781,8 +801,8 @@ end  # end evalBoundaryIntegrals
   This is a mid level function
 """->
 # mid level function
-function addStabilization{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+function addStabilization(mesh::AbstractMesh{Tmsh},
+             sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
 
@@ -843,8 +863,8 @@ end
     none
 
 """->
-function evalFaceIntegrals{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts)
+function evalFaceIntegrals(mesh::AbstractDGMesh{Tmsh},
+               sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -963,9 +983,9 @@ end
   Aliasing restrictions: none
 
 """
-function evalSourceTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalSourceTerm(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                     opts)
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # placeholder for multiple source term functionality (similar to how

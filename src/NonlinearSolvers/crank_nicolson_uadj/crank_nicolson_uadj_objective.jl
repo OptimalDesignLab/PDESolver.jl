@@ -3,7 +3,7 @@ export calcdJdu_CS, calcObjectiveFn, obj_zero, calcVV, calcdRdA_CS
 """
   calculates dJdu using the complex step method
 """
-function calcdJdu_CS{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t)
+function calcdJdu_CS(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t) where {Tmsh, Tsol}
 
   # complex step it
   pert = complex(0, 1e-20)
@@ -36,7 +36,7 @@ end
 """
   calculates dJdu using the finite difference method
 """
-function calcdJdu_FD{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t)
+function calcdJdu_FD(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t) where {Tmsh, Tsol}
 
   pert = 1e-6
 
@@ -99,7 +99,7 @@ end
 
   or optionally (if isDeriv is passed as true), calculates dJdu = int(2u)
 """
-function calcObjectiveFn{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t; isDeriv=false)
+function calcObjectiveFn(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts, h, t; isDeriv=false) where {Tmsh, Tsol}
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
   if mesh.isDG

@@ -9,8 +9,9 @@ export register_physics, retrieve_physics, registerIC, registerBC
 
 # from interface.jl
 export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
-       createFunctional, evalFunctional, evalFunctionalDeriv,
-       updateMetricDependents, solvePDE
+       evalJacobianStrong, createFunctional,
+       evalFunctional, evalFunctionalDeriv, updateMetricDependents,
+       solvePDE
 
 # from interface2.jl
 export createObjects
@@ -27,13 +28,16 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/linearsolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
 
 # add physics modules to load path (but don't load them, because that would
 # create a circular dependency)
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/advection"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 
 # load the modules
@@ -64,12 +68,14 @@ if !PetscInitialized()
 end
 
 
+using Input
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
 using LinearSolvers
 #using NonlinearSolvers   # non-linear solvers
 using ArrayViews
+import ArrayViews.view
 using Utils
 import ODLCommonTools.sview
 using Input

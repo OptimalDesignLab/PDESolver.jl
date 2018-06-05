@@ -10,7 +10,7 @@ function test_3d_conversion(mesh, sbp, eqn, opts)
 # create entropy variable param type
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
-  facts("----- Testing Conversion -----") do
+  @testset "----- Testing Conversion -----" begin
 
     # test unsafe conversion kernels
     q = [1., 2, 3, 4, 15]
@@ -18,38 +18,38 @@ function test_3d_conversion(mesh, sbp, eqn, opts)
     EulerEquationMod.convertToEntropy_(eqn.params, q, q2)
     q3 = zeros(q)
     EulerEquationMod.convertToConservative_(eqn.params, q2, q3)
-    @fact q3 --> roughly(q, atol=1e-13)
+    @test isapprox( q3, q) atol=1e-13
 
     vIR = copy(q)
     EulerEquationMod.convertToIR(eqn.params, vIR, vIR)
     diff = vIR - q2./eqn.params.gamma_1
-    @fact norm(diff) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(diff), 0.0) atol=1e-12
 
     EulerEquationMod.convertToConservativeFromIR_(eqn.params, vIR, vIR)
     diff = vIR - q
-    @fact norm(diff) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(diff), 0.0) atol=1e-12
   
 
     # test in-place conversion
     q2 = copy(q)
     EulerEquationMod.convertToEntropy_(eqn.params, q2, q2)
     EulerEquationMod.convertToConservative_(eqn.params, q2, q2)
-    @fact q2 --> roughly(q, atol=1e-13)
+    @test isapprox( q2, q) atol=1e-13
 
     # test safe interface
     EulerEquationMod.convertToEntropy(eqn.params, q, q2)
     EulerEquationMod.convertToEntropy_(eqn.params, q, q3)
-    @fact q2 --> roughly(q3, atol=1e-13)
+    @test isapprox( q2, q3) atol=1e-13
 
     EulerEquationMod.convertToConservative(eqn.params, q, q2)
-    @fact q2 --> roughly(q, atol=1e-13)
+    @test isapprox( q2, q) atol=1e-13
 
     EulerEquationMod.convertToEntropy_(eqn.params, q, q2)
     EulerEquationMod.convertToEntropy(params_e, q2, q3)
-    @fact q3 --> roughly(q2, atol=1e-13)
+    @test isapprox( q3, q2) atol=1e-13
 
     EulerEquationMod.convertToConservative(params_e, q2, q3)
-    @fact q3 --> roughly(q, atol=1e-13) 
+    @test isapprox( q3, q) atol=1e-13
   end  # end facts block
 
   return nothing
@@ -61,13 +61,13 @@ add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS,
 
 function test_3d_eigensystem(mesh, sbp, eqn, opts)
 
-  facts("----- Testing Eigensystem -----") do
+  @testset "----- Testing Eigensystem -----" begin
 
     params = eqn.params
     q = [1., 2, 3, 4, 15]
     numDofPerNode = length(q)
     qc = convert(Array{Complex128}, q)
-    aux_vars = Array(Complex128, 1)
+    aux_vars = Array{Complex128}(1)
     qg = deepcopy(q)
     dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
     F = zeros(Complex128, numDofPerNode)
@@ -122,12 +122,12 @@ function test_3d_eigensystem(mesh, sbp, eqn, opts)
     Ay2 = Yy*diagm(Lambday)*inv(Yy)
     Az2 = Yz*diagm(Lambdaz)*inv(Yz)
 
-    @fact Ax2 --> roughly(Ax, atol=1e-12)
-    @fact Ay2 --> roughly(Ay, atol=1e-12)
-    @fact Az2 --> roughly(Az, atol=1e-12)
-    @fact Ax3 --> roughly(Ax, atol=1e-12)
-    @fact Ay3 --> roughly(Ay, atol=1e-12)
-    @fact Az3 --> roughly(Az, atol=1e-12)
+    @test isapprox( Ax2, Ax) atol=1e-12
+    @test isapprox( Ay2, Ay) atol=1e-12
+    @test isapprox( Az2, Az) atol=1e-12
+    @test isapprox( Ax3, Ax) atol=1e-12
+    @test isapprox( Ay3, Ay) atol=1e-12
+    @test isapprox( Az3, Az) atol=1e-12
 
     # check A0 = Y*S2*Y.'
     A0 = zeros(Ax)
@@ -143,9 +143,9 @@ function test_3d_eigensystem(mesh, sbp, eqn, opts)
     A03 = Yy*diagm(Sy)*Yy.'
     A04 = Yz*diagm(Sz)*Yz.'
 
-    @fact A0 --> roughly(A02, atol=1e-12)
-    @fact A0 --> roughly(A03, atol=1e-12) 
-    @fact A0 --> roughly(A04, atol=1e-12) 
+    @test isapprox( A0, A02) atol=1e-12
+    @test isapprox( A0, A03) atol=1e-12
+    @test isapprox( A0, A04) atol=1e-12
 
   end  # end facts block
 
@@ -163,7 +163,7 @@ add_func2!(EulerTests, test_3d_eigensystem,  test_3d_inputfile, [TAG_ENTROPYVARS
 function test_3d_flux(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
-  facts("----- Testing Flux Calculation -----") do
+  @testset "----- Testing Flux Calculation -----" begin
     q = [1., 2, 3, 4, 15]
     F1 = [2, 4.2, 6, 8, 30.4]
     F2 = [3, 6, 9.2, 12, 45.6]
@@ -173,8 +173,8 @@ function test_3d_flux(mesh, sbp, eqn, opts)
 
     p = EulerEquationMod.calcPressure(eqn.params, q)
     p2 = EulerEquationMod.calcPressure(params_e, q2)
-    @fact p --> roughly(0.2, atol=1e-12)
-    @fact p2 --> roughly(p, atol=1e-10)
+    @test isapprox( p, 0.2) atol=1e-12
+    @test isapprox( p2, p) atol=1e-10
     aux_vars = [p]
 
     F = zeros(Float64, 5)
@@ -182,20 +182,20 @@ function test_3d_flux(mesh, sbp, eqn, opts)
     nrm = [1., 0, 0]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     EulerEquationMod.calcEulerFlux(params_e, q2, aux_vars, nrm, Fe)
-    @fact F --> roughly(F1, atol=1e-12)
-    @fact Fe --> roughly(F, atol=1e-10)
+    @test isapprox( F, F1) atol=1e-12
+    @test isapprox( Fe, F) atol=1e-10
 
     nrm = [0., 1, 0]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     EulerEquationMod.calcEulerFlux(params_e, q2, aux_vars, nrm, Fe)
-    @fact F --> roughly(F2, atol=1e-12)
-    @fact Fe --> roughly(F, atol=1e-10)
+    @test isapprox( F, F2) atol=1e-12
+    @test isapprox( Fe, F) atol=1e-10
 
     nrm = [0., 0, 1]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     EulerEquationMod.calcEulerFlux(params_e, q2, aux_vars, nrm, Fe)
-    @fact F --> roughly(F3, atol=1e-12)
-    @fact Fe --> roughly(F, atol=1e-10)
+    @test isapprox( F, F3) atol=1e-12
+    @test isapprox( Fe, F) atol=1e-10
   end  # end facts block
 
   return nothing
@@ -210,20 +210,20 @@ add_func2!(EulerTests, test_3d_flux,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_F
 function test_3d_misc(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
-  facts("----- Testing Misc. Functions -----") do
+  @testset "----- Testing Misc. Functions -----" begin
 
     q = [1., 2, 3, 4, 15]
     q2 = zeros(q)
     EulerEquationMod.convertToEntropy(eqn.params, q, q2)
     a = EulerEquationMod.calcSpeedofSound(eqn.params, q)
-    @fact a --> roughly(sqrt(0.28), atol=1e-13)
+    @test isapprox( a, sqrt(0.28)) atol=1e-13
     a2 = EulerEquationMod.calcSpeedofSound(params_e, q2)
-    @fact a2 --> roughly(a, atol=1e-13)
+    @test isapprox( a2, a) atol=1e-13
 
     s = EulerEquationMod.calcEntropy(eqn.params, q)
-    @fact s --> roughly(log(0.4*0.5), atol=1e-12)
+    @test isapprox( s, log(0.4*0.5)) atol=1e-12
     s2 = EulerEquationMod.calcEntropy(params_e, q2)
-    @fact s2 --> roughly(s, atol=1e-12)
+    @test isapprox( s2, s) atol=1e-12
 
   end  # end facts block
 
@@ -291,9 +291,9 @@ function test_3d_secondary_quantities()
         vorty = -dwdx(x, y, z) + dudz(x, y, z)
         vortz = dvdx(x, y, z) - dudy(x, y, z)
 
-        @fact vortx --> roughly(vorticity[1, i], atol=1e-12)
-        @fact vorty --> roughly(vorticity[2, i], atol=1e-12)
-        @fact vortz --> roughly(vorticity[3, i], atol=1e-12)
+        @test isapprox( vortx, vorticity[1, i]) atol=1e-12
+        @test isapprox( vorty, vorticity[2, i]) atol=1e-12
+        @test isapprox( vortz, vorticity[3, i]) atol=1e-12
       end
     end  # end loop itr
   end  # end loop over p
@@ -333,7 +333,7 @@ function test_3d_secondary_quantities()
 
     enstrophy_numerical = EulerEquationMod.calcEnstrophy(mesh, sbp, eqn, opts, q)
 
-    @fact enstrophy_exact --> roughly(enstrophy_numerical, atol=1e-12)
+    @test isapprox( enstrophy_exact, enstrophy_numerical) atol=1e-12
 
     #----- test Kinetic Energy -----
     q_vec = reshape(q, mesh.numDof)
@@ -348,7 +348,7 @@ function test_3d_secondary_quantities()
 
     ke_numerical = EulerEquationMod.calcKineticEnergy(mesh, sbp, eqn, opts, q_vec)
 
-    @fact ke_exact --> roughly(ke_numerical, atol=1e-12)
+    @test isapprox( ke_exact, ke_numerical) atol=1e-12
 
 
     # ----- test kinetic energy dissipation rate ------
@@ -401,7 +401,7 @@ function test_3d_secondary_quantities()
 
     dkedt_numerical = EulerEquationMod.calcKineticEnergydt(mesh, sbp, eqn, opts, q_vec, res_vec)
 
-    @fact dkedt_exact --> roughly(dkedt_numerical, atol=1e-12)
+    @test isapprox( dkedt_exact, dkedt_numerical) atol=1e-12
 
 
   end  # end loop over p
@@ -422,7 +422,7 @@ add_func1!(EulerTests, test_3d_secondary_quantities, [TAG_MISC, TAG_SHORTTEST])
 function test_3d_matrices(mesh, sbp, eqn, opts)
   params_e = EulerEquationMod.ParamType{3, :entropy, Float64, Float64, Float64}(mesh, sbp, opts, 1)
 
-  facts("----- Testing Coefficient Matrices calculations -----") do
+  @testset "----- Testing Coefficient Matrices calculations -----" begin
     q = [1., 2, 3, 4, 15]
     q2 = zeros(q)
     EulerEquationMod.convertToEntropy(eqn.params, q, q2)
@@ -438,18 +438,18 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
     A02 = zeros(A0)
     EulerEquationMod.calcA0(params_e, q2, A02)
     for i=1:length(A0)
-      @fact A0[i] --> roughly(A02[i], atol=1e-10)
+      @test isapprox( A0[i], A02[i]) atol=1e-10
     end
 
     A0inv = inv(A0)
     A02inv = zeros(A02)
     EulerEquationMod.calcA0Inv(params_e, q2, A02inv)
     for i=1:length(A0)
-      @fact A0inv[i] --> roughly(A02inv[i], atol=1e-8)
+      @test isapprox( A0inv[i], A02inv[i]) atol=1e-8
     end
 
     # test IRA0 against A0 and a jacobian computed with complex step
-    A03 = scale(A0, eqn.params.gamma_1)
+    A03 = A0 * eqn.params.gamma_1
     A04_test = zeros(A02)
     A04_code = zeros(A02)
     EulerEquationMod.getIRA0(eqn.params, q, A04_code)
@@ -468,8 +468,8 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
     scale!(A04_test, eqn.params.gamma_1)
 
     for i=1:length(A04_test)
-      @fact A04_code[i] --> roughly(A04_test[i], atol=1e-13)
-      @fact A04_code[i] --> roughly(A03[i], atol=1e-10)
+      @test isapprox( A04_code[i], A04_test[i]) atol=1e-13
+      @test isapprox( A04_code[i], A03[i]) atol=1e-10
     end
 
   end  # end facts block
@@ -484,7 +484,7 @@ add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST])
   Test Roe solver in 3D
 """
 function test_3d_bc(mesh, sbp, eqn, opts)
-  facts("----- Testing BC Solvers -----") do
+  @testset "----- Testing BC Solvers -----" begin
 
     params = eqn.params
     q = [1., 2, 3, 4, 15]
@@ -501,7 +501,7 @@ function test_3d_bc(mesh, sbp, eqn, opts)
     EulerEquationMod.RoeSolver(params, q, q, aux_vars, nrm_xy, F2)
     EulerEquationMod.calcEulerFlux(params, q, aux_vars, dir, F)
 
-    @fact F2 --> roughly(F, atol=1e-13)
+    @test isapprox( F2, F) atol=1e-13
 
     func1 = EulerEquationMod.noPenetrationESBC()
     # make velocity parallel to the boundary
@@ -517,12 +517,12 @@ function test_3d_bc(mesh, sbp, eqn, opts)
     func1(params, q, aux_vars, coords, nrm, F2)
     EulerEquationMod.calcEulerFlux(params, q, aux_vars, nrm, F)
 
-    @fact F2 --> roughly(F, atol=1e-13)
+    @test isapprox( F2, F) atol=1e-13
 
     func1 = EulerEquationMod.noPenetrationBC()
     func1(params, q, aux_vars, coords, nrm, F2)
 
-    @fact F2 --> roughly(F, atol=1e-13)
+    @test isapprox( F2, F) atol=1e-13
 
   end  # end facts block
 
@@ -530,7 +530,7 @@ function test_3d_bc(mesh, sbp, eqn, opts)
 end  # end functiona
 
 function test_3d_functional(mesh, sbp, eqn, opts)
-  facts("----- Testing 3D functional -----") do
+  @testset "----- Testing 3D functional -----" begin
 
     q_bndry_orig = eqn.q_bndry
     q_bndry2  = zeros(eqn.q_bndry)
@@ -551,7 +551,7 @@ function test_3d_functional(mesh, sbp, eqn, opts)
     mom = EulerEquationMod.calcMomentContribution!(mesh, eqn, [1], moment_about)
     println("moment = ", mom)
     for i=1:length(mom)
-      @fact mom[i] --> roughly(0.0, atol=1e-13)
+      @test isapprox( mom[i], 0.0) atol=1e-13
     end
 
     # test reverse mode
@@ -590,10 +590,10 @@ function test_3d_functional(mesh, sbp, eqn, opts)
 
     #=
     for i=1:nin
-      @fact norm(jac[:, i] - jac2[:, i])/size(jac, 1) --> roughly(0.0, atol=1e-5)
+      @test isapprox( norm(jac[:, i] - jac2[:, i])/size(jac, 1), 0.0) atol=1e-5
     end
     =#
-    @fact norm(jac - jac2)/sqrt(length(jac)) --> roughly(0.0, atol=1e-5)
+    @test isapprox( norm(jac - jac2)/sqrt(length(jac)), 0.0) atol=1e-5
 
 
     # test other method
@@ -638,10 +638,10 @@ function test_3d_functional(mesh, sbp, eqn, opts)
 
     #=
     for i=1:size(jac, 2)
-      @fact norm(jac[:, i] - jac2[:, i]) --> roughly(0.0, atol=1e-5)
+      @test isapprox( norm(jac[:, i] - jac2[:, i]), 0.0) atol=1e-5
     end
     =#
-    @fact norm(jac - jac2)/sqrt(length(jac)) --> roughly(0.0, atol=1e-5)
+    @test isapprox( norm(jac - jac2)/sqrt(length(jac)), 0.0) atol=1e-5
 
 
     eqn.q_bndry = q_bndry_orig

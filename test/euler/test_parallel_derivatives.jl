@@ -2,7 +2,7 @@
 
 function test_parallel_derivatives()
 
-  facts("--- Checking Complete Derivative w.r.t angle of attack for a 2D airfoil ---") do
+  @testset "--- Checking Complete Derivative w.r.t angle of attack for a 2D airfoil ---" begin
 
     ARGS[1] = "./input_vals_airfoil_parallel.jl"
 
@@ -12,19 +12,23 @@ function test_parallel_derivatives()
     objective = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 
-    context("Checking functional J and ∂J/∂aoa in parallel") do
+    @testset "Checking functional J and ∂J/∂aoa in parallel" begin
 
       serial_vals = readdlm("BoundaryForceData_values.dat")
-      @fact objective.lift_val --> roughly(serial_vals[1], atol = 1e-14)
-      @fact objective.drag_val --> roughly(serial_vals[2], atol = 1e-14)
-      @fact objective.dLiftdaoa --> roughly(serial_vals[3], atol = 1e-14)
-      @fact objective.dDragdaoa --> roughly(serial_vals[4], atol = 1e-14)
+      @test isapprox( objective.lift_val, serial_vals[1]) atol= 1e-14
+      @test isapprox( objective.drag_val, serial_vals[2]) atol= 1e-14
+      @test isapprox( objective.dLiftdaoa, serial_vals[3]) atol= 1e-14
+      @test isapprox( objective.dDragdaoa, serial_vals[4]) atol= 1e-14
 
-      # @fact objective.lift_val --> roughly(0.008165584931809718, atol = 1e-14)
-      # @fact objective.drag_val --> roughly(-0.0005471055309820266, atol = 1e-14)
-      # @fact objective.dLiftdaoa --> roughly(0.0005471055309820266, atol = 1e-14)
-      # @fact objective.dDragdaoa --> roughly(0.008165584931809718, atol = 1e-14)
-    end # End context("Checking ∂J/∂aoa")
+      # @test isapprox( objective.lift_val, 0.008165584931809718) atol= 1e-14
+      # @test isapprox( objective.lift_val, 0.008165584931809718) atol = 1e-14
+      # @test isapprox( objective.drag_val, -0.0005471055309820266) atol= 1e-14
+      # @test isapprox(objective.drag_val, -0.0005471055309820266) atol = 1e-14
+      # @test isapprox( objective.dLiftdaoa, 0.0005471055309820266) atol= 1e-14
+      # @test isapprox(objective.dLiftdaoa, 0.0005471055309820266) atol = 1e-14
+      # @test isapprox( objective.dDragdaoa, 0.008165584931809718) atol= 1e-14
+      # @test isapprox( objective.dDragdaoa, 0.008165584931809718) atol = 1e-14
+    end # End  testset("Checking ∂J/∂aoa")
 
     lift = objective.lift_val
     pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
@@ -46,9 +50,9 @@ function test_parallel_derivatives()
 
     dJdaoa_fd = (lift_pert - lift)/pert
 
-    context("Check complete derivative dJ/daoa") do
+    @testset "Check complete derivative dJ/daoa" begin
       deriv_err = norm(dJdaoa_fd - dJdaoa, 2)
-      @fact deriv_err --> roughly(0.0, atol=1e-6)
+      @test isapprox( deriv_err, 0.0) atol=1e-6
     end
 
   end # End Facts Checking Complete Derivative w.r.t angle of attack for a 2D airfoil

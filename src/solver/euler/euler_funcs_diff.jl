@@ -1,11 +1,25 @@
 # differentiated version of functions in euler_funcs.jl
+"""
+  Computes the derivataive of the volume term of the Roe scheme with respect
+  to `q`, ie
 
-function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
+  d/dq (Q^T * f)
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler: used to assemble the contribution of each element into the
+                Jacobian
+"""
+function calcVolumeIntegrals_nopre_diff(
                                    mesh::AbstractMesh{Tmsh},
                                    sbp::AbstractSBP,
                                    eqn::EulerData{Tsol, Tres, Tdim},
                                    opts,
-                                   assembler::AssembleElementData)
+                                   assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
 
@@ -52,7 +66,6 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
         end
       end
     end
-    
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
@@ -64,8 +77,87 @@ function calcVolumeIntegrals_nopre_diff{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end  # end function
 
+"""
+  Computes the derivative of the strong form volume terms with
+  respect to `q`, ie.
+
+  d/dq (-Q * f)
+
+  but only the mesh.numDofPerNode x mesh.numDofPerNode diagonal block
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler: used to assemble the contribution of each element into the
+                Jacobian
+  
+"""
+function calcVolumeIntegralsStrong_nopre_diff(
+                                   mesh::AbstractMesh{Tmsh},
+                                   sbp::AbstractSBP,
+                                   eqn::EulerData{Tsol, Tres, Tdim},
+                                   opts,
+                                   assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
+  @assert eqn.params.use_Minv != 1  # use_Minv not supported
+
+  # flux jacobian at every node in each direction
+  flux_jac = eqn.params.flux_jac
+  res_jac = eqn.params.res_jac; fill!(res_jac, 0.0)
+#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  nrm = eqn.params.nrm  # vector in parametric direction
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      # compute dF/dq
+      for k=1:Tdim
+        fluxjac_k = sview(flux_jac, :, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        calcEulerFlux_diff(eqn.params, q_j, aux_vars_j, nrm, fluxjac_k)
+      end  # end loop k
+    end  # end loop j
+
+    # compute dR/dq
+    for k=1:Tdim
+      weakDifferentiateElement_jac!(sbp, k, sview(flux_jac, :, :, :, k), res_jac, SummationByParts.Subtract(), false)
+    end
+
+    
+    if eqn.params.use_Minv == 1
+      # multiply by Minv if needed
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jac[n, m, p, q] *= val
+            end
+          end
+        end
+      end
+    end
+
+    # assemble element level jacobian into the residual
+    assembleElement(assembler, mesh, i, res_jac)
+    fill!(res_jac, 0.0)
+    # flux_jac gets overwritten, so no need to zero it 
+
+  end  # end loop i
+
+  return nothing
+end  # end function
 
 
 """
@@ -85,10 +177,10 @@ end  # end function
 
   Aliasing restrictions: params.p_dot is overwritten
 """
-function calcEulerFlux_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
+function calcEulerFlux_diff(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1},
                       aux_vars::AbstractArray{Tres, 1},
-                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2})
+                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres}
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -138,10 +230,10 @@ function calcEulerFlux_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative
 end
 
 
-function calcEulerFlux_diff{Tmsh, Tsol, Tres}(params::ParamType{3},
+function calcEulerFlux_diff(params::ParamType{3},
                       q::AbstractArray{Tsol,1},
                       aux_vars::AbstractArray{Tres, 1},
-                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2})
+                      dir::AbstractArray{Tmsh},  Fjac::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres}
 # calculates the Euler flux in a particular direction at a point
 # eqn is the equation type
 # q is the vector (of length 4), of the conservative variables at the point
@@ -215,8 +307,8 @@ end
    * pdot: vector of length numDofPerNode, overwritten with derivative of `p` 
            wrt `q`
 """
-function calcPressure_diff{Tsol}(params::ParamType{2, :conservative},
-                            q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} )
+function calcPressure_diff(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} ) where Tsol
   # calculate pressure for a node
   # q is a vector of length 4 of the conservative variables
 
@@ -234,8 +326,8 @@ end
 
 
 
-function calcPressure_diff{Tsol}(params::ParamType{3, :conservative},
-                            q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} )
+function calcPressure_diff(params::ParamType{3, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} ) where Tsol
   # calculate pressure for a node
 
   t1 = 1/(q[1]*q[1])

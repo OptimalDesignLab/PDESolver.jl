@@ -30,8 +30,8 @@
 
   Aliasing restrictions: qL_arr, qR_arr, and eqn.flux_sharedface must not alias.
 """->
-function sharedFaceLogging{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol}, 
-                                 opts, data::SharedFaceData, qL_arr, qR_arr)
+function sharedFaceLogging(mesh, sbp, eqn::AbstractSolutionData{Tsol}, 
+                           opts, data::SharedFaceData, qL_arr, qR_arr) where Tsol
 
   if opts["writeqface"]
     myrank = data.myrank

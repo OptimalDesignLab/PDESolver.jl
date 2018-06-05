@@ -14,7 +14,7 @@
 
    * none
 """
-type PetscMatFreePC <: AbstractPetscMatFreePC
+mutable struct PetscMatFreePC <: AbstractPetscMatFreePC
   pc::PC
   ctx  # Petsc PC ctx
   is_shared::Bool

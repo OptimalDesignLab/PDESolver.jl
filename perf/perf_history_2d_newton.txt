@@ -1,0 +1,5 @@
+#performance history
+# date     time  branch  time        bytes allocated
+2016-5-28 21:45 view_fix 38.686800895 20923235790
+2018-6-4 13:7 upgrade_0.6 51.603999584 22167177255
+2018-6-4 13:35 upgrade_0.6 51.545705866 22167195463

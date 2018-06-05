@@ -86,8 +86,8 @@ Only when low level functions need to dispatch based on which implementation is
 
 Some equations can be written in different variables, and need to convert
 between them.  To do this, it is
-`function convertFromNaturalToWorkingVars{Tsol}(params::ParamType{2, :var_type},
-               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1})`
+`function convertFromNaturalToWorkingVars(params::ParamType{2, :var_type},
+               qc::AbstractArray{Tsol,1}, qe::AbstractArray{Tsol,1}) where {Tsol}`
 
 that converts from the "natural" variables in which to write an equation to
 some other set of variables at a node.  For the Euler equations, the "natural"
@@ -104,7 +104,7 @@ the working variables to the natural variables.
 Many of the components of PDESolver have different options that control how they
 work and what they do.
 In order to  provide a unified method of specifying these options, an dictionary
- of type `Dict{ASCIIString, Any}` is read in from a disk file.
+ of type `Dict{String, Any}` is read in from a disk file.
 This dictionary (called `opts` in function signatures), is passed to all high
 and mid level function so they can use values in the dictionary to determine their
  control flow.
@@ -124,7 +124,7 @@ every node on the mesh boundary would be slow.  Instead a construct is used
 as follows:
 
 ```julia
-type myBC <: BCType  # create a singleton type
+mutable struct myBC <: BCType  # create a singleton type
 end
 
 function call(obj::myBC, q::AbstractVector, bndryflux::AbstractVector)

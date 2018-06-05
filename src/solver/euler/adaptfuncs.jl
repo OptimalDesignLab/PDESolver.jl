@@ -1,4 +1,4 @@
-function func3{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, u_::Ptr{T})
+function func3(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, u_::Ptr{T}) where T
 # an anisotropic function
 # populates h with the desired mesh size in all three dimension
 
@@ -67,7 +67,7 @@ end
 
 
 
-function shockRefine{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr)
+function shockRefine(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr) where T
 # an anisotropic function
 # populates h with the desired mesh size in all three dimension
 # f_ptr is a pointer to a solution field (apf::Field)
@@ -124,7 +124,7 @@ function shockRefine{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr)
 return nothing
 end
 
-function shockRefine2{T}(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, operator_ptr)
+function shockRefine2(entity_ptr, r_::Ptr{T}, h_::Ptr{T}, m_ptr, f_ptr, operator_ptr) where T
 # an anisotropic function
 # populates h with the desired mesh size in all three dimension
 # entity_ptr is a pointer to a vertex

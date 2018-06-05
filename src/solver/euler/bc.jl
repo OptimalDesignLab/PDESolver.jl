@@ -15,7 +15,7 @@ include("bc_solvers.jl")  # Roe solvers and related things
    * node: the node on the face
 
 """
-immutable BoundaryNode
+struct BoundaryNode
   element::UInt32
   face::UInt8
   faceidx::Int  # index within array of faces that have this boundary condition
@@ -205,11 +205,11 @@ end
   This is a mid level function.
 """->
 # mid level function
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractCGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol},
-                          functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1},
-                          bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux( mesh::AbstractCGMesh{Tmsh},
+       sbp::AbstractSBP, eqn::EulerData{Tsol},
+       functor::BCType, idx_range::UnitRange,
+       bndry_facenums::AbstractArray{Boundary,1},
+       bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
 # calculate the boundary flux for the boundary condition evaluated by the functor
 
 #  println("enterted calcBoundaryFlux")
@@ -248,11 +248,11 @@ end
 
 
 # DG version
-function calcBoundaryFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol},
-                          functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1},
-                          bndryflux::AbstractArray{Tres, 3})
+function calcBoundaryFlux( mesh::AbstractDGMesh{Tmsh},
+       sbp::AbstractSBP, eqn::EulerData{Tsol},
+       functor::BCType, idx_range::UnitRange,
+       bndry_facenums::AbstractArray{Boundary,1},
+       bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
 
@@ -287,10 +287,10 @@ end
   Like calcBoundaryFlux, but performs the integration and updates res rather
   than storing the flux.
 """
-function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh},
+function calcBoundaryFlux_nopre( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                           functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1})
+                          bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
 
@@ -331,12 +331,12 @@ end
 """
   Staggered grid version
 """
-function calcBoundaryFlux_nopre{Tmsh,  Tsol, Tres}(mesh_s::AbstractDGMesh{Tmsh},
+function calcBoundaryFlux_nopre(mesh_s::AbstractDGMesh{Tmsh},
                           mesh_f::AbstractDGMesh{Tmsh},
                           sbp_s::AbstractSBP, sbp_f::AbstractSBP,
                           eqn::EulerData{Tsol, Tres},
                           functor::BCType, idx_range::UnitRange,
-                          bndry_facenums::AbstractArray{Boundary,1})
+                          bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
   # functor
 
@@ -415,15 +415,15 @@ end
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
-type isentropicVortexBC <: BCType
+mutable struct isentropicVortexBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
+function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   gamma = params.gamma
   gami = params.gamma_1
@@ -466,12 +466,12 @@ end
 
 #=
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC, params::ParamType,
+function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
                nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = params.qg
   calcIsentropicVortex(params, coords, qg)
@@ -505,16 +505,16 @@ Reverse mode for isentropicVortexBC.
 
 """->
 
-type isentropicVortexBC_revm <: BCType_revm
+mutable struct isentropicVortexBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_revm, params::ParamType2,
+function (obj::isentropicVortexBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
   gamma = params.gamma
@@ -569,16 +569,16 @@ end
 
   This is a low level functor.
 """->
-type isentropicVortexBC_physical <: BCType
+mutable struct isentropicVortexBC_physical <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::isentropicVortexBC_physical,
+function (obj::isentropicVortexBC_physical)(
               params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   calcEulerFlux(params, q, aux_vars, nrm_xy, bndryflux)
 
@@ -608,16 +608,16 @@ end # end function isentropicVortexBC_physical
 *  `bndryflux` : Computed flux value at the boundary
 
 """
-type noPenetrationBC <: BCType
+mutable struct noPenetrationBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
+function (obj::noPenetrationBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -658,12 +658,12 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType2,
 end
 
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
+function (obj::noPenetrationBC)(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -710,16 +710,16 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC, params::ParamType3,
   return nothing
 end
 
-type noPenetrationESBC <: BCType
+mutable struct noPenetrationESBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType2,
+function (obj::noPenetrationESBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -752,12 +752,12 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType2,
   return nothing
 end
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationESBC, params::ParamType3,
+function (obj::noPenetrationESBC)(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
@@ -812,15 +812,15 @@ Reverse mode for noPenetrationBC.
 
 """->
 
-type noPenetrationBC_revm <: BCType_revm
+mutable struct noPenetrationBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
+function (obj::noPenetrationBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
   n1 = nrm[1]
@@ -890,12 +890,12 @@ function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType2,
   return nothing
 end
 #=
-function call{Tmsh, Tsol, Tres}(obj::noPenetrationBC_revm, params::ParamType3,
+function (obj::noPenetrationBC_revm)(params::ParamType3,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
   nx = zero(Tmsh)
@@ -1007,16 +1007,16 @@ end # End noPenetrationBC_revm 3D
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
-type unsteadyVortexBC <: BCType
+mutable struct unsteadyVortexBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType,
+function (obj::unsteadyVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -1031,16 +1031,16 @@ function call{Tmsh, Tsol, Tres}(obj::unsteadyVortexBC, params::ParamType,
 
 end # ends the function unsteadyVortex BC
 
-type unsteadyVortex2BC <: BCType
+mutable struct unsteadyVortex2BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::unsteadyVortex2BC, params::ParamType,
+function (obj::unsteadyVortex2BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -1079,17 +1079,17 @@ end # ends the function unsteadyVortex BC
 *  `bndryflux` : Computed flux value at the boundary
 
 """
-type Rho1E2U1VW0BC <: BCType
+mutable struct Rho1E2U1VW0BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U1VW0BC, params::ParamType,
+function (obj::Rho1E2U1VW0BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
   #println("in Rho1E2BCU1V0W0")
@@ -1125,17 +1125,17 @@ end
 *  `bndryflux` : Computed flux value at the boundary
 
 """
-type Rho1E2BC <: BCType
+mutable struct Rho1E2BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2BC, params::ParamType,
+function (obj::Rho1E2BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
   #println("in Rho1E2BC")
@@ -1171,17 +1171,17 @@ end
 *  `bndryflux` : Computed flux value at the boundary
 
 """
-type Rho1E2U3BC <: BCType
+mutable struct Rho1E2U3BC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::Rho1E2U3BC, params::ParamType,
+function (obj::Rho1E2U3BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
   #println("in Rho1E2U3Bc")
@@ -1219,15 +1219,15 @@ end
 *  `bndryflux` : Computed flux value at the boundary
 
 """
-type FreeStreamBC <: BCType
+mutable struct FreeStreamBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC, params::ParamType,
+function (obj::FreeStreamBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = params.qg
 
@@ -1260,15 +1260,15 @@ Reverse mode for FreeStreamBC.
 
 """->
 
-type FreeStreamBC_revm <: BCType_revm
+mutable struct FreeStreamBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_revm, params::ParamType,
+function (obj::FreeStreamBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
   qg = params.qg
@@ -1299,15 +1299,15 @@ end
 *  `bndryflux` : Computed flux value at the boundary
 
 """->
-type FreeStreamBC_dAlpha <: BCType
+mutable struct FreeStreamBC_dAlpha <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::FreeStreamBC_dAlpha, params::ParamType2,
+function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = params.qg
 
@@ -1327,15 +1327,15 @@ end
   This is a low level functor
 """->
 
-type allOnesBC <: BCType
+mutable struct allOnesBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::allOnesBC, params::ParamType2,
+function (obj::allOnesBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = zeros(Tsol, 4)
   calcOnes(params, coords, qg)
@@ -1355,15 +1355,15 @@ end # end function call
   This is a low level functor
 """->
 
-type allZerosBC <: BCType
+mutable struct allZerosBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::allZerosBC, params::ParamType2,
+function (obj::allZerosBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = zeros(Tsol, 4)
   calcZeros(params, coords, qg)
@@ -1372,16 +1372,16 @@ function call{Tmsh, Tsol, Tres}(obj::allZerosBC, params::ParamType2,
 
   # println("bndryflux = ", bndryflux)
   return nothing
-end # end function call
+end # end function
 
-type ExpBC <: BCType
+mutable struct ExpBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC, params::ParamType, q::AbstractArray{Tsol,1},
+function (obj::ExpBC)(params::ParamType, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   qg = params.qg
   calcExp(params, coords, qg)
@@ -1389,17 +1389,17 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC, params::ParamType, q::AbstractArray{
 
   # println("bndryflux = ", bndryflux)
   return nothing
-end # end function call
+end # end function
 
-type ExpBC_revm <: BCType_revm
+mutable struct ExpBC_revm <: BCType_revm
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, params::ParamType,
+function (obj::ExpBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward Sweep
   qg = params.qg
@@ -1413,15 +1413,15 @@ function call{Tmsh, Tsol, Tres}(obj::ExpBC_revm, params::ParamType,
   return nothing
 end
 
-type PeriodicMMSBC <: BCType
+mutable struct PeriodicMMSBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, params::ParamType,
+function (obj::PeriodicMMSBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
 
@@ -1432,17 +1432,17 @@ function call{Tmsh, Tsol, Tres}(obj::PeriodicMMSBC, params::ParamType,
 
   # println("bndryflux = ", bndryflux)
   return nothing
-end # end function call
+end # end function
 
-type ChannelMMSBC <: BCType
+mutable struct ChannelMMSBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, params::ParamType,
+function (obj::ChannelMMSBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # use the exact solution as the boundary condition for the ChannelMMS
 # solutions
 
@@ -1451,33 +1451,33 @@ function call{Tmsh, Tsol, Tres}(obj::ChannelMMSBC, params::ParamType,
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
-end # end function call
+end # end function
 
 
-type defaultBC <: BCType
+mutable struct defaultBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::defaultBC, params::ParamType,
+function (obj::defaultBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   calcEulerFlux(params, q, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end
 
-type SubsonicInflowBC <: BCType
+mutable struct SubsonicInflowBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
+function (obj::SubsonicInflowBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   #See NASA/TM-2011-217181: Inflow/Outflow Boundary Conditions with Application
   #                         to FUN3D by Carlson 
@@ -1551,15 +1551,15 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicInflowBC, params::ParamType2,
   return nothing
 end
 
-type SubsonicOutflowBC <: BCType
+mutable struct SubsonicOutflowBC <: BCType
 end
 
-function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
+function(obj::SubsonicOutflowBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
   pb = 101300.0/params.p_free  # nondimensionalized pressure
@@ -1589,17 +1589,17 @@ function call{Tmsh, Tsol, Tres}(obj::SubsonicOutflowBC, params::ParamType2,
   return nothing
 end
 
-type inviscidChannelFreeStreamBC <: BCType
+mutable struct inviscidChannelFreeStreamBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::inviscidChannelFreeStreamBC,
+function(obj::inviscidChannelFreeStreamBC)(             
               params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode)
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
 
 #  println("entered isentropicOvrtexBC (low level)")
@@ -1629,22 +1629,22 @@ end # ends the function unsteadyVortex BC
   new object, with the data inside it, and then register it just before
   constructing the `EulerData` object.
 """
-type reanalysisBC{Tsol} <: BCType
+mutable struct reanalysisBC{Tsol} <: BCType
   bc_vals::Array{Tsol, 3}
 end
 
 function reanalysisBC()
-  bc_vals = Array(Float64, 0, 0, 0)
+  bc_vals = Array{Float64}(0, 0, 0)
   return reanalysisBC{Float64}(bc_vals)
 end
 
-function call{Tmsh, Tsol, Tres, Tdim}(obj::reanalysisBC, params::AbstractParamType{Tdim},
-                                q::AbstractArray{Tsol, 1},
-                                aux_vars::AbstractArray{Tres, 1},
-                                coords::AbstractVector{Tmsh},
-                                nrm_xy::AbstractVector{Tmsh},
-                                bndryflux::AbstractArray{Tres},
-                                bndry::EulerEquationMod.BoundaryNode)
+function (obj::reanalysisBC)(params::AbstractParamType{Tdim},
+        q::AbstractArray{Tsol, 1},
+        aux_vars::AbstractArray{Tres, 1},
+        coords::AbstractVector{Tmsh},
+        nrm_xy::AbstractVector{Tmsh},
+        bndryflux::AbstractArray{Tres},
+        bndry::EulerEquationMod.BoundaryNode) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # get numerical data out of the array
@@ -1654,8 +1654,7 @@ function call{Tmsh, Tsol, Tres, Tdim}(obj::reanalysisBC, params::AbstractParamTy
   return nothing
 end
 
-
-
+include("bc_viscous.jl")
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1666,7 +1665,7 @@ end
   Maps boundary conditions names to the functor objects.
   Each functor should be callable with the signature
 """
-global const BCDict = Dict{ASCIIString, BCType}(
+global const BCDict = Dict{String, BCType}(
 "isentropicVortexBC" => isentropicVortexBC(),
 "noPenetrationBC" => noPenetrationBC(),
 "noPenetrationESBC" => noPenetrationESBC(),
@@ -1686,6 +1685,9 @@ global const BCDict = Dict{ASCIIString, BCType}(
 "inviscidChannelFreeStreamBC" => inviscidChannelFreeStreamBC(),
 "reanalysisBC" => reanalysisBC(),
 "defaultBC" => defaultBC(),
+"nonslipBC" => nonslipBC(),
+"ExactChannelBC" => ExactChannelBC(),
+"zeroPressGradientBC" => zeroPressGradientBC(),
 )
 
 @doc """
@@ -1720,7 +1722,7 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   return nothing
 end # ENd function getBCFunctors
 
-global const BCDict_revm = Dict{ASCIIString, BCType_revm}(
+global const BCDict_revm = Dict{String, BCType_revm}(
 "noPenetrationBC" => noPenetrationBC_revm(),
 "FreeStreamBC" => FreeStreamBC_revm(),
 "ExpBC" => ExpBC_revm(),

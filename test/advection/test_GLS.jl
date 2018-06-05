@@ -3,7 +3,7 @@
 # Write tests corresponding to GLS here.
 
 using PDESolver
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using ArrayViews
 
@@ -13,30 +13,30 @@ include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 resize!(ARGS, 1)
 ARGS[1] = "input_vals_GLS.jl"
 opts = read_input(ARGS[1])
-facts("--- Check input arguments applied correctly ---") do
-  @fact opts["use_GLS"] --> true
-  @fact opts["Q_transpose"] --> true
+@testset "--- Check input arguments applied correctly ---" begin
+  @test ( opts["use_GLS"] )== true
+  @test ( opts["Q_transpose"] )== true
 end
 
 
 include("../../src/solver/advection/startup.jl")
 include("../../src/solver/advection/GLS.jl")
 
-facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
+@testset "--- Check functions in ../src/solver/advection/GLS.jl ---" begin
 
-  context("Checking shape function derivatives") do
+  @testset "Checking shape function derivatives" begin
     sbp2 = getTriSBPGamma{Float64}()
     shapefuncderiv = zeros(Tsol, sbp2.numnodes, sbp2.numnodes, Tdim)
     calcShapefuncDeriv(sbp2, shapefuncderiv)
-    @fact shapefuncderiv[:,:,1] --> roughly([-0.5  0.5  0.0
+    @test isapprox(shapefuncderiv[:,:,1] -  [-0.5  0.5  0.0
                                              -0.5  0.5  0.0
-                                             -0.5  0.5  0.0])
-    @fact shapefuncderiv[:,:,2] --> roughly([-0.5  0.0  0.5
+                                             -0.5  0.5  0.0]) atol=1e-13
+    @test isapprox(shapefuncderiv[:,:,2] -  [-0.5  0.0  0.5
                                              -0.5  0.0  0.5
-                                             -0.5  0.0  0.5])
+                                             -0.5  0.0  0.5]) atol=1e-13
   end
 
-  context("Check calcAxidxi") do
+  @testset "Check calcAxidxi" begin
     Tdim = 2
     alpha_x = ones(Tsol, mesh.numNodesPerElement)
     alpha_y = ones(alpha_x)
@@ -44,27 +44,27 @@ facts("--- Check functions in ../src/solver/advection/GLS.jl ---") do
     shapefuncderiv = zeros(Tsol, sbp.numnodes, sbp.numnodes, Tdim)
     calcShapefuncDeriv(sbp, shapefuncderiv)
     AxiDxi = calcAxiDxi(mesh, dxidx, alpha_x, alpha_y, shapefuncderiv)
-    @fact AxiDxi --> roughly([-0.5 0.25 0.25
+    @test isapprox(AxiDxi -[-0.5 0.25 0.25
                             -0.5 0.25 0.25
-                            -0.5 0.25 0.25])
+                            -0.5 0.25 0.25]) atol=1e-13
   end
 
-  context("Check calcTau") do
+  @testset "Check calcTau" begin
     fill!(eqn.params.alpha_x, 1.0)
     fill!(eqn.params.alpha_y, 1.0)
     tau = zeros(Tsol,mesh.numNodesPerElement, mesh.numEl)
     calcTau(mesh, sbp, eqn, tau)
-    @fact mesh.numEl --> 1
-    @fact tau[:,1] --> roughly([1.0,1.0,1.0])
+    @test ( mesh.numEl )== 1
+    @test isapprox( tau[:,1], [1.0,1.0,1.0]) 
   end
 
-  context("Check GLS") do
+  @testset "Check GLS" begin
     fill!(eqn.params.alpha_x, 1.0)
     fill!(eqn.params.alpha_y, 1.0)
     fill!(eqn.res, 0.0)
     eqn.q[1,:,1] = eqn.q_vec
     GLS(mesh, sbp, eqn)
-    @fact eqn.res[1,:,1] --> roughly([8.0 -4.0 -4.0])
+    @test isapprox( eqn.res[1,:,1], [8.0 -4.0 -4.0]) 
 
   end
 

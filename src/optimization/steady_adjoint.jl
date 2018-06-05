@@ -27,11 +27,11 @@ using PETSc2
    * start_comm: do parallel communication before recomputing the pc and/or jac,
                  default false
 """
-function calcAdjoint{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
+function calcAdjoint(mesh::AbstractDGMesh{Tmsh},
                   sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol, Tres}, opts,
                   ls::LinearSolver, functionalData::AbstractFunctional,
                   adjoint_vec::Array{Tsol,1}; recalc_jac=false,
-                  recalc_pc=false, start_comm=false)
+                  recalc_pc=false, start_comm=false) where {Tmsh, Tsol, Tres}
  
 
   # recalc operators if requested

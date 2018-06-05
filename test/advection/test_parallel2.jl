@@ -24,41 +24,41 @@ function test_parallel2_comm()
     return nothing
   end
 
-  facts("----- Testing Parallel Communication -----") do
+  @testset "----- Testing Parallel Communication -----" begin
     peer_up = wrap(myrank+1, commsize)
     peer_down = wrap(myrank-1, commsize)
 
     mesh.npeers = 2
     mesh.peer_parts = [peer_down, peer_up]
     #=
-    mesh.send_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.recv_reqs = Array(MPI.Request, mesh.npeers)
-    mesh.recv_waited= Array(Bool, mesh.npeers)
-    mesh.send_waited = Array(Bool, mesh.npeers)
+    mesh.send_reqs = Array{MPI.Request}(mesh.npeers)
+    mesh.recv_reqs = Array{MPI.Request}(mesh.npeers)
+    mesh.recv_waited= Array{Bool}(mesh.npeers)
+    mesh.send_waited = Array{Bool}(mesh.npeers)
 
     initMPIStructures(mesh, opts)
     =#
 
     shared_data = getSharedFaceData(Float64, mesh, sbp, opts)
 
-#    send_data = Array(Array{Float64, 1}, mesh.npeers)
-#    recv_data = Array(Array{Float64, 1}, mesh.npeers)
+#    send_data = Array{Array{Float64, 1}}(mesh.npeers)
+#    recv_data = Array{Array{Float64, 1}}(mesh.npeers)
     for i=1:mesh.npeers
       shared_data[i].q_send = reshape(Float64[myrank + i, myrank + i + 1], 2, 1, 1)
-      shared_data[i].q_recv = reshape(Array(Float64, mesh.npeers), 2, 1, 1)
+      shared_data[i].q_recv = reshape(Array{Float64}(mesh.npeers), 2, 1, 1)
     end
 
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer, wait=true)
 
     # peer down: the sent to its peer up
     data = shared_data[1]
-    @fact data.q_recv[1] --> peer_down + 2
-    @fact data.q_recv[2] --> peer_down + 3
+    @test ( data.q_recv[1] )== peer_down + 2
+    @test ( data.q_recv[2] )== peer_down + 3
 
     # peer up: sent to its peer down
     data = shared_data[2]
-    @fact data.q_recv[1] --> peer_up + 1
-    @fact data.q_recv[2] --> peer_up + 2
+    @test ( data.q_recv[1] )== peer_up + 1
+    @test ( data.q_recv[2] )== peer_up + 2
 
 
     # test exchangeElementData
@@ -79,11 +79,11 @@ function test_parallel2_comm()
 
     data = shared_data[1].q_recv
     for j in data
-      @fact j --> peer_down + 2
+      @test ( j )== peer_down + 2
     end
     data = shared_data[2].q_recv
     for j in data
-      @fact j --> peer_up + 1
+      @test ( j )== peer_up + 1
     end
 
 

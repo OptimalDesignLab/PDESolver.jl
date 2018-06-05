@@ -3,8 +3,8 @@ module NonlinearSolvers
 pde_pumi_interface_path = joinpath(Pkg.dir("PumiInterface"), "src")
 push!(LOAD_PATH, pde_pumi_interface_path)
 using ArrayViews
+import ArrayViews.view
 using PDESolver
-using Debug
 using PdePumiInterface  # needed to write vtk files
 using ODLCommonTools
 using Utils

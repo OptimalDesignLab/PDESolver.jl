@@ -8,8 +8,8 @@ function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
   calcHomotopyDiss_jac(mesh, sbp, eqn, opts, assembler, lambda)
 end
 
-function calcHomotopyDiss_jac{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
-                          eqn::EulerData{Tsol, Tres}, opts, assembler, lambda)
+function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp, 
+                          eqn::EulerData{Tsol, Tres}, opts, assembler, lambda) where {Tsol, Tres, Tmsh}
 
   # some checks for when parallelism is enabled
   @assert opts["parallel_data"] == "element"
@@ -328,10 +328,10 @@ end
 
    * lambda_max: maximum eigenvalue
 """
-function getLambdaMax_diff{Tsol, Tres, Tmsh}(params::ParamType{2},
+function getLambdaMax_diff(params::ParamType{2},
                       qL::AbstractVector{Tsol},
                       dir::AbstractVector{Tmsh},
-                      lambda_dot::AbstractVector{Tres})
+                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
 
   gamma = params.gamma
   Un = zero(Tres)
@@ -386,10 +386,10 @@ end
 
 
 
-function getLambdaMax_diff{Tsol, Tres, Tmsh}(params::ParamType{3},
+function getLambdaMax_diff(params::ParamType{3},
                       qL::AbstractVector{Tsol},
                       dir::AbstractVector{Tmsh},
-                      lambda_dot::AbstractVector{Tres})
+                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
 
   gamma = params.gamma
   Un = zero(Tres)
@@ -466,11 +466,11 @@ end
    * lambda_dotL: derivative of lambda wrt. qL
    * lambda_dotR: derivative of lambda wrt. qR
 """
-function getLambdaMaxSimple_diff{Tsol, Tres, Tmsh, Tdim}(params::ParamType{Tdim}, 
+function getLambdaMaxSimple_diff(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
                       dir::AbstractVector{Tmsh},
                       lambda_dotL::AbstractVector{Tres},
-                      lambda_dotR::AbstractVector{Tres})
+                      lambda_dotR::AbstractVector{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
   q_avg = params.q_vals3
 

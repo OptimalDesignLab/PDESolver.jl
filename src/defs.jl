@@ -5,4 +5,4 @@
   the abstraction, but it solves the problem of declaring the name in one place
   and defining the type in another
 """
-abstract AssembleElementData
+abstract type AssembleElementData end

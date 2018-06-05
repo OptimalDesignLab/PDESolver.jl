@@ -1,13 +1,13 @@
 # definitions of concrete subtypes of AbstractParamType and AbstractSolutionData
 
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
+mutable struct ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
 
   f::BufferedIO     # TODO: needed?
 
   t::Float64
   time::Timings
 
-  function ParamType(mesh, sbp, opts)
+  function ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts) where {Tsol, Tres, Tdim}
     myrank = mesh.myrank
     if DB_LEVEL >= 1
       f = BufferedIO("log_$myrank.dat", "a")
@@ -24,9 +24,9 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType
 
 end   # end of ParamType type def
 
-typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
-typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
-typealias ParamTypes Union{ParamType2, ParamType3}
+ParamType2{Tsol, Tres} =  ParamType{Tsol, Tres, 2}
+ParamType3{Tsol, Tres} =  ParamType{Tsol, Tres, 3}
+const ParamTypes = Union{ParamType2, ParamType3}
 
 @doc """
 ### SimpleODEMod.SimpleODEData_
@@ -37,7 +37,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
   Tsol and Tmsh, where Tsol is the type of the conservative variables.
 
 """->
-type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
+mutable struct SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
   params::ParamType{Tsol, Tres, Tdim}
@@ -65,13 +65,13 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
                                 # derivative
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function SimpleODEData_(eqn::SimpleODEData_)
+  function SimpleODEData_{Tsol, Tres, Tdim, Tmsh}(eqn::SimpleODEData_) where {Tsol, Tres, Tdim, Tmsh}
 
     return new()
 
   end
 
-  function SimpleODEData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+  function SimpleODEData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstruction SimpleODEData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -95,7 +95,7 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
     eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
-    eqn.res_edge = Array(Tres, 0, 0, 0, 0)
+    eqn.res_edge = Array{Tres}(0, 0, 0, 0)
     if mesh.isDG
       eqn.q_vec = reshape(eqn.q, mesh.numDof)
       eqn.res_vec = reshape(eqn.res, mesh.numDof)
@@ -114,13 +114,13 @@ type SimpleODEData_{Tsol, Tres, Tdim, Tmsh} <: SimpleODEData{Tsol, Tres, Tdim}
                                        mesh.peer_face_counts[i])
       end
     else
-      eqn.q_face = Array(Tres, 0, 0, 0, 0)
-      eqn.q_bndry = Array(Tsol, 0, 0, 0)
+      eqn.q_face = Array{Tres}(0, 0, 0, 0)
+      eqn.q_bndry = Array{Tsol}(0, 0, 0)
     end
 
     # send and receive buffers
     # TODO: update this for parallel
-    eqn.shared_data = Array(SharedFaceData{Tsol}, 0)
+    eqn.shared_data = Array{SharedFaceData{Tsol}}(0)
 
     return eqn
   end # ends the constructer SimpleODEData_
@@ -146,7 +146,7 @@ Gets the type parameters for mesh and equation objects.
 * `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
 
 """->
-function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::SimpleODEData_{Tsol, Tres, Tdim, Tmsh}, opts)
+function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::SimpleODEData_{Tsol, Tres, Tdim, Tmsh}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   tuple = (Tsol, Tres, Tdim, Tmsh)
 

@@ -6,7 +6,7 @@
   Do not put functions into this dictionary directly, use the accessor
   function [`registerOptionsChecker`](@ref)
 """
-global const PhysicsOptionsFuncs = Dict{ASCIIString, Function}()
+global const PhysicsOptionsFuncs = Dict{String, Function}()
 
 """
   API function for registering an options checking function for a given
@@ -32,7 +32,7 @@ global const PhysicsOptionsFuncs = Dict{ASCIIString, Function}()
    * physics_name: the name defined by the physics module
    * func: the options checking function
 """
-function registerOptionsChecker(physics_name::ASCIIString, func::Function)
+function registerOptionsChecker(physics_name::String, func::Function)
 
   if haskey(PhysicsOptionsFuncs, physics_name)
     error("An options checker has already been registered for physics $(physics_name)")

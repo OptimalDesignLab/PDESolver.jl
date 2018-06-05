@@ -21,7 +21,7 @@ end
   Use rk4 to solve an 4th order polynoial ODE, for which it is exact
 """
 function test_rk4()
-    facts("----- testing rk4 -----") do
+    @testset "----- testing rk4 -----" begin
     opts_rk = Dict{Any, Any}("physics" => "Euler", "run_type" => 1, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
     read_input(opts_rk)
 
@@ -38,11 +38,11 @@ function test_rk4()
     f_exact = true_f(t)
     err = abs(f_approx - f_exact)
 
-    @fact t --> roughly(t_max, atol=1e-14)
-    @fact err --> less_than(1e-14)  # machine precision
+    @test isapprox( t, t_max) atol=1e-14
+    @test  err  < 1e-14# machine precision
   end  # end facts block
 
-  facts("----- testing lserk54 -----") do
+  @testset "----- testing lserk54 -----" begin
     opts_rk = Dict{Any, Any}("physics" => "Euler", "run_type" => 30, "smb_name" => "", "output_freq" => 1, "write_vis" => false, "use_itermax" => false, "numBC" => 0)
     read_input(opts_rk)
 
@@ -59,7 +59,7 @@ function test_rk4()
     f_exact = true_f(t)
     err = abs(f_approx - f_exact)
 
-    @fact err --> less_than(1e-14)  # machine precision
+    @test  err  < 1e-14# machine precision
 
   end
 

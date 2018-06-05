@@ -9,12 +9,12 @@
                  that requires calculating the Jacobian -> 2
 
 
-"parallel_data": what data to exchange in parallel, (ASCIIString), 
+"parallel_data": what data to exchange in parallel, (String), 
                  known values "face" for face data and "element" for element 
                  data, default implied by a set of other options which
                  determine the calculations that need to be done
 
-"fname": the path to the file in which the dictionary is declared, ASCIIString,
+"fname": the path to the file in which the dictionary is declared, String,
          set from the argument passed to read_input
 
 "gamma_1" : gamma - 1
@@ -54,13 +54,13 @@
                           definitely complete, (Integer), default -1
 
 "most_recent_checkpoint_path": path to directory where the most recent
-                               checkpoint is stored, (ASCIIString), default ""
+                               checkpoint is stored, (String), default ""
 
 "writing_checkpoint": index of most recently written checkpoint that might not
                       be complete, (Integer), default -1
 
 "writing_checkpoint_path": path to the directory where the checkpoint is stored,
-                           (ASCIIString), default ""
+                           (String), default ""
 
 "is_restart": if this input file is restarting a run from a checkpoint, (Bool),
               default false

@@ -4,7 +4,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -13,6 +13,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 using Utils
 using Input
 
@@ -33,7 +34,7 @@ global const AdvectionTests = TestList()
   serial tests.
 """
 function runtests_parallel()
-  facts("----- Testing Parallel -----") do
+  @testset "----- Testing Parallel -----" begin
 
     start_dir = pwd()
     cd("./rk4/parallel")
@@ -43,8 +44,8 @@ function runtests_parallel()
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
 
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
-    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
+    @test isapprox( datas[2], datap[2]) atol=1e-13
     cd("../../")
 
     cd("./newton/parallel")
@@ -53,7 +54,7 @@ function runtests_parallel()
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
 
     cd(start_dir)
 
@@ -63,7 +64,7 @@ function runtests_parallel()
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
 
     cd(start_dir)
 
@@ -72,7 +73,7 @@ function runtests_parallel()
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
 
     cd(start_dir)
   end  # end facts block
@@ -84,7 +85,7 @@ end
 add_func1!(AdvectionTests, runtests_parallel, [TAG_SHORTTEST])
 
 function test_precompute()
-  facts("----- testing non-precompute functions -----") do
+  @testset "----- testing non-precompute functions -----" begin
     start_dir = pwd()
 
     # test rk4
@@ -101,7 +102,7 @@ function test_precompute()
     opts["precompute_face_flux"] = false
     evalResidual(mesh, sbp, eqn, opts)
 
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
     # test newton
     cd(start_dir)
@@ -116,7 +117,7 @@ function test_precompute()
     opts["precompute_face_flux"] = false
     evalResidual(mesh, sbp, eqn, opts)
 
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
     cd(start_dir)
   end
@@ -129,7 +130,7 @@ add_func1!(AdvectionTests, test_precompute, [TAG_SHORTTEST])
 
 function test_adjoint_parallel()
 
-  facts("--- Testing Adjoint Computation on a Geometric Boundary ---") do
+  @testset "--- Testing Adjoint Computation on a Geometric Boundary ---" begin
 
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_functional_DG_parallel.jl"
@@ -145,10 +146,10 @@ function test_adjoint_parallel()
     calcAdjoint(mesh, sbp, eqn, opts, ls, objective, adjoint_vec, recalc_jac=true, recalc_pc=true)
 
     for i = 1:length(adjoint_vec)
-      @fact real(adjoint_vec[i]) --> roughly(1.0 , atol=1e-10)
+      @test isapprox( real(adjoint_vec[i]), 1.0) atol=1e-10
     end
    
-  end # End facts("--- Testing Functional Computation on a Geometric Boundary ---")
+  end # End testset("--- Testing Functional Computation on a Geometric Boundary ---")
 
   return nothing
 end
@@ -157,12 +158,12 @@ add_func1!(AdvectionTests, test_adjoint_parallel, [TAG_ADJOINT, TAG_LONGTEST])
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Advection 2 processor tests -----") do
+@testset "----- Running Advection 2 processor tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array{String}(nargs)
     copy!(tags, ARGS)
   end
 
@@ -173,5 +174,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()

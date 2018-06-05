@@ -4,7 +4,7 @@ os:
   - linux
 #  - osx
 julia:
-  - 0.4
+  - 0.6
 #  - nightly
 notifications:
   email: false
@@ -13,34 +13,39 @@ env:
   - TEST_ADVECTION=1; MPI_IMPL="mpich3"
   - TEST_EULER=1; MPI_IMPL="mpich3"
   - TEST_SIMPLEODE=1; MPI_IMPL="mpich3"
+  - TEST_ELLIPTIC=1; MPI_IMPL="mpich3"
 # this hangs, for reasons unknown
 #  - TEST_ADVECTION=1; MPI_IMPL="openmpi"
 #  - TEST_EULER=1; MPI_IMPL="openmpi"
 
 cache:
   directories:
-  - $HOME/.julia/v0.4/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/
+  - $HOME/.julia/v0.6/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/
 
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
   - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
   - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
+  - sudo ./deps/travis-install-mpi.sh $MPI_IMPL
+  # setting these variables will help cmake find MPI
+  - export CC=mpicc
+  - export FC=mpif90
+  - export CXX=mpicxx
+
 
 script:
   -  if [[ -a .git/shallow ]]; then git fetch --unshallow; fi 
   - julia --check-bounds=yes -e 'versioninfo(); Pkg.clone(pwd())'
-  - cd ~/.julia/v0.4/PDESolver/deps
-  - ./travis-install-mpi.sh $MPI_IMPL
   # the cached files interfere with the build system, move them temporarily
-  - ls ~/.julia/v0.4/
-  - ls ~/.julia/v0.4/PETSc2/deps
-  - source ./move_petsccache.sh remove
+  - ls ~/.julia/v0.6/
+  - ls ~/.julia/v0.6/PETSc2/deps
+  - source ./deps/move_petsccache.sh remove
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
-  - source ./move_petsccache.sh restore  # move files back
-  - cd ~/.julia/v0.4/PumiInterface/src
+  - source ./deps/move_petsccache.sh restore  # move files back
+  - cd ~/.julia/v0.6/PumiInterface/src
   - source ./use_julialib.sh
-  - cd ~/.julia/v0.4/PDESolver/test
+  - cd ~/.julia/v0.6/PDESolver/test
 #  - ./runtests_fast.sh
   - ./runtests_travis.sh
 

@@ -76,11 +76,11 @@ end
     wait: wait for the sends and receives to finish before returning.  This
           is a debugging option only.  It will kill parallel performance.
 """
-function exchangeData{T}(mesh::AbstractMesh, sbp::AbstractSBP,
-                         eqn::AbstractSolutionData, opts,
-                         shared_data::Vector{SharedFaceData{T}},
-                         populate_buffer::Function;
-                         tag=TAG_DEFAULT, wait=false)
+function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::AbstractSolutionData, opts,
+                      shared_data::Vector{SharedFaceData{T}},
+                      populate_buffer::Function;
+                      tag=TAG_DEFAULT, wait=false) where T
 
   npeers = length(shared_data)
 
@@ -172,9 +172,9 @@ end
                  called, the SharedFaceData passed to it has its q_recv field
                  populated.  See note above about data permutation.
 """
-function finishExchangeData{T}(mesh, sbp, eqn, opts,
-                               shared_data::Vector{SharedFaceData{T}},
-                               calc_func::Function)
+function finishExchangeData(mesh, sbp, eqn, opts,
+                            shared_data::Vector{SharedFaceData{T}},
+                            calc_func::Function) where T
 
   npeers = length(shared_data)
   val = assertReceivesConsistent(shared_data)
@@ -209,7 +209,7 @@ end
   Inputs:
     data: a SharedFaceData
 """->
-function verifyReceiveCommunication{T}(data::SharedFaceData{T})
+function verifyReceiveCommunication(data::SharedFaceData{T}) where T
 # verify a communication occured correctly by checking the fields of the 
 # Status object
 # if the Status came from a send, then peer should be comm_rank ?
@@ -338,7 +338,7 @@ end
    * opts
    * f: IO, defaults to STDOUT
 """
-function checkBufferConsistency{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol}, opts, f::IO=STDOUT)
+function checkBufferConsistency(mesh, sbp, eqn::AbstractSolutionData{Tsol}, opts, f::IO=STDOUT) where Tsol
 
   println(f, "\nChecking buffer consistency")
 
@@ -347,7 +347,7 @@ function checkBufferConsistency{Tsol}(mesh, sbp, eqn::AbstractSolutionData{Tsol}
 
   # copy buffers
   nbufs = length(eqn.shared_data)
-  old_bufs = Array(Array{Tsol, 3}, nbufs)
+  old_bufs = Array{Array{Tsol, 3}}(nbufs)
   for i=1:nbufs
     old_bufs[i] = copy(eqn.shared_data[i].q_recv)
     println(f, "initially, norm of buffer ", i, " = ", vecnorm(old_bufs[i]))

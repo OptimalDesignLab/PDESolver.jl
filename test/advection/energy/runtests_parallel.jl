@@ -5,12 +5,12 @@ function test_energy(mesh, sbp, eqn, opts)
   ICfunc(mesh, sbp, eqn, opts, q_initial)
   energy_initial = calcNorm(eqn, q_initial)
 
-  @fact abs(energy_initial - energy_final) --> less_than(1e-12)
+  @test  abs(energy_initial - energy_final)  < 1e-12
 end
 
 
 function test_energy_parallel()
-  facts("----- Testing Energy Stability -----") do
+  @testset "----- Testing Energy Stability -----" begin
 
     start_dir = pwd()
 

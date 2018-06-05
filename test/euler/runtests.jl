@@ -1,4 +1,4 @@
-using FactCheck
+using Base.Test
 using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
@@ -13,6 +13,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 using EulerEquationMod
 using Utils
 using MPI
@@ -28,7 +29,6 @@ include("../tags.jl")
 
 # test list
 global const EulerTests = TestList()
-
 
 include("test_eqn_deepcopy.jl")     # note: eqn gets written random values to it, so anything that 
 include("test_empty.jl")
@@ -57,14 +57,16 @@ include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
 
+include("test_viscous.jl")
+
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Euler tests -----") do
+@testset "----- Running Euler tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array{String}(nargs)
     copy!(tags, ARGS)
   end
 
@@ -76,5 +78,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()

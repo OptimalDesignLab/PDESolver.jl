@@ -53,13 +53,13 @@ function test_curvilinear(mesh, sbp, eqn, opts)
 
   Ivec = ones(stencilsize)
   for i=1:mesh.numEl
-    @fact contrib_count[i] --> 3
+    @test ( contrib_count[i] )== 3
     for dim=1:Tdim
       E = E_all[:, :, dim, i]
       val = Ivec.'*E*Ivec
 
-      @fact val[1] --> roughly(0.0, atol=1e-12)
-      @fact norm(E - E.') --> roughly(0.0, atol=1e-12)
+      @test isapprox( val[1], 0.0) atol=1e-12
+      @test isapprox( norm(E - E.'), 0.0) atol=1e-12
     end
   end
 
@@ -74,10 +74,10 @@ function test_curvilinear(mesh, sbp, eqn, opts)
     Hinv = inv(diagm(sbp.w./mesh.jac[:, i]))
 
     for dim=1:Tdim
-      @fact norm(S[:, :, dim] + S[:, :, dim].') --> roughly(0.0, atol=1e-12)
+      @test isapprox( norm(S[:, :, dim] + S[:, :, dim].'), 0.0) atol=1e-12
       D = Hinv*(S[:, :, dim] + 0.5*E_all[:, :, dim, i])
       D1 = D*Ivec
-      @fact norm(D1) --> roughly(0.0, atol=1e-12)
+      @test isapprox( norm(D1), 0.0) atol=1e-12
 #=
       metrics_xi_x = diagm(vec(mesh.dxidx[1, dim, :, i]))
       metrics_eta_x = diagm(vec(mesh.dxidx[2, dim, :, i]))
@@ -88,7 +88,7 @@ function test_curvilinear(mesh, sbp, eqn, opts)
       println("S2 = \n", S2)
       D = Hinv*(S2 + 0.5*E_all[:, :, dim, i])
       D2 = D*Ivec
-      @fact norm(D2) --> roughly(0.0, atol=1e-12)
+      @test isapprox( norm(D2), 0.0) atol=1e-12
 =#
     end
 
@@ -106,7 +106,7 @@ function test_curvilinear(mesh, sbp, eqn, opts)
     for dim=1:Tdim
       lhs = D[:, :, dim]*Ivec
       rhs = Hinv*(E[:, :, dim] - E_all[:, :, dim, i])*Ivec
-      @fact norm(lhs - rhs) --> roughly(0.0, atol=1e-12)
+      @test isapprox( norm(lhs - rhs), 0.0) atol=1e-12
     end
   end
 #=

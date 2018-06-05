@@ -4,7 +4,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -14,6 +14,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 import MPI
 using Input
 using PETSc2
@@ -33,13 +34,13 @@ include("test_jacp.jl")
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Euler 4 process tests -----") do
+@testset "----- Running Euler 4 process tests -----" begin
 
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array{String}(nargs)
     copy!(tags, ARGS)
   end
 
@@ -50,7 +51,3 @@ end
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()
-
-

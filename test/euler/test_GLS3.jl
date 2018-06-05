@@ -2,14 +2,14 @@
   This function tests GLS for a given state loaded in the eqn object.
   This function is not a test function, but is called by test functions.
 """
-function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts)
+function test_GLS(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractSolutionData{Tsol, Tres}, opts) where {Tsol, Tres, Tmsh}
 
   eqn.params.tau_type = 2
   Dxi = diagm(1./sbp.w)*sbp.Q[:, :, 1]
   Deta = diagm(1./sbp.w)*sbp.Q[:, :, 2]
 
   # create indices
-  idx_range = Array(UnitRange{Int64}, mesh.numNodesPerElement)
+  idx_range = Array{UnitRange{Int64}}(mesh.numNodesPerElement)
   for i=1:mesh.numNodesPerElement
     start_idx = (i-1)*mesh.numDofPerNode + 1
     end_idx = i*mesh.numDofPerNode
@@ -102,14 +102,14 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
     fancy_L  = A1_tilde*Dx_tilde + A2_tilde*Dy_tilde
     gls_operator = fancy_L.'*middle_tilde*fancy_L
     
-    @fact isSymmetric(gls_operator, 1e-12) --> true
-    #println("max asymmetry = ", maximum(abs(gls_operator - gls_operator.')))
+    @test ( isSymmetric(gls_operator, 1e-12) )== true
+    #println("max asymmetry = ", maximum(abs.(gls_operator - gls_operator.')))
 
     gls_test = -gls_operator*q_el
 
     gls_code = reshape(copy(eqn.res[:, :, el]), size_block)
 
-    @fact gls_code --> roughly(gls_test, atol=1e-12)
+    @test isapprox( gls_code, gls_test) atol=1e-12
 #    println("gls_test = \n", gls_test)
 #    println("gls_code = \n", gls_code)
 
@@ -120,12 +120,12 @@ function test_GLS{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, eqn::Abstract
 #    println("elemetn $el middle_term = \n", middle_term)
 #    println("element $el gls_term = \n", gls_term)
 
-    @fact gls_term --> roughly(gls_test, atol=1e-12)
+    @test isapprox( gls_term, gls_test) atol=1e-12
     # test matrix transpose
     tmp1 = A1_tilde.'*middle_term
     tmp2 = A2_tilde.'*middle_term
     gls_test2 = -(Dx_tilde.'*tmp1 + Dy_tilde.'*tmp2)
-    @fact gls_test2 --> roughly(gls_test, atol=1e-12)
+    @test isapprox( gls_test2, gls_test) atol=1e-12
 
 
   end  # end loop over elements
@@ -151,7 +151,7 @@ function test_gls_channel(mesh, sbp, eqn, opts)
   =#
 
 
-  facts("----- Testing GLS3 channel -----") do
+  @testset "----- Testing GLS3 channel -----" begin
  #   resize!(ARGS, 1)
  #   ARGS[1] = "input_vals_channel_gls.jl"
  #   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
@@ -163,7 +163,7 @@ function test_gls_channel(mesh, sbp, eqn, opts)
 end
 
 test_gls_channel_inputname = "input_vals_channel.jl"
-test_gls_channel_moddict = Dict{ASCIIString, Any}("solve" => false, "variable_type" => :entropy, "new_fname" => "input_vals_channel_gls")
+test_gls_channel_moddict = Dict{String, Any}("solve" => false, "variable_type" => :entropy, "new_fname" => "input_vals_channel_gls")
 #test_gls_channel(mesh, sbp, eqn, opts)
 add_func3!(EulerTests, test_gls_channel, test_gls_channel_inputname, test_gls_channel_moddict, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
@@ -174,7 +174,7 @@ add_func3!(EulerTests, test_gls_channel, test_gls_channel_inputname, test_gls_ch
 function test_gls_vortex()
   for p = 1:4
     if true
-      facts("----- Testing GLS3 p$p  on isentropic vortex -----") do
+      @testset "----- Testing GLS3 p$p  on isentropic vortex -----" begin
         # test on isentropic vortex
         include("input_vals_vortex3.jl")
         arg_dict["order"] = p
@@ -207,7 +207,7 @@ end
 function test_gls_fd()
   for p = 1:4
     if true
-      facts("----- Performing GLS3 p$p finite difference checks -----") do
+      @testset "----- Performing GLS3 p$p finite difference checks -----" begin
         ARGS[1] = "input_vals_vortex3_gls.jl"
         mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
@@ -286,7 +286,7 @@ function test_gls_fd()
           tol = 0.003
           for k = 1:len
             if abs(jac_fd[k,j]) > 1e-4
-              @fact abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j]) --> less_than(tol)
+              @test  abs((jac_c[k, j] - jac_fd[k, j])/jac_c[k,j])  < tol
             end
           end
         end

@@ -1,5 +1,5 @@
 function test_convergence_p2_3dg()
-  facts("---- P2 Conservative 3DG Convergence Tests -----") do
+  @testset "---- P2 Conservative 3DG Convergence Tests -----" begin
     start_dir = pwd()
 
     resize!(ARGS, 1)
@@ -13,9 +13,8 @@ function test_convergence_p2_3dg()
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
-    include("calc_line.jl")
 
-    slope = calc_line()
+    slope = calc_line2()
     println("slope = ", slope)
 
     data = readdlm("err_data.dat")
@@ -25,12 +24,10 @@ function test_convergence_p2_3dg()
     slope_val = 3.08
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
   end
 
   return nothing
 end
-
-test_convergence_p2_3dg()

@@ -29,6 +29,12 @@ cd ./simpleODE/
   err=$((err + tmp))
 cd $start_dir
 
+cd ./elliptic
+  $jj $jflags ./runtests.jl $tags
+  tmp=$?
+  err=$((err + tmp))
+cd $start_dir
+
 echo " "
 echo "runtests_serial.sh retval: $err"
 

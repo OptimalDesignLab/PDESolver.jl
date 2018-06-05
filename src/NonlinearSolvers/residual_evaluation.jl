@@ -110,8 +110,8 @@ end
   Aliasing restrictions: none
 
 """
-function assembleResidual{T}(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; 
-                             assemble_edgeres=true, zero_resvec=true)
+function assembleResidual(mesh, sbp, eqn, opts, res_vec::AbstractArray{T, 1}; 
+                          assemble_edgeres=true, zero_resvec=true) where T
 # assembles all of the residuals into res_vec
 # no aliasing concerns
 #TODO: clarify zero_resvec (why not used for both calls?)
@@ -148,7 +148,7 @@ end
   Aliasing Restrictions: none
 
 """->
-function array1DTo3D{T}(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1})
+function array1DTo3D(mesh, sbp, eqn, opts, q_vec::AbstractArray{T, 1}) where T
 # scatters the q_vec to the 3d array eqn.q
 # no aliasing concerns here
   array1DTo3D(mesh, sbp, eqn, opts, q_vec, eqn.q)

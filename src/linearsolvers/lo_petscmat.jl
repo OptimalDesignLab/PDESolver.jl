@@ -12,7 +12,7 @@
    * A: a PetscMat
 
 """
-type PetscMatLO <: AbstractPetscMatLO
+mutable struct PetscMatLO <: AbstractPetscMatLO
   A::PetscMat
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec

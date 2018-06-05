@@ -24,11 +24,11 @@ import PDESolver.evalFunctionalDeriv
 
   This funciton is not compatible with `precompute_q_bndry` = false
 """
-function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
-                           func_deriv_arr::Abstract3DArray)
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
@@ -66,11 +66,11 @@ mesh nodes.
 *  None
 
 """->
-function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
-                           func_deriv_arr::Abstract3DArray)
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   integrand = zeros(eqn.q_bndry)
 
@@ -114,11 +114,11 @@ end  # End function calcFunctionalDeriv
   Method for LiftCoefficient, which delegates most of the computation to the
   Lift functional.
 """
-function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
                            functionalData::LiftCoefficient,
-                           func_deriv_arr::Abstract3DArray)
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData.lift, func_deriv_arr)
 
@@ -155,11 +155,11 @@ degrees of freedom at the node.
 
 """->
 
-function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
-                            q::AbstractArray{Tsol,1},
-                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                            functionalData::BoundaryForceData{Tsol,:lift})
+function calcIntegrandDeriv(opts, params::ParamType{2},
+          q::AbstractArray{Tsol,1},
+          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+          functionalData::BoundaryForceData{Tsol,:lift}) where {Tsol, Tres, Tmsh}
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -176,11 +176,11 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
   return nothing
 end
 
-function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
-                            q::AbstractArray{Tsol,1},
-                            aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                            functionalData::BoundaryForceData{Tsol,:drag})
+function calcIntegrandDeriv(opts, params::ParamType{2},
+          q::AbstractArray{Tsol,1},
+          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
+          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+          functionalData::BoundaryForceData{Tsol,:drag}) where {Tsol, Tres, Tmsh}
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -197,12 +197,12 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
   return nothing
 end
 
-function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
-                            q::AbstractArray{Tsol,1},
-                            aux_vars::AbstractArray{Tres, 1},
-                            nrm::AbstractArray{Tmsh},
-                            integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-                            functionalData::MassFlowData)
+function calcIntegrandDeriv(opts, params::ParamType{2},
+          q::AbstractArray{Tsol,1},
+          aux_vars::AbstractArray{Tres, 1},
+          nrm::AbstractArray{Tmsh},
+          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+          functionalData::MassFlowData) where {Tsol, Tres, Tmsh}
 
   node_info = [1, 2, 3]
   h = 1e-20

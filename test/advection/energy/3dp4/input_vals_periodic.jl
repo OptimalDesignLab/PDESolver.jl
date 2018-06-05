@@ -1,4 +1,4 @@
-arg_dict = Dict{ASCIIString, Any}(
+arg_dict = Dict{String, Any}(
 "physics" => "Advection",
 "dimensions" => 3,
 "use_DG" => true,

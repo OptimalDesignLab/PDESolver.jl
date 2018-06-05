@@ -14,7 +14,7 @@ function test_staggered()
   fill!(eqn.res, 0.0)
   AdvectionEquationMod.calcVolumeIntegralsStaggered(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts)
 
-  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res - res_orig), 0.0) atol=1e-13
 
   # test face integrals
   fill!(eqn.res, 0.0)
@@ -24,7 +24,7 @@ function test_staggered()
   fill!(eqn.res, 0.0)
   AdvectionEquationMod.calcFaceIntegralsStaggered_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts, eqn.flux_func)
 
-  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res - res_orig), 0.0) atol=1e-13
 
 
 
@@ -61,7 +61,7 @@ function test_staggered()
   fill!(eqn.res, 0.0)
   AdvectionEquationMod.calcVolumeIntegralsStaggered(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts)
 
-  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res - res_orig), 0.0) atol=1e-13
 
   # test face integrals
   fill!(eqn.res, 0.0)
@@ -71,7 +71,7 @@ function test_staggered()
   fill!(eqn.res, 0.0)
   AdvectionEquationMod.calcFaceIntegralsStaggered_nopre(mesh, mesh.mesh2, sbp, mesh.sbp2, eqn, opts, eqn.flux_func)
 
-  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res - res_orig), 0.0) atol=1e-13
 
 
 

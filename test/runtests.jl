@@ -18,9 +18,13 @@ println("after Euler tests, pwd = ", pwd())
 cd("../simpleODE")
 resize!(ARGS, length(args_orig))  # reset to default
 copy!(ARGS, args_orig)
+TestFinalizeMPI = false
+include(joinpath(pwd(), "runtests.jl"))
+
+cd("../elliptic")
+resize!(ARGS, length(args_orig))
+copy!(ARGS, args_orig)
 TestFinalizeMPI = true
 include(joinpath(pwd(), "runtests.jl"))
 
 cd("../")
-
-FactCheck.exitstatus()

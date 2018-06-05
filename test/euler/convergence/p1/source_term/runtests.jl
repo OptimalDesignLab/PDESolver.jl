@@ -1,5 +1,5 @@
 function test_convergence_p1_source()
-  facts("---- P1 Conservative DG source -----") do
+  @testset "---- P1 Conservative DG source -----" begin
     start_dir = pwd()
 
     resize!(ARGS, 1)
@@ -13,7 +13,6 @@ function test_convergence_p1_source()
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     cd("..")
-    include("calc_line.jl")
 
     slope = calc_line()
     println("slope = ", slope)
@@ -25,12 +24,10 @@ function test_convergence_p1_source()
     slope_val = 2.30
     slope_margin = 0.1
 
-    @fact slope --> greater_than(slope_val - slope_margin)
-    @fact slope --> less_than(slope_val + slope_margin)
+    @test  slope  > slope_val - slope_margin
+    @test  slope  < slope_val + slope_margin
 
   end  # end facts block
 
   return nothing
 end
-
-test_convergence_p1_source()

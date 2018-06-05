@@ -20,9 +20,9 @@ This function evaluates the simple ODE equation.
 *  None
 
 """->
-function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                       sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
-                       opts::Dict, t = 0.0)
+function evalResidual(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::SimpleODEData{Tsol, Tres, Tdim},
+opts::Dict, t = 0.0) where {Tmsh, Tsol, Tres, Tdim}
 
   myrank = mesh.myrank
   params = eqn.params
@@ -59,10 +59,10 @@ function evalResidual{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
 
 end   # end of function evalResidual
 
-function evalEquation{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
-                                           t)
+function evalEquation(mesh::AbstractMesh{Tmsh},
+                   sbp::AbstractSBP,
+                   eqn::SimpleODEData{Tsol, Tres, Tdim}, opts,
+                   t) where {Tmsh, Tsol, Tres, Tdim}
 
   dxidx = mesh.dxidx
   q = eqn.q
@@ -125,8 +125,8 @@ end
 
   Aliasing restrictions: none
 """->
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-              eqn::SimpleODEData{Tsol, Tres}, opts)
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+eqn::SimpleODEData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   println("Entering Simple ODE Module")
   return nothing

@@ -12,7 +12,7 @@
   This is a container passed to all low level function, useful for storing
   miscellaneous parameters or constants
 """
-type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
+mutable struct ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   LFalpha::Float64  # alpha for the Lax-Friedrich flux
   alpha_x::Float64
   alpha_y::Float64
@@ -48,7 +48,7 @@ type ParamType{Tsol, Tres, Tdim} <: AbstractParamType{Tdim}
   t_barrier3::Float64
   t_barriers::Array{Float64, 1}
   =#
-  function ParamType(mesh, sbp, opts)
+  function ParamType{Tsol, Tres, Tdim}(mesh, sbp, opts) where {Tsol, Tres, Tdim} 
     LFalpha = opts["LFalpha"]
     myrank = mesh.myrank
     if DB_LEVEL >= 1
@@ -102,17 +102,17 @@ end
 """
   Convenient alias for all 2D ParamTypes
 """
-typealias ParamType2{Tsol, Tres} ParamType{Tsol, Tres, 2}
+ParamType2{Tsol, Tres} =  ParamType{Tsol, Tres, 2}
 
 """
   Convenient alias for all 3D ParamTypes
 """
-typealias ParamType3{Tsol, Tres} ParamType{Tsol, Tres, 3}
+ParamType3{Tsol, Tres} =  ParamType{Tsol, Tres, 3}
 
 """
   All ParamTypes, without static parameters specified
 """
-typealias ParamTypes Union{ParamType2, ParamType3}
+const ParamTypes = Union{ParamType2, ParamType3}
 
 """
 ### AdvectionEquationMod.AdvectionData_
@@ -126,7 +126,7 @@ typealias ParamTypes Union{ParamType2, ParamType3}
   This type is (ultimately) a subtype of [`AbstractSolutionData`](@ref) 
   and contains all the required fields.
 """
-type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
+mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
 
   # params::ParamType{Tdim}
   params::ParamType{Tsol, Tres, Tdim}
@@ -165,7 +165,7 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
   flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+  function AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -229,24 +229,24 @@ type AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tres, Tdim}
       eqn.flux_face = zeros(Tres, 1, numfacenodes, mesh.numInterfaces)
 
       if mesh.isDG
-        eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+        eqn.flux_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
         for i=1:mesh.npeers
           eqn.flux_sharedface[i] = zeros(Tres, 1, numfacenodes,
                                          mesh.peer_face_counts[i])
         end
       else
-        eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+        eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
       end  # end if isDG
 
     else
       eqn.flux_face = zeros(Tres, 0, 0, 0)
-      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
     end  # end if precompute_face_flux
 
     if mesh.isDG
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
     else
-      eqn.shared_data = Array(SharedFaceData, 0)
+      eqn.shared_data = Array{SharedFaceData}(0)
     end
 
     return eqn
@@ -273,7 +273,7 @@ Gets the type parameters for mesh and equation objects.
 * `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
 
 """->
-function getAllTypeParams{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts)
+function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tres, Tdim, Tmsh}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   tuple = (Tsol, Tres, Tdim, Tmsh)
 

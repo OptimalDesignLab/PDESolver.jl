@@ -1,3 +1,0 @@
-# log of performance results
-# date    time  branch name   elapsed time  bytes allocated
-2016-7-29 12:34 master 44.991869345 5624005998

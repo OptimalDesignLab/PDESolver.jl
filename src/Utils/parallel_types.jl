@@ -45,7 +45,7 @@
                 mesh.shared_interfaces field, before using this field
 
 """
-type SharedFaceData{T} <: AbstractSharedFaceData{T}
+mutable struct SharedFaceData{T} <: AbstractSharedFaceData{T}
   peernum::Int
   peeridx::Int
   myrank::Int
@@ -81,8 +81,8 @@ end
     q_recv: the receive buffer
 
 """
-function SharedFaceData{T}(mesh::AbstractMesh, peeridx::Int,  
-                        q_send::Array{T, 3}, q_recv::Array{T, 3})
+function SharedFaceData(mesh::AbstractMesh, peeridx::Int,  
+                     q_send::Array{T, 3}, q_recv::Array{T, 3}) where T
 # create a SharedFaceData for a given peer
 
   peernum = mesh.peer_parts[peeridx]
@@ -118,7 +118,7 @@ import Base.copy
   This function may only be called after receiving is complete,
   otherwise an exception is thrown.
 """
-function copy{T}(data::SharedFaceData{T})
+function copy(data::SharedFaceData{T}) where T
 
 
   @assert data.recv_waited 
@@ -159,7 +159,7 @@ import Base.copy!
   This function may only be called after receiving is complete,
   otherwise an exception is thrown.
 """
-function copy!{T}(dest::SharedFaceData{T}, src::SharedFaceData{T})
+function copy!(dest::SharedFaceData{T}, src::SharedFaceData{T}) where T
 
   # if a communication is in progress, copying would leave the buffers in
   # an undefind state
@@ -206,12 +206,12 @@ end
     data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
               mesh.peer_parts[i]
 """
-function getSharedFaceData{Tsol}( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts)
+function getSharedFaceData( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts) where Tsol
 # return the vector of SharedFaceData used by the equation object constructor
 
   @assert mesh.isDG
 
-  data_vec = Array(SharedFaceData{Tsol}, mesh.npeers)
+  data_vec = Array{SharedFaceData{Tsol}}(mesh.npeers)
   if opts["parallel_data"] == "face"
     dim2 =  mesh.numNodesPerFace
     dim3_send = mesh.peer_face_counts
@@ -226,8 +226,8 @@ function getSharedFaceData{Tsol}( ::Type{Tsol}, mesh::AbstractMesh, sbp::Abstrac
   end
 
   for i=1:mesh.npeers
-    qsend = Array(Tsol, mesh.numDofPerNode, dim2,dim3_send[i])
-    qrecv = Array(Tsol, mesh.numDofPerNode, dim2, dim3_recv[i])
+    qsend = Array{Tsol}(mesh.numDofPerNode, dim2,dim3_send[i])
+    qrecv = Array{Tsol}(mesh.numDofPerNode, dim2, dim3_recv[i])
     data_vec[i] = SharedFaceData(mesh, i, qsend, qrecv)
   end
 
@@ -240,7 +240,7 @@ end
   This function verifies all the receives have been waited on for the 
   supplied SharedFaceData objects
 """
-function assertReceivesWaited{T}(shared_data::Vector{SharedFaceData{T}})
+function assertReceivesWaited(shared_data::Vector{SharedFaceData{T}}) where T
 
   for i=1:length(shared_data)
     data_i = shared_data[i]
@@ -264,7 +264,7 @@ end
 
     val: number of receives that have been waited on
 """
-function assertSendsConsistent{T}(shared_data::Vector{SharedFaceData{T}})
+function assertSendsConsistent(shared_data::Vector{SharedFaceData{T}}) where T
 
   nvals = length(shared_data)
   val = 0
@@ -284,7 +284,7 @@ end
 """
   Like assertSendsConsistent, but for the receives
 """
-function assertReceivesConsistent{T}(shared_data::Vector{SharedFaceData{T}})
+function assertReceivesConsistent(shared_data::Vector{SharedFaceData{T}}) where T
 
   nvals = length(shared_data)
   val = 0
@@ -307,11 +307,11 @@ end
   This function is like MPI.Waitall, operating on the sends of a vector of 
   SharedFaceData objects
 """
-function waitAllSends{T}(shared_data::Vector{SharedFaceData{T}})
+function waitAllSends(shared_data::Vector{SharedFaceData{T}}) where T
 
   # MPI.Requests are (currently) mutable, and therefore have reference semantics
   npeers = length(shared_data)
-  send_reqs = Array(MPI.Request, npeers)
+  send_reqs = Array{MPI.Request}(npeers)
   for i=1:npeers
     send_reqs[i] = shared_data[i].send_req
   end
@@ -334,11 +334,11 @@ end
   This function is like MPI.Waitall, operating on the recvs of a vector of 
   SharedFaceData objects
 """
-function waitAllReceives{T}(shared_data::Vector{SharedFaceData{T}})
+function waitAllReceives(shared_data::Vector{SharedFaceData{T}}) where T
 
   # MPI.Requests are (currently) mutable, and therefore have reference semantics
   npeers = length(shared_data)
-  recv_reqs = Array(MPI.Request, npeers)
+  recv_reqs = Array{MPI.Request}(npeers)
   for i=1:npeers
     recv_reqs[i] = shared_data[i].recv_req
   end
@@ -359,13 +359,13 @@ end
 
 
 # static buffer of Request objects
-_waitall_reqs = Array(MPI.Request, 50)
+_waitall_reqs = Array{MPI.Request}(50)
 """
   Like MPI.WaitAny, but operates on the receives of  a vector of SharedFaceData.
   Only the index of the Request that was waited on is returned, 
   the Status and recv_waited fields of hte SharedFaceData are updated internally
 """
-function waitAnyReceive{T}(shared_data::Vector{SharedFaceData{T}})
+function waitAnyReceive(shared_data::Vector{SharedFaceData{T}}) where T
 
   npeers = length(shared_data)
   resize!(_waitall_reqs, npeers)

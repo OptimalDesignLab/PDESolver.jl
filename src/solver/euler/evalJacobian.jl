@@ -1,4 +1,4 @@
-import PDESolver: evalJacobian
+import PDESolver: evalJacobian, evalJacobianStrong
 
 """
   Euler implementation of `evalJacobian`.  Currently only supports the
@@ -41,17 +41,24 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 #    println("stabilizing @time printed above")
   end
 
+
+
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("face integral @time printed above")
   end
+
+
 
   time.t_sharedface_diff += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("evalSharedFaceIntegrals @time printed above")
   end
 
+
+
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
+
 #  println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
@@ -63,6 +70,28 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   return nothing
 end
+
+
+
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::EulerData, 
+                      opts::Dict, assembler::AssembleElementData, t=0.0;
+                      start_comm=false)
+# currently this function neglects the SAT terms (including boundary conditions)
+
+  time = eqn.params.time
+  eqn.params.t = t  # record t to params
+  myrank = mesh.myrank
+
+
+  time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
+    calcVolumeIntegralsStrong_nopre_diff(mesh, sbp, eqn, opts, assembler)
+#    println("volume integral @time printed above")
+  end
+
+  return nothing
+end
+
 
 
 """
@@ -78,9 +107,9 @@ end
    * eqn
    * opts
 """
-function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
-                       eqn::AbstractEulerData{Tsol, Tres}, opts)
+function dataPrep_diff(mesh::AbstractMesh{Tmsh},
+     sbp::AbstractSBP,
+     eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 # this is almost the exact list of everything we *shouldn't* be storing, but
@@ -144,9 +173,9 @@ end # end function dataPrep
    * opts
    * assembler
 """
-function evalVolumeIntegrals_diff{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, assembler::AssembleElementData)
+                             opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
 
@@ -178,10 +207,10 @@ end  # end evalVolumeIntegrals
    * opts
    * assembler.
 """
-function evalBoundaryIntegrals_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalBoundaryIntegrals_diff(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts,
-                               assembler::AssembleElementData)
+                               assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
   if mesh.isDG
     # when precompute_boundary_flux == false, this fuunction does the
@@ -206,9 +235,9 @@ end  # end evalBoundaryIntegrals
    * opts
    * assembler
 """
-function addStabilization_diff{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
+function addStabilization_diff(mesh::AbstractMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                          assembler::AssembleElementData)
+                          assembler::AssembleElementData) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
 
@@ -253,10 +282,10 @@ end
    * opts
    * assembler
 """
-function evalFaceIntegrals_diff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
-                                sbp::AbstractSBP,
-                                eqn::EulerData{Tsol}, opts,
-                                assembler::AssembleElementData)
+function evalFaceIntegrals_diff(mesh::AbstractDGMesh{Tmsh},
+                    sbp::AbstractSBP,
+                    eqn::EulerData{Tsol}, opts,
+                    assembler::AssembleElementData) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -318,9 +347,9 @@ end
    * opts
    * assembler
 """
-function evalSourceTerm_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalSourceTerm_diff(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                     opts, assembler::AssembleElementData)
+                     opts, assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # source terms are not a function of q, so they don't affect the Jacobian

@@ -36,6 +36,21 @@ then
   cd ..
 fi
 
+if [[ $TEST_ELLIPTIC == "1" ]];
+then
+  cd ./elliptic
+  julia ./runtests.jl tag_shorttest
+  err=$(( err + $?))
+
+  #mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  #err=$(( err + $?))
+
+  #mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
+  #err=$(( err + $?))
+
+  cd ..
+fi
+
 if [[ $TEST_SIMPLEODE == "1" ]];
 then
   cd ./simpleODE

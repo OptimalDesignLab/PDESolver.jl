@@ -23,13 +23,13 @@
 
   params: `sat`, `roe_vars`, `roe_vars_dot`, `euler_fluxjac`, `p_dot` must not be used
 """
-function RoeSolver_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
-                                     q::AbstractArray{Tsol,1},
-                                     qg::AbstractArray{Tsol, 1},
-                                     aux_vars::AbstractArray{Tres, 1},
-                                     nrm::AbstractArray{Tmsh,1},
-                                     fluxL_dot::AbstractArray{Tres, 2},
-                                     fluxR_dot::AbstractArray{Tres, 2})
+function RoeSolver_diff(params::ParamType{2, :conservative},
+                   q::AbstractArray{Tsol,1},
+                   qg::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh,1},
+                   fluxL_dot::AbstractArray{Tres, 2},
+                   fluxR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
 
   # SAT terms are used for ensuring consistency with the physical problem. Its
   # similar to upwinding which adds dissipation to the problem. SATs on the
@@ -216,13 +216,13 @@ function RoeSolver_diff{Tmsh, Tsol, Tres}(params::ParamType{2, :conservative},
 
 end # ends the function RoeSolver
 
-function RoeSolver_diff{Tmsh, Tsol, Tres}(params::ParamType{3, :conservative},
-                                     q::AbstractArray{Tsol,1},
-                                     qg::AbstractArray{Tsol, 1},
-                                     aux_vars::AbstractArray{Tres, 1},
-                                     nrm::AbstractArray{Tmsh,1},
-                                     fluxL_dot::AbstractArray{Tres, 2},
-                                     fluxR_dot::AbstractArray{Tres, 2})
+function RoeSolver_diff(params::ParamType{3, :conservative},
+                   q::AbstractArray{Tsol,1},
+                   qg::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh,1},
+                   fluxL_dot::AbstractArray{Tres, 2},
+                   fluxR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
 
   # SAT terms are used for ensuring consistency with the physical problem. Its
   # similar to upwinding which adds dissipation to the problem. SATs on the
@@ -436,13 +436,13 @@ end # ends the function RoeSolver
 
 
 
-function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
-                             roe_vars::AbstractArray{Tsol, 1},
-                             roe_vars_dot::AbstractArray{Tsol, 1},
-                             dq::AbstractArray{Tsol,1},
-                             nrm::AbstractArray{Tmsh,1},
-                             sat_jacL::AbstractArray{Tsol,2},
-                             sat_jacR::AbstractArray{Tsol,2})
+function calcSAT_diff(params::ParamType{2},
+                 roe_vars::AbstractArray{Tsol, 1},
+                 roe_vars_dot::AbstractArray{Tsol, 1},
+                 dq::AbstractArray{Tsol,1},
+                 nrm::AbstractArray{Tmsh,1},
+                 sat_jacL::AbstractArray{Tsol,2},
+                 sat_jacR::AbstractArray{Tsol,2}) where {Tmsh, Tsol}
 # roe_vars = [u, v, H] at Roe average 
 # roe_vars_dot contains all the non-zero derivatives of the roe_vars packed
 # into a vector
@@ -1207,13 +1207,13 @@ function calcSAT_diff{Tmsh, Tsol}(params::ParamType{2},
 end  # End function calcSAT
 
 
-@fastmath function calcSAT_diff{Tmsh, Tsol}(params::ParamType{3},
+@fastmath function calcSAT_diff(params::ParamType{3},
                              roe_vars::AbstractArray{Tsol, 1},
                              roe_vars_dot::AbstractArray{Tsol, 1},
                              dq::AbstractArray{Tsol,1},
                              nrm::AbstractArray{Tmsh,1},
                              sat_jacL::AbstractArray{Tsol,2},
-                             sat_jacR::AbstractArray{Tsol,2})
+                             sat_jacR::AbstractArray{Tsol,2}) where {Tmsh, Tsol}
   # roe_vars = [u, v, w, H] at Roe average 
   # roe_vars_dot contains all the non-zero derivatives of the roe_vars packed
   # into a vector
@@ -2194,12 +2194,12 @@ end  # End function calcSAT
 
 
 
-function calcLFFlux_diff{Tmsh, Tsol, Tres, Tdim}(
+function calcLFFlux_diff(
                       params::ParamType{Tdim, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tsol, 1},
                       dir::AbstractArray{Tmsh, 1},
-                      F_dotL::AbstractMatrix{Tres}, F_dotR::AbstractMatrix{Tres})
+                      F_dotL::AbstractMatrix{Tres}, F_dotR::AbstractMatrix{Tres}) where {Tmsh, Tsol, Tres, Tdim}
 
   numDofPerNode = length(qL)
 #  lambda_dotL = zeros(Tres, numDofPerNode)

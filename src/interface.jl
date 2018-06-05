@@ -20,12 +20,13 @@
   by other parts of the solver, particularly the NonlinearSolvers.  See
   interfaces.md for details
 
-  Inputs:
-    mesh: an AbstractMesh describing the mesh on which to solve the physics
-    sbp: an SBP operator
-    eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
-    opts: the options dictionary
-    t: the current time value, defaults to 0.0
+  **Inputs**
+
+   * mesh: an AbstractMesh describing the mesh on which to solve the physics
+   * sbp: an SBP operator
+   * eqn: a subtype of AbstractSolution data, used to store all of the data used by the physics module
+   * opts: the options dictionary
+   * t: the current time value, defaults to 0.0
 
   #TODO: list required options keys
 """
@@ -124,6 +125,38 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 end
 
 """
+  This function evaluates the Jacobian of the strong form of the spatial
+  residual.  Note that the residual is written
+
+  du/dt = -(Q * f) + SAT
+
+  Note the negative sign.
+
+  Currently this function neglects the SAT terms (both interface and boundary
+  conditions)
+
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * eqn: AbstractSolutionData (physics modules should specialize this
+          argument)
+   * opts: options dictionary
+   * assembler: object that must be passed to `assembleElement` and 
+                `assembleInterface`
+"""
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::AbstractSolutionData, opts::Dict, 
+                      assembler::AssembleElementData, t=0.0;
+                      start_comm=false)
+
+
+  throw(ErrorException("Generic fallback evalJacobianStrongDiag reached: did you forget to extend evalJacobian() with a new method for your AbstractSolutionData?"))
+
+end
+
+
+"""
   Creates a functional object.
 
   Each physics modules should extend this function with a new method,
@@ -145,17 +178,16 @@ end
                  [`AbstractIntegralFunctional`](@ref), although this is not
                  required.
 """
-function createFunctional{I<:Integer}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                    eqn::AbstractSolutionData, opts,
-                                    functional_name::AbstractString,
-                                    functional_bcs::Vector{I})
+function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+                        eqn::AbstractSolutionData, opts,
+                        functional_name::AbstractString,
+                        functional_bcs::Vector{I}) where I<:Integer
 
 
 
   error("generic fallback for createFunctional() reached.  Did you forget to extend createFunctional() with a new method for your AbstractSolutionData?")
 
 end
-
 
 
 """
@@ -176,9 +208,9 @@ end
                         This type determines the functional being computed and
                         holds all the relevant data.
 """
-function evalFunctional{Tmsh, Tsol}(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
-                        functionalData::AbstractFunctional)
+function evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
+            functionalData::AbstractFunctional) where {Tmsh, Tsol}
 
   error("Generic fallback for evalFunctional() reached: did you forget to extend evalFunctional() with a new method for you AbstractSolutionData")
 
@@ -207,11 +239,11 @@ end
 
   This funciton is not compatible with `precompute_q_bndry` = false
 """
-function evalFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
-                           func_deriv_arr::Abstract3DArray)
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   error("Generic fallback for evalFunctionalDeriv() reached: did you forget to extend evalFunctionalDeriv() with a new method for you AbstractSolutionData")
 

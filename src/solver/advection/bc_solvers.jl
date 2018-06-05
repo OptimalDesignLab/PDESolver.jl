@@ -70,7 +70,7 @@ each boundary. It is called at the nodal level
 *  `bndryflux` : Boundary flux at the particular node
 
 """
-function RoeSolver{Tsol}(params::ParamType2, u::Tsol, u_bc, nrm)
+function RoeSolver(params::ParamType2, u::Tsol, u_bc, nrm) where Tsol
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
     #=
@@ -84,7 +84,7 @@ function RoeSolver{Tsol}(params::ParamType2, u::Tsol, u_bc, nrm)
   return bndryflux
 end # end function RoeSolver
 
-function RoeSolver{Tsol}(params::ParamType3, u::Tsol, u_bc, nrm)
+function RoeSolver(params::ParamType3, u::Tsol, u_bc, nrm) where Tsol
     alpha_x = params.alpha_x
     alpha_y = params.alpha_y
     alpha_z = params.alpha_z

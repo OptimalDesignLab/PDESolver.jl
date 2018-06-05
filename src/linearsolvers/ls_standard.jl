@@ -243,9 +243,9 @@ function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
   return nothing
 end
 
-function _linearSolve{Tlo <: AbstractDenseLO, Tpc}(
-                      ls::StandardLinearSolver{Tpc, Tlo},
-                      b::AbstractVector, x::AbstractVector; trans=false)
+function _linearSolve(
+ls::StandardLinearSolver{Tpc, Tlo},
+b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractDenseLO, Tpc}
 
   @assert typeof(ls.pc) <: PCNone
 
@@ -283,9 +283,9 @@ end
 """
 global const SKYLAKE_STACKSMASH=true
 
-function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
-                      ls::StandardLinearSolver{Tpc, Tlo},
-                      b::AbstractVector, x::AbstractVector; trans=false)
+function _linearSolve(
+ls::StandardLinearSolver{Tpc, Tlo},
+b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractSparseDirectLO, Tpc}
 
   @assert typeof(ls.pc) <: PCNone
 
@@ -318,9 +318,9 @@ function _linearSolve{Tlo <: AbstractSparseDirectLO, Tpc}(
 end
 
 
-function _linearSolve{Tlo <: PetscLO , Tpc}(
-                      ls::StandardLinearSolver{Tpc, Tlo},
-                      b::AbstractVector, x::AbstractVector; trans=false)
+function _linearSolve(
+ls::StandardLinearSolver{Tpc, Tlo},
+b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
 
   myrank = ls.myrank
   pc2 = getBasePC(ls.pc)

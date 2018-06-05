@@ -7,7 +7,7 @@
   There is probably a bit-twiddling way of doing this faster
 
 """
-function absvalue{T <: Complex}(x::T)
+function absvalue(x::T) where T <: Complex
 
   c_part = flipsign(imag(x), real(x))
   return T(abs(real(x)), c_part)
@@ -29,7 +29,7 @@ function absvalue(x)   # general fallback method
 end
 
 # array method
-function absvalue{T}(x::AbstractArray{T})
+function absvalue(x::AbstractArray{T}) where T
 
   x2 = copy(x)
   for i=1:length(x)

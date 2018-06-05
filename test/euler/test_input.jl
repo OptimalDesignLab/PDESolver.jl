@@ -3,23 +3,23 @@
   This function tests whether the known keys list works correctly
 """
 function test_input()
-  facts("---- Testing input processing ------") do
+  @testset "---- Testing input processing ------" begin
 
     extract_path = joinpath(Pkg.dir("PDESolver"), "src/input/extract_keys.jl")
 
     include(extract_path)
 #    include("known_keys.jl")
-    @fact haskey(Input.KNOWN_KEYS, "key1") --> false
-    @fact haskey(Input.KNOWN_KEYS, "smb_name") --> true
-    @fact haskey(Input.KNOWN_KEYS, "var1") --> false
+    @test ( haskey(Input.KNOWN_KEYS, "key1") )== false
+    @test ( haskey(Input.KNOWN_KEYS, "smb_name") )== true
+    @test ( haskey(Input.KNOWN_KEYS, "var1") )== false
 
     arg_dict = Input.read_input_file("input_test.jl")
-    @fact Input.checkKeys(arg_dict, Input.KNOWN_KEYS) --> 1
+    @test ( Input.checkKeys(arg_dict, Input.KNOWN_KEYS) )== 1
 
     arg_dict["numBC"] = 1
     arg_dict["BC1"] = [0, 0]
 
-    @fact_throws Inputs.checkBCOptions(arg_dict)
+    @test_throws Exception  Inputs.checkBCOptions(arg_dict)
 
     # pick another random input file
     opts = Input.read_input("input_vals_channel.jl")
@@ -29,7 +29,7 @@ function test_input()
     Input.read_input(opts)
 
     for (key, val) in opts
-      @fact val --> opts_orig[key]
+      @test ( val )== opts_orig[key]
     end
     
 

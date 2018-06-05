@@ -1,3 +1,32 @@
+function checkInput()
+
+  if haskey(ENV, "PDESOLVER_BUNDLE_DEPS")
+
+    if !haskey(ENV, "PDESOLVER_PKGDIR")
+      error("PDESOLVER_PKGDIR environment variable must be specified when bundling dependencies")
+    end
+
+    pkgdir = ENV["PDESOLVER_PKGDIR"]
+    if !isdir(pkgdir)
+      error("PDESOLVER_PKGDIR $pkgdir must exist")
+    end
+
+    if length(readdir(pkgdir)) != 0
+      error("PDESOLVER_PKGDIR $pkgdir must be empty directory")
+    end
+
+  end
+
+  if haskey(ENV, "PDESOLVER_UNBUNDLE_DEPS")
+
+    if haskey(ENV, "PDESOLVER_PKGDIR")
+      error("Environment variable PDESOLVER_PKGDIR should not be set when unbundling dependencies (PDESOLVER_UNBUNDLE_DEPS).  Copy the contents of the directory directory PDESOLVER_PKGDIR to the Julia package directory (eg. ~/.julia/v0.6) on the new machine")
+    end
+  end
+
+  return nothing
+end
+
 
 """
   This function determines if a git identifier is a commit or something else
@@ -15,11 +44,13 @@
 function is_commit(pkg_dir::AbstractString, hash::AbstractString)
 
   start_dir = pwd()
-  cd(pkg_dir)
+  if pkg_dir != ""
+    cd(pkg_dir)
+  end
   
   iscommit = false
   try
-    vals = readall(`git show-ref | grep $hash`)
+    vals = readstring(`git show-ref \| grep $hash`)
     # make sure this is an exact match
     name = split(vals, '/')[end]
     if name[1:end-1] == hash
@@ -52,11 +83,11 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 
   start_dir = pwd()
   cd(pkg_dir)
-#  branch_name = readall(`git rev-parse --abbrev-ref HEAD`)
+#  branch_name = readstring(`git rev-parse --abbrev-ref HEAD`)
 #  if branch_name[1:end-1] != new_branchname
 #    run(`git checkout -b pdesolver_version $hash`)
 #  end
-  iscommit = is_commit(pkg_dir, hash)
+  iscommit = is_commit("", hash)
   run(`git checkout $hash`)
 
   if iscommit
@@ -64,6 +95,7 @@ function set_hash(pkg_dir::AbstractString, hash::AbstractString)
   end
   cd(start_dir)
 
+  println("finished setting hash")
 end
 
 """
@@ -136,8 +168,19 @@ function reset_repo(pkg_name::AbstractString)
   run(`git clean -x -f -d`) # remove any files not under version control
 end
 
+"""
+  This function downloads packages to a specified directory, in preparation for
+  copying them to a machine without internet access.
 
-function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, f)
+  **Inputs**
+
+   * dir: the directory to put the packages into
+   * pkg_name: the name of the package
+   * git_url: the git URL of the package
+   * git_commit: the name of a commit/tag/branch to checkout
+   * f: an IO to write logging messages to
+"""
+function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::AbstractString, git_commit::AbstractString, f::IO)
 # clone all packages into a specified directory, without installing any of them
   println(f, "Bundling package $pkg_name")
 
@@ -153,7 +196,7 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
 
   try
     run(`git clone $git_url`)
-    println(f, "ls of pwd() = ", readall(`ls`))
+    println(f, "ls of pwd() = ", readstring(`ls`))
     name_ext = string(pkg_name, ".jl")
     run(`mv -v ./$name_ext ./$pkg_name`)
     set_hash("./$pkg_name", git_commit)
@@ -178,7 +221,36 @@ function bundle_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abst
   cd(start_dir)
 end
 
-function unbundle_pkg(dir::AbstractString, pkg_name::AbstractString, f)
+"""
+  Unbundle packages and install them, without accessing the internet.
+  This is the inverse function to `bundle_pkg()`.
+
+  For this to work, the contents of the directory created by 
+  PDESOLVER_BUNDLE_DEPS should be copied to the new machine and placed in the
+  Julia package directory (ie. ~/.julia/v0.6 or JULIA_PKGDIR).  When done,
+  the contents of this directory should look like
+
+  ~/.julia/v0.6:
+    - PDESolver
+    - ODLCommonTools
+    - PumiInterface
+    - etc...
+
+
+  Note that the order in which the dependencies is installed is important.
+  They must be installed in an order such that all the dependencies of a
+  package are installed before the package itself
+
+  The order in which packages are installed is determined by the order in
+  which they appear listed in `build.jl`.
+
+  **Inputs**
+
+   * dir: the julia package directory
+   * pkg_name: the name of the package
+   * f: an IO object to write logging messages to
+"""
+function unbundle_pkg(dir::AbstractString, pkg_name::AbstractString, f::IO)
 # install a package by directly calling the build.jl script
 # this bypasses the REQUIRE file, and therefore any internet access
 # the dependencies must be installed in order for this to work
