@@ -1,4 +1,4 @@
-facts("---- Crank-Nicolson Convergence Tests, PETSc + CS Jacobian -----") do
+@testset "---- Crank-Nicolson Convergence Tests, PETSc + CS Jacobian -----" begin
 start_dir = pwd()
 
 resize!(ARGS, 1)
@@ -28,13 +28,13 @@ err_vals = data[:, 2]
 slope_val = 2.00
 slope_margin = 0.1
 
-@fact slope --> greater_than(slope_val - slope_margin)
-@fact slope --> less_than(slope_val + slope_margin)
+@test  slope  > slope_val - slope_margin
+@test  slope  < slope_val + slope_margin
 
 err_val = 0.09095728504176116 
 slope_fac = 1.25
 # println("err_vals[1] = ", err_vals[1])
-@fact err_vals[1] --> greater_than(err_val/slope_fac)
-@fact err_vals[1] --> less_than(err_val*slope_fac)
+@test  err_vals[1]  > err_val/slope_fac
+@test  err_vals[1]  < err_val*slope_fac
 
 end

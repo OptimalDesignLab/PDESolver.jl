@@ -17,9 +17,9 @@
 """->
 # used by AbstractSolutionData Constructor
 # mid level functions
-function calcMassMatrixInverse{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                                                  sbp::AbstractSBP, 
-                                                  eqn::AbstractSolutionData{Tsol, Tres})
+function calcMassMatrixInverse(mesh::AbstractMesh{Tmsh}, 
+                               sbp::AbstractSBP, 
+                               eqn::AbstractSolutionData{Tsol, Tres}) where {Tmsh,  Tsol, Tres}
 # calculate the inverse mass matrix so it can be applied to the entire solution vector
 # mass matrix is diagonal, stores in vector eqn.Minv
 
@@ -58,9 +58,9 @@ end     # end of calcMassMatrixInverse function
     M: vector containing mass matrix
 
 """->
-function calcMassMatrix{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                                           sbp::AbstractSBP, 
-                                           eqn::AbstractSolutionData{Tsol, Tres})
+function calcMassMatrix(mesh::AbstractMesh{Tmsh}, 
+                        sbp::AbstractSBP, 
+                        eqn::AbstractSolutionData{Tsol, Tres}) where {Tmsh,  Tsol, Tres}
 # calculate the (diagonal) mass matrix as a vector
 # return the vector M
 
@@ -97,9 +97,9 @@ end     # end of calcMassMatrix function
 """->
 # calcMassMatrixInverse3D: 
 #   calculates the inverse mass matrix, returning it as a 3D array suitable for application to eqn.res
-function calcMassMatrixInverse3D{Tmsh,  Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                                                  sbp::AbstractSBP, 
-                                                  eqn::AbstractSolutionData{Tsol, Tres})
+function calcMassMatrixInverse3D(mesh::AbstractMesh{Tmsh}, 
+                               sbp::AbstractSBP, 
+                               eqn::AbstractSolutionData{Tsol, Tres}) where {Tmsh,  Tsol, Tres}
 
   Minv3D = zeros(Tmsh, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
@@ -137,8 +137,8 @@ end
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't really need to Tdim)
-function applyMassMatrixInverse{Tsol, Tres}(eqn::AbstractSolutionData{Tsol, Tres}, 
-                                            res_vec::AbstractVector{Tsol})
+function applyMassMatrixInverse(eqn::AbstractSolutionData{Tsol, Tres}, 
+                                res_vec::AbstractVector{Tsol}) where {Tsol, Tres}
   # apply the inverse mass matrix stored eqn to res_vec
 
   ndof = length(res_vec)

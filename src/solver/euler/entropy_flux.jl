@@ -11,7 +11,7 @@ function getPsi(params::ParamType{3, :conservative}, q_vals::AbstractVector, nrm
   return nrm[1]*q_vals[2] + nrm[2]*q_vals[3] +nrm[3]*q_vals[4]
 end
 
-function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector)
+function getPsi(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector) where Tsol
 
   numDofPerNode, numNodesPerElement = size(qL)
   psiL = zeros(Tsol, numNodesPerElement)
@@ -47,10 +47,10 @@ end
   Outputs:
     rhs: the value of the integral
 """
-function computeInterfacePotentialFlux{Tdim, Tsol, Tres}(
+function computeInterfacePotentialFlux(
                 params::ParamType{Tdim, :conservative, Tsol, Tres}, 
                 iface::Interface, sbpface, nrm_scaled::AbstractMatrix, 
-                qL::AbstractMatrix, qR::AbstractMatrix)
+                qL::AbstractMatrix, qR::AbstractMatrix) where {Tdim, Tsol, Tres}
 # compute the potential flux then compute the reduction with Eface
 
   
@@ -70,10 +70,10 @@ end
 
   TODO: this is currently broken for SparseFace SBP operators
 """
-function reduceEface{Tdim, Tsol, Tres, Tmsh}(
-                     params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-                     iface::Interface, sbpface, nrm_scaled::AbstractMatrix,
-                     qL::AbstractMatrix, qR::AbstractMatrix)
+function reduceEface(
+params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+iface::Interface, sbpface, nrm_scaled::AbstractMatrix,
+qL::AbstractMatrix, qR::AbstractMatrix) where {Tdim, Tsol, Tres, Tmsh}
   # compute Ex_gamma kappa * psiL + Ex_gamma_nu * psiR, where x is one 
   # of either x or y, as specified by dir
 
@@ -99,7 +99,7 @@ function reduceEface{Tdim, Tsol, Tres, Tmsh}(
 end
 
 #TODO: this can be made more efficient once SBP stores E
-function computeVolumePotentialFlux{Tdim, Tsol, Tres}(params::ParamType{Tdim, :conservative, Tsol, Tres}, sbp, q_i::AbstractMatrix, dxidx)
+function computeVolumePotentialFlux(params::ParamType{Tdim, :conservative, Tsol, Tres}, sbp, q_i::AbstractMatrix, dxidx) where {Tdim, Tsol, Tres}
   
   numDofPerNode, numNodesPerElement = size(q_i)
 
@@ -138,8 +138,8 @@ end
 
   The (scalar) value is returned.
 """
-function calcEntropyIntegral{Tsol, Tres, Tmsh, Tdim}(mesh::AbstractMesh{Tmsh}, 
-             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector)
+function calcEntropyIntegral(mesh::AbstractMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector) where {Tsol, Tres, Tmsh, Tdim}
 
   val = zero(Tsol)
   for i=1:mesh.numDofPerNode:mesh.numDof
@@ -161,10 +161,10 @@ end
 
   The (scalar) value is returned.
 """
-function contractResEntropyVars{Tsol, Tres, Tmsh, Tdim}(
+function contractResEntropyVars(
              mesh::AbstractDGMesh{Tmsh}, 
              sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector,
-             res_vec::AbstractVector)
+             res_vec::AbstractVector) where {Tsol, Tres, Tmsh, Tdim}
 
   val = zero(Tres)
   w_vals = eqn.params.v_vals
@@ -187,10 +187,10 @@ end
 """
   Like contractResEntropyVars, but uses a special summation technique
 """
-function contractResEntropyVars2{Tsol, Tres, Tmsh, Tdim}(
+function contractResEntropyVars2(
              mesh::AbstractDGMesh{Tmsh}, 
              sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector,
-             res_vec::AbstractVector)
+             res_vec::AbstractVector) where {Tsol, Tres, Tmsh, Tdim}
 
   vals = zeros(Tres, mesh.numNodes)
   w_vals = eqn.params.v_vals
@@ -228,8 +228,8 @@ end
   This function returns an array of length numDofPerNode containing the 
   result for each variable.
 """
-function integrateQ{Tsol, Tres, Tmsh, Tdim}( mesh::AbstractDGMesh{Tmsh}, 
-             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector)
+function integrateQ( mesh::AbstractDGMesh{Tmsh}, 
+             sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, q_vec::AbstractVector) where {Tsol, Tres, Tmsh, Tdim}
 
   vals = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numDofPerNode:mesh.numDof
@@ -251,10 +251,10 @@ end
   potential flux is calculated from q_arr.
   Does not work in parallel
 """
-function calcInterfacePotentialFlux{Tsol, Tres, Tdim, Tmsh}(
-                                   mesh::AbstractDGMesh{Tmsh}, sbp, 
-                                   eqn::EulerData{Tsol, Tres, Tdim}, opts, 
-                                   q_arr::Abstract3DArray)
+function calcInterfacePotentialFlux(
+           mesh::AbstractDGMesh{Tmsh}, sbp, 
+           eqn::EulerData{Tsol, Tres, Tdim}, opts, 
+           q_arr::Abstract3DArray) where {Tsol, Tres, Tdim, Tmsh}
 
   if mesh.commsize != 1
     throw(ErrorException("cannot perform reduction over interfaces in parallel"))
@@ -282,9 +282,9 @@ end
   This performs a blocking MPI collective operation, so all processes must
   call this function at the same time.
 """
-function calcVolumePotentialFlux{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, 
-                                 sbp, eqn::EulerData{Tsol, Tres}, opts, 
-                                 q_arr::Abstract3DArray)
+function calcVolumePotentialFlux(mesh::AbstractMesh{Tmsh}, 
+               sbp, eqn::EulerData{Tsol, Tres}, opts, 
+               q_arr::Abstract3DArray) where {Tsol, Tres, Tmsh}
 
   val = zero(Tres)
   for i=1:mesh.numEl
@@ -319,9 +319,9 @@ end
 
   Aliasing restrictions: see calcVorticity
 """
-function calcEnstrophy{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,
-                                         eqn::EulerData{Tsol, Tres}, opts,
-                                         q_arr::Abstract3DArray{Tsol})
+function calcEnstrophy(mesh::AbstractMesh{Tmsh}, sbp,
+                       eqn::EulerData{Tsol, Tres}, opts,
+                       q_arr::Abstract3DArray{Tsol}) where {Tsol, Tres, Tmsh}
 
   @assert mesh.dim == 3
   Tdim = 3
@@ -355,7 +355,7 @@ function calcEnstrophy{Tsol, Tres, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,
 end
 
 
-function getVorticity{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres}, opts)
+function getVorticity(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # get an array of the vorticity at every node
 # also computes enstrophy
 
@@ -414,9 +414,9 @@ end
 
   Aliasing restrictions: none
 """
-function calcKineticEnergy{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh}, sbp, 
-                           eqn::EulerData{Tsol, Tres, Tdim}, opts, 
-                           q_vec::AbstractVector{Tsol})
+function calcKineticEnergy(mesh::AbstractMesh{Tmsh}, sbp, 
+   eqn::EulerData{Tsol, Tres, Tdim}, opts, 
+   q_vec::AbstractVector{Tsol}) where {Tsol, Tres, Tdim, Tmsh}
 
 
   val = zero(Tsol)
@@ -456,10 +456,10 @@ end
 
   Aliasing restrictions: none
 """
-function calcKineticEnergydt{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh{Tmsh},
-                              sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, 
-                              q_vec::AbstractVector{Tsol}, 
-                              res_vec::AbstractVector{Tres})
+function calcKineticEnergydt(mesh::AbstractMesh{Tmsh},
+      sbp, eqn::EulerData{Tsol, Tres, Tdim}, opts, 
+      q_vec::AbstractVector{Tsol}, 
+      res_vec::AbstractVector{Tres}) where {Tsol, Tres, Tdim, Tmsh}
 
   val = zero(Tres)
   for i=1:mesh.numDofPerNode:mesh.numDof

@@ -1,14 +1,14 @@
 
-abstract ExactSolutionType
+abstract type ExactSolutionType end
 
 export ExactSolutionType, calcErrorL2Norm
 
-type ExactPolynomial <: ExactSolutionType
+mutable struct ExactPolynomial <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPolynomial, 
+function (obj::ExactPolynomial)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   sigma = 0.5 
   gamma = params.gamma
   gamma_1 = params.gamma_1
@@ -37,12 +37,12 @@ function call{Tmsh, Tsol}(obj::ExactPolynomial,
 end
 
 
-type ExactPolynomial_1 <: ExactSolutionType
+mutable struct ExactPolynomial_1 <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPolynomial_1, 
+function (obj::ExactPolynomial_1)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   sigma = 0.5
   gamma = params.gamma
@@ -72,12 +72,12 @@ function call{Tmsh, Tsol}(obj::ExactPolynomial_1,
 end
 
 
-type ExactPolynomial_2 <: ExactSolutionType
+mutable struct ExactPolynomial_2 <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactPolynomial_2, 
+function (obj::ExactPolynomial_2)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   sigma = 0.5
   gamma = params.gamma
@@ -108,12 +108,12 @@ end
 
 
 
-type ExactTrigonometric <: ExactSolutionType
+mutable struct ExactTrigonometric <: ExactSolutionType
 end
-function call{Tmsh, Tsol}(obj::ExactTrigonometric, 
+function (obj::ExactTrigonometric)(
               xy::AbstractArray{Tmsh}, 
               params::ParamType{2},
-              qe::AbstractArray{Tsol, 1})
+              qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   sigma = 0.5
   pi = 3.14159265358979323846264338
   gamma = 1.4
@@ -157,7 +157,7 @@ function call{Tmsh, Tsol}(obj::ExactTrigonometric,
 end
 
 
-global const ExactDict = Dict{ASCIIString, ExactSolutionType}(
+global const ExactDict = Dict{String, ExactSolutionType}(
   "ExactTrigonometric" => ExactTrigonometric(),
   "ExactPolynomial"    => ExactPolynomial(),
   "ExactPolynomial_1"  => ExactPolynomial_1(),
@@ -165,13 +165,13 @@ global const ExactDict = Dict{ASCIIString, ExactSolutionType}(
 )
 
 
-function calcErrorL2Norm{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                          sbp::AbstractSBP,
-                          eqn::AbstractEulerData{Tsol, Tres},
-                          opts)
+function calcErrorL2Norm(mesh::AbstractMesh{Tmsh},
+        sbp::AbstractSBP,
+        eqn::AbstractEulerData{Tsol, Tres},
+        opts) where {Tmsh, Tsol, Tres}
   l2norm::Float64 = 0.
     lInfnorm::Float64 = 0.
-    qe = Array(Tsol, mesh.numDofPerNode)
+    qe = Array{Tsol}(mesh.numDofPerNode)
     exactFunc = ExactDict[opts["exactSolution"]]
 
   lInfnorm = -1.0

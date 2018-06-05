@@ -8,7 +8,7 @@
 """
   A special array type for holding a block-diagonal matrix
 """
-immutable DiagJac{T} <: AbstractArray{T, 2}
+struct DiagJac{T} <: AbstractArray{T, 2}
   A::Array{T, 3}
 end
 
@@ -25,7 +25,7 @@ end
    Only square block are supported at this time
 
 """
-function DiagJac{T}(::Type{T}, blocksize::Integer, nblock::Integer)
+function DiagJac(::Type{T}, blocksize::Integer, nblock::Integer) where T
 
   A = zeros(T, blocksize, blocksize, nblock)
 
@@ -181,11 +181,11 @@ end
 #------------------------------------------------------------------------------
 # New AssembleElementData type for getting the diagonal only
 
-type AssembleDiagJacData{T} <: AssembleElementData
+mutable struct AssembleDiagJacData{T} <: AssembleElementData
   A::DiagJac{T}
 end
 
-function AssembleDiagJacData{T}(mesh, sbp, eqn, opts, jac::DiagJac{T})
+function AssembleDiagJacData(mesh, sbp, eqn, opts, jac::DiagJac{T}) where T
 
   return AssembleDiagJacData{T}(jac)
 end
@@ -193,8 +193,8 @@ end
 """
   Assembles the volume integral contribution.
 """
-function assembleElement{T}(helper::AssembleDiagJacData, mesh::AbstractMesh,
-                            elnum::Integer, jac::AbstractArray{T, 4})
+function assembleElement(helper::AssembleDiagJacData, mesh::AbstractMesh,
+                         elnum::Integer, jac::AbstractArray{T, 4}) where T
 
   # depending on how dofs were assigned, this might not result in helper.A
   # having the same layout as the real Jacobian.  Need to make sure the
@@ -224,13 +224,13 @@ end
   Assembles contributions into an element-block matrix.  `jacLR` and `jacRL`
   are not used.
 """
-function assembleInterface{T}(helper::AssembleDiagJacData,
-                              sbpface::DenseFace,
-                              mesh::AbstractMesh, iface::Interface,
-                              jacLL::AbstractArray{T, 4},
-                              jacLR::AbstractArray{T, 4},
-                              jacRL::AbstractArray{T, 4},
-                              jacRR::AbstractArray{T, 4})
+function assembleInterface(helper::AssembleDiagJacData,
+                           sbpface::DenseFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
 
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
@@ -268,11 +268,11 @@ end
   Assembles contribution of the shared face terms into the element-block
   matrix.  `jacLR` is not used.
 """
-function assembleSharedFace{T}(helper::AssembleDiagJacData, sbpface::DenseFace,
-                               mesh::AbstractMesh,
-                               iface::Interface,
-                               jacLL::AbstractArray{T, 4},
-                               jacLR::AbstractArray{T, 4})
+function assembleSharedFace(helper::AssembleDiagJacData, sbpface::DenseFace,
+                            mesh::AbstractMesh,
+                            iface::Interface,
+                            jacLL::AbstractArray{T, 4},
+                            jacLR::AbstractArray{T, 4}) where T
 
 #    for p in permR # =1:numNodesPerElement
   for q=1:sbpface.stencilsize
@@ -301,10 +301,10 @@ end
 """
   Assembles the boundary terms into an element-block matrix.
 """
-function assembleBoundary{T}(helper::AssembleDiagJacData, sbpface::DenseFace,
-                               mesh::AbstractMesh,
-                               bndry::Boundary,
-                               jac::AbstractArray{T, 4})
+function assembleBoundary(helper::AssembleDiagJacData, sbpface::DenseFace,
+                            mesh::AbstractMesh,
+                            bndry::Boundary,
+                            jac::AbstractArray{T, 4}) where T
   for q=1:sbpface.stencilsize
     qL = sbpface.perm[q, bndry.face]
 
@@ -350,7 +350,7 @@ end
    * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
         have the unstable modes removed.
 """
-function filterDiagJac{T, T2}(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJac{T})
+function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJac{T}) where {T, T2}
 
   blocksize, blocksize, nblock = size(A.A)
   T3 = promote_type(T, T2)
@@ -414,9 +414,9 @@ end
 
    * `Jac`: matrix being modified
 """
-function removeUnstableModes!{T}(Jac::AbstractMatrix,
-                                 u::AbstractVector,
-                                 A::AbstractVector{T})
+function removeUnstableModes!(Jac::AbstractMatrix,
+                              u::AbstractVector,
+                              A::AbstractVector{T}) where T
   @assert( size(Jac,1) == size(Jac,2) == length(u) )
   n = size(Jac,1)
   # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
@@ -468,10 +468,10 @@ end
 
    * `Jacpert`: matrix perturbation
 """
-function findStablePerturbation!{T}(Jac::AbstractMatrix,
-                                    u::AbstractVector,
-                                    A::AbstractVector{T},
-                                    Jacpert::AbstractMatrix)
+function findStablePerturbation!(Jac::AbstractMatrix,
+                                 u::AbstractVector,
+                                 A::AbstractVector{T},
+                                 Jacpert::AbstractMatrix) where T
   @assert( size(Jac,1) == size(Jac,2) == size(Jacpert,1) == size(Jacpert,2)
            == length(u) )
   n = size(Jac,1)

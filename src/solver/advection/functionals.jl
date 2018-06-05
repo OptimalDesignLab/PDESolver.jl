@@ -16,7 +16,7 @@ objective function.
 *  `target_qFlux` : Target value for the functional qFlux
 
 """->
-type QfluxData{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct QfluxData{Topt} <: AbstractIntegralFunctional{Topt}
   bcnums::Array{Int,1}
   val::Topt
   target_qflux::Topt
@@ -25,7 +25,7 @@ end # End type OfluxData
 """
   Constructor for QfluxData
 """
-function QfluxDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts, bcnums)
+function QfluxDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, bcnums) where Topt
 
   val = zero(Topt)
   target_qflux = zero(Topt)
@@ -41,7 +41,7 @@ end
    * val: the value of the functional, initially 0.0
 
 """
-type IntegralQData{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct IntegralQData{Topt} <: AbstractIntegralFunctional{Topt}
   bcnums::Array{Int, 1}
   val::Topt
 end
@@ -49,8 +49,8 @@ end
 """
   Constructor for IntegralQData
 """
-function IntegralQDataConstructor{Topt}(::Type{Topt}, mesh, sbp, eqn, opts,
-                                        bcnums)
+function IntegralQDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                  bcnums) where Topt
 
   val = 0.0
   return IntegralQData{Topt}(bcnums, val)
@@ -60,11 +60,11 @@ end
 """
   See the generic method for docs.
 """
-function createFunctional{Tsol, I<:Integer}(mesh::AbstractMesh,
-                                    sbp::AbstractSBP,
-                                    eqn::AdvectionData{Tsol}, opts,
-                                    functional_name::AbstractString,
-                                    functional_bcs::Vector{I})
+function createFunctional(mesh::AbstractMesh,
+                  sbp::AbstractSBP,
+                  eqn::AdvectionData{Tsol}, opts,
+                  functional_name::AbstractString,
+                  functional_bcs::Vector{I}) where {Tsol, I<:Integer}
 
   func_constructor = FunctionalDict[functional_name]
   functional = func_constructor(Tsol, mesh, sbp, eqn, opts, functional_bcs)
@@ -79,7 +79,7 @@ end
   See `FunctionalDict` in the Euler module for descriptions of the constructors
   and arguments.
 """
-global const FunctionalDict = Dict{ASCIIString, Function}(
+global const FunctionalDict = Dict{String, Function}(
 "qflux" => QfluxDataConstructor,
 "integralq" => IntegralQDataConstructor,
 )

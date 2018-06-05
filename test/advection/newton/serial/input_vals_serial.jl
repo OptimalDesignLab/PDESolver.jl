@@ -1,4 +1,4 @@
-arg_dict = Dict{ASCIIString,Any}(
+arg_dict = Dict{String,Any}(
 "physics" => "Advection",
 "write_boundarynums" => false,
 "krylov_itermax" => 1000,

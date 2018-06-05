@@ -13,10 +13,10 @@ Input:
 Output:
 
 # """->
-function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
 
   Ma      = eqn.params.Ma
   Re      = eqn.params.Re
@@ -26,8 +26,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   interfaces  = sview(mesh.interfaces, :)
   nfaces      = length(mesh.interfaces)
   p    = opts["order"]
-  dq   = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  dqn  = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  dq   = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  dqn  = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   GtL  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   GtR  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   pMat  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -70,8 +70,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # It's logically simple but computationally expensive.
 
     # compute viscous flux and diffusion tensor
-    q_faceL = slice(eqn.q_face, :, 1, :, f)
-    q_faceR = slice(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
+    # Arrayviews returns a n x 1 x m array (ie. 3D, not 2D), so don't use it
+    q_faceL = sview(eqn.q_face, :, 1, :, f)
+    q_faceR = sview(eqn.q_face, :, 2, :, f)       # TODO: use sview instead of slice
     q_elemL = sview(eqn.q, :, :, elemL)
     q_elemR = sview(eqn.q, :, :, elemR)
     calcDiffusionTensor(eqn.params, q_faceL, GtL)
@@ -82,9 +83,9 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 
     # compute the face derivatives first, i.e., we first compute 
     # the derivatives at element nodes, and then do the interpolation.
-    dqdx_face  = Array(Tsol, Tdim, mesh.numDofPerNode, 2, mesh.numNodesPerFace)
-    dqdx_elemL = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
-    dqdx_elemR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
+    dqdx_face  = Array{Tsol}(Tdim, mesh.numDofPerNode, 2, mesh.numNodesPerFace)
+    dqdx_elemL = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
+    dqdx_elemR = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerElement)
     calcGradient(mesh, sbp, elemL, q_elemL, dqdx_elemL)
     calcGradient(mesh, sbp, elemR, q_elemR, dqdx_elemR)
 
@@ -93,15 +94,15 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     # then we will not need slice here any more.
     #
     # for d = 1 : Tdim
-      # dqdxL = slice(dqdx_elemL, d, :, :)
-      # dqdxR = slice(dqdx_elemR, d, :, :)
-      # dqdx_f = slice(dqdx_face, d, :, :, :)
+      # dqdxL = sview(dqdx_elemL, d, :, :)
+      # dqdxR = sview(dqdx_elemR, d, :, :)
+      # dqdx_f = sview(dqdx_face, d, :, :, :)
       # interiorfaceinterpolate(sbpface, face, dqdxL, dqdxR, dqdx_f)
     # end
 
     # # Now both G and dqdx are avaiable at face nodes  
-    # dqdx_faceL = slice(dqdx_face, :, :, 1, :)
-    # dqdx_faceR = slice(dqdx_face, :, :, 2, :)
+    # dqdx_faceL = sview(dqdx_face, :, :, 1, :)
+    # dqdx_faceR = sview(dqdx_face, :, :, 2, :)
     # calcFvis(params, GtL, dqdx_faceL, Fv_faceL)
     # calcFvis(params, GtR, dqdx_faceR, Fv_faceR)
 
@@ -113,8 +114,8 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
     calcFaceFvis(params, sbp, sbpface, q_elemL, q_elemR, dxidxL, jacL, dxidxR, jacR, face, Fv_face)
     Fv_faceL = sview(Fv_face, :,:,1,:)
     Fv_faceR = sview(Fv_face, :,:,2,:)
-    # diffL = maximum(abs(real(slice(Fv_face, :, :, 1, :) - Fv_faceL)))
-    # diffR = maximum(abs(real(slice(Fv_face, :, :, 2, :) - Fv_faceR)))
+    # diffL = maximum(abs.(real(view(Fv_face, :, :, 1, :) - Fv_faceL)))
+    # diffR = maximum(abs.(real(view(Fv_face, :, :, 2, :) - Fv_faceR)))
     # if (diffL > 1.e-8)
         # println(diffL)
     # end
@@ -208,10 +209,10 @@ function calcViscousFlux_interior{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
 end # end of function calcViscousFlux_interior
 
 
-function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
   # freestream info
   Ma = eqn.params.Ma
   Re = eqn.params.Re
@@ -233,8 +234,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
   Fv_bnd  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
   vecflux = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
   area_sum = sview(eqn.area_sum, :)
 
   # sigma = calcTraceInverseInequalityConst(sbp, sbpface)
@@ -246,7 +247,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
 
     # specify boundary value function
     # TODO: Put it into a function 
-    bnd_functor::AbstractBoundaryValueType
+    local bnd_functor::AbstractBoundaryValueType
     key_i = string("BC", iBC, "_name")
     val = opts[key_i]
     Gt_functor = calcDiffusionTensor
@@ -309,8 +310,8 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
       # then we will not need slice here any more.
       #
       for d = 1 : Tdim
-        q_x_node = slice(dqdx_elem, d, :, :)
-        q_x_face = slice(dqdx_face, d, :, :)
+        q_x_node = sview(dqdx_elem, d, :, :)
+        q_x_face = sview(dqdx_face, d, :, :)
         boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
       end
 
@@ -331,7 +332,7 @@ function calcViscousFlux_boundary{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tms
         end
       end
       # DEBUG BEGIN
-      # if maximum(abs(real(dq))) > 1.e-11
+      # if maximum(abs.(real(dq))) > 1.e-11
         # println(real(dq))
       # end
       # DEBUG END
@@ -406,14 +407,14 @@ Input:
 Output:
 
 """->
-function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EulerData{Tsol, Tres, Tdim},
-                                                          opts)
+function evalFaceIntegrals_vector(mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
   sbpface = mesh.sbpface
-  DxL = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
-  DxR = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  DxL = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  DxR = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
 
   GtL = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   GtR = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
@@ -426,14 +427,14 @@ function evalFaceIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{T
   numNodes_face = mesh.numNodesPerFace       # number of nodes on interfaces
   stencilsize = sbpface.stencilsize        # size of stencil for interpolation
 
-  RDxL = Array(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
-  RDxR = Array(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
+  RDxL = Array{Tmsh}(mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
+  RDxR = Array{Tmsh}(mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
   FvL  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)
   FvR  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)
   GtRDxL = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)
   GtRDxR = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)
-  nrm    = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  dq     =  Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  nrm    = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  dq     =  Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
 
   nfaces = length(mesh.interfaces)
 
@@ -503,13 +504,13 @@ Input:
 Output:
 
 """->
-function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                              sbp::AbstractSBP,
-                                                              eqn::EulerData{Tsol, Tres, Tdim},
-                                                              opts)
+function evalBoundaryIntegrals_vector(mesh::AbstractMesh{Tmsh},
+                                      sbp::AbstractSBP,
+                                      eqn::EulerData{Tsol, Tres, Tdim},
+                                      opts) where {Tmsh, Tsol, Tres, Tdim}
 
   sbpface = mesh.sbpface
-  Dx = Array(Tmsh, (mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
+  Dx = Array{Tmsh}((mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
   R = sview(sbpface.interp[:,:])
   w = sview(sbpface.wface, :)
   res = sview(eqn.res, :,:,:)
@@ -517,14 +518,14 @@ function evalBoundaryIntegrals_vector{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh
   numNodes_elem = mesh.numNodesPerElement
   numNodes_face = mesh.numNodesPerFace
   stencilsize   = sbpface.stencilsize
-  q_bnd = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  dq    = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_bnd = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  dq    = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   Gt = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
   RDx = zeros(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
   GtRDx = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)
-  nrm     = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
+  nrm     = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
 
   # loop over all the boundaries
   for bc = 1:mesh.numBC
@@ -590,10 +591,10 @@ Input:
 Output:
 
 # """->
-function weakdifferentiate2!{Tmsh, Tsbp, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                           sbp::AbstractSBP{Tsbp},
-                                                           eqn::EulerData{Tsol, Tres, Tdim},
-                                                           res::AbstractArray{Tres,3})
+function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractSBP{Tsbp},
+                             eqn::EulerData{Tsol, Tres, Tdim},
+                             res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tsol, Tres, Tdim}
   @assert (sbp.numnodes ==  size(res,2))
 
   dim             = Tdim
@@ -607,7 +608,7 @@ function weakdifferentiate2!{Tmsh, Tsbp, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tm
   Re = eqn.params.Re
   coef_nondim = Ma/Re 
 
-  Qx = Array(Tsbp, numNodesPerElem, numNodesPerElem, dim)
+  Qx = Array{Tsbp}(numNodesPerElem, numNodesPerElem, dim)
   Fv = zeros(Tres, Tdim, numDofsPerNode, numNodesPerElem)
   w = sview(sbp.w, :)
 

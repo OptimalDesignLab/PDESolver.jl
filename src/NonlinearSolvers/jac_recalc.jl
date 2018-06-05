@@ -6,7 +6,7 @@
   the Jacobian.  Each subtype defines a different policy for when to
   recalculate.
 """
-abstract RecalculationPolicy
+abstract type RecalculationPolicy end
 
 """
   This function returns the enum specifying whether the PC and/or LO should
@@ -162,7 +162,7 @@ global const RECALC_NONE = 4
 
   where "\$prefix" is the prefix passed into [`getRecalculationPolicy`](@ref)
 """
-type RecalculateFixedIntervals <: RecalculationPolicy
+mutable struct RecalculateFixedIntervals <: RecalculationPolicy
   prec_freq::Int  # recalculate this preconditioner every this many iterations
   jac_freq::Int   # recalculate the jacobian every this many iterations
   last_prec::Int  # last iteration the prec was recalculated
@@ -227,7 +227,7 @@ end
  This is useful when Newton's method is used inside other methods to solve
  easy problems.
 """
-type RecalculateNever <: RecalculationPolicy
+mutable struct RecalculateNever <: RecalculationPolicy
 end
 
 function RecalculateNever(opts, prefix="")
@@ -260,12 +260,12 @@ end
   
   The constructors must have the signature:
 
-    MyPolicyName(opts::Dict, prefix::ASCIIString)
+    MyPolicyName(opts::Dict, prefix::String)
 
   where `opts` is the options dictionary and `prefix` is the prefix passed into
   [`getRecalculationPolicy`](@ref).
 """
-global const RecalculationPolicyDict = Dict{ASCIIString, Any}(
+global const RecalculationPolicyDict = Dict{String, Any}(
 "RecalculateFixedIntervals" => RecalculateFixedIntervals,
 "RecalculateNever"          => RecalculateNever,
 )

@@ -8,7 +8,7 @@
 
    * none
 """
-type PCNone <: AbstractPC
+mutable struct PCNone <: AbstractPC
   is_shared::Bool
 end
 

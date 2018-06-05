@@ -1,16 +1,16 @@
 
-type SRC0 <: SRCType
+mutable struct SRC0 <: SRCType
 end
-function call(obj::SRC0, 
+function (obj::SRC0)(
               xy::AbstractVector, 
               f::AbstractArray)
   f[:] = 0.0
   return nothing
 end
 
-type SRC1 <: SRCType
+mutable struct SRC1 <: SRCType
 end
-function call(obj::SRC1, 
+function (obj::SRC1, 
               xy::AbstractVector, 
               f::AbstractArray)
   f[:] = 1.0
@@ -20,9 +20,9 @@ end
 #
 # a scalar diffusion coefficient, 10
 #
-type SrcExpTrigPoly0thDiffn <: SRCType
+mutable struct SrcExpTrigPoly0thDiffn <: SRCType
 end
-function call(obj::SrcExpTrigPoly0thDiffn, 
+function (obj::SrcExpTrigPoly0thDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   k = 2.0
@@ -37,9 +37,9 @@ end
 #
 # a scalar diffusion coefficient, 10
 #
-type SrcTrigPoly0thDiffn <: SRCType
+mutable struct SrcTrigPoly0thDiffn <: SRCType
 end
-function call(obj::SrcTrigPoly0thDiffn, 
+function (obj::SrcTrigPoly0thDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   n = 2.0
@@ -54,9 +54,9 @@ end
 #
 # a 2nd order diffusion coefficient tensor
 #
-type SrcTrigPoly2ndDiffn <: SRCType
+mutable struct SrcTrigPoly2ndDiffn <: SRCType
 end
-function call(obj::SrcTrigPoly2ndDiffn, 
+function (obj::SrcTrigPoly2ndDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   n = 2.0
@@ -80,9 +80,9 @@ end
 #
 # a 6th order diffusion coefficient tensor
 #
-type SrcTrigPoly6thDiffn <: SRCType
+mutable struct SrcTrigPoly6thDiffn <: SRCType
 end
-function call(obj::SrcTrigPoly6thDiffn, 
+function (obj::SrcTrigPoly6thDiffn)(
               xy::AbstractVector, 
               src::AbstractArray)
   n = 2.0
@@ -101,7 +101,7 @@ function call(obj::SrcTrigPoly6thDiffn,
   return nothing
 end
 
-global const SRCDict = Dict{ASCIIString, SRCType}(
+global const SRCDict = Dict{String, SRCType}(
  "SRC0" => SRC0(),
  "SRC1" => SRC1(),
  "SrcTrigPoly0thDiffn" => SrcTrigPoly0thDiffn(),
@@ -119,18 +119,17 @@ function getSrcFuntors(mesh::AbstractMesh,
   return nothing
 end
 
-function calcSource{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                            sbp::AbstractSBP,
-                                            eqn::EllipticData{Tsol, Tres, Tdim},
-                                            srcFunc::SRCType,
-                                            src::AbstractArray{Tres, 3})
+function calcSource(mesh::AbstractMesh{Tmsh},
+                    sbp::AbstractSBP,
+                    eqn::EllipticData{Tsol, Tres, Tdim},
+                    srcFunc::SRCType,
+                    src::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
   numElems = mesh.numEl
   numNodesPerElement = mesh.numNodesPerElement
-  # xy = Array(Tmsh, Tdim)
-  src_tmp = Array(eltype(src), size(src, 1))
+  # xy = Array{Tmsh}(Tdim)
+  src_tmp = Array{eltype(src)}(size(src, 1))
   for elem = 1:numElems
-    # @bp
     for n = 1:numNodesPerElement
       xy = sview(mesh.coords, :, n, elem)
 

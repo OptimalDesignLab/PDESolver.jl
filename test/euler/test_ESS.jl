@@ -4,16 +4,16 @@
   A way of calculating the entropy stable face integral, used for comparison
   and debugging.
 """
-function calcECFaceIntegralTest{Tdim, Tsol, Tres, Tmsh}(params::AbstractParamType{Tdim},
-                                sbpface::AbstractFace,
-                                iface::Interface,
-                                qL::AbstractMatrix{Tsol},
-                                qR::AbstractMatrix{Tsol}, 
-                                aux_vars::AbstractMatrix{Tres},
-                                nrm_face::AbstractArray{Tmsh, 2},
-                                functor::FluxType,
-                                resL::AbstractMatrix{Tres}, 
-                                resR::AbstractMatrix{Tres})
+function calcECFaceIntegralTest(params::AbstractParamType{Tdim},
+        sbpface::AbstractFace,
+        iface::Interface,
+        qL::AbstractMatrix{Tsol},
+        qR::AbstractMatrix{Tsol}, 
+        aux_vars::AbstractMatrix{Tres},
+        nrm_face::AbstractArray{Tmsh, 2},
+        functor::FluxType,
+        resL::AbstractMatrix{Tres}, 
+        resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 #  println("----- entered calcEss test -----")
 
@@ -86,7 +86,7 @@ end
 """
   Calculate the entropy flux psi at a node
 """
-function psi_vec{Tdim}(params::AbstractParamType{Tdim}, q_vals)
+function psi_vec(params::AbstractParamType{Tdim}, q_vals) where Tdim
   psi_vec = zeros(eltype(q_vals), Tdim)
   for i=1:Tdim
     psi_vec[i] = q_vals[i+1]
@@ -98,7 +98,7 @@ end
 """
   Calculate the entropy flux psi for an element.  
 """
-function getPsi{Tsol}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector)
+function getPsi(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, nrm::AbstractVector) where Tsol
 
   numDofPerNode, numNodesPerElement = size(qL)
   psiL = zeros(Tsol, numNodesPerElement)
@@ -126,7 +126,7 @@ end
   Calculate the boundary operator in the specified direction times
   the vector of entropy flux (psi) vals
 """
-function getEPsi{Tsol}(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, dir::Integer)
+function getEPsi(iface, sbpface, params,  qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, dir::Integer) where Tsol
   # this computes the regular E * psi
   # not what is needed for lemma 3
 #  println("----- entered getEPsi -----")
@@ -173,7 +173,7 @@ end
 """
   Contract resL and resR with entropy variables.
 """
-function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+function contractLHS(params, qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres}
 
 #  println("----- entered contractLHS -----")
 
@@ -185,14 +185,14 @@ end
 """
   Contract a residual array for an element with the entropy variables
 """
-function contractLHS{Tsol, Tres}(params, qL::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres})
+function contractLHS(params, qL::AbstractMatrix{Tsol}, resL::AbstractMatrix{Tres}) where {Tsol, Tres}
 
   numDofPerNode, numNodesPerElement = size(qL)
   resL_vec = reshape(resL, length(resL))
 
   wL = zeros(Tsol, numDofPerNode, numNodesPerElement)
 
-  aux_vars = Array(Tsol, 1)
+  aux_vars = Array{Tsol}(1)
 #  w_tmp = zeros(Tsol, numDofPerNode)
   for i=1:numNodesPerElement
     qL_i = qL[:, i]
@@ -267,12 +267,12 @@ end
 =#
 
   
-function entropyDissipativeRef{Tdim, Tsol, Tres, Tmsh}(
+function entropyDissipativeRef(
               params::AbstractParamType{Tdim},
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol},
               aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres})
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 #  println("----- entered entropyDissipativeRef -----")
   numDofPerNode = size(qL, 1)
@@ -411,15 +411,15 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
 
-      @fact norm(vec(resL_code - resL_test2)) --> roughly(0.0, atol=1e-12*length(resL_code))
-      @fact norm(vec(resR_code - resR_test2)) --> roughly(0.0, atol=1e-12*length(resR_code))
+      @test isapprox( norm(vec(resL_code - resL_test2)), 0.0) atol=1e-12*length(resL_code)
+      @test isapprox( norm(vec(resR_code - resR_test2)), 0.0) atol=1e-12*length(resR_code)
 
       #=
       for j=1:size(resL_code, 1)
         for k=1:size(resR_code, 2)
 
-          @fact resL_code[j, k] --> roughly(resL_test2[j, k], atol=1e-12)
-          @fact resR_code[j, k] --> roughly(resR_test2[j, k], atol=1e-12)
+          @test isapprox( resL_code[j, k], resL_test2[j, k]) atol=1e-12
+          @test isapprox( resR_code[j, k], resR_test2[j, k]) atol=1e-12
         end
       end
       =#
@@ -436,7 +436,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
-        @fact eqn.res[k, j, i] --> roughly(res_test[k, j, i], atol=1e-12)
+        @test isapprox( eqn.res[k, j, i], res_test[k, j, i]) atol=1e-12
       end
     end
   end
@@ -478,7 +478,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     end
 =#
 
-    @fact -(lhsL + lhsR) --> roughly(rhs, atol=1e-12)
+    @test isapprox( -(lhsL + lhsR), rhs) atol=1e-12
     total_potentialflux -= lhsL + lhsR
 
 
@@ -562,12 +562,12 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
       end
       rhs_reduced = sum(E_d*psi_nrm)
 
-      @fact lhs_reduced --> roughly(-rhs_reduced, atol=1e-12)
+      @test isapprox( lhs_reduced, -rhs_reduced) atol=1e-12
 
       res_total[:, :] += lhs_tmp1
     end
     # check that this calculation is doing the same thing as the actual code
-    @fact res_total --> roughly(-eqn.res[:, :, i], atol=1e-12)
+    @test isapprox( res_total, -eqn.res[:, :, i]) atol=1e-12
 
 
 
@@ -578,7 +578,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 
 end
 
-function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=false, zero_penalty=false)
+function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, zero_penalty=false)
 # run entropy stability tests
 # test_ref: whether or not to compare against the reference implementations above
 # zero_penalty: test whether the entropy stability penalty should be zero
@@ -615,14 +615,14 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, resL2, resR2)
 
-      @fact norm(vec(resL - resL2)) --> roughly(0.0, atol=1e-12)
-      @fact norm(vec(resR - resR2)) --> roughly(0.0, atol=1e-12)
+      @test isapprox( norm(vec(resL - resL2)), 0.0) atol=1e-12
+      @test isapprox( norm(vec(resR - resR2)), 0.0) atol=1e-12
  
       #=
       for j=1:size(resL, 1)
         for k=1:size(resL, 2)
-          @fact abs(resL[j, k] - resL2[j, k]) --> roughly(0.0, atol=1e-12)
-          @fact abs(resR[j, k] - resR2[j, k]) --> roughly(0.0, atol=1e-12)
+          @test isapprox( abs(resL[j, k] - resL2[j, k]), 0.0) atol=1e-12
+          @test isapprox( abs(resR[j, k] - resR2[j, k]), 0.0) atol=1e-12
         end
       end
       =#
@@ -633,17 +633,17 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     resL_sum = sum(resL, 2)
     resR_sum = sum(resR, 2)
 
-    @fact resL_sum --> roughly(-resR_sum, atol=1e-13)
+    @test isapprox( resL_sum, -resR_sum) atol=1e-13
 
     if zero_penalty
-      @fact norm(vec(resL)) --> roughly(0.0, atol=1e-13)
-      @fact norm(vec(resR)) --> roughly(0.0, atol=1e-13)
+      @test isapprox( norm(vec(resL)), 0.0) atol=1e-13
+      @test isapprox( norm(vec(resR)), 0.0) atol=1e-13
  
       #=
       for j=1:mesh.numNodesPerElement
         for p=1:mesh.numDofPerNode
-          @fact resL[p, j] --> roughly(0.0, atol=1e-13)
-          @fact resR[p, j] --> roughly(0.0, atol=1e-13)
+          @test isapprox( resL[p, j], 0.0) atol=1e-13
+          @test isapprox( resR[p, j], 0.0) atol=1e-13
         end
       end
       =#
@@ -652,8 +652,8 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     # verify equality with Lax-Friedrich
     for i=1:size(resL, 1)
       for j=1:size(resL, 2)
-        @fact abs(resL[i, j] - resL3[i, j]) --> roughly(0.0, atol=1e-12)
-        @fact abs(resR[i, j] - resR3[i, j]) --> roughly(0.0, atol=1e-12)
+        @test isapprox( abs(resL[i, j] - resL3[i, j]), 0.0) atol=1e-12
+        @test isapprox( abs(resR[i, j] - resR3[i, j]), 0.0) atol=1e-12
       end
     end
 =#
@@ -688,7 +688,7 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
     delta_sL = sum(resL_reduced)
     delta_sR = sum(resR_reduced)
     delta_s = delta_sL + delta_sR
-    @fact delta_s --> less_than(eps())
+    @test  delta_s  < eps()
 
     if !(delta_s < eps())
       println("entropy growth at interface ", i)
@@ -700,7 +700,7 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::ASCIIString; test_ref=fal
       delta_sL2 = sum(resL_reduced2)
       delta_sR2 = sum(resR_reduced2)
       delta_s2 = delta_sL2 + delta_sR2
-      @fact delta_s2 --> less_than(eps())
+      @test  delta_s2  < eps()
     end
 
   end  # end loop over interfaces
@@ -734,7 +734,7 @@ function test_ESSBC(mesh, sbp, eqn, opts)
 
       # test: psi - w^T f(q) < 0
       psi_n = q[2]*nrm_xy[1] + q[3]*nrm_xy[2]
-      @fact psi_n - dot(w, bndry_flux) --> less_than_or_equal(1e-12)
+      @test  psi_n - dot(w, bndry_flux)  <= 1e-12
     end
   end
 
@@ -745,7 +745,7 @@ end
 """
   Used for debugging LW functions, not used for regular testing
 """
-function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts)
+function testLW(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, opts) where {Tsol, Tres, Tdim}
   # computes the Lax-Wendroff term using the maximum eigenvalue for all 
   # eigenvalue, turning it into Lax-Friedrich
   # compare agains LF
@@ -864,7 +864,7 @@ function testLW{Tsol, Tres, Tdim}(mesh, sbp, eqn::EulerEquationMod.EulerData{Tso
   return nothing
 end
 
-function applyPoly{Tsol, Tres}(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, p)
+function applyPoly(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, p) where {Tsol, Tres}
 # set the solution to be a polynomial of degree p of the entropy variables
 
   v_vals = zeros(Tsol, mesh.numDofPerNode)
@@ -894,12 +894,12 @@ end
 
 function factRes0(mesh, sbp, eqn, opts)
 
-  @fact norm(vec(eqn.res)) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(vec(eqn.res)), 0.0) atol=1e-13
   #=
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
-        @fact eqn.res[k, j, i] --> roughly(0.0, atol=1e-13)
+        @test isapprox( eqn.res[k, j, i], 0.0) atol=1e-13
       end
     end
   end
@@ -910,7 +910,7 @@ end
 
 
 function test_ESS()
-  facts("----- testing ESS -----") do
+  @testset "----- testing ESS -----" begin
     ARGS[1] = "input_vals_channel_dg_large.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
     # evaluate the residual to confirm it is zero

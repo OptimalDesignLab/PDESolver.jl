@@ -9,7 +9,8 @@ include("tags.jl")
 
 global const EmptyDict = Dict{Any, Any}()
 
-export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
+export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist,
+       not_isapprox
 
 """
   This type stores all the data that describes a set of tests and their
@@ -42,22 +43,22 @@ export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist
 
     tag_list: collection of all known tags
 """
-type TestList
+mutable struct TestList
   funcs::Vector{Function}  # functions containing the tests
-  func_tags::Vector{Vector{ASCIIString}}  # tags associated with each function
+  func_tags::Vector{Vector{String}}  # tags associated with each function
   func_type::Vector{Int}  # enum defining how to run the functino
-  input_name::Vector{ASCIIString} # the name of the input file for each function
+  input_name::Vector{String} # the name of the input file for each function
   input_mod::Vector{Dict}  # dictionary of modifications to input_name
-  tag_list::Set{ASCIIString}  # all known tags
+  tag_list::Set{String}  # all known tags
 
   function TestList()
     sizehint = 0  # initial length of vectors
-    funcs = Array(Function, sizehint)
-    func_tags = Array(Vector{ASCIIString}, sizehint)
-    func_type = Array(Int, sizehint)
-    input_name = Array(ASCIIString, sizehint)
-    input_mod = Array(Dict, sizehint)
-    tag_list = Set{ASCIIString}()
+    funcs = Array{Function}(sizehint)
+    func_tags = Array{Vector{String}}(sizehint)
+    func_type = Array{Int}(sizehint)
+    input_name = Array{String}(sizehint)
+    input_mod = Array{Dict}(sizehint)
+    tag_list = Set{String}()
     push!(tag_list, TAG_DEFAULT)
 
     return new(funcs, func_tags, func_type, input_name, input_mod, tag_list)
@@ -79,7 +80,7 @@ end  # end type definition
           the array. (optional)
 
 """
-function add_func1!(testlist::TestList, func::Function, tags::Array{ASCIIString}=ASCIIString[])
+function add_func1!(testlist::TestList, func::Function, tags::Array{String}=String[])
 
   check_tags(func, tags)
 
@@ -87,7 +88,7 @@ function add_func1!(testlist::TestList, func::Function, tags::Array{ASCIIString}
   push!(testlist.funcs, func)
 
   # tags
-  tag_list_full = Array(ASCIIString, length(tags)+1)
+  tag_list_full = Array{String}(length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
   push!(testlist.func_tags, tag_list_full)
@@ -122,8 +123,8 @@ end
           the array. (optional)
 
 """
-function add_func2!(testlist::TestList, func::Function, input_name::ASCIIString,
-                    tags::Array{ASCIIString}=ASCIIString[])
+function add_func2!(testlist::TestList, func::Function, input_name::String,
+                    tags::Array{String}=String[])
 
   check_tags(func, tags)
 
@@ -131,7 +132,7 @@ function add_func2!(testlist::TestList, func::Function, input_name::ASCIIString,
   push!(testlist.funcs, func)
 
   # tags
-  tag_list_full = Array(ASCIIString, length(tags)+1)
+  tag_list_full = Array{String}(length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
   push!(testlist.func_tags, tag_list_full)
@@ -166,8 +167,8 @@ end
           the array. (optional)
 
 """
-function add_func3!(testlist::TestList, func::Function, input_name::ASCIIString,
-                    mod_dict::Dict, tags::Array{ASCIIString}=ASCIIString[])
+function add_func3!(testlist::TestList, func::Function, input_name::String,
+                    mod_dict::Dict, tags::Array{String}=String[])
 
   check_tags(func, tags)
 
@@ -175,7 +176,7 @@ function add_func3!(testlist::TestList, func::Function, input_name::ASCIIString,
   push!(testlist.funcs, func)
 
   # tags
-  tag_list_full = Array(ASCIIString, length(tags)+1)
+  tag_list_full = Array{String}(length(tags)+1)
   tag_list_full[1] = TAG_DEFAULT
   tag_list_full[2:end] = tags
   push!(testlist.func_tags, tag_list_full)
@@ -207,7 +208,7 @@ end
 
   Outputs: none
 """
-function check_tags(func::Function, tags::Array{ASCIIString})
+function check_tags(func::Function, tags::Array{String})
 
   n = length(intersect(tags, LengthTags))
   if n > 1
@@ -233,12 +234,12 @@ end
   Inputs:
     testlist: a TestList loaded with functions
     prep_func = function used with test functions of type 2 or 3.  It must
-                have signature prep_func(fname::ASCIIString). fname is the
+                have signature prep_func(fname::String). fname is the
                 name of hte input file associated with the test function
     tags: an array of tags (optional)
 
 """
-function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCIIString}=ASCIIString[TAG_DEFAULT])
+function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{String}=String[TAG_DEFAULT])
 
   println("Running tests with tags matching = ", tags)
   tags_set = Set(tags)
@@ -312,6 +313,18 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{ASCI
 
   return nothing
 end
+
+"""
+  Helper function to compute !isapprox(args..., kwargs) in @test macros because
+
+  @test !isapprox(args..., kwargs...)
+
+  doesn't work.
+"""
+function not_isapprox(args...; kwargs...)
+  return !isapprox(args...; kwargs...)
+end
+
 
 
 end  # end module

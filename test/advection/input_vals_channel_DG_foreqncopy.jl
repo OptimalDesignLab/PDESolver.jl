@@ -10,7 +10,7 @@
 #   so this input file cannot be used for any other tests
 #---------------------------------------------------------------------
 
-arg_dict = Dict{ASCIIString, Any}(
+arg_dict = Dict{String, Any}(
 "physics" => "Advection",
 "run_type" => 1,
 "order" => 1,

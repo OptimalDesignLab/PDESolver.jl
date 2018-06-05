@@ -1,13 +1,13 @@
-type nonslipBC <: BCType
+mutable struct nonslipBC <: BCType
 end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::nonslipBC, 
-                                params::ParamType,
-                                q::AbstractArray{Tsol,1},  
-                                aux_vars::AbstractArray{Tres, 1},  
-                                x::AbstractArray{Tmsh,1}, 
-                                nrm_xy::AbstractArray{Tmsh,1}, 
-                                bndryflux::AbstractArray{Tres, 1})
+function (obj::nonslipBC)(
+              params::ParamType,
+              q::AbstractArray{Tsol,1},  
+              aux_vars::AbstractArray{Tres, 1},  
+              x::AbstractArray{Tmsh,1}, 
+              nrm_xy::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
 
   dim = length(nrm_xy)
 	qg = params.qg
@@ -31,16 +31,16 @@ function call{Tmsh, Tsol, Tres}(obj::nonslipBC,
 end
 
 
-type ExactChannelBC <: BCType
+mutable struct ExactChannelBC <: BCType
 end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC, 
-                                params::ParamType{3},
-                                q::AbstractArray{Tsol,1},  
-                                aux_vars::AbstractArray{Tres, 1},  
-                                xyz::AbstractArray{Tmsh,1}, 
-                                nrm_xy::AbstractArray{Tmsh,1}, 
-                                bndryflux::AbstractArray{Tres, 1})
+function (obj::ExactChannelBC)(
+              params::ParamType{3},
+              q::AbstractArray{Tsol,1},  
+              aux_vars::AbstractArray{Tres, 1},  
+              xyz::AbstractArray{Tmsh,1}, 
+              nrm_xy::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
 
   sigma = 0.01
   gamma = params.gamma
@@ -77,7 +77,7 @@ function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC,
     w += 0.2 * wInf
   end
 
-  qg = Array(Tsol, 5)
+  qg = Array{Tsol}(5)
 	qg[1] = rho
 	qg[2] = rho*u
 	qg[3] = rho*v
@@ -95,16 +95,14 @@ function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC,
 	return nothing
 end
 
-type ExactChannelBC <: BCType
-end
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC, 
-                                params::ParamType{2, :conservative},
-                                q::AbstractArray{Tsol,1},  
-                                aux_vars::AbstractArray{Tres, 1},  
-                                x::AbstractArray{Tmsh,1}, 
-                                nrm_xy::AbstractArray{Tmsh,1}, 
-                                bndryflux::AbstractArray{Tres, 1})
+function (obj::ExactChannelBC)(
+              params::ParamType{2, :conservative},
+              q::AbstractArray{Tsol,1},  
+              aux_vars::AbstractArray{Tres, 1},  
+              x::AbstractArray{Tmsh,1}, 
+              nrm_xy::AbstractArray{Tmsh,1}, 
+              bndryflux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
 
   # functor ExactChannel takes varibales on multiple nodes, so we need to reshape some variables
   xy = reshape(x, length(x), 1)
@@ -122,17 +120,17 @@ function call{Tmsh, Tsol, Tres}(obj::ExactChannelBC,
 	return nothing
 end
 
-type zeroPressGradientBC <: BCType
+mutable struct zeroPressGradientBC <: BCType
 end
 
 # low level function
-function call{Tmsh, Tsol, Tres}(obj::zeroPressGradientBC,
+function (obj::zeroPressGradientBC)(
                                 params::ParamType,
                                 q::AbstractArray{Tsol,1},
                                 aux_vars::AbstractArray{Tres, 1},
                                 x::AbstractArray{Tmsh,1},
                                 nrm_xy::AbstractArray{Tmsh,1},
-                                bndryflux::AbstractArray{Tres, 1})
+                                bndryflux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
 
 
   dim = length(nrm_xy)

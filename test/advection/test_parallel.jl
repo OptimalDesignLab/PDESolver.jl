@@ -8,10 +8,10 @@ function test_parallel_mpi()
   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
   # test the Utils parallel functions
-  facts("----- Testing Parallel Functions -----") do
+  @testset "----- Testing Parallel Functions -----" begin
     mesh.npeers = 1
     nfaces = length(mesh.bndryfaces)
-    shared_data = Array(SharedFaceData, mesh.npeers)
+    shared_data = Array{SharedFaceData}(mesh.npeers)
     resize!(mesh.bndries_local, mesh.npeers)
     resize!(mesh.bndries_remote, mesh.npeers)
     resize!(mesh.shared_interfaces, mesh.npeers)
@@ -20,15 +20,15 @@ function test_parallel_mpi()
     for i=1:mesh.npeers
       mesh.bndries_local[i] = mesh.bndryfaces
       mesh.bndries_remote[i] = mesh.bndryfaces
-      mesh.shared_interfaces[i] = Array(Interface, 0)
+      mesh.shared_interfaces[i] = Array{Interface}(0)
       q_send = zeros(mesh.numDofPerNode, mesh.numNodesPerFace, nfaces)
       q_recv = zeros(q_send)
       shared_data[i] = SharedFaceData(mesh, i, q_send, q_recv)
     end
 
     for i=1:mesh.npeers
-      @fact shared_data[i].send_req --> MPI.REQUEST_NULL
-      @fact shared_data[i].recv_req --> MPI.REQUEST_NULL
+      @test ( shared_data[i].send_req )== MPI.REQUEST_NULL
+      @test ( shared_data[i].recv_req )== MPI.REQUEST_NULL
     end
 
     data_i = shared_data[1]
@@ -42,7 +42,7 @@ function test_parallel_mpi()
       for j=1:mesh.numNodesPerFace
         coords = mesh.coords_bndry[:, j, i]
         val_exp = AdvectionEquationMod.calc_p4(eqn.params, coords, 0.0)
-        @fact buff[1, j, i] --> roughly(val_exp, atol=1e-13)
+        @test isapprox( buff[1, j, i], val_exp) atol=1e-13
       end
     end
 
@@ -53,7 +53,7 @@ function test_parallel_mpi()
     data_i.recv_status = MPI.Wait!(data_i.recv_req)
     # if the assertiosn do not trigger, then the test passes
     verifyReceiveCommunication(data_i)
-    @fact data_i.q_send --> roughly(data_i.q_recv, atol=1e-13)
+    @test isapprox( data_i.q_send, data_i.q_recv) atol=1e-13
 
     # test calcSharedFaceIntegrals
     mesh.npeers = 1
@@ -64,9 +64,9 @@ function test_parallel_mpi()
     ar = [1]
     data_i.send_req = MPI.Isend(a, mesh.myrank, 1, mesh.comm)
     data_i.recv_req = MPI.Irecv!(ar, mesh.myrank, 1, mesh.comm)
-    data_i.q_send = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
-    data_i.q_recv = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
-    mesh.nrm_sharedface = Array(Array{Float64, 3}, 1)
+    data_i.q_send = Array{Float64}(mesh.numDofPerNode, mesh.numNodesPerFace, 2)
+    data_i.q_recv = Array{Float64}(mesh.numDofPerNode, mesh.numNodesPerFace, 2)
+    mesh.nrm_sharedface = Array{Array{Float64, 3}}(1)
     mesh.nrm_sharedface[1] = zeros(2, mesh.numNodesPerFace, 2)
     nrm_arr = mesh.nrm_sharedface[1]
 
@@ -90,12 +90,12 @@ function test_parallel_mpi()
     AdvectionEquationMod.calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 
     # now get it using Boundary integrate
-    eqn.flux_sharedface = Array(Array{Float64, 3}, 1)
-    eqn.flux_sharedface[1] = Array(Float64, mesh.numDofPerNode, mesh.numNodesPerFace, 2)
+    eqn.flux_sharedface = Array{Array{Float64, 3}}(1)
+    eqn.flux_sharedface[1] = Array{Float64}(mesh.numDofPerNode, mesh.numNodesPerFace, 2)
 
     data_i.interfaces = ifaces_orig[1:2]
     # create the boundary array
-    data_i.bndries_local = Array(Boundary, 2)
+    data_i.bndries_local = Array{Boundary}(2)
     for i=1:2
       data_i.bndries_local[i] = Boundary(ifaces_orig[i].elementL, ifaces_orig[i].faceL)
     end
@@ -106,7 +106,7 @@ function test_parallel_mpi()
     AdvectionEquationMod.calcSharedFaceIntegrals(mesh, sbp, eqn, opts, data_i)
 
     for i=1:length(eqn.flux_sharedface[1])
-      @fact eqn.flux_sharedface[1][i] --> roughly(eqn.flux_face[i], atol=1e-13)
+      @test isapprox( eqn.flux_sharedface[1][i], eqn.flux_face[i]) atol=1e-13
     end
   end  # end facts block
 

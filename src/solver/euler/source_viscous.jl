@@ -3,11 +3,11 @@
 # Given PRIMITIVE variable and its 1st order and 
 # 2nd order derivatives, calculate the source terms 
 #
-function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
-                             q::AbstractArray{Tsrc, 1},
-                             q_x::AbstractArray{Tsrc, 2},
-                             q_xx::AbstractArray{Tsrc, 3},
-                             src::AbstractArray{Tsrc, 1})
+function calcMmsSource(params::ParamType{3, :conservative},
+                       q::AbstractArray{Tsrc, 1},
+                       q_x::AbstractArray{Tsrc, 2},
+                       q_xx::AbstractArray{Tsrc, 3},
+                       src::AbstractArray{Tsrc, 1}) where Tsrc
   gamma = params.gamma
   gamma_1 = params.gamma - 1
 
@@ -48,7 +48,7 @@ function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
     return nothing
   end
 
-  muK = Array(typeof(q[5]), 2)
+  muK = Array{typeof(q[5])}(2)
   getMuK(q[5], muK)
   rmu = muK[1]
   rK = muK[2]
@@ -125,11 +125,11 @@ function calcMmsSource{Tsrc}(params::ParamType{3, :conservative},
   return nothing
 end
 
-function calcMmsSource{Tsrc}(params::ParamType{2, :conservative},
-                             q::AbstractArray{Tsrc, 1},
-                             q_x::AbstractArray{Tsrc, 2},
-                             q_xx::AbstractArray{Tsrc, 3},
-                             src::AbstractArray{Tsrc, 1})
+function calcMmsSource(params::ParamType{2, :conservative},
+                       q::AbstractArray{Tsrc, 1},
+                       q_x::AbstractArray{Tsrc, 2},
+                       q_xx::AbstractArray{Tsrc, 3},
+                       src::AbstractArray{Tsrc, 1}) where Tsrc
   gamma = params.gamma
   gamma_1 = params.gamma - 1
 
@@ -166,7 +166,7 @@ function calcMmsSource{Tsrc}(params::ParamType{2, :conservative},
   q_xx[2,1,2] = q_xx[1,2,2]
   q_xx[2,1,3] = q_xx[1,2,3]
 
-  muK = Array(typeof(q[4]), 2)
+  muK = Array{typeof(q[4])}(2)
   getMuK(q[4], muK)
   rmu = muK[1]
   rK = muK[2]
@@ -204,9 +204,9 @@ end
 # the rest into a function, which is less error prone, and 
 # will save a lot of space
 #
-type SRCPolynomial <: SRCType
+mutable struct SRCPolynomial <: SRCType
 end
-function call(obj::SRCPolynomial, 
+function (obj::SRCPolynomial)(
               src::AbstractVector,
               xyz::AbstractVector, 
               params::ParamType{3}, 
@@ -355,9 +355,7 @@ function call(obj::SRCPolynomial,
   return nothing
 end
 
-type SRCPolynomial <: SRCType
-end
-function call(obj::SRCPolynomial, 
+function (obj::SRCPolynomial)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 
@@ -441,9 +439,9 @@ function call(obj::SRCPolynomial,
   return nothing
 end
 
-type SRCChannel <: SRCType
+mutable struct SRCChannel <: SRCType
 end
-function call(obj::SRCChannel, 
+function (obj::SRCChannel)(
               src::AbstractVector,
               xyz::AbstractVector, 
               params::ParamType{3}, 
@@ -553,9 +551,7 @@ function call(obj::SRCChannel,
   return nothing
 end
 
-type SRCChannel <: SRCType
-end
-function call(obj::SRCChannel, 
+function (obj::SRCChannel)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 
@@ -657,9 +653,9 @@ end
 
 # This MMS is not working very well. 
 # (I don't remember clearly, but it's not converging).
-type SRCDoubleSquare <: SRCType
+mutable struct SRCDoubleSquare <: SRCType
 end
-function call(obj::SRCDoubleSquare, 
+function (obj::SRCDoubleSquare)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 
@@ -755,9 +751,9 @@ function call(obj::SRCDoubleSquare,
 end
 
 
-type SRCTrigonometric <: SRCType
+mutable struct SRCTrigonometric <: SRCType
 end
-function call(obj::SRCTrigonometric, 
+function (obj::SRCTrigonometric)(
               src::AbstractVector,
               xyz::AbstractVector, 
               params::ParamType{3}, 
@@ -910,9 +906,7 @@ function call(obj::SRCTrigonometric,
   return nothing
 end
 
-type SRCTrigonometric <: SRCType
-end
-function call(obj::SRCTrigonometric, 
+function (obj::SRCTrigonometric)(
               src::AbstractVector,
               coords::AbstractVector, 
               params::ParamType{2}, 

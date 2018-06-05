@@ -13,5 +13,3 @@ include(joinpath(pwd(), "runtests_parallel4.jl"))
 
 cd("../")
 
-
-FactCheck.exitstatus()

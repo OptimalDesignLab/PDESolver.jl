@@ -8,6 +8,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 using ODLCommonTools
 import ODLCommonTools.sview
 using ArrayViews
+import ArrayViews.view
 using MPI
 using SummationByParts
 using PdePumiInterface     # common mesh interface - pumi
@@ -114,10 +115,10 @@ end
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
-function array1DTo3D{T}(mesh::AbstractCGMesh, sbp,
-                             eqn::AbstractSolutionData, opts,
-                             q_vec::AbstractArray{T, 1},
-                             q_arr::AbstractArray{T, 3})
+function array1DTo3D(mesh::AbstractCGMesh, sbp,
+                          eqn::AbstractSolutionData, opts,
+                          q_vec::AbstractArray{T, 1},
+                          q_arr::AbstractArray{T, 3}) where T
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
     for j = 1:mesh.numNodesPerElement
@@ -134,10 +135,10 @@ function array1DTo3D{T}(mesh::AbstractCGMesh, sbp,
 end
 
 
-function array1DTo3D{T}(mesh::AbstractDGMesh, sbp,
-                             eqn::AbstractSolutionData, opts,
-                             q_vec::AbstractArray{T, 1},
-                             q_arr::AbstractArray{T, 3})
+function array1DTo3D(mesh::AbstractDGMesh, sbp,
+                          eqn::AbstractSolutionData, opts,
+                          q_vec::AbstractArray{T, 1},
+                          q_arr::AbstractArray{T, 3}) where T
 
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(q_arr) != pointer(q_vec)
@@ -186,10 +187,10 @@ end
   equation dimension
 """->
 # mid level function (although it doesn't need Tdim)
-function array3DTo1D{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
-                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
-                         zero_resvec=true)
+function array3DTo1D(mesh::AbstractCGMesh{Tmsh},
+       sbp, eqn::AbstractSolutionData{Tsol}, opts,
+       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
+       zero_resvec=true) where {Tmsh, Tsol, Tres}
 # arr is the array to be assembled into res_vec
 
 #  println("in array3DTo1D")
@@ -214,10 +215,10 @@ function array3DTo1D{Tmsh, Tsol, Tres}(mesh::AbstractCGMesh{Tmsh},
   return nothing
 end
 
-function array3DTo1D{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
-                         res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
-                         zero_resvec=true)
+function array3DTo1D(mesh::AbstractDGMesh{Tmsh},
+       sbp, eqn::AbstractSolutionData{Tsol}, opts,
+       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
+       zero_resvec=true) where {Tmsh, Tsol, Tres}
 
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(res_arr) != pointer(res_vec)
@@ -231,10 +232,10 @@ function array3DTo1D{Tmsh, Tsol, Tres}(mesh::AbstractDGMesh{Tmsh},
 end
 
 
-function arrToVecAssign{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
-                         arr::Abstract3DArray, dest_vec::AbstractArray{Tres,1},
-                         zero_resvec=true)
+function arrToVecAssign(mesh::AbstractMesh{Tmsh},
+       sbp, eqn::AbstractSolutionData{Tsol}, opts,
+       arr::Abstract3DArray, dest_vec::AbstractArray{Tres,1},
+       zero_resvec=true) where {Tmsh, Tsol, Tres}
 
   # This was created so a q -> q_vec operation could be performed, but it is sufficiently
   #   generic to operate on other things.
@@ -270,10 +271,10 @@ end
 
 
 # mid level function (although it doesn't need Tdim)
-function assembleArray{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                         sbp, eqn::AbstractSolutionData{Tsol}, opts,
-                         arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
-                         zero_resvec=true)
+function assembleArray(mesh::AbstractMesh{Tmsh},
+       sbp, eqn::AbstractSolutionData{Tsol}, opts,
+       arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
+       zero_resvec=true) where {Tmsh, Tsol, Tres}
 # arr is the array to be assembled into res_vec, using an assignment reduction
 # the length of res_vec is mesh.numDof/mesh.numDofPerNode, only the last
 # dof on the node is placed into res_vec
@@ -369,7 +370,7 @@ end
     Aliasing restrictions: none
 
 """->
-function calcNorm{T}(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; strongres=false, globalnrm=true)
+function calcNorm(eqn::AbstractSolutionData, res_vec::AbstractArray{T}; strongres=false, globalnrm=true) where T
 # calculates the norm of a vector using the mass matrix
 
   val = zero(real(res_vec[1]))
@@ -418,7 +419,7 @@ end     # end of calcNorm function
    * globalnrm: if true, computes the norm of the entire (parallel) vector,
                 if false, computes the norm of only the local part
 """
-function calcL2InnerProduct{T, T2}(eqn::AbstractSolutionData, u::AbstractArray{T}, v::AbstractArray{T2}; globalnrm=true)
+function calcL2InnerProduct(eqn::AbstractSolutionData, u::AbstractArray{T}, v::AbstractArray{T2}; globalnrm=true) where {T, T2}
 
   # TODO: generalize this to 1, mesh.numDofPerNode vectors
   @assert length(u) == length(eqn.M)
@@ -453,7 +454,7 @@ end
   for this function.
 
 """
-function calcEuclidianNorm{T}(comm::MPI.Comm, vec::AbstractVector{T})
+function calcEuclidianNorm(comm::MPI.Comm, vec::AbstractVector{T}) where T
 
   Tnorm = real(T)
   val = zero(Tnorm)
@@ -481,7 +482,7 @@ end
     eqn
     opts
 """->
-function calcMeshH{Tmsh}(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts)
+function calcMeshH(mesh::AbstractMesh{Tmsh}, sbp,  eqn, opts) where Tmsh
   jac_3d = reshape(mesh.jac, 1, mesh.numNodesPerElement, mesh.numEl)
   jac_vec = zeros(Tmsh, mesh.numNodes)
   assembleArray(mesh, sbp, eqn, opts, jac_3d, jac_vec)
@@ -510,7 +511,7 @@ end
 
   This type accumulates the time spent in each part of the code.
 """->
-type Timings
+mutable struct Timings
   # timings
   t_volume::Float64  # time for volume integrals
   t_face::Float64 # time for surface integrals (interior)
@@ -573,8 +574,8 @@ function write_timings(t::Timings, fname::AbstractString)
   timing_names = fieldnames(t)
   nbarriers = length(t.t_barriers)
   nvals = length(timing_names) + nbarriers - 1
-  vals = Array(Float64, nvals)
-  val_names = Array(ASCIIString, nvals)
+  vals = Array{Float64}(nvals)
+  val_names = Array{String}(nvals)
 
   # put all values except those from t_barriers into array
   pos = 1
@@ -805,7 +806,7 @@ Computes the derivative of the absolute value of a variable w.r.t itself
 
 """->
 
-function absvalue_deriv{Tval}(val::Tval)
+function absvalue_deriv(val::Tval) where Tval
 
   if val > zero(Tval)
     return one(Tval)
@@ -817,7 +818,7 @@ function absvalue_deriv{Tval}(val::Tval)
 
 end # End function absvalue_deriv
 
-function max_deriv_rev{Tval}(x::Tval, y::Tval, max_val_bar::Tval)
+function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
 
   x_bar = zero(Tval)
   y_bar = zero(Tval)

@@ -58,13 +58,13 @@ For a 2-dimensional problem, it can be computed as follows:
       end
 
 """->
-function edgestabilize!{T, Tres}(sbp::AbstractSBP{T}, ifaces::Array{Interface},
-                           mesh::AbstractMesh,
-                           u::AbstractArray{T,2}, x::AbstractArray{T,3},
-                           dxidx::AbstractArray{T,4}, jac::AbstractArray{T,2},
-                           alpha::AbstractArray{T,4}, 
-                           stabscale::AbstractArray{Tres, 2},
-                           res::AbstractArray{T,2})
+function edgestabilize!(sbp::AbstractSBP{T}, ifaces::Array{Interface},
+                  mesh::AbstractMesh,
+                  u::AbstractArray{T,2}, x::AbstractArray{T,3},
+                  dxidx::AbstractArray{T,4}, jac::AbstractArray{T,2},
+                  alpha::AbstractArray{T,4}, 
+                  stabscale::AbstractArray{Tres, 2},
+                  res::AbstractArray{T,2}) where {T, Tres}
 # for scalar equations only!
   @assert( sbp.numnodes == size(u,1) == size(res,1) == size(dxidx,3) == size(x,2) 
           == size(alpha,3) )
@@ -74,7 +74,7 @@ function edgestabilize!{T, Tres}(sbp::AbstractSBP{T}, ifaces::Array{Interface},
 
   numNodesPerFace = size(stabscale, 2)
   # JEH: temporary, until nbrnodeindex is part of sbp type
-  nbrnodeindex = Array(numNodesPerFace:-1:1)
+  nbrnodeindex = collect(numNodesPerFace:-1:1)
 
   Dn = zero(T)
   dirL = zeros(T, (dim))
@@ -140,14 +140,14 @@ end
 
 # for vector equations
 
-function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::AbstractSBP,
-                        mesh::AbstractMesh,
-                        ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
-                        x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4},
-                        jac::AbstractArray{Tmsh,2}, 
-                        alpha::AbstractArray{Tmsh,4},
-                        stabscale::AbstractArray{Tres,2},
-                        res::AbstractArray{Tres,3})
+function edgestabilize!(sbp::AbstractSBP,
+     mesh::AbstractMesh,
+     ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
+     x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4},
+     jac::AbstractArray{Tmsh,2}, 
+     alpha::AbstractArray{Tmsh,4},
+     stabscale::AbstractArray{Tres,2},
+     res::AbstractArray{Tres,3}) where {Tmsh,  Tsol, Tres}
 
   @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dxidx,3) == size(x,2) 
           == size(alpha,3) )
@@ -159,7 +159,7 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(sbp::AbstractSBP,
 
   numNodesPerFace = size(stabscale, 2)
   # JEH: temporary, until nbrnodeindex is part of sbp type
-  nbrnodeindex = Array(numNodesPerFace:-1:1)
+  nbrnodeindex = collect(numNodesPerFace:-1:1)
 
   Dn = zeros(Tsol, size(u,1))
   dirL = zeros(Tmsh, (dim))
@@ -241,13 +241,13 @@ end
 # for vector equations
 # WIP: uses res_edge
 #TODO: cleanup function signature
-function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
-                        ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
-                        x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4}, 
-                        jac::AbstractArray{Tmsh,2}, 
-                        alpha::AbstractArray{Tmsh,4},
-                        stabscale::AbstractArray{Tres,2},
-                        res::AbstractArray{Tres, 3}, res_edge::AbstractArray{Tres,4})
+function edgestabilize!(mesh, sbp::AbstractSBP, eqn,
+     ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
+     x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4}, 
+     jac::AbstractArray{Tmsh,2}, 
+     alpha::AbstractArray{Tmsh,4},
+     stabscale::AbstractArray{Tres,2},
+     res::AbstractArray{Tres, 3}, res_edge::AbstractArray{Tres,4}) where {Tmsh,  Tsol, Tres}
 
   @assert( sbp.numnodes == size(u,2) == size(res,2) == size(dxidx,3) == size(x,2) 
           == size(alpha,3) )
@@ -267,7 +267,7 @@ function edgestabilize!{Tmsh,  Tsol, Tres}(mesh, sbp::AbstractSBP, eqn,
 
 
   # JEH: temporary, until nbrnodeindex is part of sbp type
-  nbrnodeindex = Array(numNodesPerFace:-1:1)
+  nbrnodeindex = collect(numNodesPerFace:-1:1)
 
   Dn = zeros(Tsol, size(u,1))
   dirL = zeros(Tmsh, (dim))
@@ -504,9 +504,9 @@ end  # end function
     This is a low level function
 """->
 # low level function
-function stabscale{Tmsh, Tsol}(q::AbstractArray{Tsol,1}, 
-                   dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
-                   params::ParamType{2} )
+function stabscale(q::AbstractArray{Tsol,1}, 
+       dxidx::AbstractArray{Tmsh,2}, nrm::AbstractArray{Tmsh,1}, 
+       params::ParamType{2} ) where {Tmsh, Tsol}
 # calculate stabscale for a single node
 
 #     println("==== entering stabscale ====")
@@ -556,11 +556,11 @@ function stabscale{Tmsh, Tsol}(q::AbstractArray{Tsol,1},
   This is a mid level function
 """->
 # mid level function
-function stabscale{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-                                eqn::EulerData{Tsol})
+function stabscale(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+                   eqn::EulerData{Tsol}) where {Tmsh,  Tsol}
 # calculate stabscale for entire mesh
 
-  nbrnodeindex = Array(mesh.numNodesPerFace:-1:1)
+  nbrnodeindex = collect(mesh.numNodesPerFace:-1:1)
 
   for i=1:mesh.numInterfaces
     face_i = mesh.interfaces[i]
@@ -590,8 +590,8 @@ end
 """
 # used by EulerData Constructor - not that that matters for any reason
 # mid level function
-function calcEdgeStabAlpha{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim})
+function calcEdgeStabAlpha(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh,  Tsol, Tres, Tdim}
 # calculate alpha, needed by edge stabilization
 
   numEl = mesh.numEl

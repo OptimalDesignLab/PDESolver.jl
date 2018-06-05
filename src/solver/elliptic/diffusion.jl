@@ -1,10 +1,10 @@
-abstract AbstractDiffn
+abstract type AbstractDiffn end
 
-type DiffnPoly2nd<: AbstractDiffn
+mutable struct DiffnPoly2nd<: AbstractDiffn
 end
-function call{Tmsh, Tsol}(obj::DiffnPoly2nd,
-						  xy::AbstractArray{Tmsh},
-						  lambda::AbstractArray{Tsol, 3})
+function (obj::DiffnPoly2nd)(
+                             xy::AbstractArray{Tmsh},
+		 lambda::AbstractArray{Tsol, 3}) where {Tmsh, Tsol}
 	# @assert(size(lambda, 1) == Tdim)
 	# @assert(size(lambda, 2) == Tdim)
 	# the 3rd dimension should be dof per node	
@@ -17,11 +17,11 @@ function call{Tmsh, Tsol}(obj::DiffnPoly2nd,
 	return nothing
 end
 
-type DiffnPoly6th<: AbstractDiffn
+mutable struct DiffnPoly6th<: AbstractDiffn
 end
-function call{Tmsh, Tsol}(obj::DiffnPoly6th,
-						  xy::AbstractArray{Tmsh},
-						  lambda::AbstractArray{Tsol, 3})
+function (obj::DiffnPoly6th)(
+                             xy::AbstractArray{Tmsh},
+		 lambda::AbstractArray{Tsol, 3}) where {Tmsh, Tsol}
 	# @assert(size(lambda, 1) == Tdim)
 	# @assert(size(lambda, 2) == Tdim)
 	# the 3rd dimension should be dof per node	
@@ -34,12 +34,12 @@ function call{Tmsh, Tsol}(obj::DiffnPoly6th,
 	return nothing
 end
 
-type DiffnPoly0th<: AbstractDiffn
+mutable struct DiffnPoly0th<: AbstractDiffn
 end
 
-function call{Tmsh, Tsol}(obj::DiffnPoly0th,
-						  xy::AbstractArray{Tmsh},
-						  lambda::AbstractArray{Tsol, 3})
+function (obj::DiffnPoly0th)(
+                              xy::AbstractArray{Tmsh},
+		  lambda::AbstractArray{Tsol, 3}) where {Tmsh, Tsol}
 	# @assert(size(lambda, 1) == Tdim)
 	# @assert(size(lambda, 2) == Tdim)
 	# the 3rd dimension should be dof per node	
@@ -52,7 +52,7 @@ function call{Tmsh, Tsol}(obj::DiffnPoly0th,
 	return nothing
 end
 
-global const DiffnDict = Dict{ASCIIString, AbstractDiffn}(
+global const DiffnDict = Dict{String, AbstractDiffn}(
 	"poly0th" => DiffnPoly0th(),
 	"poly2nd" => DiffnPoly2nd(),
 	"poly6th" => DiffnPoly6th()
@@ -65,17 +65,16 @@ function getDiffnFunc(mesh::AbstractMesh,
 	eqn.diffusion_func = DiffnDict[opts["Diffusion"]]
 end
 
-function calcDiffn{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-										   sbo::AbstractSBP,
-										   eqn::EllipticData{Tsol, Tres, Tdim},
-										   diffusion_func::AbstractDiffn,
-										   lambda::AbstractArray{Tres, 5} )
+function calcDiffn(mesh::AbstractMesh{Tmsh},
+				   sbo::AbstractSBP,
+				   eqn::EllipticData{Tsol, Tres, Tdim},
+				   diffusion_func::AbstractDiffn,
+				   lambda::AbstractArray{Tres, 5} ) where {Tmsh, Tsol, Tres, Tdim}
 
 	numElems = mesh.numEl
 	numNodesPerElement = mesh.numNodesPerElement
 
 	for elem = 1:numElems
-		# @bp
 		for n = 1:numNodesPerElement
 			xy = sview(mesh.coords, :, n, elem)
 

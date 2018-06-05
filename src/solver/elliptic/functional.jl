@@ -1,13 +1,13 @@
-abstract AbstractFunctional
+abstract type AbstractFunctional end
 
-type volumeAverage <: AbstractFunctional
+mutable struct volumeAverage <: AbstractFunctional
 end
-function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
-                                      mesh::AbstractMesh{Tmsh},
-                                      sbp::AbstractSBP,
-                                      eqn::EllipticData{Tsol, Tres, Tdim},
-                                      opts,
-                                      val::Array{Tsol, 1})
+function (obj::volumeAverage)(
+              mesh::AbstractMesh{Tmsh},
+              sbp::AbstractSBP,
+              eqn::EllipticData{Tsol, Tres, Tdim},
+              opts,
+              val::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
   @assert(length(val) == mesh.numDofPerNode)
   val[:] = 0.0
 
@@ -24,14 +24,14 @@ function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
 end
 
 
-type volumeEnergy <: AbstractFunctional
+mutable struct volumeEnergy <: AbstractFunctional
 end
-function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeEnergy,
-                                      mesh::AbstractMesh{Tmsh},
-                                      sbp::AbstractSBP,
-                                      eqn::EllipticData{Tsol, Tres, Tdim},
-                                      opts,
-                                      val::Array{Tsol, 1})
+function (obj::volumeEnergy)(
+              mesh::AbstractMesh{Tmsh},
+              sbp::AbstractSBP,
+              eqn::EllipticData{Tsol, Tres, Tdim},
+              opts,
+              val::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
   @assert(length(val) == mesh.numDofPerNode)
   val[:] = 0.0
 
@@ -53,10 +53,10 @@ end
 #
 # IP Modification of target functional
 #
-function FunctionalModification{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                        sbp::AbstractSBP,
-                                                        eqn::EllipticData{Tsol, Tres, Tdim},
-                                                        otps::Array{Tsol, 1})
+function FunctionalModification(mesh::AbstractMesh{Tmsh},
+                                sbp::AbstractSBP,
+                                eqn::EllipticData{Tsol, Tres, Tdim},
+                                otps::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
   if haskey(opts, "FunctionalModification") && opts["FunctionalModification"] == "No"	
     return nothing
   end
@@ -79,7 +79,7 @@ function FunctionalModification{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}
   return nothing
 end
 
-global const FunctionalDict = Dict{ASCIIString, AbstractFunctional}( 
+global const FunctionalDict = Dict{String, AbstractFunctional}( 
   "volumeAverage" => volumeAverage(),
   "energy" => volumeEnergy()
 )

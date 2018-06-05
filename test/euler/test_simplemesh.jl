@@ -4,9 +4,9 @@ using PDESolver
 using SimpleMesh
 
 # Using fact check for the first time
-facts("Testing SimpleMesh type") do
+@testset "Testing SimpleMesh type" begin
   # Enter your tests here
-  context("Check if function createMesh() works or not") do
+  @testset "Check if function createMesh() works or not" begin
     # Build an element grid comprising of 2 triangular elements
     for p = 1:4
       if p == 1
@@ -34,17 +34,17 @@ facts("Testing SimpleMesh type") do
         res9 = act_HBedges - m.HBedges
         res10 = act_VBedges - m.VBedges
         res11 = act_nedges - m.nedges
-        @fact res1 --> roughly(zeros(size(ien)), atol=1e-13)
-        @fact res2 --> roughly(0, atol=1e-13)
-        @fact res3 --> roughly(0, atol=1e-13)
-        @fact res4 --> roughly(zeros(size(act_vtx_loc)), atol=1e-13)
-        @fact res5 --> roughly(0, atol=1e-13)
-        @fact res6 --> roughly(0, atol=1e-13)
-        @fact res7 --> roughly(zeros(size(act_NodeEdgex)), atol=1e-13)
-        @fact res8 --> roughly(zeros(size(act_NodeEdgey)), atol=1e-13)
-        @fact res9 --> roughly(zeros(size(act_HBedges)), atol=1e-13)
-        @fact res10 --> roughly(zeros(size(act_VBedges)), atol=1e-13)
-        @fact res11 --> roughly(0, atol=1e-13)
+        @test isapprox( res1, zeros(size(ien))) atol=1e-13
+        @test isapprox( res2, 0) atol=1e-13
+        @test isapprox( res3, 0) atol=1e-13
+        @test isapprox( res4, zeros(size(act_vtx_loc))) atol=1e-13
+        @test isapprox( res5, 0) atol=1e-13
+        @test isapprox( res6, 0) atol=1e-13
+        @test isapprox( res7, zeros(size(act_NodeEdgex))) atol=1e-13
+        @test isapprox( res8, zeros(size(act_NodeEdgey))) atol=1e-13
+        @test isapprox( res9, zeros(size(act_HBedges))) atol=1e-13
+        @test isapprox( res10, zeros(size(act_VBedges))) atol=1e-13
+        @test isapprox( res11, 0) atol=1e-13
       elseif p == 2
         act_ien = [1 3;3 9;7 7;2 6;5 8;4 5;10 11]
         act_nnp = 11
@@ -70,17 +70,17 @@ facts("Testing SimpleMesh type") do
         res9 = act_HBedges - m.HBedges
         res10 = act_VBedges - m.VBedges
         res11 = act_nedges - m.nedges
-        @fact res1 --> roughly(zeros(size(ien)), atol=1e-13)
-        @fact res2 --> roughly(0, atol=1e-13)
-        @fact res3 --> roughly(0, atol=1e-13)
-        @fact res4 --> roughly(zeros(size(act_vtx_loc)), atol=1e-13)
-        @fact res5 --> roughly(0, atol=1e-13)
-        @fact res6 --> roughly(0, atol=1e-13)
-        @fact res7 --> roughly(zeros(size(act_NodeEdgex)), atol=1e-13)
-        @fact res8 --> roughly(zeros(size(act_NodeEdgey)), atol=1e-13)
-        @fact res9 --> roughly(zeros(size(act_HBedges)), atol=1e-13)
-        @fact res10 --> roughly(zeros(size(act_VBedges)), atol=1e-13)
-        @fact res11 --> roughly(0, atol=1e-13)
+        @test isapprox( res1, zeros(size(ien))) atol=1e-13
+        @test isapprox( res2, 0) atol=1e-13
+        @test isapprox( res3, 0) atol=1e-13
+        @test isapprox( res4, zeros(size(act_vtx_loc))) atol=1e-13
+        @test isapprox( res5, 0) atol=1e-13
+        @test isapprox( res6, 0) atol=1e-13
+        @test isapprox( res7, zeros(size(act_NodeEdgex))) atol=1e-13
+        @test isapprox( res8, zeros(size(act_NodeEdgey))) atol=1e-13
+        @test isapprox( res9, zeros(size(act_HBedges))) atol=1e-13
+        @test isapprox( res10, zeros(size(act_VBedges))) atol=1e-13
+        @test isapprox( res11, 0) atol=1e-13
       elseif p == 3 
         act_ien = [1 4;4 14;11 11;2 7;3 10;6 13;9 12;5 6;8 9;15 18; 16 19;17 20]
         act_nnp = 20
@@ -106,17 +106,17 @@ facts("Testing SimpleMesh type") do
         res9 = act_HBedges - m.HBedges
         res10 = act_VBedges - m.VBedges
         res11 = act_nedges - m.nedges
-        @fact res1 --> roughly(zeros(size(ien)), atol=1e-13)
-        @fact res2 --> roughly(0, atol=1e-13)
-        @fact res3 --> roughly(0, atol=1e-13)
-        @fact res4 --> roughly(zeros(size(act_vtx_loc)), atol=1e-13)
-        @fact res5 --> roughly(0, atol=1e-13)
-        @fact res6 --> roughly(0, atol=1e-13)
-        @fact res7 --> roughly(zeros(size(act_NodeEdgex)), atol=1e-13)
-        @fact res8 --> roughly(zeros(size(act_NodeEdgey)), atol=1e-13)
-        @fact res9 --> roughly(zeros(size(act_HBedges)), atol=1e-13)
-        @fact res10 --> roughly(zeros(size(act_VBedges)), atol=1e-13)
-        @fact res11 --> roughly(0, atol=1e-13)
+        @test isapprox( res1, zeros(size(ien))) atol=1e-13
+        @test isapprox( res2, 0) atol=1e-13
+        @test isapprox( res3, 0) atol=1e-13
+        @test isapprox( res4, zeros(size(act_vtx_loc))) atol=1e-13
+        @test isapprox( res5, 0) atol=1e-13
+        @test isapprox( res6, 0) atol=1e-13
+        @test isapprox( res7, zeros(size(act_NodeEdgex))) atol=1e-13
+        @test isapprox( res8, zeros(size(act_NodeEdgey))) atol=1e-13
+        @test isapprox( res9, zeros(size(act_HBedges))) atol=1e-13
+        @test isapprox( res10, zeros(size(act_VBedges))) atol=1e-13
+        @test isapprox( res11, 0) atol=1e-13
       elseif p == 4
         act_ien = [1 5;5 19;15 15;2 8;3 11;4 14;7 18;10 17;13 16;6 7;9 10;12 13;20 26;21 27;
                    22 28;23 29;24 30;25 31]
@@ -143,17 +143,17 @@ facts("Testing SimpleMesh type") do
         res9 = act_HBedges - m.HBedges
         res10 = act_VBedges - m.VBedges
         res11 = act_nedges - m.nedges
-        @fact res1 --> roughly(zeros(size(ien)), atol=1e-13)
-        @fact res2 --> roughly(0, atol=1e-13)
-        @fact res3 --> roughly(0, atol=1e-13)
-        @fact res4 --> roughly(zeros(size(act_vtx_loc)), atol=1e-13)
-        @fact res5 --> roughly(0, atol=1e-13)
-        @fact res6 --> roughly(0, atol=1e-13)
-        @fact res7 --> roughly(zeros(size(act_NodeEdgex)), atol=1e-13)
-        @fact res8 --> roughly(zeros(size(act_NodeEdgey)), atol=1e-13)
-        @fact res9 --> roughly(zeros(size(act_HBedges)), atol=1e-13)
-        @fact res10 --> roughly(zeros(size(act_VBedges)), atol=1e-13)
-        @fact res11 --> roughly(0, atol=1e-13)
+        @test isapprox( res1, zeros(size(ien))) atol=1e-13
+        @test isapprox( res2, 0) atol=1e-13
+        @test isapprox( res3, 0) atol=1e-13
+        @test isapprox( res4, zeros(size(act_vtx_loc))) atol=1e-13
+        @test isapprox( res5, 0) atol=1e-13
+        @test isapprox( res6, 0) atol=1e-13
+        @test isapprox( res7, zeros(size(act_NodeEdgex))) atol=1e-13
+        @test isapprox( res8, zeros(size(act_NodeEdgey))) atol=1e-13
+        @test isapprox( res9, zeros(size(act_HBedges))) atol=1e-13
+        @test isapprox( res10, zeros(size(act_VBedges))) atol=1e-13
+        @test isapprox( res11, 0) atol=1e-13
       end # Ends if-else statement
     end   # Ends for loop
   end     # Ends context

@@ -114,7 +114,7 @@ return nothing
 
 end
 
-function printMatrix{T}(name::AbstractString, u::AbstractArray{T, 3})
+function printMatrix(name::AbstractString, u::AbstractArray{T, 3}) where T
 # print a matrix to a file, in a quasireadable format
 
 #println("printing 3d matrix")

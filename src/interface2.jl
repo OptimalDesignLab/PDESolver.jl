@@ -65,7 +65,7 @@ function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
 
   # make sure this options dictionary has all the default values
   read_input(opts)
-  mod, _createOjbects, _checkOptions = retrieve_physics(opts["physics"])
+  mod, _createObjects, _checkOptions = retrieve_physics(opts["physics"])
 
   return _createObjects(mesh, sbp, opts)
 end

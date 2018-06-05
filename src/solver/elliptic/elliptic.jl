@@ -2,13 +2,11 @@
 
 import PDESolver.evalResidual
 
-using Debug
-
-function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                sbp::AbstractSBP,
-                                eqn::AbstractEllipticData{Tsol, Tres},
-                                opts,
-                                pmesh=mesh)
+function init(mesh::AbstractMesh{Tmsh},
+              sbp::AbstractSBP,
+              eqn::AbstractEllipticData{Tsol, Tres},
+              opts,
+              pmesh=mesh) where {Tmsh, Tsol, Tres}
   #
   # TODO: initMPIStructures(mesh, opts)
   #
@@ -27,9 +25,9 @@ function init{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   # interpolate diffusion from elements to faces
   for d2 = 1 : dim
     for d1 = 1 : dim
-      lambda_elem = slice(eqn.lambda, d1, d2, :, :, :)
-      lambda_face = slice(eqn.lambda_face, d1, d2, :, :, :, :)
-      lambda_bndry = slice(eqn.lambda_bndry, d1, d2, :, :, :)
+      lambda_elem = Base.view(eqn.lambda, d1, d2, :, :, :)
+      lambda_face = Base.view(eqn.lambda_face, d1, d2, :, :, :, :)
+      lambda_bndry = Base.view(eqn.lambda_bndry, d1, d2, :, :, :)
       interpolateFace(mesh, sbp, eqn, opts, lambda_elem, lambda_face)
       interpolateBoundary(mesh, sbp, eqn, opts, lambda_elem, lambda_bndry)
 
@@ -65,7 +63,6 @@ function evalResidual(mesh::AbstractMesh,
   # if haskey(opts, "TimeAdvance") && opts["TimeAdvance"] == "BDF2"
   # BDF2(mesh, sbp, eqn, opts)
   # end
-  # @bp
   #
   # TODO: parallel commmunication
   #
@@ -76,10 +73,10 @@ function evalResidual(mesh::AbstractMesh,
 end
 
 
-function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                                           sbp::AbstractSBP,
-                                           eqn::AbstractEllipticData{Tsol, Tres},
-                                           opts)
+function dataPrep(mesh::AbstractMesh{Tmsh},
+                         sbp::AbstractSBP,
+                         eqn::AbstractEllipticData{Tsol, Tres},
+                         opts) where {Tmsh, Tsol, Tres}
   #
   # TODO: Not sure if filtering is needed
   #
@@ -101,15 +98,15 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
 
   # interpolate diffusion from elements to faces
   # dim = size(mesh.coords, 1)
-  # lambda_elem = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  # lambda_face = Array(Tsol, mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.numInterfaces)
-  # lambda_bndry = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numBoundaryFaces)
+  # lambda_elem = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  # lambda_face = Array{Tsol}(mesh.numDofPerNode, 2, mesh.numNodesPerFace, mesh.numInterfaces)
+  # lambda_bndry = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numBoundaryFaces)
 
   # for d2 = 1 : dim
   # for d1 = 1 : dim
-  # lambda_elem = slice(eqn.lambda, d1, d2, :, :, :)
-  # lambda_face = slice(eqn.lambda_face, d1, d2, :, :, :, :)
-  # lambda_bndry = slice(eqn.lambda_bndry, d1, d2, :, :, :)
+  # lambda_elem = sview(eqn.lambda, d1, d2, :, :, :)
+  # lambda_face = sview(eqn.lambda_face, d1, d2, :, :, :, :)
+  # lambda_bndry = sview(eqn.lambda_bndry, d1, d2, :, :, :)
   # interpolateFace(mesh, sbp, eqn, opts, lambda_elem, lambda_face)
   # interpolateBoundary(mesh, sbp, eqn, opts, lambda_elem, lambda_bndry)
 
@@ -143,10 +140,10 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                     sbp::AbstractSBP,
-                                                     eqn::EllipticData{Tsol, Tres, Tdim},
-                                                     opts)
+function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractSBP,
+                             eqn::EllipticData{Tsol, Tres, Tdim},
+                             opts) where {Tmsh, Tsol, Tres, Tdim}
   #
   # integral of term-1
   #
@@ -155,10 +152,10 @@ function evalVolumeIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   strongintegrate(mesh, sbp, eqn.src, eqn.res)
 end
 
-function strongintegrate{Tmsh, Tsbp, Tflx, Tres}(mesh::AbstractMesh{Tmsh},
-                                                 sbp::AbstractSBP{Tsbp},
-                                                 f::AbstractArray{Tflx,3},
-                                                 res::AbstractArray{Tres,3})
+function strongintegrate(mesh::AbstractMesh{Tmsh},
+                         sbp::AbstractSBP{Tsbp},
+                         f::AbstractArray{Tflx,3},
+                         res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tflx, Tres}
   for elem = 1:mesh.numEl
     jac = sview(mesh.jac, :, elem)
     for i = 1:mesh.numNodesPerElement
@@ -172,11 +169,11 @@ end
 #     \int ∇v⋅(Λ∇f) dΩ
 # where Λ is matrix coefficient
 #
-function weakdifferentiate2!{Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                                      sbp::AbstractSBP{Tsbp},
-                                                                      eqn::EllipticData{Tsol, Tres, Tdim},
-                                                                      q_grad::AbstractArray{Tflx,4},
-                                                                      res::AbstractArray{Tres,3})
+function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
+                                    sbp::AbstractSBP{Tsbp},
+                                    eqn::EllipticData{Tsol, Tres, Tdim},
+                                    q_grad::AbstractArray{Tflx,4},
+                                    res::AbstractArray{Tres,3}) where {Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}
   @assert (sbp.numnodes == size(q_grad, 2))
   @assert (sbp.numnodes == size(res,2))
   @assert (size(q_grad, 1) == size(res,1))    # numDofPerNode
@@ -185,10 +182,9 @@ function weakdifferentiate2!{Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}(mesh::AbstractMes
   nElems        = size(q_grad, 3)
   nNodesPerElem = size(q_grad, 2)
   nDofsPerNode  = size(q_grad, 1)
-  Qx = Array(Tsbp, nNodesPerElem, nNodesPerElem, dim)
-  lambda_dqdx = Array(Tres, dim, nDofsPerNode, nNodesPerElem)
+  Qx = Array{Tsbp}(nNodesPerElem, nNodesPerElem, dim)
+  lambda_dqdx = Array{Tres}(dim, nDofsPerNode, nNodesPerElem)
   w = sview(sbp.w, :)
-  # @bp
   for elem=1:nElems
     # compute Λ∇q
     lambda = sview(eqn.lambda, :,:,:,:, elem)
@@ -202,7 +198,6 @@ function weakdifferentiate2!{Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}(mesh::AbstractMes
         end
       end
     end
-    # @bp
     jac = sview(mesh.jac, :, elem)
     calcQx(mesh, sbp, Int(elem), Qx)
     for d = 1:dim
@@ -225,11 +220,11 @@ end
 # TODO: put the integral of ∫∇v ⋅ (fx, fy) dΓ into a function,
 #       let's say interiorfaceintegrate2
 #
-function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
-                                                          mesh::AbstractDGMesh{Tmsh},
-                                                          sbp::AbstractSBP,
-                                                          eqn::EllipticData{Tsol, Tres, Tdim},
-                                                          opts)
+function evalFaceIntegrals(
+                                  mesh::AbstractDGMesh{Tmsh},
+                                  sbp::AbstractSBP,
+                                  eqn::EllipticData{Tsol, Tres, Tdim},
+                                  opts) where {Tmsh, Tsol, Tres, Tdim}
 
   #
   # Integrate face_flux
@@ -240,11 +235,11 @@ function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
   # Integrate face_flux
   #
   sbpface = mesh.sbpface
-  DxL = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
-  DxR = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  DxL = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  DxR = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
 
-  GxL = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
-  GxR = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  GxL = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
+  GxR = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
   # interpolation matrix, keep in mind R is transfered for efficiency
   R = sview(sbpface.interp[:,:])
   w = sview(sbpface.wface, :)
@@ -256,7 +251,6 @@ function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
 
   # loop over all the boundaries
   nfaces = length(mesh.interfaces)
-  # @bp
   for f = 1:nfaces
     face = mesh.interfaces[f]
 
@@ -305,13 +299,13 @@ function evalFaceIntegrals{Tmsh, Tsol, Tres, Tdim}(
   return nothing
 end
 
-function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                       sbp::AbstractSBP,
-                                                       eqn::EllipticData{Tsol, Tres, Tdim})
+function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
+                               sbp::AbstractSBP,
+                               eqn::EllipticData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.flux_bndry, eqn.res)
 
   sbpface = mesh.sbpface
-  Dx = Array(Tmsh, (mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
+  Dx = Array{Tmsh}((mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
   # interpolation matrix, keep in mind R is transfered for efficiency
   R = sview(sbpface.interp[:,:])
   w = sview(sbpface.wface, :)
@@ -320,7 +314,7 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
   nv = mesh.numNodesPerElement
   nf = mesh.numNodesPerFace
   ns = sbpface.stencilsize
-  Gx = Array(Tmsh, (mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
+  Gx = Array{Tmsh}((mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
   # loop over all the boundaries
   for bc = 1:mesh.numBC
     indx0 = mesh.bndry_offsets[bc]
@@ -336,7 +330,7 @@ function evalBoundaryIntegrals{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
       calcDx(mesh, sbp, Int(elem), Dx)
 
       lambda = sview(eqn.lambda, :, :, :, :, elem)
-      Gx[:,:,:] = 0.0
+      fill!(Gx, 0.0)
       for d = 1:Tdim
         for i = 1:mesh.numNodesPerElement
           for j  = 1:mesh.numNodesPerElement
@@ -363,10 +357,10 @@ end  # end evalBoundaryIntegrals
 #
 # Compute Dx
 #
-function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
-                      elem::Int,
-                      Dx::AbstractArray{Tmsh, 3})
+function calcDx(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                elem::Int,
+                Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
   @assert(size(Dx, 2) == mesh.numNodesPerElement)
   @assert(size(Dx, 3) == size(mesh.dxidx, 1))
@@ -391,10 +385,10 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
   end
 end
 
-function calcQx{Tmsh}(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
-                      elem::Int,
-                      Qx::AbstractArray{Tmsh, 3})
+function calcQx(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                elem::Int,
+                Qx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Qx, 1) == mesh.numNodesPerElement)
   @assert(size(Qx, 2) == mesh.numNodesPerElement)
   @assert(size(Qx, 3) == size(mesh.dxidx, 1))

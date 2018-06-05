@@ -23,7 +23,7 @@ import ODLCommonTools.eqn_deepcopy
       this is because 'a[3] =' is actually setindex!
 
 """
-function eqn_deepcopy{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData_{Tsol, Tres}, opts::Dict)
+function eqn_deepcopy(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData_{Tsol, Tres}, opts::Dict) where {Tmsh, Tsol, Tres}
 
   # The eqn object has over 100 fields, so it is necessary to write a better approach for 
   #   copying than explicitly copying every named field

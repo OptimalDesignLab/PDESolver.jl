@@ -7,65 +7,65 @@
   means it is dependent on the element ordering
 """
 function test_lowlevel_mesh(mesh, sbp, eqn, opts)
-  facts("--- Testing Mesh --- ") do
+  @testset "--- Testing Mesh --- " begin
 
-    @fact mesh.numVert --> 4
-    @fact mesh.numEdge --> 5
-    @fact mesh.numEl --> 2
-    @fact mesh.order --> 1
-    @fact mesh.numDof --> 16
-    @fact mesh.numNodes --> 4
-    @fact mesh.numDofPerNode --> 4
-    @fact mesh.numBoundaryFaces --> 4
-    @fact mesh.numInterfaces --> 1
-    @fact mesh.numNodesPerElement --> 3
-    @fact mesh.numNodesPerType --> [1, 0 , 0]
+    @test ( mesh.numVert )== 4
+    @test ( mesh.numEdge )== 5
+    @test ( mesh.numEl )== 2
+    @test ( mesh.order )== 1
+    @test ( mesh.numDof )== 16
+    @test ( mesh.numNodes )== 4
+    @test ( mesh.numDofPerNode )== 4
+    @test ( mesh.numBoundaryFaces )== 4
+    @test ( mesh.numInterfaces )== 1
+    @test ( mesh.numNodesPerElement )== 3
+    @test ( mesh.numNodesPerType )== [1, 0 , 0]
 
-    @fact mesh.bndry_funcs[1] --> EulerEquationMod.Rho1E2U3BC()
-    @fact mesh.bndryfaces[1].element --> 1
-    @fact mesh.bndryfaces[1].face --> 3
-    @fact mesh.bndryfaces[2].element --> 2
-    @fact mesh.bndryfaces[2].face --> 1
-    @fact mesh.bndryfaces[3].element --> 1
-    @fact mesh.bndryfaces[3].face --> 2
-    @fact mesh.bndryfaces[4].element --> 2
-    @fact mesh.bndryfaces[4].face --> 2
+    @test ( mesh.bndry_funcs[1] )== EulerEquationMod.Rho1E2U3BC()
+    @test ( mesh.bndryfaces[1].element )== 1
+    @test ( mesh.bndryfaces[1].face )== 3
+    @test ( mesh.bndryfaces[2].element )== 2
+    @test ( mesh.bndryfaces[2].face )== 1
+    @test ( mesh.bndryfaces[3].element )== 1
+    @test ( mesh.bndryfaces[3].face )== 2
+    @test ( mesh.bndryfaces[4].element )== 2
+    @test ( mesh.bndryfaces[4].face )== 2
 
-    @fact mesh.interfaces[1].elementL --> 1
-    @fact mesh.interfaces[1].elementR --> 2
-    @fact mesh.interfaces[1].faceL --> 1
-    @fact mesh.interfaces[1].faceR --> 3
+    @test ( mesh.interfaces[1].elementL )== 1
+    @test ( mesh.interfaces[1].elementR )== 2
+    @test ( mesh.interfaces[1].faceL )== 1
+    @test ( mesh.interfaces[1].faceR )== 3
 
 
   #=
-    @fact mesh.bndryfaces[1].element --> 1
-    @fact mesh.bndryfaces[1].face --> 2
-    @fact mesh.bndryfaces[2].element --> 2
-    @fact mesh.bndryfaces[2].face --> 2
-    @fact mesh.bndryfaces[3].element --> 1
-    @fact mesh.bndryfaces[3].face --> 1
-    @fact mesh.bndryfaces[4].element --> 2
-    @fact mesh.bndryfaces[4].face --> 3
+    @test ( mesh.bndryfaces[1].element )== 1
+    @test ( mesh.bndryfaces[1].face )== 2
+    @test ( mesh.bndryfaces[2].element )== 2
+    @test ( mesh.bndryfaces[2].face )== 2
+    @test ( mesh.bndryfaces[3].element )== 1
+    @test ( mesh.bndryfaces[3].face )== 1
+    @test ( mesh.bndryfaces[4].element )== 2
+    @test ( mesh.bndryfaces[4].face )== 3
 
-    @fact mesh.interfaces[1].elementL --> 2
-    @fact mesh.interfaces[1].elementR --> 1
-    @fact mesh.interfaces[1].faceL --> 1
-    @fact mesh.interfaces[1].faceR --> 3
+    @test ( mesh.interfaces[1].elementL )== 2
+    @test ( mesh.interfaces[1].elementR )== 1
+    @test ( mesh.interfaces[1].faceL )== 1
+    @test ( mesh.interfaces[1].faceR )== 3
   =#
-    @fact mesh.coords[:, :, 2] --> roughly([-1.0 1 1; -1 -1 1])
-    @fact mesh.coords[:, :, 1] --> roughly([-1.0 1 -1; -1 1 1])
+    @test isapprox( mesh.coords[:, :, 2], [-1.0 1 1; -1 -1 1]) 
+    @test isapprox( mesh.coords[:, :, 1], [-1.0 1 -1; -1 1 1]) 
 
-    @fact mesh.dxidx[:, :, 1, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
+    @test isapprox( mesh.dxidx[:, :, 1, 2], [1.0 -1; 0 1]) atol=1e-14
 
-    @fact mesh.dxidx[:, :, 1, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
-    @fact mesh.dxidx[:, :, 2, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
-    @fact mesh.dxidx[:, :, 3, 2] --> roughly([1.0 -1; 0 1], atol=1e-14)
+    @test isapprox( mesh.dxidx[:, :, 1, 2], [1.0 -1; 0 1]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 2, 2], [1.0 -1; 0 1]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 3, 2], [1.0 -1; 0 1]) atol=1e-14
 
-    @fact mesh.dxidx[:, :, 1, 1] --> roughly([1.0 0; -1 1], atol=1e-14)
-    @fact mesh.dxidx[:, :, 2, 1] --> roughly([1.0 0; -1 1], atol=1e-14)
-    @fact mesh.dxidx[:, :, 3, 1] --> roughly([1.0 0; -1 1], atol=1e-14)
+    @test isapprox( mesh.dxidx[:, :, 1, 1], [1.0 0; -1 1]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 2, 1], [1.0 0; -1 1]) atol=1e-14
+    @test isapprox( mesh.dxidx[:, :, 3, 1], [1.0 0; -1 1]) atol=1e-14
 
-    @fact mesh.jac --> roughly(ones(3,2))
+    @test isapprox( mesh.jac, ones(3,2)) 
 
 
   end
@@ -84,7 +84,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
   Tmsh = eltype(mesh.dxidx)
-  facts("--- Testing Euler Low Level Functions --- ") do
+  @testset "--- Testing Euler Low Level Functions --- " begin
     opts["variable_type"] = :entropy
     eqn_e = EulerData_{Tsol, Tres, 2, Tmsh, opts["variable_type"]}(mesh, sbp, opts)
 
@@ -105,54 +105,54 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
     v = zeros(4)
     EulerEquationMod.convertToEntropy(eqn.params, q, v)
     v_analytic = [-2*4.99528104378295, 4., 6, -2*1]
-    @fact v --> roughly(v_analytic)
+    @test isapprox( v, v_analytic) 
     # test inplace operation
     q2 = copy(q)
     EulerEquationMod.convertToEntropy(eqn.params, q2, q2)
-    @fact q2 --> v_analytic
+    @test ( q2 )== v_analytic
     q_ret = zeros(4)
     EulerEquationMod.convertToConservative(e_params, v, q_ret)
-    @fact q_ret --> roughly(q)
+    @test isapprox( q_ret, q) 
     
     # test inplace operation
     v2 = copy(v)
     EulerEquationMod.convertToConservative(e_params, v2, v2)
-    @fact v2 --> roughly(q)
+    @test isapprox( v2, q) 
 
     v = zeros(4)
     vIR = zeros(4)
     EulerEquationMod.convertToEntropy(eqn.params, q, v)
     v_analytic = [-2*4.99528104378295, 4., 6, -2*1]
-    @fact v --> roughly(v_analytic)
+    @test isapprox( v, v_analytic) 
     # test inplace operation
     q2 = copy(q)
     EulerEquationMod.convertToEntropy(eqn.params, q2, q2)
-    @fact q2 --> v_analytic
+    @test ( q2 )== v_analytic
 
     # test IR variables
     EulerEquationMod.convertToIR(eqn.params, q, vIR)
     diff = vIR - q2./eqn.params.gamma_1
-    @fact norm(diff) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(diff), 0.0) atol=1e-12
 
     # test inplace operation
     vIR2 = copy(q)
     EulerEquationMod.convertToIR(eqn.params, vIR2, vIR2)
     diff = vIR2 - q2./eqn.params.gamma_1
-    @fact norm(diff) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(diff), 0.0) atol=1e-12
 
     # convert back
     EulerEquationMod.convertToConservativeFromIR_(eqn.params, vIR2, vIR2)
     diff = q - vIR2
-    @fact norm(diff) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(diff), 0.0) atol=1e-12
 
     q_ret = zeros(4)
     EulerEquationMod.convertToConservative(e_params, v, q_ret)
-    @fact q_ret --> roughly(q)
+    @test isapprox( q_ret, q) 
     
     # test inplace operation
     v2 = copy(v)
     EulerEquationMod.convertToConservative(e_params, v2, v2)
-    @fact v2 --> roughly(q)
+    @test isapprox( v2, q) 
 
 
     # ------------------------------------------------------------------------
@@ -166,7 +166,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
               24 -8  -12 4]
     EulerEquationMod.calcA0Inv(e_params, v, A0inv)
 
-    @fact A0inv --> roughly(A0inv2)
+    @test isapprox( A0inv, A0inv2) 
 
     # test A0
     A0 = zeros(4,4)
@@ -174,20 +174,20 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
     EulerEquationMod.calcA0(e_params, v, A0)
    
     for i=1:16
-      @fact A0[i] --> roughly(A02[i], atol=1e-10)
+      @test isapprox( A0[i], A02[i]) atol=1e-10
     end
 
 
     A0inv_c = zeros(4,4)
     EulerEquationMod.calcA0(eqn.params, q, A0inv_c)
-    @fact A0inv_c --> eye(4)
+    @test ( A0inv_c )== eye(4)
 
     A0_c = zeros(4,4)
     EulerEquationMod.calcA0Inv(eqn.params, q, A0_c)
-    @fact A0_c --> eye(4)
+    @test ( A0_c )== eye(4)
 
    # test calcIRA0
-   A03 = scale(A0, eqn.params.gamma_1)
+   A03 = A0 *eqn.params.gamma_1
    A04_test = zeros(A02)
    A04_code = zeros(A02)
    EulerEquationMod.getIRA0(eqn.params, q, A04_code)
@@ -206,8 +206,8 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
    scale!(A04_test, eqn.params.gamma_1)
 
    for i=1:length(A04_test)
-     @fact A04_code[i] --> roughly(A04_test[i], atol=1e-13)
-     @fact A04_code[i] --> roughly(A03[i], atol=1e-10)
+     @test isapprox( A04_code[i], A04_test[i]) atol=1e-13
+     @test isapprox( A04_code[i], A03[i]) atol=1e-10
    end
 
 
@@ -215,10 +215,10 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
     A1 = zeros(4,4)
     q_tmp = ones(Tsol, 4)
     EulerEquationMod.calcA1(eqn.params, q_tmp, A1)
-    @fact A1 --> roughly([0.0 1.0 0.0  0.0
+    @test isapprox(A1,    [0.0 1.0 0.0  0.0
                           -0.6 1.6 -0.4 0.4
                           -1.0 1.0 1.0 0.0
-                          -0.6 0.6 -0.4 1.4])
+                          -0.6 0.6 -0.4 1.4]) atol=1e-13
 
 
     EulerEquationMod.calcA1(e_params, v, A1)
@@ -230,16 +230,16 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
     A1_diff = A1 - A1_analytic
     for i=1:16
-      @fact A1[i] --> roughly(A1_analytic[i], atol=1e-10)
+      @test isapprox( A1[i], A1_analytic[i]) atol=1e-10
     end
 
     A2 = zeros(4,4)
     A2 = zeros(4,4)
     EulerEquationMod.calcA2(eqn.params, q_tmp, A2)
-    @fact A2 --> roughly([0.0 0.0 1.0 0.0
+    @test isapprox(A2,  [0.0 0.0 1.0 0.0
                         -1.0 1.0 1.0 0.0
                         -0.6 -0.4 1.6 0.4
-                        -0.6 -0.4 0.6 1.4])
+                        -0.6 -0.4 0.6 1.4]) atol=1e-13
 
 
 
@@ -251,13 +251,13 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
     A2_diff = A2 - A2_analytic
 
     for i=1:16
-      @fact A2[i] --> roughly(A2_analytic[i], atol=1e-10)
+      @test isapprox( A2[i], A2_analytic[i]) atol=1e-10
     end
 
 
     # check that checkDensity and checkPresure work
-    @fact_throws EulerEquationMod.checkDensity(eqn, mesh)
-    @fact_throws EulerEquationMod.checkPressure(eqn, mesh)
+    @test_throws Exception  EulerEquationMod.checkDensity(eqn, mesh)
+    @test_throws Exception  EulerEquationMod.checkPressure(eqn, mesh)
 
   end  # end facts block
 
@@ -294,7 +294,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
   A0 = zeros(4,4)
   A0inv = zeros(4,4)
 
-  facts("--- Testing convert Functions ---") do
+  @testset "--- Testing convert Functions ---" begin
     # for the case, the solution is uniform flow
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     v_arr = copy(eqn.q)
@@ -305,7 +305,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
     # test conversion to entropy variables
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
-        @fact v_arr[:, j, i] --> v2
+        @test ( v_arr[:, j, i] )== v2
       end
     end
 
@@ -314,7 +314,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
     v_vec = copy(eqn.q_vec)
     EulerEquationMod.convertToEntropy(mesh, sbp, eqn, opts, v_vec)
     for i=1:4:mesh.numDof
-      @fact v_vec[i:(i+3)] --> v2
+      @test ( v_vec[i:(i+3)] )== v2
     end
 
     eqn_e.q_vec = v_vec
@@ -326,7 +326,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
     EulerEquationMod.matVecA0inv(mesh, sbp, eqn_e, opts, v_arr2)
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
-        @fact v_arr2[:, j, i] --> roughly(v2)
+        @test isapprox( v_arr2[:, j, i], v2) 
       end
     end
 
@@ -337,7 +337,7 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
     EulerEquationMod.matVecA0(mesh, sbp, eqn_e, opts, v_arr3)
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
-        @fact v_arr3[:, j, i] --> roughly(v3)
+        @test isapprox( v_arr3[:, j, i], v3) 
       end
     end
 
@@ -345,13 +345,13 @@ function test_lowlevel_convert(mesh, sbp, eqn, opts)
     EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_arr)
     for i =1:mesh.numEl
       for j=1:mesh.numNodesPerElement
-        @fact v_arr[:, j, i] --> roughly(eqn.q[:, j, i])
+        @test isapprox( v_arr[:, j, i], eqn.q[:, j, i]) 
       end
     end
 
     EulerEquationMod.convertToConservative(mesh, sbp, eqn_e, opts, v_vec)
     for i=1:mesh.numDof
-      @fact v_vec[i] --> roughly(eqn.q_vec[i])
+      @test isapprox( v_vec[i], eqn.q_vec[i]) 
     end
 
 
@@ -369,12 +369,12 @@ add_func2!(EulerTests, test_lowlevel_convert, "input_vals_channel.jl", [TAG_ENTR
 function test_lowlevel_eigsystem(mesh, sbp, eqn, opts)
 
 
-  facts("--- Testing Eigensystem ---") do
+  @testset "--- Testing Eigensystem ---" begin
     # compute flux jacobian in x and y directions
     params = eqn.params
     q = [1.0, 2.0, 3.0, 7.0]
     qc = convert(Array{Complex128}, q)
-    aux_vars = Array(Complex128, 1)
+    aux_vars = Array{Complex128}(1)
     qg = deepcopy(q)
     dxidx = mesh.dxidx[:, :, 1, 1]  # arbitrary
     F = zeros(Complex128, 4)
@@ -417,10 +417,10 @@ function test_lowlevel_eigsystem(mesh, sbp, eqn, opts)
     Ax2 = Yx*diagm(Lambdax)*inv(Yx)
     Ay2 = Yy*diagm(Lambday)*inv(Yy)
 
-    @fact Ax2 --> roughly(Ax, atol=1e-12)
-    @fact Ay2 --> roughly(Ay, atol=1e-12)
-    @fact Ax3 --> roughly(Ax, atol=1e-12)
-    @fact Ay3 --> roughly(Ay, atol=1e-12)
+    @test isapprox( Ax2, Ax) atol=1e-12
+    @test isapprox( Ay2, Ay) atol=1e-12
+    @test isapprox( Ax3, Ax) atol=1e-12
+    @test isapprox( Ay3, Ay) atol=1e-12
 
     # check A0 = Y*S2*Y.'
     A0 = zeros(4,4)
@@ -433,8 +433,8 @@ function test_lowlevel_eigsystem(mesh, sbp, eqn, opts)
     A02 = Yx*diagm(Sx)*Yx.'
     A03 = Yy*diagm(Sy)*Yy.'
 
-    @fact A0 --> roughly(A02, atol=1e-12)
-    @fact A0 --> roughly(A03, atol=1e-12) 
+    @test isapprox( A0, A02) atol=1e-12
+    @test isapprox( A0, A03) atol=1e-12
 
   end  # end facts block
 
@@ -466,17 +466,17 @@ function test_lowlevel_calc(mesh, sbp, eqn, opts)
    EulerEquationMod.convertToEntropy(eqn.params, q, v)
 
 
-  facts("--- Testing calc functions ---") do
+  @testset "--- Testing calc functions ---" begin
 
-    @fact EulerEquationMod.calcPressure(eqn.params, q) --> roughly(0.2)
-    @fact EulerEquationMod.calcPressure(e_params, v) --> roughly(0.2)
+    @test isapprox( EulerEquationMod.calcPressure(eqn.params, q), 0.2) 
+    @test isapprox( EulerEquationMod.calcPressure(e_params, v), 0.2) 
     a_cons = EulerEquationMod.calcSpeedofSound(eqn.params, q)
     a_ent = EulerEquationMod.calcSpeedofSound(e_params, v)
-    @fact a_cons --> roughly(a_ent)
+    @test isapprox( a_cons, a_ent) 
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, dir, F)
     EulerEquationMod.calcEulerFlux(e_params, v, aux_vars, dir, Fe)
-    @fact F --> roughly([2.0, 4.2, 6, 14.4], atol=1e-14)
-    @fact Fe --> roughly(F)
+    @test isapprox( F, [2.0, 4.2, 6, 14.4]) atol=1e-14
+    @test isapprox( Fe, F) 
   end
 
   return nothing
@@ -506,7 +506,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
   v = zeros(4)
   EulerEquationMod.convertToEntropy(eqn.params, q, v)
 
-  facts("--- Testing Boundary Function ---") do
+  @testset "--- Testing Boundary Function ---" begin
 
     nx = dxidx[1,1]*dir[1] + dxidx[2,1]*dir[2]
     ny = dxidx[1,2]*dir[1] + dxidx[2,2]*dir[2]
@@ -523,7 +523,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
     EulerEquationMod.RoeSolver(eqn.params, q, qg, aux_vars, nrm, F_roe)
-    @fact F_roe --> roughly(F) 
+    @test isapprox( F_roe, F) 
 
 
     # test that roe flux = euler flux of BC functions
@@ -540,7 +540,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     calcBCNormal(eqn.params, dxidx, dir, nrm_xy)
     func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe,)
 
-    @fact F_roe --> roughly(F) 
+    @test isapprox( F_roe, F) 
 
     q[3] = 0  # make flow parallel to wall
     func1 = EulerEquationMod.noPenetrationBC()
@@ -553,13 +553,13 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
-    @fact F_roe --> roughly(F) 
+    @test isapprox( F_roe, F) 
 
     # test the entropy stable BC
     func2 = EulerEquationMod.noPenetrationESBC()
     func2(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
-    @fact F_roe --> roughly(F)
+    @test isapprox( F_roe, F) 
 
     EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, q)
     func1 = EulerEquationMod.Rho1E2U3BC()
@@ -572,7 +572,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
-    @fact F_roe --> roughly(F) 
+    @test isapprox( F_roe, F) 
   end  # end facts block
 
   return nothing
@@ -589,49 +589,49 @@ function test_lowlevel_commonfuncs(mesh, sbp, eqn, opts)
 
   coords = [1.0,  0.0]
 
-  facts("--- Testing common functions ---") do
+  @testset "--- Testing common functions ---" begin
 
     F = zeros(4)
     EulerEquationMod.calcRho1Energy2(eqn.params, coords, F)
-    @fact F[1] --> 1.0
-    @fact F[4] --> 2.0
+    @test ( F[1] )== 1.0
+    @test ( F[4] )== 2.0
 
     fill!(F, 0.0)
     EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, F)
-    @fact F[1] --> roughly(1.0, atol=1e-4)
-    @fact F[2] --> roughly(0.35355, atol=1e-4)
-    @fact F[3] --> roughly(0.35355, atol=1e-4)
-    @fact F[4] --> roughly(2.0, atol=1e-4)
+    @test isapprox( F[1], 1.0) atol=1e-4
+    @test isapprox( F[2], 0.35355) atol=1e-4
+    @test isapprox( F[3], 0.35355) atol=1e-4
+    @test isapprox( F[4], 2.0) atol=1e-4
 
     fill!(F, 0.0)
     EulerEquationMod.calcIsentropicVortex(eqn.params, coords, F)
-    @fact F[1] --> roughly(2.000, atol=1e-4)
-    @fact F[2] --> roughly(0.000, atol=1e-4)
-    @fact F[3] --> roughly(-1.3435, atol=1e-4)
-    @fact F[4] --> roughly(2.236960, atol=1e-4)
+    @test isapprox( F[1], 2.000) atol=1e-4
+    @test isapprox( F[2], 0.000) atol=1e-4
+    @test isapprox( F[3], -1.3435) atol=1e-4
+    @test isapprox( F[4], 2.236960) atol=1e-4
 
 
     level = EulerEquationMod.getPascalLevel(1)
-    @fact level --> 1
+    @test ( level )== 1
 
     for i=2:3
       level = EulerEquationMod.getPascalLevel(i)
-      @fact level --> 2
+      @test ( level )== 2
     end
 
     for i=4:6
       level = EulerEquationMod.getPascalLevel(i)
-      @fact level --> 3
+      @test ( level )== 3
     end
 
     for i=7:10
       level = EulerEquationMod.getPascalLevel(i)
-      @fact level --> 4
+      @test ( level )== 4
     end
 
     for i=11:15
       level = EulerEquationMod.getPascalLevel(i)
-      @fact level --> 5
+      @test ( level )== 5
     end
   end  # end facts block
   
@@ -646,7 +646,7 @@ add_func2!(EulerTests, test_lowlevel_commonfuncs, "input_vals_channel.jl", [TAG_
 """
 function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
 
-  facts("--- Testing dataPrep ---") do
+  @testset "--- Testing dataPrep ---" begin
  
     # the input file loaded a uniform flow into q_vev
     EulerEquationMod.array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
@@ -654,7 +654,7 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
     # test array1DTo3D
     for i=1:mesh.numEl
       for j=1:mesh.numNodesPerElement
-        @fact eqn.q[:, j, i] --> roughly([1.0, 0.35355, 0.35355, 2.0], atol=1e-5)
+        @test isapprox( eqn.q[:, j, i], [1.0, 0.35355, 0.35355, 2.0]) atol=1e-5
       end
     end
 
@@ -662,7 +662,7 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
     q_vec_orig = copy(eqn.q_vec)
     EulerEquationMod.arrToVecAssign(mesh, sbp, eqn, opts, eqn.q, eqn.q_vec)
     for i = 1:mesh.numDof
-      @fact eqn.q_vec[i] --> roughly(q_vec_orig[i], atol=1e-5)
+      @test isapprox( eqn.q_vec[i], q_vec_orig[i]) atol=1e-5
     end
 
 
@@ -674,44 +674,44 @@ function test_lowlevel_dataprep(mesh, sbp, eqn, opts)
         aux_vars_i = eqn.aux_vars[ :, j, i]
         println("aux_vars_i = ", aux_vars_i)
         p = EulerEquationMod.@getPressure(aux_vars_i)
-        @fact p --> roughly(0.750001, atol=1e-5)
+        @test isapprox( p, 0.750001) atol=1e-5
       end
     end
     =#
 
     # test calcEulerFlux
     for i=1:mesh.numNodesPerElement
-      @fact eqn.flux_parametric[:, i, 1, 2] --> roughly([0.0, -0.750001, 0.750001, 0.0], atol=1e-5)
+      @test isapprox( eqn.flux_parametric[:, i, 1, 2], [0.0, -0.750001, 0.750001, 0.0]) atol=1e-5
     end
 
     for i=1:mesh.numNodesPerElement
-      @fact eqn.flux_parametric[:, i, 2, 2] --> roughly([0.35355,  0.12499, 0.874999 ,0.972263], atol=1e-5)
+      @test isapprox( eqn.flux_parametric[:, i, 2, 2], [0.35355,  0.12499, 0.874999 ,0.972263]) atol=1e-5
     end
 
     for i=1:mesh.numNodesPerElement
-      @fact eqn.flux_parametric[:, i, 1, 1] --> roughly([0.35355,  0.874999, 00.124998,.972263], atol=1e-5)
+      @test isapprox( eqn.flux_parametric[:, i, 1, 1], [0.35355,  0.874999, 00.124998,.972263]) atol=1e-5
     end
 
     for i=1:mesh.numNodesPerElement
-      @fact eqn.flux_parametric[:, i, 2, 1] --> roughly([0.0, 0.750001, -0.750001, 0.0], atol=1e-5)
+      @test isapprox( eqn.flux_parametric[:, i, 2, 1], [0.0, 0.750001, -0.750001, 0.0]) atol=1e-5
     end
 
 
     # test getBCFluxes
     for j= 1:mesh.numNodesPerFace
-      @fact eqn.bndryflux[:, j, 1] --> roughly([-0.35355, -0.874999, -0.124998, -0.972263], atol=1e-5)
+      @test isapprox( eqn.bndryflux[:, j, 1], [-0.35355, -0.874999, -0.124998, -0.972263]) atol=1e-5
     end
 
     for j= 1:mesh.numNodesPerFace
-      @fact eqn.bndryflux[:, j, 2] --> roughly([-0.35355,  -0.124998, -0.874999, -0.972263], atol=1e-5)
+      @test isapprox( eqn.bndryflux[:, j, 2], [-0.35355,  -0.124998, -0.874999, -0.972263]) atol=1e-5
     end
 
     for j= 1:mesh.numNodesPerFace
-      @fact eqn.bndryflux[:, j, 3] --> roughly([0.35355,  0.124998, 0.874999, 0.972263], atol=1e-5)
+      @test isapprox( eqn.bndryflux[:, j, 3], [0.35355,  0.124998, 0.874999, 0.972263]) atol=1e-5
     end
 
     for j= 1:mesh.numNodesPerFace
-      @fact eqn.bndryflux[:, j, 4] --> roughly([0.35355, 0.874999, 0.124998, 0.972263], atol=1e-5)
+      @test isapprox( eqn.bndryflux[:, j, 4], [0.35355, 0.874999, 0.124998, 0.972263]) atol=1e-5
     end
   end  # end facts block
 
@@ -730,7 +730,7 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
   EulerEquationMod.array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
-  facts("--- Testing evalVolumeIntegrals ---")  do
+  @testset "--- Testing evalVolumeIntegrals ---" begin
 
     EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn, opts)
 
@@ -743,13 +743,13 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
     -0.874999 0.124998 0.75001;
     -0.972263  0.972263 0]
  
-    @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-4)
-    @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-4)
+    @test isapprox( eqn.res[:, :, 2], el1_res) atol=1e-4
+    @test isapprox( eqn.res[:, :, 1], el2_res) atol=1e-4
 
   end  # end facts block
 
 
-  facts("--- Testing evalBoundaryIntegrals ---") do
+  @testset "--- Testing evalBoundaryIntegrals ---" begin
     fill!(eqn.res, 0.0)
 
     EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
@@ -763,12 +763,12 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
          0.124998  -0.874999  -0.750001;
          0.972263  -0.972263  0]
 
-    @fact eqn.res[:, :, 2] --> roughly(el1_res, atol=1e-5)
-    @fact eqn.res[:, :, 1] --> roughly(el2_res, atol=1e-5)
+    @test isapprox( eqn.res[:, :, 2], el1_res) atol=1e-5
+    @test isapprox( eqn.res[:, :, 1], el2_res) atol=1e-5
 
   end  # end facts block
 
-  facts("--- Testing evalResidual --- ")  do
+  @testset "--- Testing evalResidual --- " begin
 
     fill!(eqn.res_vec, 0.0)
     fill!(eqn.res, 0.0)
@@ -776,16 +776,11 @@ function test_lowlevel_integrals(mesh, sbp, eqn, opts)
 
     # for uniform flow, residual is zero
     for i=1:mesh.numDof
-      @fact eqn.res_vec[i] --> roughly(0.0, atol=1e-14)
+      @test isapprox( eqn.res_vec[i], 0.0) atol=1e-14
     end
 
   end  # end facts block
 
-
-#  context("--- Testing NonlinearSolvers --- ") do
-#    jac = SparseMatrixCSC(mesh.sparsity_bnds, eltype(eqn.res_vec))
-#
-#  end
 
   return nothing
 end

@@ -34,9 +34,9 @@ end
 
   Aliasing restrictions: none
 """
-function calcHomotopyDiss{Tsol, Tres, Tmsh}(mesh::AbstractDGMesh{Tmsh}, sbp, 
-                          eqn::EulerData{Tsol, Tres}, opts, 
-                          res::Abstract3DArray{Tres})
+function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp, 
+        eqn::EulerData{Tsol, Tres}, opts, 
+        res::Abstract3DArray{Tres}) where {Tsol, Tres, Tmsh}
 
 #  println("\nentered calcHomotopyDiss")
 
@@ -244,9 +244,9 @@ end
 
   Aliasing restrictions: none
 """
-function getLambdaMax{Tsol, Tmsh, Tdim}(params::ParamType{Tdim}, 
-                      qL::AbstractVector{Tsol}, 
-                      dir::AbstractVector{Tmsh})
+function getLambdaMax(params::ParamType{Tdim}, 
+    qL::AbstractVector{Tsol}, 
+    dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
 
   Tres = promote_type(Tsol, Tmsh)
   gamma = params.gamma

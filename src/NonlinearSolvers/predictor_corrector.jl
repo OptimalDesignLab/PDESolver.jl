@@ -52,12 +52,12 @@
   (and letting newtonInner update the jacobian/preconditioner according to
   its recalculationPolicy).
 """
-function predictorCorrectorHomotopy{Tsol, Tres, Tmsh}(physics_func::Function,
-                                    g_func::Function,
-                                    mesh::AbstractMesh{Tmsh}, 
-                                    sbp::AbstractSBP, 
-                                    eqn::AbstractSolutionData{Tsol, Tres}, 
-                                    opts; pmesh=mesh)
+function predictorCorrectorHomotopy(physics_func::Function,
+                  g_func::Function,
+                  mesh::AbstractMesh{Tmsh}, 
+                  sbp::AbstractSBP, 
+                  eqn::AbstractSolutionData{Tsol, Tres}, 
+                  opts; pmesh=mesh) where {Tsol, Tres, Tmsh}
 
 #  global evalPhysicsResidual = physics_func
 #  global evalHomotopyResidual = g_func
@@ -428,7 +428,7 @@ end
 #------------------------------------------------------------------------------
 # PC:
 
-type HomotopyMatPC <: AbstractPetscMatPC
+mutable struct HomotopyMatPC <: AbstractPetscMatPC
   pc_inner::NewtonMatPC
   lambda::Float64  # homotopy parameter
 end
@@ -468,7 +468,7 @@ end
 #------------------------------------------------------------------------------
 # LO:
 
-type HomotopyDenseLO <: AbstractDenseLO
+mutable struct HomotopyDenseLO <: AbstractDenseLO
   lo_inner::NewtonDenseLO
   lambda::Float64
 end
@@ -481,7 +481,7 @@ function HomotopyDenseLO(pc::PCNone, mesh::AbstractMesh,
   return HomotopyDenseLO(lo_inner, lambda)
 end
 
-type HomotopySparseDirectLO <: AbstractSparseDirectLO
+mutable struct HomotopySparseDirectLO <: AbstractSparseDirectLO
   lo_inner::NewtonSparseDirectLO
   lambda::Float64
 end
@@ -495,7 +495,7 @@ function HomotopySparseDirectLO(pc::PCNone, mesh::AbstractMesh,
   return HomotopySparseDirectLO(lo_inner, lambda)
 end
 
-type HomotopyPetscMatLO <: AbstractPetscMatLO
+mutable struct HomotopyPetscMatLO <: AbstractPetscMatLO
   lo_inner::NewtonPetscMatLO
   lambda::Float64
 end
@@ -511,7 +511,7 @@ function HomotopyPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
 end
 
 
-type HomotopyPetscMatFreeLO <: AbstractPetscMatFreeLO
+mutable struct HomotopyPetscMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::NewtonPetscMatFreeLO
   lambda::Float64  # this is unused, but needed for consistency
 end
@@ -541,7 +541,7 @@ end
 """
   Homotopy matrix-explicit linear operators
 """
-typealias HomotopyMatLO Union{HomotopyDenseLO, HomotopySparseDirectLO, HomotopyPetscMatLO}
+const HomotopyMatLO = Union{HomotopyDenseLO, HomotopySparseDirectLO, HomotopyPetscMatLO}
 
 
 function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
@@ -582,10 +582,10 @@ function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
 end
 
 
-function applyLinearOperator{Tsol}(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
-                             opts::Dict, ctx_residual, t, x::AbstractVector, 
-                             b::AbstractVector)
+function applyLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
+                       sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                       opts::Dict, ctx_residual, t, x::AbstractVector, 
+                       b::AbstractVector) where Tsol
 
   @assert !(Tsol <: AbstractFloat)  # complex step only!
 
@@ -596,11 +596,11 @@ function applyLinearOperator{Tsol}(lo::HomotopyPetscMatFreeLO, mesh::AbstractMes
   return nothing
 end
 
-function applyLinearOperatorTranspose{Tsol}(lo::HomotopyPetscMatFreeLO, 
+function applyLinearOperatorTranspose(lo::HomotopyPetscMatFreeLO, 
                              mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
-                             b::AbstractVector)
+                             b::AbstractVector) where Tsol
 
   error("applyLinearOperatorTranspose() not supported by HomotopyPetscMatFreeLO")
 

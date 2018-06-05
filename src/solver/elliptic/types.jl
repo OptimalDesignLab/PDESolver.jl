@@ -1,5 +1,5 @@
 
-type ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
+mutable struct ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::IOStream
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
@@ -49,23 +49,23 @@ type ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
   krylov_type::Int # 1 = explicit jacobian, 2 = jac-vec prod
   time::Timings
 
-  function ParamType(mesh, sbp, opts, order::Integer)
+  function ParamType{Tdim, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer) where {Tdim, Tsol, Tres, Tmsh} 
     # create values, apply defaults
 
     t = 0.0
     myrank = mesh.myrank
     f = open("log_$myrank.dat", "w")
-    q_vals = Array(Tsol, 4)
-    qg = Array(Tsol, 4)
-    v_vals = Array(Tsol, 4)
+    q_vals = Array{Tsol}(4)
+    qg = Array{Tsol}(4)
+    v_vals = Array{Tsol}(4)
 
-    res_vals1 = Array(Tres, 4)
-    res_vals2 = Array(Tres, 4)
+    res_vals1 = Array{Tres}(4)
+    res_vals2 = Array{Tres}(4)
 
-    flux_vals1 = Array(Tres, 4)
-    flux_vals2 = Array(Tres, 4)
+    flux_vals1 = Array{Tres}(4)
+    flux_vals2 = Array{Tres}(4)
 
-    sat_vals = Array(Tres, 4)
+    sat_vals = Array{Tres}(4)
 
     A0 = zeros(Tsol, 4, 4)
     A0inv = zeros(Tsol, 4, 4)
@@ -98,7 +98,7 @@ type ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
       filter_fname = opts["filter_name"]
       filter_mat = calcFilter(sbp, filter_fname, opts)
     else
-      filter_mat = Array(Float64, 0,0)
+      filter_mat = Array{Float64}(0,0)
     end
 
     use_dissipation = opts["use_dissipation"]
@@ -125,7 +125,7 @@ type ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType
 
 end  # end type declaration
 
-type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
+mutable struct EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
   params::ParamType{Tdim, Tsol, Tres, Tmsh}
   comm::MPI.Comm
   commsize::Int
@@ -206,7 +206,7 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
   nstages::UInt8
   istage::UInt8
 
-  function EllipticData_(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+  function EllipticData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstructing EllipticData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -278,7 +278,7 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
       end
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
     else
-      eqn.shared_data = Array(SharedFaceData, 0)
+      eqn.shared_data = Array{SharedFaceData}(0)
     end
 #
     # reshape of q and res
@@ -322,23 +322,21 @@ type EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres, Tdim}
       eqn.nstages = 5
     end
 
-    # @bp
     # TODO: parallel related variables
     #
-    eqn.q_face_send = Array(Array{Tsol, 3}, 1)
-    eqn.q_face_recv = Array(Array{Tsol, 3}, 1)
+    eqn.q_face_send = Array{Array{Tsol, 3}}(1)
+    eqn.q_face_recv = Array{Array{Tsol, 3}}(1)
     return eqn
   end # end function
 end # end type
 
-function calcWetArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                             sbp::AbstractSBP,
-                                             eqn::EllipticData{Tsol, Tres, Tdim})
+function calcWetArea(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractSBP,
+                     eqn::EllipticData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, mesh.numNodesPerFace, Tdim)
   area = zeros(Tmsh, mesh.numNodesPerFace)
-  face_area::Tmsh
-  face_area = 0.0
+  face_area = zero(Tmsh)
   sbpface = mesh.sbpface
 
   #
@@ -416,11 +414,11 @@ function majorIterationCallback(itr::Integer,
   return nothing
 end
 
-function multiplyA0inv{Tmsh, Tsol, Tdim, Tres}(mesh::AbstractMesh{Tmsh},
-                                               sbp::AbstractSBP,
-                                               eqn::EllipticData{Tsol, Tres, Tdim},
-                                               opts,
-                                               res::AbstractArray{Tsol, 3})
+function multiplyA0inv(mesh::AbstractMesh{Tmsh},
+                       sbp::AbstractSBP,
+                       eqn::EllipticData{Tsol, Tres, Tdim},
+                       opts,
+                       res::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
   return nothing
 end
 

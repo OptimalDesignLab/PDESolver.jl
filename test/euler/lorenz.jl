@@ -11,7 +11,7 @@ function lorenz(t, x_vect)
   y = x_vect[2]
   z = x_vect[3]
 
-  f = Array(Float64,3)
+  f = Array{Float64}(3)
 
 
 

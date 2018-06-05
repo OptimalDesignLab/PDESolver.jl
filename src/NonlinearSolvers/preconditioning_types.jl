@@ -24,7 +24,7 @@
    * is_factored: if true, volume_jac has been factored (LU with partial
                   pivoting), false otherwise
 """
-type NewtonVolumePC <: AbstractPetscMatFreePC
+mutable struct NewtonVolumePC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
   volume_jac::Array{Float64, 3}
   ipiv::Array{BlasInt, 2}
@@ -50,8 +50,8 @@ function NewtonVolumePreconditioner(mesh::AbstractMesh, sbp, eqn::AbstractSoluti
   jac_size = mesh.numDofPerNode*mesh.numNodesPerElement
   numEl = mesh.numEl
 
-  volume_jac = Array(Float64, jac_size, jac_size, numEl)
-  ipiv = Array(BlasInt, jac_size, numEl)
+  volume_jac = Array{Float64}(jac_size, jac_size, numEl)
+  ipiv = Array{BlasInt}(jac_size, numEl)
   is_factored = false
 
   return VolumePreconditioner(volume_jac, ipiv, is_factored)
@@ -67,8 +67,8 @@ end
 """
 function NewtonVolumePreconditioner()
 
-  volume_jac = Array(Float64, 0, 0, 0)
-  ipiv = Array(BlasInt, 0, 0)
+  volume_jac = Array{Float64}(0, 0, 0)
+  ipiv = Array{BlasInt}(0, 0)
   is_factored = false
 
   return new(volume_jac, ipiv, is_factored)

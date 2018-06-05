@@ -107,9 +107,9 @@ end
    * eqn
    * opts
 """
-function dataPrep_diff{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
-                       eqn::AbstractEulerData{Tsol, Tres}, opts)
+function dataPrep_diff(mesh::AbstractMesh{Tmsh},
+     sbp::AbstractSBP,
+     eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 # this is almost the exact list of everything we *shouldn't* be storing, but
@@ -173,9 +173,9 @@ end # end function dataPrep
    * opts
    * assembler
 """
-function evalVolumeIntegrals_diff{Tmsh,  Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, assembler::AssembleElementData)
+                             opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
 
@@ -207,10 +207,10 @@ end  # end evalVolumeIntegrals
    * opts
    * assembler.
 """
-function evalBoundaryIntegrals_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalBoundaryIntegrals_diff(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts,
-                               assembler::AssembleElementData)
+                               assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
   if mesh.isDG
     # when precompute_boundary_flux == false, this fuunction does the
@@ -235,9 +235,9 @@ end  # end evalBoundaryIntegrals
    * opts
    * assembler
 """
-function addStabilization_diff{Tmsh,  Tsol}(mesh::AbstractMesh{Tmsh},
+function addStabilization_diff(mesh::AbstractMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                          assembler::AssembleElementData)
+                          assembler::AssembleElementData) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
 
@@ -282,10 +282,10 @@ end
    * opts
    * assembler
 """
-function evalFaceIntegrals_diff{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
-                                sbp::AbstractSBP,
-                                eqn::EulerData{Tsol}, opts,
-                                assembler::AssembleElementData)
+function evalFaceIntegrals_diff(mesh::AbstractDGMesh{Tmsh},
+                    sbp::AbstractSBP,
+                    eqn::EulerData{Tsol}, opts,
+                    assembler::AssembleElementData) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -347,9 +347,9 @@ end
    * opts
    * assembler
 """
-function evalSourceTerm_diff{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
+function evalSourceTerm_diff(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                     opts, assembler::AssembleElementData)
+                     opts, assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
   # source terms are not a function of q, so they don't affect the Jacobian

@@ -13,7 +13,7 @@ This is a serial test and uses the input file called
 
 function test_viscous()
 
-  facts("--- Testing Viscous Terms ---") do
+  @testset "--- Testing Viscous Terms ---" begin
 
     ARGS[1] = "input_viscous_polynomial_ser.jl"
     # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(ARGS[1])
@@ -21,19 +21,19 @@ function test_viscous()
     @assert mesh.isDG == true
     @assert opts["isViscous"] == true
 
-    context("Checking Solution at Final Time Step") do
+    @testset "Checking Solution at Final Time Step" begin
 
       viscous_qvec_final_for_comparison = readdlm("viscous_files/solution_viscous_forcomparison_0.dat")
 
       for dof_ix = 1:length(eqn.q_vec)
         diff = eqn.q_vec[dof_ix] - viscous_qvec_final_for_comparison[dof_ix]
-        @fact diff --> roughly(0.0, atol=1e-13)
+        @test isapprox( diff, 0.0) atol=1e-13
       end
 
 
-    end # End context("Checking Solution at Final Time Step")
+    end # End  testset("Checking Solution at Final Time Step")
 
-    context("Checking Diffusion Tensor") do
+    @testset "Checking Diffusion Tensor" begin
 
       Tsol = opts["Tsol"]
       Tdim = mesh.dim
@@ -48,8 +48,8 @@ function test_viscous()
         fill!(GtL, 0.0)
         fill!(GtR, 0.0)
 
-        q_faceL = slice(eqn.q_face, :, 1, :, interface)
-        q_faceR = slice(eqn.q_face, :, 2, :, interface)
+        q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
+        q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
 
         EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
         EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
@@ -66,18 +66,18 @@ function test_viscous()
         for ii = 1:length(GtL_vec)
 
           diff = GtL_vec[ii] - GtL_vec_to_check_against[ii]
-          @fact diff --> roughly(0.0, atol=1e-13)
+          @test isapprox( diff, 0.0) atol=1e-13
 
           diff = GtR_vec[ii] - GtR_vec_to_check_against[ii]
-          @fact diff --> roughly(0.0, atol=1e-13)
+          @test isapprox( diff, 0.0) atol=1e-13
 
         end
 
       end   # end loop over interfaces
 
-    end   # End context("Checking Diffusion Tensor")
+    end   # End  testset("Checking Diffusion Tensor")
 
-  end   # End facts("--- Testing Viscous Terms ---")
+  end   # End testset("--- Testing Viscous Terms ---")
 
 end # End function test_viscous
 

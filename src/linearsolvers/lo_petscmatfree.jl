@@ -7,7 +7,7 @@
 
    * none
 """
-type PetscMatFreeLO <: AbstractPetscMatFreeLO
+mutable struct PetscMatFreeLO <: AbstractPetscMatFreeLO
   A::PetscMat  # shell matrix
   xtmp::PetscVec  # these are shared with the PC if possible
   btmp::PetscVec

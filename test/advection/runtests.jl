@@ -5,7 +5,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 using MPI
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using Utils
 using PdePumiInterface  # common mesh interface - pumi
@@ -15,6 +15,7 @@ using NonlinearSolvers   # non-linear solversa
 using OptimizationInterface
 using ArrayViews
 import ODLCommonTools.sview
+import ArrayViews.view
 using Input
 using LinearSolvers
 using PETSc2
@@ -57,12 +58,12 @@ include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Advection tests -----") do
+@testset "----- Running Advection tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array{String}(nargs)
     copy!(tags, ARGS)
   end
 
@@ -75,5 +76,3 @@ println("finished running tests")
 
 #------------------------------------------------------------------------------
 # cleanup
-
-FactCheck.exitstatus()

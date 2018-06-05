@@ -31,9 +31,9 @@ Computes the initial conditions for the state variable
 
 """->
 
-function ICx5plusy5{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICx5plusy5(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 2}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -47,9 +47,9 @@ function ICx5plusy5{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function ICx5plusy5
 
-function ICx5plusy5{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 3}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICx5plusy5(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 3}, 
+opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -84,9 +84,9 @@ Computes the initial conditions for the state variable
 
 """->
 
-function ICexp_xplusy{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+function ICexp_xplusy(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 2}, 
-                    opts, u0::AbstractArray{Tsol})
+                    opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -100,9 +100,9 @@ function ICexp_xplusy{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
-function ICexp_xplusy{Tmsh, Tsbp, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, 
+function ICexp_xplusy(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol, Tres, 3}, 
-                    opts, u0::AbstractArray{Tsol})
+                    opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -119,9 +119,9 @@ end # end function exp_xplusy
 
 
 
-function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICsinwave(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -134,9 +134,9 @@ function ICsinwave{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
-function ICsinwavey{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICsinwavey(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -149,9 +149,9 @@ function ICsinwavey{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
-function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
+function ICsinwavey_pert(mesh::AbstractMesh{Tmsh}, 
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+                    opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -164,9 +164,9 @@ function ICsinwavey_pert{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
-function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICsinwavexy(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   n = 1  # number of sin waves
   for i = 1:mesh.numEl
@@ -183,9 +183,9 @@ function ICsinwavexy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICsinwave_ampl{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
+function ICsinwave_ampl(mesh::AbstractMesh{Tmsh},
                     sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                    opts, u0::AbstractArray{Tsol})
+                    opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -197,9 +197,9 @@ function ICsinwave_ampl{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function ICsinwave_ampl
 
-function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICmms1(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -211,9 +211,9 @@ function ICmms1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
-function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICx4(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -226,9 +226,9 @@ function ICx4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
-function ICp0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICp0(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
   	for j = 1:mesh.numNodesPerElement
@@ -241,9 +241,9 @@ function ICp0{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
-function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICp1(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -255,9 +255,9 @@ function ICp1{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
-function ICp2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICp2(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -269,9 +269,9 @@ function ICp2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
-function ICp3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICp3(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -283,9 +283,9 @@ function ICp3{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
-function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICp4(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -298,9 +298,9 @@ function ICp4{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end # end function exp_xplusy
 
 
-function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                    sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
-                    opts, u0::AbstractArray{Tsol})
+function ICp5(mesh::AbstractMesh{Tmsh}, 
+  sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, 
+  opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -312,9 +312,9 @@ function ICp5{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end # end function exp_xplusy
 
-function ICexp5xplus4yplus2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICexp5xplus4yplus2(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -326,9 +326,9 @@ function ICexp5xplus4yplus2{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICexp5xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICexp5xplusy(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -341,9 +341,9 @@ function ICexp5xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICexp3xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICexp3xplusy(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -356,9 +356,9 @@ function ICexp3xplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICexp2xplus2y{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICexp2xplus2y(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -371,9 +371,9 @@ function ICexp2xplus2y{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICexp_xy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICexp_xy(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -385,9 +385,9 @@ function ICexp_xy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICxplusy(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -400,9 +400,9 @@ function ICxplusy{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
 end
 
 
-function ICunsteadymms{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICunsteadymms(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -414,9 +414,9 @@ function ICunsteadymms{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function ICunsteadypoly{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                            sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
-                            opts, u0::AbstractArray{Tsol})
+function ICunsteadypoly(mesh::AbstractMesh{Tmsh}, 
+          sbp::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol},
+          opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   for i = 1:mesh.numEl
     for j = 1:mesh.numNodesPerElement
@@ -457,9 +457,9 @@ file contains no degree of freedom number information).
   Aliasing restrictions: none.
 
 """->
-function ICFile{Tmsh, Tsbp, Tsol}(mesh::AbstractMesh{Tmsh}, 
-                operator::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, opts, 
-                u0::AbstractVector{Tsol})
+function ICFile(mesh::AbstractMesh{Tmsh}, 
+operator::AbstractSBP{Tsbp}, eqn::AdvectionData{Tsol}, opts, 
+u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values from a disk file
 # the file name comes from opts["ICfname"]
 

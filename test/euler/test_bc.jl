@@ -49,7 +49,7 @@ function test_bcs()
   obj = EulerEquationMod.BCDict["subsonicInflowBC"]
   obj(params, q, aux_vars, coords, nrm_xy, F2)
 
-  @fact norm((F - F2)/norm(q)) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm((F - F2)/norm(q)), 0.0) atol=1e-12
 
 
   #----------------------------------------------------------------------------
@@ -67,7 +67,7 @@ function test_bcs()
   obj = EulerEquationMod.BCDict["subsonicOutflowBC"]
   obj(params, q, aux_vars, coords, nrm_xy, F2)
 
-  @fact norm((F - F2)/norm(q)) --> roughly(0.0, atol=1e-12)
+  @test isapprox( norm((F - F2)/norm(q)), 0.0) atol=1e-12
 
 
 

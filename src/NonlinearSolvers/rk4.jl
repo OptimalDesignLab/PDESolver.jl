@@ -25,7 +25,7 @@ export rk4
    * i: the current time step
 
 """
-type RK4CheckpointData <: AbstractCheckpointData
+mutable struct RK4CheckpointData <: AbstractCheckpointData
   i::Int  # current time step
 end
 

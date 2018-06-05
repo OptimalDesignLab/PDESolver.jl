@@ -1,30 +1,30 @@
-abstract AbstractDirichletBC <: BCType
-abstract AbstractNeumannBC <: BCType
+abstract type AbstractDirichletBC <: BCType end
+abstract type AbstractNeumannBC <: BCType end
 export isDirichlet, isNeumann
 
-type DirichletAllZero <: AbstractDirichletBC
+mutable struct DirichletAllZero <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletAllZero,
+function (obj::DirichletAllZero)(
                           xy::AbstractArray{Tmsh},
-                          gD::AbstractArray{Tsol, 1})  # (numDofPerNode))
+                          gD::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   gD[:] = 0.0
   return nothing
 end
 
-type DirichletAllOne <: AbstractDirichletBC
+mutable struct DirichletAllOne <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletAllOne,
+function (obj::DirichletAllOne)(
                           xy::AbstractArray{Tmsh},
-                          gD::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gD::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   gD[:] = 1.0
   return nothing
 end
 
-type DirichletTrig <: AbstractDirichletBC
+mutable struct DirichletTrig <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletTrig, 
+function (obj::DirichletTrig)(
                           xy::AbstractArray{Tmsh}, 
-                          q::AbstractArray{Tsol, 1})  # (numDofPerNode))
+                          q::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   k = 2.0
   q[:] = sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
   if abs(q[1]) > 1.0E-10
@@ -33,11 +33,11 @@ function call{Tmsh, Tsol}(obj::DirichletTrig,
   return nothing
 end
 
-type DirichletPolynial2nd <: AbstractDirichletBC
+mutable struct DirichletPolynial2nd <: AbstractDirichletBC
 end
-function call{Tmsh, Tsol}(obj::DirichletPolynial2nd,
+function (obj::DirichletPolynial2nd)(
                           xy::AbstractArray{Tmsh},
-                          gD::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gD::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   a = 1.0
   b = 1.0
   c = 1.0
@@ -46,27 +46,27 @@ function call{Tmsh, Tsol}(obj::DirichletPolynial2nd,
 end
 
 
-type NeumannAllZero <: AbstractNeumannBC
+mutable struct NeumannAllZero <: AbstractNeumannBC
 end
 
-function call{Tmsh, Tsol}(obj::NeumannAllZero,
+function (obj::NeumannAllZero)(
                           xy::AbstractArray{Tmsh, 1},
-                          gN::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gN::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   gN[:] = 1.0
   return nothing
 end
 
-type NeumannAllOne <: AbstractNeumannBC
+mutable struct NeumannAllOne <: AbstractNeumannBC
 end
 
-function call{Tmsh, Tsol}(obj::NeumannAllOne,
+function (obj::NeumannAllOne)(
                           xy::AbstractArray{Tmsh, 1},
-                          gN::AbstractArray{Tsol, 1})  # (numDofPerNode)
+                          gN::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode)
   gN[:] = 1.0
   return nothing
 end
 
-global const BCDict = Dict{ASCIIString, BCType}(
+global const BCDict = Dict{String, BCType}(
                                                 "DirichletAllZero" => DirichletAllZero(),
                                                 "DirichletAllOne" => DirichletAllOne(),
                                                 "NeumannAllZero" => NeumannAllZero(),
@@ -96,21 +96,21 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EllipticData, 
     mesh.bndry_funcs[i] = BCDict[val]
   end
 end
-function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
-                                         sbp::AbstractSBP,
-                                         eqn::AbstractEllipticData{Tsol, Tres},
-                                         opts,
-                                         q::AbstractArray{Tsol,3},
-                                         q_bndry::AbstractArray{Tsol,3})
+function interpolateBoundary(mesh::AbstractDGMesh,
+                             sbp::AbstractSBP,
+                             eqn::AbstractEllipticData{Tsol, Tres},
+                             opts,
+                             q::AbstractArray{Tsol,3},
+                             q_bndry::AbstractArray{Tsol,3}) where {Tsol, Tres}
   boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, q, q_bndry)
 end
 
-function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
-                                         sbp::AbstractSBP,
-                                         eqn::AbstractEllipticData{Tsol, Tres},
-                                         opts,
-                                         grad::AbstractArray{Tsol,4},
-                                         grad_bndry::AbstractArray{Tsol,4})
+function interpolateBoundary(mesh::AbstractDGMesh,
+                             sbp::AbstractSBP,
+                             eqn::AbstractEllipticData{Tsol, Tres},
+                             opts,
+                             grad::AbstractArray{Tsol,4},
+                             grad_bndry::AbstractArray{Tsol,4}) where {Tsol, Tres}
   @assert(size(grad, 4) == size(grad_bndry, 4))   # Tdim
   @assert(size(grad, 1) == size(grad_bndry, 1))   # numDofPerNode
 
@@ -122,10 +122,10 @@ function interpolateBoundary{Tsol, Tres}(mesh::AbstractDGMesh,
   end
 end
 
-@debug function getBCFluxes{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                    sbp::AbstractSBP,
-                                                    eqn::EllipticData{Tsol, Tres, Tdim},
-                                                    opts)
+function getBCFluxes(mesh::AbstractMesh{Tmsh},
+                            sbp::AbstractSBP,
+                            eqn::EllipticData{Tsol, Tres, Tdim},
+                            opts) where {Tmsh, Tsol, Tres, Tdim}
   #
   # The boundary integrals are categorized into 3 classes.
   # The first is numerical and applies to all boundaries (both Dirichlet
@@ -141,22 +141,22 @@ end
   Cip = opts["Cip"]
   penalty_method = opts["Flux_name"]
   sbpface = mesh.sbpface
-  dq = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)  
+  dq = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)  
   penalty_factor_shahbazi = 0.5*Float64(p + 1.0)*Float64(p + Tdim)/Float64(Tdim)
-  penalty = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_shahbazi = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_shahbazi = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   sbpface = mesh.sbpface
   numFacesPerElem = 3
-  nrm = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
+  nrm = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
   numFacesPerElem = 3
 
-  eigMax = Array(Tmsh, mesh.numDofPerNode)
-  lambda_dqdx = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  eigMax = Array{Tmsh}(mesh.numDofPerNode)
+  lambda_dqdx = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  Sat = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace) 
-  RLR = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  Sat = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace) 
+  RLR = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
   R = sview(sbpface.interp, :,:)
   RR = R.'*R
   area_sum = sview(eqn.area_sum, :)
@@ -184,9 +184,9 @@ end
   for iBC = 1:mesh.numBC
     indx0 = mesh.bndry_offsets[iBC]
     indx1 = mesh.bndry_offsets[iBC+1] - 1
-    gD = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    gg = Array(Tsol, mesh.numDofPerNode)
-    gN = Array(Tsol, mesh.numDofPerNode)
+    gD = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+    gg = Array{Tsol}(mesh.numDofPerNode)
+    gN = Array{Tsol}(mesh.numDofPerNode)
 
     for f = indx0:indx1
       xflux = sview(eqn.xflux_bndry, :,:,f)
@@ -311,7 +311,6 @@ end
           end 
         elseif penalty_method == "SAT"
 
-          # @bp
           lambda = sview(eqn.lambda, :,:,:,:,elem)
           Sat[:,:,:] = 0.0  
 
@@ -337,7 +336,6 @@ end
               end
             end
           end
-          # @bp
 
           #
           # Left multiply by numFacesPerElem*B

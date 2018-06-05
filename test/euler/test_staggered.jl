@@ -48,7 +48,7 @@ function test_staggered_same(mesh, sbp, eqn, opts)
   fill!(eqn.res, 0.0)
   evalResidual(mesh2, sbp2, eqn, opts)
 
-  @fact vecnorm(res_orig - eqn.res) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(res_orig - eqn.res), 0.0) atol=1e-13
 
   # test a non-uniform condition
   EulerEquationMod.ICExp(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -67,7 +67,7 @@ function test_staggered_same(mesh, sbp, eqn, opts)
   fill!(eqn.res, 0.0)
   evalResidual(mesh2, sbp2, eqn, opts)
 
-  @fact vecnorm(res_orig - eqn.res) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(res_orig - eqn.res), 0.0) atol=1e-13
 
 
   # test staggered grid volume integrals
@@ -81,7 +81,7 @@ function test_staggered_same(mesh, sbp, eqn, opts)
   fill!(eqn.res, 0.0)
   EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, mesh2, sbp, sbp2, eqn, opts, eqn.flux_func)
 
-  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res - res_orig), 0.0) atol=1e-13
 
 
   fill!(eqn.res, 0.0)
@@ -91,7 +91,7 @@ function test_staggered_same(mesh, sbp, eqn, opts)
   fill!(eqn.res, 0.0)
   EulerEquationMod.getFaceElementIntegral(mesh, mesh2, sbp, sbp2, eqn, eqn.face_element_integral_func, eqn.flux_func, mesh2.sbpface, mesh.interfaces)
 
-  @fact vecnorm(eqn.res - res_orig) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res - res_orig), 0.0) atol=1e-13
 
   fill!(eqn.res, 0.0)
 
@@ -140,10 +140,10 @@ function test_staggered_different(mesh, sbp, eqn, opts)
   end
 
   smallmatmat!(q_ex, mesh.I_S2FT, q2)
-  @fact norm(q2 - q2_ex) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(q2 - q2_ex), 0.0) atol=1e-13
 
   smallmatmat!(q2_ex, mesh.I_F2ST, q)
-  @fact norm(q - q_ex) --> roughly(0.0, atol=1e-13)
+  @test isapprox( norm(q - q_ex), 0.0) atol=1e-13
  
   #=  
   # test staggered grid volume integrals
@@ -161,7 +161,7 @@ function test_staggered_different(mesh, sbp, eqn, opts)
 
   fill!(eqn.res, 0.0)
   EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, mesh2, sbp, sbp2, eqn, opts, eqn.flux_func)
-  @fact sum(eqn.res) --> roughly(0.0, atol=1e-13)
+  @test isapprox( sum(eqn.res), 0.0) atol=1e-13
 
 
   fill!(eqn.res, 0.0)
@@ -170,7 +170,7 @@ function test_staggered_different(mesh, sbp, eqn, opts)
 
   EulerEquationMod.getFaceElementIntegral(mesh, mesh2, sbp, sbp2, eqn, penalty_functor, eqn.flux_func, mesh2.sbpface, mesh.interfaces)
   
-  @fact vecnorm(eqn.res) --> roughly(0.0, atol=1e-13)
+  @test isapprox( vecnorm(eqn.res), 0.0) atol=1e-13
 
   return nothing
 end

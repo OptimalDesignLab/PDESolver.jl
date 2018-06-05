@@ -43,7 +43,7 @@
    * aoa : angle of attack (radians)
 
 """->
-type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
+mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   f::BufferedIO
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
@@ -225,7 +225,7 @@ type ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   penalty_relaxation::Float64
   const_tii::Float64
 
-  function ParamType(mesh, sbp, opts, order::Integer)
+  function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer) where {Tdim, var_type, Tsol, Tres, Tmsh} 
   # create values, apply defaults
 
     # all the spatial computations happen on the *flux* grid when using
@@ -513,7 +513,7 @@ end  # end type declaration
 
  exist.
 """->
-type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
+mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim, var_type}
 # hold any constants needed for euler equation, as well as solution and data
 #   needed to calculate it
 # Formats of all arrays are documented in SBP.
@@ -615,7 +615,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
   assembler::AssembleElementData  # temporary place to stash the assembler
 
-  file_dict::Dict{ASCIIString, IO}  # dictionary of all files used for logging
+  file_dict::Dict{String, IO}  # dictionary of all files used for logging
 
   #
   # variables for viscous terms
@@ -627,7 +627,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 	vecflux_bndry::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
 
   # inner constructor
-  function EulerData_(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true)
+  function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
 
     println("\nConstruction EulerData object")
     println("  Tsol = ", Tsol)
@@ -683,7 +683,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
     # Must initialize them because some datatypes (BigFloat)
     #   don't automatically initialize them
     # Taking a sview(A,...) of undefined values is illegal
-    # I think its a bug that Array(Float64, ...) initializes values
+    # I think its a bug that Array{Float64}(...) initializes values
     eqn.q = zeros(Tsol, mesh.numDofPerNode, sbp.numnodes, mesh.numEl)
 
     if opts["use_staggered_grid"]
@@ -764,12 +764,12 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
 
     # send and receive buffers
     if opts["precompute_face_flux"]
-      eqn.flux_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+      eqn.flux_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
     else
-      eqn.flux_sharedface = Array(Array{Tres, 3}, 0)
+      eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
     end
 
-    eqn.aux_vars_sharedface = Array(Array{Tres, 3}, mesh.npeers)
+    eqn.aux_vars_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
     if mesh.isDG
       for i=1:mesh.npeers
         if opts["precompute_face_flux"]
@@ -781,7 +781,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       end
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
     else
-      eqn.shared_data = Array(SharedFaceData, 0)
+      eqn.shared_data = Array{SharedFaceData}(0)
     end
 
     if eqn.params.use_edgestab
@@ -809,8 +809,8 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
-      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
-      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, mesh.npeers)
+      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
+      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
 
       if mesh.isDG
         for i=1:mesh.npeers
@@ -836,9 +836,9 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
       eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
 
-      eqn.shared_data_bar = Array(SharedFaceData, 0)
-      eqn.flux_sharedface_bar = Array(Array{Tsol, 3}, 0)
-      eqn.aux_vars_sharedface_bar = Array(Array{Tsol, 3}, 0)
+      eqn.shared_data_bar = Array{SharedFaceData}(0)
+      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(0)
+      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(0)
 
       eqn.flux_face_bar = zeros(Tres, 0, 0, 0)
       eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
@@ -849,7 +849,7 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
    if open_files
      eqn.file_dict = openLoggingFiles(mesh, opts)
    else
-     eqn.file_dict = Dict{ASCIIString, IO}()
+     eqn.file_dict = Dict{String, IO}()
    end
 
    if eqn.params.isViscous
@@ -864,11 +864,11 @@ type EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, Tres, Tdim,
      eqn.area_sum = zeros(Tmsh, mesh.numEl)
      calcElemSurfaceArea(mesh, sbp, eqn)
    else
-     # eqn.vecflux_face  = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_faceL = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_faceR = Array(Tsol, 0, 0, 0, 0)
-     eqn.vecflux_bndry = Array(Tsol, 0, 0, 0, 0)
-     eqn.area_sum = Array(Tsol, 0)
+     # eqn.vecflux_face  = Array{Tsol}(0, 0, 0, 0)
+     eqn.vecflux_faceL = Array{Tsol}(0, 0, 0, 0)
+     eqn.vecflux_faceR = Array{Tsol}(0, 0, 0, 0)
+     eqn.vecflux_bndry = Array{Tsol}(0, 0, 0, 0)
+     eqn.area_sum = Array{Tsol}(0)
    end
    return eqn
 
@@ -879,12 +879,12 @@ end  # end of type declaration
 """
   Useful alias for 2D ParamType
 """
-typealias ParamType2 ParamType{2}
+const ParamType2 = ParamType{2}
 
 """
   Useful alias for 3D ParamType
 """
-typealias ParamType3 ParamType{3}
+const ParamType3 = ParamType{3}
 
 
 """
@@ -994,7 +994,7 @@ Gets the type parameters for mesh and equation objects.
 * `Tres` : Type parameter of the residual array.
 """->
 
-function getTypeParameters{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres})
+function getTypeParameters(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tmsh, Tsol, Tres}
   return Tmsh, Tsol, Tres
 end
 
@@ -1016,7 +1016,7 @@ Gets the type parameters for mesh and equation objects.
 * `tuple` : Tuple of type parameters. Ordering is same as that of the concrete eqn object within this physics module.
 
 """->
-function getAllTypeParams{Tmsh, Tsol, Tres, Tdim, var_type}(mesh::AbstractMesh{Tmsh}, eqn::EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}, opts)
+function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}, opts) where {Tmsh, Tsol, Tres, Tdim, var_type}
 
   tuple = (Tsol, Tres, Tdim, Tmsh, var_type)
 
@@ -1051,14 +1051,13 @@ sbp: SBP operator
 eqn: an implementation of EulerData. Does not have to be fully initialized.
 """->
 # used by EulerData Constructor
-function calcElemSurfaceArea{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh},
-                                                     sbp::AbstractSBP,
-                                                     eqn::EulerData{Tsol, Tres, Tdim})
+function calcElemSurfaceArea(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractSBP,
+                             eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
   area = zeros(Tmsh, mesh.numNodesPerFace)
-  face_area::Tmsh
-  face_area = 0.0
+  face_area = zero(Tmsh)
   sbpface = mesh.sbpface
 
   #
@@ -1117,10 +1116,10 @@ Output:
   cont_tii
 """->
 
-function calcTraceInverseInequalityConst{Tsbp}(sbp::AbstractSBP{Tsbp},
-                                               sbpface::AbstractFace{Tsbp})
+function calcTraceInverseInequalityConst(sbp::AbstractSBP{Tsbp},
+                                         sbpface::AbstractFace{Tsbp}) where Tsbp
   R = sview(sbpface.interp, :,:)
-  BsqrtRHinvRtBsqrt = Array(Tsbp, sbpface.numnodes, sbpface.numnodes)
+  BsqrtRHinvRtBsqrt = Array{Tsbp}(sbpface.numnodes, sbpface.numnodes)
   perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)
   Hinv = zeros(Tsbp, sbp.numnodes, sbp.numnodes)
   Bsqrt = zeros(Tsbp, sbpface.numnodes, sbpface.numnodes)

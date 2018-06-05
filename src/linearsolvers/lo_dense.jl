@@ -7,7 +7,7 @@
 
    * A: an Array{Float64, 1}
 """
-type DenseLO <: AbstractDenseLO
+mutable struct DenseLO <: AbstractDenseLO
   A::Array{Float64, 2}
   ipiv::Array{BlasInt, 1}
   is_setup::Array{Bool, 1} # true if LO is already setup (ie. factored), false otherwise

@@ -80,6 +80,8 @@ Changed MPI initialization/finalization (PETSc too)
 v0.5: add checkpointing, Linear solver/operator/preconditioner abstraction, explicit jacobian calculation,
       more reliable MPI/PETSc initialization and finalization
 
+v0.6: upgrade from Julia 0.4 to 0.6
+
 Master branch:
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg?branch=master)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
 

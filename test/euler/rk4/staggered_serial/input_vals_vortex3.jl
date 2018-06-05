@@ -4,7 +4,7 @@
 # as part of the solver
 # now that this file is read inside a function, it is better encapsulated
 
-arg_dict = Dict{ASCIIString, Any}(
+arg_dict = Dict{String, Any}(
 "physics" => "Euler",
 "operator_type" => "SBPOmega",
 "operator_type2" => "SBPGamma",

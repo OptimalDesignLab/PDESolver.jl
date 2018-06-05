@@ -53,7 +53,7 @@ end
 """
 function find_src_ranges(data::AbstractArray, col::Integer)
 
-  rnges = Array(UnitRange{Int}, 0)
+  rnges = Array{UnitRange{Int}}(0)
 
   start_idx = 1
   for i=2:size(data, 1)
@@ -94,7 +94,7 @@ function find_dest_ranges(data::AbstractArray, rnges::Array{UnitRange{Int}}, col
   # data
 
   nblocks = length(rnges)
-  dest_rnges = Array(UnitRange{Int}, nblocks)
+  dest_rnges = Array{UnitRange{Int}}(nblocks)
   dest_rng_idx = 1
 
   # first range starts at 1
@@ -106,7 +106,7 @@ function find_dest_ranges(data::AbstractArray, rnges::Array{UnitRange{Int}}, col
   block_offset = 0  # global offset where block - 1 starts
   block_offsets = zeros(Int, nblocks)  # store all of them, so we can
                                        # search older blocks
-  blocks_used = Array(Bool, nblocks)
+  blocks_used = Array{Bool}(nblocks)
   fill!(blocks_used, true)
   for i=2:length(rnges)
     rng = rnges[i]

@@ -14,7 +14,7 @@
        x Tdim
 
 """
-function calcSCurvilinear{T, Tmsh}(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, S::AbstractArray{T, 3})
+function calcSCurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, S::AbstractArray{T, 3}) where {T, Tmsh}
 # calculate S in x, y, z directions
 
   Tdim = size(S, 3)
@@ -56,7 +56,7 @@ end
        x Tdim
 
 """
-function calcECurvilinear{T, Tmsh}(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, E::AbstractArray{T, 3})
+function calcECurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, E::AbstractArray{T, 3}) where {T, Tmsh}
 # calculate E in x, y, z directions
 # this isn't the E actually used by the code, it is Ex =  E_xi*metrics_xi_x + 
 # E_eta*metrics_eta_x
@@ -94,7 +94,7 @@ end
 
 """
 
-function calcDCurvilinear{T, Tmsh}(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, D::AbstractArray{T, 3})
+function calcDCurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, D::AbstractArray{T, 3}) where {T, Tmsh}
 # calculate D in x, y, z directions
 # this isn't the D actually used by the code, it is Dx =  D_xi*metrics_xi_x + 
 # D_eta*metrics_eta_x

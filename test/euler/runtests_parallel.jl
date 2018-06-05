@@ -4,7 +4,7 @@ push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
 
 using PDESolver
 #using Base.Test
-using FactCheck
+using Base.Test
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
@@ -14,6 +14,7 @@ using LinearSolvers
 using NonlinearSolvers   # non-linear solvers
 using OptimizationInterface
 using ArrayViews
+import ArrayViews.view
 import MPI
 using Input
 
@@ -35,44 +36,44 @@ include("test_parallel_derivatives.jl")
   the serial tests
 """
 function test_parallel2()
-  facts("----- Testing Parallel -----") do
+  @testset "----- Testing Parallel -----" begin
 
     start_dir = pwd()
 
     # test rk4
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
 
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
-    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
+    @test isapprox( datas[2], datap[2]) atol=1e-13
 
     # test staggered_parallel
-    cd ("../staggered_parallel")
+    cd("../staggered_parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../staggered_serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
 
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
-    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
+    @test isapprox( datas[2], datap[2]) atol=1e-13
 
 
     cd("../../")
 
-    cd ("./lserk/parallel")
+    cd("./lserk/parallel")
     ARGS[1] = "input_vals_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
 
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
-    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
+    @test isapprox( datas[2], datap[2]) atol=1e-13
 
     cd("../../")
 
@@ -83,7 +84,7 @@ function test_parallel2()
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
 
     fill!(eqn.q, 1.0)
     fill!(eqn.res, 0.0)
@@ -95,7 +96,7 @@ function test_parallel2()
     end
     evalHomotopy(mesh, sbp, eqn, opts, eqn.res)
 
-    @fact vecnorm(eqn.res) --> roughly(0.0, atol=1e-13)
+    @test isapprox( vecnorm(eqn.res), 0.0) atol=1e-13
 
     cd(start_dir)
 
@@ -106,7 +107,7 @@ end
 
 function test_parallel_nopre()
 
-  facts("----- Testing parallel nopre -----") do
+  @testset "----- Testing parallel nopre -----" begin
     start_dir = pwd()
 
     # test rk4
@@ -123,7 +124,7 @@ function test_parallel_nopre()
 
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
     cd(start_dir)
 
@@ -141,7 +142,7 @@ function test_parallel_nopre()
 
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     
-    @fact norm(vec(eqn.res - res_orig)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
     cd(start_dir)
 
@@ -151,19 +152,19 @@ function test_parallel_nopre()
 end
 
 function test_restart()
-  facts("----- Testing restart -----") do
+  @testset "----- Testing restart -----" begin
     start_dir = pwd()
 
     # test rk4
-    cd ("./rk4/parallel")
+    cd("./rk4/parallel")
     ARGS[1] = "input_vals_restart"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
 
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
-    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
+    @test isapprox( datas[2], datap[2]) atol=1e-13
 
     cd("../../lserk/parallel")
     ARGS[1] = "input_vals_restart"
@@ -172,8 +173,8 @@ function test_restart()
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
 
-    @fact datas[1] --> roughly(datap[1], atol=1e-13)
-    @fact datas[2] --> roughly(datap[2], atol=1e-13)
+    @test isapprox( datas[1], datap[1]) atol=1e-13
+    @test isapprox( datas[2], datap[2]) atol=1e-13
 
 
     cd(start_dir)
@@ -190,12 +191,12 @@ add_func1!(EulerTests, test_restart, [TAG_SHORTTEST])
 
 #------------------------------------------------------------------------------
 # run tests
-facts("----- Running Euler 2 process tests -----") do
+@testset "----- Running Euler 2 process tests -----" begin
   nargs = length(ARGS)
   if nargs == 0
-    tags = ASCIIString[TAG_DEFAULT]
+    tags = String[TAG_DEFAULT]
   else
-    tags = Array(ASCIIString, nargs)
+    tags = Array{String}(nargs)
     copy!(tags, ARGS)
   end
 
@@ -203,5 +204,3 @@ facts("----- Running Euler 2 process tests -----") do
   ARGS[1] = ""
   run_testlist(EulerTests, solvePDE, tags)
 end
-
-FactCheck.exitstatus()

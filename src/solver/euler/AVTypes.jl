@@ -21,7 +21,7 @@ Composite type with an inner constructor for Artificial Viscosity
 
 """->
 
-type ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSolutionData{Tsol}
+mutable struct ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSolutionData{Tsol}
 
   res_type::DataType 
   q::Array{Tsol,3}

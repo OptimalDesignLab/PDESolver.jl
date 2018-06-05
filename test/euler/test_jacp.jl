@@ -25,7 +25,7 @@ add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC])
 """
 function test_jac_parallel_long()
 
-  facts("----- Testing jacobian assembly long -----") do
+  @testset "----- Testing jacobian assembly long -----" begin
     fname = "input_vals_jac3dp.jl"
     fname2 = "input_vals_jac_tmp.jl"
 
@@ -132,16 +132,16 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(b1 - b2), 0.0) atol=1e-12
   end
 
   A = getBaseLO(lo2).A
   if typeof(A) <: PetscMat
     matinfo = MatGetInfo(A, PETSc2.MAT_LOCAL)
     if is_prealloc_exact
-      @fact matinfo.nz_unneeded --> 0
+      @test ( matinfo.nz_unneeded )== 0
     else
-      @fact matinfo.nz_unneeded --> greater_than(0)
+      @test  matinfo.nz_unneeded  > 0
     end
   end
 
@@ -234,7 +234,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
 
-    @fact norm(b1 - b2) --> roughly(0.0, atol=1e-12)
+    @test isapprox( norm(b1 - b2), 0.0) atol=1e-12
   end
 
   free(lo1)

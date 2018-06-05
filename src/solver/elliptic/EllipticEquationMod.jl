@@ -2,6 +2,7 @@ module EllipticEquationMod
 
 using PDESolver
 using ArrayViews
+import ArrayViews.view
 using SolverCommon
 using ODLCommonTools
 using SummationByParts
@@ -21,8 +22,8 @@ export AbstractEllipticData, EllipticData, EllipticData_, run_elliptic
 
 
 
-abstract AbstractEllipticData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres}
-abstract EllipticData{Tsol, Tres, Tdim} <: AbstractEllipticData{Tsol, Tres}
+abstract type AbstractEllipticData{Tsol, Tres} <: AbstractSolutionData{Tsol, Tres} end
+abstract type EllipticData{Tsol, Tres, Tdim} <: AbstractEllipticData{Tsol, Tres} end
 
 # now that EllipticData is declared, include other files that use it
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro

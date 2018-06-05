@@ -1,0 +1,4 @@
+#performance history
+# date     time  branch  time        bytes allocated
+2018-6-4 13:50 upgrade_0.6 72.951066858 22875720567
+2018-6-4 14:0 upgrade_0.6 5.215677251 203910751

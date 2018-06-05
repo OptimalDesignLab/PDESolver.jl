@@ -29,11 +29,11 @@
   normal in reference space.  params is eqn.params
 
 """
-function calcFaceFlux{Tmsh,  Tsol, Tres}( mesh::AbstractDGMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
-                          functor::FluxType, 
-                          interfaces::AbstractArray{Interface,1}, 
-                          face_flux::AbstractArray{Tres, 3})
+function calcFaceFlux( mesh::AbstractDGMesh{Tmsh}, 
+       sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+       functor::FluxType, 
+       interfaces::AbstractArray{Interface,1}, 
+       face_flux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
  
   nfaces = length(interfaces)
   for i=1:nfaces  # loop over faces
@@ -68,10 +68,10 @@ end
     opts
     flux_func: the flux functor that computes the face flux at a node
 """
-function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
-                                 mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-                                 eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
-                                 flux_func::FluxType)
+function calcFaceIntegrals_nopre(
+         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+         eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+         flux_func::FluxType) where {Tsol, Tres, Tmsh, Tdim}
 
   q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = zeros(q_faceL)
@@ -99,14 +99,14 @@ function calcFaceIntegrals_nopre{Tsol, Tres, Tmsh, Tdim}(
   return nothing
 end
 
-function calcFaceIntegralsStaggered_nopre{Tsol, Tres, Tmsh, Tdim}(
-                                          mesh_s::AbstractDGMesh{Tmsh},
-                                          mesh_f::AbstractDGMesh{Tmsh},
-                                          sbp_s::AbstractSBP,
-                                          sbp_f::AbstractSBP,
-                                          eqn::AdvectionData{Tsol, Tres, Tdim},
-                                          opts,
-                                          flux_func::FluxType)
+function calcFaceIntegralsStaggered_nopre(
+                  mesh_s::AbstractDGMesh{Tmsh},
+                  mesh_f::AbstractDGMesh{Tmsh},
+                  sbp_s::AbstractSBP,
+                  sbp_f::AbstractSBP,
+                  eqn::AdvectionData{Tsol, Tres, Tdim},
+                  opts,
+                  flux_func::FluxType) where {Tsol, Tres, Tmsh, Tdim}
 
   q_faceL = zeros(Tsol, mesh_f.numNodesPerFace)
   q_faceR = zeros(q_faceL)
@@ -163,9 +163,9 @@ end
   See [`finishExchangeData`](@ref) for details on the interface and 
   [`calcSharedFaceIntegrals_inner`](@ref) for the integral that is computed.
 """
-function calcSharedFaceIntegrals{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
+function calcSharedFaceIntegrals( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            opts, data::SharedFaceData)
+                            opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   if opts["precompute_face_flux"]
     calcSharedFaceIntegrals_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
@@ -195,9 +195,9 @@ end
     functor: the FluxType to use for the face flux
 
 """->
-function calcSharedFaceIntegrals_inner{Tmsh, Tsol}( mesh::AbstractDGMesh{Tmsh},
+function calcSharedFaceIntegrals_inner( mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            opts, data::SharedFaceData, functor::FluxType)
+                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 # calculate the face flux and do the integration for the shared interfaces
 
   if opts["parallel_data"] != "face"
@@ -245,10 +245,10 @@ end
 
   See [`calcSharedFaceIntegrals_inner`](@ref) for a description of the arguments
 """
-function calcSharedFaceIntegrals_inner_nopre{Tmsh, Tsol}(
+function calcSharedFaceIntegrals_inner_nopre(
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            opts, data::SharedFaceData, functor::FluxType)
+                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 # calculate the face flux and do the integration for the shared interfaces
 
   if opts["parallel_data"] != "face"
@@ -297,9 +297,9 @@ end
   See finishDataExchange for details on the interface and 
   [`calcSharedFaceIntegrals_inner`](@ref) for the integral that is computed.
 """
-function calcSharedFaceIntegrals_element{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
+function calcSharedFaceIntegrals_element(mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            opts, data::SharedFaceData)
+                            opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   if opts["precompute_face_flux"]
     calcSharedFaceIntegrals_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
@@ -318,10 +318,10 @@ end
   interpolate the solution from the elements to the faces and then do the
   integral
 """
-function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}( 
+function calcSharedFaceIntegrals_element_inner( 
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol},
-                            opts, data::SharedFaceData, functor::FluxType)
+                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 
   @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
   @debug2 flush(eqn.params.f)
@@ -333,8 +333,8 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
 
 
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   workarr = zeros(q_faceR)
   q = eqn.q
   params = eqn.params
@@ -352,9 +352,9 @@ function calcSharedFaceIntegrals_element_inner{Tmsh, Tsol}(
   start_elnum = mesh.shared_element_offsets[idx]
 
   @debug2 begin
-    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
     flush(params.f)
   end
@@ -401,10 +401,10 @@ end
   face at a time instead of computing the entire flux and then integrating.
 
 """
-function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}( 
+function calcSharedFaceIntegrals_element_inner_nopre( 
                             mesh::AbstractDGMesh{Tmsh},
                             sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres},
-                            opts, data::SharedFaceData, functor::FluxType)
+                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
 
   @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
   @debug2 flush(eqn.params.f)
@@ -414,8 +414,8 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
   end
 
   # TODO: make these fields of params
-  q_faceL = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   workarr = zeros(q_faceR)
   q = eqn.q
   params = eqn.params
@@ -434,9 +434,9 @@ function calcSharedFaceIntegrals_element_inner_nopre{Tmsh, Tsol, Tres}(
   start_elnum = mesh.shared_element_offsets[idx]
 
   @debug2 begin
-    qL_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace, 
+    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace, 
                                  mesh.peer_face_counts[i])
     flush(params.f)
   end
@@ -493,11 +493,11 @@ end
 
     the flux
 """->
-type avgFlux <: FluxType
+mutable struct avgFlux <: FluxType
 end
 
-function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType2, uL::Tsol, uR::Tsol,
-              nrm::AbstractArray{Tmsh,1})
+function (obj::avgFlux)(params::ParamType2, uL::Tsol, uR::Tsol,
+              nrm::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -511,8 +511,8 @@ function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType2, uL::Tsol, uR::Tsol,
   return u
 end
 
-function call{Tmsh, Tsol}(obj::avgFlux, params::ParamType3, uL::Tsol, uR::Tsol,
-              nrm::AbstractArray{Tmsh,1})
+function (obj::avgFlux)(params::ParamType3, uL::Tsol, uR::Tsol,
+              nrm::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -546,11 +546,11 @@ end
   Outputs:
     the flux
 """->
-type LFFlux <: FluxType
+mutable struct LFFlux <: FluxType
 end
 
-function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType2, uL::Tsol, uR::Tsol,
-              nrm_scaled::AbstractArray{Tmsh,1})
+function (obj::LFFlux)(params::ParamType2, uL::Tsol, uR::Tsol,
+              nrm_scaled::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -565,8 +565,8 @@ function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType2, uL::Tsol, uR::Tsol,
   return u
 end
 
-function call{Tmsh, Tsol}(obj::LFFlux, params::ParamType3, uL::Tsol, uR::Tsol,
-              nrm::AbstractArray{Tmsh,1})
+function (obj::LFFlux)(params::ParamType3, uL::Tsol, uR::Tsol,
+              nrm::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
 
   alpha_x = params.alpha_x
   alpha_y = params.alpha_y
@@ -585,7 +585,7 @@ end
 
 
 
-global const FluxDict = Dict{ASCIIString, FluxType}(
+global const FluxDict = Dict{String, FluxType}(
 "avgFlux" => avgFlux(),
 "LFFlux" => LFFlux(),
 )

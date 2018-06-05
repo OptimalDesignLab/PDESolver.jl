@@ -175,7 +175,7 @@ function postproc(mesh, sbp, eqn, opts)
     if haskey(opts, "exactFunctional")
       exactFunctional = opts["exactFunctional"]
     end
-    functional_value = Array(typeof(eqn.q[1,1,1]), mesh.numDofPerNode)
+    functional_value = Array{typeof(eqn.q[1,1,1])}(mesh.numDofPerNode)
     eqn.functional(mesh, sbp, eqn, opts, functional_value)
     println("functional = ", abs(real(functional_value[1]) - exactFunctional))
     fname = "functional.dat"

@@ -91,7 +91,7 @@ function getNodeCounts(op_type, order)
 end
 
 
-function calcDofs{T <: Integer}(m, nodecnt::AbstractArray{T})
+function calcDofs(m, nodecnt::AbstractArray{T}) where T <: Integer
 # calculate number of dofs in a rectangular domain with the same number of
 # elements along both axes
 # m = number of elements per side

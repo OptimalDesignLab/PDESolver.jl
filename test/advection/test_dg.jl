@@ -6,7 +6,7 @@ global const test_dg_inputfile = "input_vals_channelDG.jl"
   Test face flux for DG.
 """
 function test_dg_flux(mesh, sbp, eqn, opts)
-  facts("----- Testing DG Flux ------") do
+  @testset "----- Testing DG Flux ------" begin
     eqn.params.LFalpha = 1.0
     nrm_scaled = mesh.nrm_face[:, 1, 1]
     alpha = [eqn.params.alpha_x, eqn.params.alpha_y]
@@ -18,7 +18,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
     flux_func = AdvectionEquationMod.FluxDict["LFFlux"]
     flux_code = flux_func(eqn.params, qL, qR, nrm_scaled)
 
-    @fact flux_code --> roughly(flux_test, atol=1e-13)
+    @test isapprox( flux_code, flux_test) atol=1e-13
 
     eqn.q_face[1, 1, :, 1] = 1.0
     eqn.q_face[1, 2, :, 1] = 2.0
@@ -26,7 +26,7 @@ function test_dg_flux(mesh, sbp, eqn, opts)
     AdvectionEquationMod.calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
 
     for i=1:mesh.sbpface.numnodes
-      @fact eqn.flux_face[1, i, 1] --> roughly(-flux_test, atol=1e-13)
+      @test isapprox( eqn.flux_face[1, i, 1], -flux_test) atol=1e-13
     end
 
   end  # end facts block
@@ -41,7 +41,7 @@ add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_FLUX, TAG_SHORT
   Test boundary conditions for DG.
 """
 function test_dg_bc(mesh, sbp, eqn, opts)
-  facts("\n----- Testing DG Boundary Condition -----") do
+  @testset "\n----- Testing DG Boundary Condition -----" begin
 
     eqn.params.LFalpha = 1.0
 
@@ -60,7 +60,7 @@ function test_dg_bc(mesh, sbp, eqn, opts)
       val_code += mesh.sbpface.wface[i]*eqn.bndryflux[1, i, 1]
     end
     val_test = 4*eqn.q_bndry[1,1,1]*eqn.params.alpha_x
-    @fact val_code --> roughly(val_test, atol=1e-13)
+    @test isapprox( val_code, val_test) atol=1e-13
 
 
     # test use of the boundary condition value
@@ -75,7 +75,7 @@ function test_dg_bc(mesh, sbp, eqn, opts)
     end
     val_test = 12.0
 
-    @fact val_code --> roughly(val_test, atol=1e-13)
+    @test isapprox( val_code, val_test) atol=1e-13
 
 
     # check that the interpolation and coordinates match
@@ -89,7 +89,7 @@ function test_dg_bc(mesh, sbp, eqn, opts)
         coords = mesh.coords_bndry[:, j, i]
         q_test = AdvectionEquationMod.calc_p1(eqn.params, coords, 0.0)
         q_code = eqn.q_bndry[1, j, i]
-        @fact q_code --> roughly(q_test, atol=1e-13)
+        @test isapprox( q_code, q_test) atol=1e-13
       end
     end
 
@@ -104,7 +104,7 @@ add_func2!(AdvectionTests, test_dg_flux, test_dg_inputfile, [TAG_BC, TAG_SHORTTE
 function test_precompute()
   mesh, sbp, eqn, opts = run_solver(test_dg_inputfile)
 
-  facts("----- Testing non-precompute functions -----") do
+  @testset "----- Testing non-precompute functions -----" begin
     icfunc = AdvectionEquationMod.ICDict["ICexp_xplusy"]
     icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
     physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
@@ -116,21 +116,21 @@ function test_precompute()
     opts["precompute_volume_integrals"] = false
     physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
-    @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(res_orig - eqn.res)), 0.0) atol=1e-13
 
     # test face integrals
     fill!(eqn.res, 0.0)
     opts["precompute_face_integrals"] = false
     physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
-    @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(res_orig - eqn.res)), 0.0) atol=1e-13
 
     # test boundary integrals
     fill!(eqn.res, 0.0)
     opts["precompute_boundary_integrals"] = false
     physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (AdvectionEquationMod.evalResidual,))
 
-    @fact norm(vec(res_orig - eqn.res)) --> roughly(0.0, atol=1e-13)
+    @test isapprox( norm(vec(res_orig - eqn.res)), 0.0) atol=1e-13
   end
 
   return nothing

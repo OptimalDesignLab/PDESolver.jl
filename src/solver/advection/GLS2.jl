@@ -13,7 +13,7 @@
 
   Aliasing restrictions: none
 """->
-function applyGLS2{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, 2}, opts, src_func::SRCType)
+function applyGLS2(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, 2}, opts, src_func::SRCType) where {Tmsh, Tsol, Tres}
 
 #  println("----- entered applyGLS2 -----")
   Dx = zeros(Float64, mesh.numNodesPerElement, mesh.numNodesPerElement)
@@ -156,7 +156,7 @@ end
   Outputs:
     tau: the value of tau at the node
 """->
-function getTau{Tmsh}(alpha_x, alpha_y, jac::Tmsh, min_node_dist)
+function getTau(alpha_x, alpha_y, jac::Tmsh, min_node_dist) where Tmsh
 
   fac = 1
   h = (1/sqrt(jac))/2  # /2 because reference element is -1 to 1

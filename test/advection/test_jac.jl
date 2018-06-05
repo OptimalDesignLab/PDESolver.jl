@@ -6,7 +6,7 @@
 function test_jac_res()
 # check that finite differencing and complex stepping the residual agree
 
-  facts("----- Testing Jacobian -----") do
+  @testset "----- Testing Jacobian -----" begin
     ARGS[1] = "input_vals_8el.jl"
     mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
@@ -61,10 +61,10 @@ function test_jac_res()
         eqn.q[1, i, el] -= eps_c
       end
 
-      @fact jac_c[:, :, el] --> roughly(jac_fd[:, :, el], atol=1e-6)
+      @test isapprox( jac_c[:, :, el], jac_fd[:, :, el]) atol=1e-6
     end
 
-    @fact jac_c --> roughly(jac_fd, atol=1e-6)
+    @test isapprox( jac_c, jac_fd) atol=1e-6
 
     # back to finite differences
     println("----- Testing Finite Difference Jacobian -----")
@@ -98,7 +98,7 @@ function test_jac_res()
     jac_diff = jac - jac_sparsefull
     for i=1:mesh.numDof
       for j=1:mesh.numDof
-        @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-6)
+        @test isapprox( abs(jac_diff[j, i]), 0.0) atol=1e-6
       end
     end
 
@@ -118,7 +118,7 @@ function test_jac_res()
   #  jac_csparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
-    res_3d0 = Array(Float64, 0, 0, 0)
+    res_3d0 = Array{Float64}(0, 0, 0)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
 
@@ -127,7 +127,7 @@ function test_jac_res()
     jac_diff = jac_c - jac_csparsefull
     for i=1:mesh.numDof
       for j=1:mesh.numDof
-        @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-12)
+        @test isapprox( abs(jac_diff[j, i]), 0.0) atol=1e-12
       end
     end
 
@@ -143,7 +143,7 @@ add_func1!(AdvectionTests, test_jac_res, [TAG_SHORTTEST])
   Test the various methods of calculating the jacobian
 """
 function test_jac_calc()
-  facts("----- Testing Jacobian calculation -----") do
+  @testset "----- Testing Jacobian calculation -----" begin
     # back to finite differences
     println("----- Testing Finite Difference Jacobian -----")
     ARGS[1] = "input_vals_8el.jl"
@@ -175,7 +175,7 @@ function test_jac_calc()
     jac_diff = jac - jac_sparsefull
     for i=1:mesh.numDof
       for j=1:mesh.numDof
-        @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-6)
+        @test isapprox( abs(jac_diff[j, i]), 0.0) atol=1e-6
       end
     end
 
@@ -196,7 +196,7 @@ function test_jac_calc()
   #  jac_csparse = SparseMatrixCSC(mesh.sparsity_bounds, Float64)
     jac_csparse = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
     fill!(eqn.res, 0.0)
-    res_3d0 = Array(Float64, 0, 0, 0)
+    res_3d0 = Array{Float64}(0, 0, 0)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     NonlinearSolvers.calcJacobianSparse(mesh, sbp, eqn, opts, AdvectionEquationMod.evalResidual, res_3d0, eps_c, jac_csparse)
 
@@ -205,7 +205,7 @@ function test_jac_calc()
     jac_diff = jac_c - jac_csparsefull
     for i=1:mesh.numDof
       for j=1:mesh.numDof
-        @fact abs(jac_diff[j, i]) --> roughly(0.0, atol=1e-12)
+        @test isapprox( abs(jac_diff[j, i]), 0.0) atol=1e-12
       end
     end
 
@@ -213,7 +213,7 @@ function test_jac_calc()
     # now check FD vs Complex step
     for i=1:mesh.numDof
       for j=1:mesh.numDof
-        @fact abs(jac_c[i, j] - jac[i,j]) --> roughly(0.0, atol=1e-6)
+        @test isapprox( abs(jac_c[i, j] - jac[i,j]), 0.0) atol=1e-6
       end
     end
 

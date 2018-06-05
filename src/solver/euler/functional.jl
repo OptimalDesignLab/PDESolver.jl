@@ -1,13 +1,12 @@
-abstract AbstractFunctional
+abstract type AbstractFunctional end
 
-type volumeAverage <: AbstractFunctional
+mutable struct volumeAverage <: AbstractFunctional
 end
-function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
-                                      mesh::AbstractMesh{Tmsh},
-                                      sbp::AbstractSBP,
-                                      eqn::EulerData{Tsol, Tres, Tdim},
-                                      opts,
-                                      val::Array{Tsol, 1})
+function (obj::volumeAverage)(mesh::AbstractMesh{Tmsh},
+              sbp::AbstractSBP,
+              eqn::EulerData{Tsol, Tres, Tdim},
+              opts,
+              val::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
   @assert(length(val) == mesh.numDofPerNode)
   val[:] = 0.0
 
@@ -27,7 +26,7 @@ function call{Tmsh, Tsol, Tres, Tdim}(obj::volumeAverage,
   return nothing
 end
 
-global const VolumeFunctionalDict = Dict{ASCIIString, AbstractFunctional}(    
+global const VolumeFunctionalDict = Dict{String, AbstractFunctional}(    
   "volumeAverage" => volumeAverage(),
 )
 

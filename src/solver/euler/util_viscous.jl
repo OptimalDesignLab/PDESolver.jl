@@ -13,10 +13,10 @@ Input:
 Input/Output:
   Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
-function calcDx{Tmsh}(sbp::AbstractSBP,
-                      dxidx::AbstractArray{Tmsh, 3},
-                      jac::AbstractArray{Tmsh, 1},
-                      Dx::AbstractArray{Tmsh, 3})
+function calcDx(sbp::AbstractSBP,
+                dxidx::AbstractArray{Tmsh, 3},
+                jac::AbstractArray{Tmsh, 1},
+                Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == sbp.numnodes)
   @assert(size(Dx, 1) == size(dxidx, 3))
   @assert(size(Dx, 2) == size(Dx, 1))
@@ -59,10 +59,10 @@ Input:
 Input/Output:
   Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
-function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
-                      elem::Integer,
-                      Dx::AbstractArray{Tmsh, 3})
+function calcDx(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                elem::Integer,
+                Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
   @assert(size(Dx, 2) == mesh.numNodesPerElement)
   @assert(size(Dx, 3) == size(mesh.dxidx, 1))
@@ -96,10 +96,10 @@ function calcDx{Tmsh}(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-function calcQx{Tmsh}(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
-                      elem::Integer,
-                      Qx::AbstractArray{Tmsh, 3})
+function calcQx(mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                elem::Integer,
+                Qx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Qx, 1) == mesh.numNodesPerElement)
   @assert(size(Qx, 2) == mesh.numNodesPerElement)
   @assert(size(Qx, 3) == size(mesh.dxidx, 1))
@@ -135,11 +135,11 @@ Input:
 Output:
   nothing
 """->
-function calcGradient{Tmsh, Tsol, Tsbp}(sbp::AbstractSBP{Tsbp},
-                                        dxidx::AbstractArray{Tmsh, 3},
-                                        jac::AbstractArray{Tmsh, 1},
-                                        q::AbstractArray{Tsol, 2},
-                                        q_grad::AbstractArray{Tsol, 3})
+function calcGradient(sbp::AbstractSBP{Tsbp},
+                      dxidx::AbstractArray{Tmsh, 3},
+                      jac::AbstractArray{Tmsh, 1},
+                      q::AbstractArray{Tsol, 2},
+                      q_grad::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tsbp}
   @assert(size(q, 2) == sbp.numnodes)
 
   @assert(size(dxidx, 1) == size(dxidx, 2))
@@ -151,7 +151,7 @@ function calcGradient{Tmsh, Tsol, Tsbp}(sbp::AbstractSBP{Tsbp},
   numDofs = size(q, 1)
   dim = size(q_grad, 1)
 
-  Dx = Array(Tsbp, numNodes, numNodes, dim)
+  Dx = Array{Tsbp}(numNodes, numNodes, dim)
 
   calcDx(sbp, dxidx, jac, Dx)
 
@@ -183,11 +183,11 @@ Input:
 Output :
 	q_grad : (in/out) gradient of q
 """->
-function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},
-                                        sbp::AbstractSBP{Tsbp},
-                                        elem::Integer,
-                                        q::AbstractArray{Tsol, 2},
-                                        q_grad::AbstractArray{Tsol, 3})
+function calcGradient(mesh::AbstractDGMesh{Tmsh},
+                      sbp::AbstractSBP{Tsbp},
+                      elem::Integer,
+                      q::AbstractArray{Tsol, 2},
+                      q_grad::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tsbp}
   @assert(size(q, 2) == mesh.numNodesPerElement)
   @assert(size(q, 1) == mesh.numDofPerNode)
 
@@ -199,7 +199,7 @@ function calcGradient{Tmsh, Tsol, Tsbp}(mesh::AbstractDGMesh{Tmsh},
   numDofs = mesh.numDofPerNode
   dim = size(q_grad, 1)
 
-  Dx = Array(Tsbp, numNodes, numNodes, dim)
+  Dx = Array{Tsbp}(numNodes, numNodes, dim)
   # for e=1:numElems
   # First compute Dx for this element
   calcDx(mesh, sbp, elem, Dx)
@@ -232,11 +232,11 @@ Output:
 
 function call examples
 """->
-function interiorfaceinterpolate{Tsbp, Tsol}(sbpface::AbstractFace{Tsbp},
-                                             face::Interface,
-                                             qvolL::AbstractArray{Tsol, 2},
-                                             qvolR::AbstractArray{Tsol, 2},
-                                             qface::AbstractArray{Tsol, 3})
+function interiorfaceinterpolate(sbpface::AbstractFace{Tsbp},
+                                 face::Interface,
+                                 qvolL::AbstractArray{Tsol, 2},
+                                 qvolR::AbstractArray{Tsol, 2},
+                                 qface::AbstractArray{Tsol, 3}) where {Tsbp, Tsol}
   @assert(size(qvolR, 1) == size(qvolL, 1))
   @assert(size(qvolR, 2) == size(qvolL, 2))
   @assert(size(qvolR, 1) == size(qface, 1))
@@ -279,10 +279,10 @@ Output:
   qface       : Q at nodes on interface, qface(idof, L/R, ifacenode)
 
 """->
-function boundaryinterpolate{Tsbp, Tsol}(sbpface::AbstractFace{Tsbp},
-                                         bndface::Boundary,
-                                         qvol::AbstractArray{Tsol, 2},
-                                         qface::AbstractArray{Tsol, 2})
+function boundaryinterpolate(sbpface::AbstractFace{Tsbp},
+                             bndface::Boundary,
+                             qvol::AbstractArray{Tsol, 2},
+                             qface::AbstractArray{Tsol, 2}) where {Tsbp, Tsol}
 
   @assert(size(qvol, 1) == size(qface, 1))            # dof
   @assert(size(qface,2) == sbpface.numnodes)

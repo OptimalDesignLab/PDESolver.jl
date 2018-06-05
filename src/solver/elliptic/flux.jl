@@ -4,11 +4,11 @@ export interpolateFace
 # TODO: a higher level function
 #
 
-function calcGradient{Tmsh, Tsol, Tres, Tdim, Tsbp}(mesh::AbstractDGMesh{Tmsh},
-                                                    sbp::AbstractSBP{Tsbp},
-                                                    eqn::EllipticData{Tsol, Tres, Tdim},
-                                                    q::AbstractArray{Tsol, 3},
-                                                    q_grad::AbstractArray{Tsol, 4})
+function calcGradient(mesh::AbstractDGMesh{Tmsh},
+                      sbp::AbstractSBP{Tsbp},
+                      eqn::EllipticData{Tsol, Tres, Tdim},
+                      q::AbstractArray{Tsol, 3},
+                      q_grad::AbstractArray{Tsol, 4}) where {Tmsh, Tsol, Tres, Tdim, Tsbp}
   @assert(size(q, 3) == mesh.numEl)
   @assert(size(q, 2) == mesh.numNodesPerElement)
   @assert(size(q, 1) == mesh.numDofPerNode)
@@ -27,7 +27,7 @@ function calcGradient{Tmsh, Tsol, Tres, Tdim, Tsbp}(mesh::AbstractDGMesh{Tmsh},
 
   q_grad[:,:,:,:] = 0.0
 
-  Dx = Array(Tsbp, numNodesPerElement, numNodesPerElement, 2)
+  Dx = Array{Tsbp}(numNodesPerElement, numNodesPerElement, 2)
   for e=1:numElems
     # First compute Dx for this element
     calcDx(mesh, sbp, Int(e), Dx)
@@ -44,22 +44,22 @@ function calcGradient{Tmsh, Tsol, Tres, Tdim, Tsbp}(mesh::AbstractDGMesh{Tmsh},
   end
 end
 
-function interpolateFace{Tsol}(mesh::AbstractDGMesh,
-                               sbp,
-                               eqn,
-                               opts,
-                               q::Abstract3DArray,
-                               q_face::AbstractArray{Tsol, 4})
+function interpolateFace(mesh::AbstractDGMesh,
+                         sbp,
+                         eqn,
+                         opts,
+                         q::Abstract3DArray,
+                         q_face::AbstractArray{Tsol, 4}) where Tsol
   # interpolate solution
   interiorfaceinterpolate!(mesh.sbpface, mesh.interfaces, q, q_face)
 end
 
-function interpolateFace{Tsol, Tres, Tdim}(mesh::AbstractDGMesh,
-                                           sbp,
-                                           eqn::EllipticData{Tsol, Tres, Tdim},
-                                           opts,
-                                           grad::AbstractArray{Tsol, 4},
-                                           grad_face::AbstractArray{Tsol, 5})
+function interpolateFace(mesh::AbstractDGMesh,
+                         sbp,
+                         eqn::EllipticData{Tsol, Tres, Tdim},
+                         opts,
+                         grad::AbstractArray{Tsol, 4},
+                         grad_face::AbstractArray{Tsol, 5}) where {Tsol, Tres, Tdim}
   # interpolate gradient of solution
   for d=1: Tdim
     dqdx = sview(grad, :, :, :, d)
@@ -71,52 +71,52 @@ end
 #
 # Calculate flux at edge cubature points using face-based form.
 #
-function calcFaceFlux{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractDGMesh{Tmsh},
-                                                     sbp::AbstractSBP,
-                                                     eqn::EllipticData{Tsol, Tres, Tdim},
-                                                     opts,
-                                                     interfaces::AbstractArray{Interface,1},
-                                                     xflux_face::AbstractArray{Tres, 3},
-                                                     yflux_face::AbstractArray{Tres, 3},
-                                                     flux_face::AbstractArray{Tres, 3})
+function calcFaceFlux(mesh::AbstractDGMesh{Tmsh},
+                             sbp::AbstractSBP,
+                             eqn::EllipticData{Tsol, Tres, Tdim},
+                             opts,
+                             interfaces::AbstractArray{Interface,1},
+                             xflux_face::AbstractArray{Tres, 3},
+                             yflux_face::AbstractArray{Tres, 3},
+                             flux_face::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}
 
   nfaces = length(interfaces)
   penalty_method = opts["Flux_name"]
   p = opts["order"]
   Cip = opts["Cip"]
-  dq = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  dq = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
   factor_shahbazi = Float64(p + 1.0)*Float64(p + Tdim)/(2.0*Tdim)
   sbpface = mesh.sbpface
   numFacesPerElem = 3
-  nrm = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  nrm1 = Array(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = Array(Tmsh, mesh.numNodesPerFace)
-  lambda_dqdxL = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  lambda_dqdxR = Array(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  eigMaxL = Array(Tmsh, mesh.numDofPerNode)
-  eigMaxR = Array(Tmsh, mesh.numDofPerNode)
+  nrm = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
+  area = Array{Tmsh}(mesh.numNodesPerFace)
+  lambda_dqdxL = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  lambda_dqdxR = Array{Tsol}(Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
+  eigMaxL = Array{Tmsh}(mesh.numDofPerNode)
+  eigMaxR = Array{Tmsh}(mesh.numDofPerNode)
 
   #
   # For scalar penalty, we use penalty;
   # for matrix penalty, we use Sat.
   #
-  penalty      = Array(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_sat0 = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_sat  = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace)
-  penalty_shahbazi = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty      = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_sat0 = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_sat  = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  penalty_shahbazi = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace)
 
-  Sat = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  Sat = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
   #
   # |R 0| |Λxx Λxy| |R 0|^T
   # |0 R| |Λyx Λyy| |0 R|
   #
   sbpface = mesh.sbpface
   R = sview(sbpface.interp, :,:)
-  RLR_L = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  RLR_R = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  RLR = Array(Tmsh, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  BsqrtRHinvRtBsqrt = Array(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerFace)
-  HRBRH = Array(Tmsh, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  RLR_L = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  RLR_R = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  RLR = Array{Tmsh}(mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerFace)
+  BsqrtRHinvRtBsqrt = Array{Tmsh}(mesh.numNodesPerFace, mesh.numNodesPerFace)
+  HRBRH = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement)
   area_sum = sview(eqn.area_sum, :)
   perm = zeros(Tmsh, sbp.numnodes, sbpface.stencilsize)
   Hinv = zeros(Tmsh, sbp.numnodes, sbp.numnodes)

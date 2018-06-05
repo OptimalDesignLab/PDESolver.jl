@@ -288,7 +288,7 @@ end
 #------------------------------------------------------------------------------
 # Regular (matrix-based) PC
 
-type CNMatPC <: AbstractPetscMatPC
+mutable struct CNMatPC <: AbstractPetscMatPC
   pc_inner::NewtonMatPC
 end
 
@@ -317,7 +317,7 @@ end
   Volume integral jacobian preconditioner for CN.
 
 """
-type CNVolumePC <: AbstractPetscMatFreePC
+mutable struct CNVolumePC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
   other_pc::NewtonVolumePC
 end  # end type definition
@@ -359,7 +359,7 @@ end
 
 #TODO: make a macro to generate these definitions
 
-type CNDenseLO <: AbstractDenseLO
+mutable struct CNDenseLO <: AbstractDenseLO
   lo_inner::NewtonDenseLO
 end
 
@@ -371,7 +371,7 @@ function CNDenseLO(pc::PCNone, mesh::AbstractMesh,
   return CNDenseLO(lo_inner)
 end
 
-type CNSparseDirectLO <: AbstractSparseDirectLO
+mutable struct CNSparseDirectLO <: AbstractSparseDirectLO
   lo_inner::NewtonSparseDirectLO
 end
 
@@ -384,7 +384,7 @@ function CNSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
 end
 
 
-type CNPetscMatLO <: AbstractPetscMatLO
+mutable struct CNPetscMatLO <: AbstractPetscMatLO
   lo_inner::NewtonPetscMatLO
 end
 
@@ -399,7 +399,7 @@ end
 """
   All CN LOs that have matrices
 """
-typealias CNMatLO Union{CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
+const CNMatLO = Union{CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
 
 
 function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
@@ -415,7 +415,7 @@ end
 
 
 # matrix-free
-type CNPetscMatFreeLO <: AbstractPetscMatFreeLO
+mutable struct CNPetscMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::NewtonPetscMatFreeLO
 end
 
@@ -430,7 +430,7 @@ end
 """
   Any PC or LO that has a matrix in the field `A`
 """
-typealias CNHasMat Union{CNMatPC, CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
+const CNHasMat = Union{CNMatPC, CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
 
 
 function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
@@ -444,10 +444,10 @@ function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
   return nothing
 end
 
-function applyLinearOperator{Tsol}(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
-                             opts::Dict, ctx_residual, t, x::AbstractVector, 
-                             b::AbstractVector)
+function applyLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
+                       sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                       opts::Dict, ctx_residual, t, x::AbstractVector, 
+                       b::AbstractVector) where Tsol
 
   h = ctx[3]
   # the CN residual has the form: I - 0.5*delta_t*jac, where jac is the physics
@@ -463,11 +463,11 @@ function applyLinearOperator{Tsol}(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
   return nothing
 end
 
-function applyLinearOperatorTranspose{Tsol}(lo::CNPetscMatFreeLO,
+function applyLinearOperatorTranspose(lo::CNPetscMatFreeLO,
                              mesh::AbstractMesh,
                              sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
-                             b::AbstractVector)
+                             b::AbstractVector) where Tsol
 
   # see the non-transpose method for an explanation of the math
 

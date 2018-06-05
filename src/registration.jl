@@ -14,7 +14,7 @@
   implementation details, it should never be accessed directly.  Instead,
   the accessor functions below should be used.
 """
-global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function, Function}}()
+global const PhysicsModDict = Dict{String, Tuple{Module, Function, Function}}()
 
 """
   This function registered a new physics module with the global list of all
@@ -25,7 +25,7 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function, Function
 
   **Inputs**
 
-   * modname:  an ASCIIString name for this entry in the list.  It is used
+   * modname:  an String name for this entry in the list.  It is used
                 to retrieve the module and startup function in the 
                 retrieve_physics function. Typically the name is capitalized.
    * mod:  the Module itself
@@ -49,7 +49,7 @@ global const PhysicsModDict = Dict{ASCIIString, Tuple{Module, Function, Function
   
     none
 """
-function register_physics(modname::ASCIIString, mod::Module, _createObjects::Function, _checkOptions::Function)
+function register_physics(modname::String, mod::Module, _createObjects::Function, _checkOptions::Function)
 
   # check if this name is already used
   if haskey(PhysicsModDict, modname)
@@ -93,7 +93,7 @@ end  # end function
 
   **Input**
   
-   * modname: an ASCIIString containing the name of the module supplied to
+   * modname: an String containing the name of the module supplied to
              `register_physics`
 
   **Outputs**
@@ -102,7 +102,7 @@ end  # end function
    * _createObjects: function that creates the solver objects
    * _checkOptions: the options checking function
 """
-function retrieve_physics(modname::ASCIIString)
+function retrieve_physics(modname::String)
 
   if !haskey(PhysicsModDict, modname)
     # construct the error message
@@ -139,7 +139,7 @@ end
   physics module.
 
   The physics module must have an associative container called `ICDict` that
-  accepts ASCIIStrings as keys and functions as values.
+  accepts Strings as keys and functions as values.
 
   It is an error to register two functions under the same name or to register
   one function under two different names.
@@ -156,7 +156,7 @@ end
 
     none
 """
-function registerIC(mod::Module, fname::ASCIIString, func::Function)
+function registerIC(mod::Module, fname::String, func::Function)
 
   # check if name is already registered
   if haskey(mod.ICDict, fname)
@@ -216,7 +216,7 @@ end
   This function works by utilizing `mod.BCDict`, which must be an associative
   collection mapping BC names to functors.
 """
-function registerBC(mod::Module, fname::ASCIIString, func::BCType)
+function registerBC(mod::Module, fname::String, func::BCType)
 
   # check if name is already registered
   # special case for reanalysisBC because it is special

@@ -18,8 +18,8 @@ implementation is only for steady problems and conservative variables
 * None
 
 """->
-function GLS{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-                               eqn::EulerData{Tsol, Tres, Tdim})
+function GLS(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+       eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   
   #  println("Entered GLS")
   parametricFluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
@@ -105,9 +105,9 @@ mesh. It uses conservative variables
 *  None
 """->
 
-function parametricFluxJacobian{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                                sbp::AbstractSBP, 
-                                eqn::EulerData{Tsol, Tres, Tdim})
+function parametricFluxJacobian(mesh::AbstractMesh{Tmsh}, 
+        sbp::AbstractSBP, 
+        eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
 
 # Calculates the Flux Jacobian in the parametric space
 
@@ -148,9 +148,9 @@ It computes the Euler flux Jacobian at the nodal level in te physical space
 
 *  None 
 """->
-function calcFluxJacobian{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
-                          q::AbstractArray{Tsol,1}, Ax::AbstractArray{Tsol,2}, 
-                          Ay::AbstractArray{Tsol,2})
+function calcFluxJacobian(eqn::EulerData{Tsol, Tres, Tdim},
+        q::AbstractArray{Tsol,1}, Ax::AbstractArray{Tsol,2}, 
+        Ay::AbstractArray{Tsol,2}) where {Tsol, Tres, Tdim}
 
   gamma_1 = eqn.params.gamma_1
   gamma = eqn.params.gamma
@@ -216,9 +216,9 @@ Calculates the stabilization term tau for GLS
 
 * None
 """->
-function calcTau{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                 sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                 tau::AbstractArray{Tsol,4}, order::Integer)
+function calcTau(mesh::AbstractMesh{Tmsh}, 
+sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+tau::AbstractArray{Tsol,4}, order::Integer) where {Tmsh, Tsol, Tres, Tdim}
 
   # Using Glasby's Method Equation 26 & 27
 
@@ -323,10 +323,10 @@ Calculates Axi*Dxi + Aeta*Deta at the element level
 
 *  None
 """->
-function calcAxidxi{Tsol}(Axidxi::AbstractArray{Tsol, 2}, 
-                          shapefuncderiv::AbstractArray{Tsol,3},
-                          Axi::AbstractArray{Tsol,3}, 
-                          Aeta::AbstractArray{Tsol,3}, ndof, nnpe)
+function calcAxidxi(Axidxi::AbstractArray{Tsol, 2}, 
+                    shapefuncderiv::AbstractArray{Tsol,3},
+                    Axi::AbstractArray{Tsol,3}, 
+                    Aeta::AbstractArray{Tsol,3}, ndof, nnpe) where Tsol
 
   for i = 1:nnpe
     for j = 1:nnpe
@@ -367,10 +367,10 @@ Reference: ``Efficient Solution Methods for the Navier–Stokes Equations``, T.H
 *  None
 
 """->
-function calcEigenFactorization{Tsol, Tres, Tdim}(eqn::EulerData{Tsol, Tres, Tdim},
+function calcEigenFactorization(eqn::EulerData{Tsol, Tres, Tdim},
                           q::AbstractArray{Tsol,1}, dxidx::AbstractArray{Tsol,1},
                           T::AbstractArray{Tsol,2}, Tinv::AbstractArray{Tsol,2},
-                          Lambda::AbstractArray{Tsol,2})
+                          Lambda::AbstractArray{Tsol,2}) where {Tsol, Tres, Tdim}
 
   kappax = dxidx[1]
   kappay = dxidx[2]
@@ -443,7 +443,7 @@ Calculates the element area of a 2D triangular element
 
 *  `area` : Area of the triangular element
 """->
-function calcElementArea{Tmsh}(coords::AbstractArray{Tmsh, 2})
+function calcElementArea(coords::AbstractArray{Tmsh, 2}) where Tmsh
   # Calculates the element area using coordinates
   # 2D function for linear mapping
 
@@ -469,7 +469,7 @@ Calculates the circumcircle diameter of a triangular element
 
 *  `dia` : Diameter of the circumcircle
 """->
-function circumcircleDiameter{Tmsh}(coords::AbstractArray{Tmsh, 2})
+function circumcircleDiameter(coords::AbstractArray{Tmsh, 2}) where Tmsh
   # Calculates the circumcircle diameter of the triangular element
   # 2D function with linear mapping
   # Reference: http://geometryatlas.com/entries/109
@@ -511,8 +511,8 @@ implementation is only for steady problems
 """->
 
 # SUPG implementation
-function SUPG{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
-                              eqn::EulerData{Tsol, Tres, Tdim})
+function SUPG(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+      eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
 
   FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
   tau = zeros(Tsol, mesh.numNodesPerElement, mesh.numEl) # Stabilization term
@@ -601,9 +601,9 @@ Calculates the stabilization term tau for all the nodes in the mesh
 *  None
 """->
 # Stabilization Term 3
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
+       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+       tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # Reference: http://enu.kz/repository/2010/AIAA-2010-1183.pdf, eqn 15
 
@@ -644,9 +644,9 @@ end # end calcStabilizationTerm
 
 #=
 # Stabilization Term 1
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+                               tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # q in the parametric space. Since everything happens in this space
   q_param = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
@@ -703,9 +703,9 @@ end # end calcStabilizationTerm
 
 #=
 # Stabilization term 2
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+                               tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # Reference for stabilization: http://enu.kz/repository/2010/AIAA-2010-1183.pdf
 
@@ -740,9 +740,9 @@ end # end calcStabilizationTerm
 =#
 #=
 # Stabilization term 4
-function calcStabilizationTerm{Tmsh, Tsol, Tres, Tdim}(mesh::AbstractMesh{Tmsh}, 
+function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-                               tau::AbstractArray{Tsol,2})
+                               tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
 
   # Reference: Three-Dimensional Stabilized Finite Elements for Compressible 
   #            Navier–Stokes, T. Taylor Erwin, AIAA Journal Vol 51, No. 6,

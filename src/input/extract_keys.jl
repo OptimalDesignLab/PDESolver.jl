@@ -15,7 +15,7 @@ using ODLCommonTools
     Lines not meeting this specification are ignored.
 
     Inputs:
-      fin: an ASCIIString containing the name (or path) of the file to be read
+      fin: an String containing the name (or path) of the file to be read
       fout: name of file to write the dictonary to
     
     Keyword Args:
@@ -26,7 +26,7 @@ using ODLCommonTools
     them to a single output file
 
 """->
-function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=true)
+function extractKeys(fin::String, fout::String; header=true, footer=true)
 
   println("reading file ", fin)
   f = open(fin, "r")
@@ -47,29 +47,32 @@ function extractKeys(fin::ASCIIString, fout::ASCIIString; header=true, footer=tr
   cntr = 1
   for ln in eachline(f)
 #    print(cntr, " ", ln)
+    if ln == ""
+      continue
+    end
 
-     if ln[1] == Char(34)  # a double quote
-       # find the matching end quote
-       end_idx = 0
-       for i=2:length(ln)
-         if ln[i] == Char(34)
-           end_idx = i
-           break
-         end
-       end  # end search for matching quote
+    if ln[1] == Char(34)  # a double quote
+      # find the matching end quote
+      end_idx = 0
+      for i=2:length(ln)
+        if ln[i] == Char(34)
+          end_idx = i
+          break
+        end
+      end  # end search for matching quote
 
-       if end_idx == 0
-         println(STDERR, "Warning: no matching close quote in line 
+      if end_idx == 0
+        println(STDERR, "Warning: no matching close quote in line 
                           $cntr of file ", fin)
-       end
+      end
 
-       # assuming we actually found a matching quote
-       key = ln[1:end_idx]
-       write(fw, key)
-       write(fw, " => true,")
-       write(fw, "\n")
+      # assuming we actually found a matching quote
+      key = ln[1:end_idx]
+      write(fw, key)
+      write(fw, " => true,")
+      write(fw, "\n")
 
-     end  # end if first character is a quote
+    end  # end if first character is a quote
 
     cntr += 1
   end  # end loop over lines
@@ -129,7 +132,7 @@ The corresponding output to file is
 "hello3" => true
 `
 """->
-function write_arbitrary_keys(fout, stringval::ASCIIString, counts::Int)
+function write_arbitrary_keys(fout, stringval::String, counts::Int)
 
   fw = open(fout, "a")
   if counts == 0

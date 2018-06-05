@@ -2,7 +2,7 @@
 
 function test_interp()
 
-  facts("----- Testing Field Interpolation -----") do
+  @testset "----- Testing Field Interpolation -----" begin
     fname = "input_vals_channel_dg_large.jl"
 
     opts = read_input(fname)
@@ -40,7 +40,7 @@ function test_interp()
           val = x^degree + 2*y^degree + k
 
 
-          @fact abs(eqn2.q[k, j, i] - val) --> roughly(0.0, atol=1e-13)
+          @test isapprox( abs(eqn2.q[k, j, i] - val), 0.0) atol=1e-13
         end
       end
     end
