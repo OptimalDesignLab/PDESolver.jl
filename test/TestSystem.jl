@@ -254,6 +254,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
   opts = 0
 
   ftiming = open("timing.dat", "w")
+  input_name_prev = ""  # holds the previous input name
   for i=1:ntests
     func_i = testlist.funcs[i]
     func_tags_i = testlist.func_tags[i]
@@ -269,17 +270,19 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
         # run this test
         t_test = @elapsed if functype_i == 1  # function with no arguments
           func_i()
+
         elseif functype_i == 2  # function with all 4 arguments
-          if ARGS[1] != input_name_i
-            ARGS[1] = input_name_i
-            println("about to run prep function ", prep_func, " on input ", ARGS[1])
-            mesh, sbp, eqn, opts = prep_func(ARGS[1])
-          end
+#          if input_name_i != input_name_prev
+            println("about to run prep function ", prep_func, " on input ", input_name_i)
+            mesh, sbp, eqn, opts = prep_func(input_name_i)
+#          end
           func_i(mesh, sbp, eqn, opts)
+          input_name_prev = input_name_i
+
         elseif functype_i == 3  # modify input before running
           new_fname = input_mod_i["new_fname"]*".jl"
 
-          if ARGS[1] != new_fname  # don't create a file if it was done already
+          if input_name_prev != new_fname  # don't create a file if it was done already
             arg_dict = evalfile(joinpath(pwd(), input_name_i))
 
             for (key, val) in input_mod_i
@@ -288,10 +291,10 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
               end
             end
 
-            make_input(arg_dict, input_mod_i["new_fname"])
+            make_input(arg_dict, new_fname)
 
-            ARGS[1] = new_fname
-            mesh, sbp, eqn, opts = prep_func(ARGS[1])
+            mesh, sbp, eqn, opts = prep_func(new_fname)
+            input_name_prev = new_fname
           end  # end if file already created
 
           func_i(mesh, sbp, eqn, opts)
@@ -299,9 +302,9 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
           throw(ErrorException("unsupported function type"))
         end
 
-        println(ftiming, func_i, ": ", t_test, " second")
+        println(ftiming, func_i, ": ", t_test, " seconds")
 
-        continue  # don't run this test more than once even if it matches
+        break  # don't run this test more than once even if it matches
                   # multiple tags
 
       end  # end if tag matches
