@@ -79,15 +79,10 @@ end
 function set_hash(pkg_dir::AbstractString, hash::AbstractString)
 # this function checks out a particular git hash of a particular package
 
-  println("setting hash")
   new_branchname = "detached_from_$hash"
 
   start_dir = pwd()
-  println("start_dir = ", pwd())
-  println("pkg_dir = " , pkg_dir)
-  println("ls of pwd() = ", readstring(`ls`))
   cd(pkg_dir)
-  println("finished cd")
 #  branch_name = readstring(`git rev-parse --abbrev-ref HEAD`)
 #  if branch_name[1:end-1] != new_branchname
 #    run(`git checkout -b pdesolver_version $hash`)
