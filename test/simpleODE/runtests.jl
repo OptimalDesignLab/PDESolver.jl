@@ -54,17 +54,7 @@ add_func1!(SimpleODETests, test_eq4, [TAG_SHORTTEST])
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running SimpleODE tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(SimpleODETests, solvePDE, tags)
+  runTestSystem(SimpleODETests, solvePDE, ARGS)
 end
 
 

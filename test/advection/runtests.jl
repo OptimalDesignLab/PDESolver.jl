@@ -59,17 +59,7 @@ include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Advection tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(AdvectionTests, solvePDE, tags)
+  runTestSystem(AdvectionTests, solvePDE, ARGS)
 end
 
 println("finished running tests")

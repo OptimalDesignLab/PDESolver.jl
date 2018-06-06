@@ -62,17 +62,8 @@ include("test_viscous.jl")
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Euler tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
 
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(EulerTests, solvePDE, tags)
+  runTestSystem(EulerTests, solvePDE, ARGS)
 end
 
 

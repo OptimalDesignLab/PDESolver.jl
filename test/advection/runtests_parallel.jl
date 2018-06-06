@@ -157,17 +157,7 @@ add_func1!(AdvectionTests, test_adjoint_parallel, [TAG_ADJOINT, TAG_LONGTEST])
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Advection 2 processor tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(AdvectionTests, solvePDE, tags)
+  runTestSystem(AdvectionTests, solvePDE, ARGS)
 end
 
 #------------------------------------------------------------------------------

@@ -191,15 +191,5 @@ add_func1!(EulerTests, test_restart, [TAG_SHORTTEST])
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Euler 2 process tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(EulerTests, solvePDE, tags)
+  runTestSystem(EulerTests, solvePDE, ARGS)
 end
