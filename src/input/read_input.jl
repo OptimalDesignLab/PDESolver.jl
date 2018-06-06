@@ -659,6 +659,7 @@ end
   end
 
   checkBCOptions(arg_dict)
+  checkPhysicsSpecificOptions(arg_dict)
 
   return nothing
 end
@@ -706,6 +707,36 @@ function checkBCOptions(arg_dict)
     if vals != unique(vals)
       throw(ErrorException("cannot apply a boundary condition to a model entity more than once: BC$i has repeated model entities"))
     end
+  end
+
+  return nothing
+end
+
+
+"""
+  Check that the physics module specified the required options
+"""
+function checkPhysicsSpecificOptions(arg_dict)
+
+  assertKeyPresent(arg_dict, "calc_jac_explicit")
+  assertKeyPresent(arg_dict, "preallocate_jacobian_coloring")
+
+  return nothing
+end
+
+
+"""
+  Throws a (descriptive) error if key is not present
+
+  **Inputs**
+
+   * arg_dict: the options dictionary
+   * key: String
+"""
+function assertKeyPresent(arg_dict::Dict, key::String)
+
+  if !haskey(arg_dict, key)
+    error("options key $key not found")
   end
 
   return nothing
