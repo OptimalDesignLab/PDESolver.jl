@@ -256,8 +256,8 @@ function test_lowlevel_volumeintegrals()
   @testset "--- Testing Volume Integrals ---" begin
 
     # use the 8 element mesh
-    ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8el.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     println("precompute_boundary_flux = ", opts["precompute_boundary_flux"])
     Tmsh = eltype(mesh.dxidx)
@@ -366,8 +366,8 @@ function test_lowlevel_volumeintegrals()
     end
 
 
-    ARGS[1] = "input_vals_8el_large.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8el_large.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     println("----- Checking q=2*x^2 + 5 case on large grid -----")
     
     x1 = zeros(Tmsh, 3)
@@ -391,8 +391,8 @@ function test_lowlevel_volumeintegrals()
     end
 
     # back to the original mesh
-    ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8el.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     println("----- Checking sinwave case -----")
     x1 = zeros(Tmsh, 3)
@@ -421,8 +421,8 @@ function test_lowlevel_volumeintegrals()
     array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 #TODO: uncomment when SBP boundaryintegrate is fixed
 #= 
-    ARGS[1] = "input_vals_channel_verylarge.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_channel_verylarge.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     println("----- Checking sinwave case on very large mesh -----")
     x1 = zeros(Tmsh, 3)

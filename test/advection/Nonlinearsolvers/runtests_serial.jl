@@ -13,23 +13,23 @@ function test_CN()
 
     cd("./m1")
     println("======", pwd())
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("../m2")
     println("======", pwd())
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
 #    cd("../m3")
 #    println("======", pwd())
-#    ARGS[1] = "input_vals1.jl"
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#    fname = "input_vals1.jl"
+#    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("..")
     println("======", pwd())
-    ARGS[1] = "calc_line.jl"  #???
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "calc_line.jl"  #???
+#    mesh, sbp, eqn, opts = solvePDE(fname)
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -55,20 +55,20 @@ function test_CN()
     cd("./crank_nicolson_FD/")
 
     cd("./m1")
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("../m2")
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
 #    cd("../m3")
-#    ARGS[1] = "input_vals1.jl"
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#    fname = "input_vals1.jl"
+#    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("..")
-    ARGS[1] = "calc_line.jl"
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])  #???
+    fname = "calc_line.jl"
+#    mesh, sbp, eqn, opts = solvePDE(fname)  #???
 
     slope = calc_line()
     # println("slope = ", slope)
@@ -94,20 +94,20 @@ function test_CN()
     cd("./crank_nicolson_PETSc_serial/")
 
     cd("./m1")
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("../m2")
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
 #    cd("../m3")
-#    ARGS[1] = "input_vals1.jl"
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#    fname = "input_vals1.jl"
+#    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("..")
-    ARGS[1] = "calc_line.jl"
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1]) #???
+    fname = "calc_line.jl"
+#    mesh, sbp, eqn, opts = solvePDE(fname) #???
 
     slope = calc_line()
     # println("slope = ", slope)

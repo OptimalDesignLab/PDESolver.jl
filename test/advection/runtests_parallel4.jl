@@ -31,7 +31,7 @@ include("../tags.jl")
 global const AdvectionTests = TestList()
 
 include("Nonlinearsolvers/crank_nicolson_PETSc_parallel/runtests.jl")
-include("test_parallel2.jl")
+include("test_parallel4.jl")
 """
   Test energy stability in parallel
 """
@@ -53,17 +53,7 @@ add_func1!(AdvectionTests, runtests_parallel4, [TAG_SHORTTEST])
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Advection 4 processor tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(AdvectionTests, solvePDE, tags)
+  runTestSystem(AdvectionTests, solvePDE, ARGS)
 end
 
 #------------------------------------------------------------------------------

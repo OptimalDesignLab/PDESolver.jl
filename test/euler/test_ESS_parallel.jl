@@ -9,8 +9,8 @@ function test_ESS_parallel()
       rmfile("./entropy.dat")
     end
 
-    ARGS[1] = "input_vals_ESS_parallel.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_ESS_parallel.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     data = readdlm("entropy.dat")
 

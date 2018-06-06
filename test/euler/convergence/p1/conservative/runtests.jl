@@ -1,21 +1,18 @@
 function run_convergence_p1_conservative()
   @testset "---- P1 Conservative Convergence Tests -----" begin
     start_dir = pwd()
-    println("pwd = ", pwd())
-
-    resize!(ARGS, 1)
 
     cd("./m1")
-    ARGS[1] = "input_vals_vortex3.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    ARGS[1] = "input_vals_vortex4.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex3.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
+    fname = "input_vals_vortex4.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("../m2")
-    ARGS[1] = "input_vals_vortex3.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-    ARGS[1] = "input_vals_vortex4.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex3.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
+    fname = "input_vals_vortex4.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("..")
     include("calc_line.jl")

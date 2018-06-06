@@ -1,12 +1,10 @@
 function test_modes()
   @testset "--- Testing Sparse/Dense Jacobian ---" begin
 
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_vortex1.jl"
-    println("\n\ntesting ", ARGS[1])
-  #  ARGS[1] = "input_vals_vortex5.jl"
-    mesh, sbp, eqn, opts = run_solver(ARGS[1])
-#    include("../src/solver/euler/startup.jl")
+    fname = "input_vals_vortex1.jl"
+    println("\n\ntesting ", fname)
+  #  fname = "input_vals_vortex5.jl"
+    mesh, sbp, eqn, opts = run_solver(fname)
 
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
@@ -49,49 +47,46 @@ function test_modes()
 
    #= 
     # test entropy variables
-    ARGS[1] = "input_vals_vortexa.jl"
-    println("\n\ntesting ", ARGS[1])
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortexa.jl"
+    println("\n\ntesting ", fname)
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
     =#
 
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_vortex2.jl"
-    println("\n\ntesting ", ARGS[1])
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex2.jl"
+    println("\n\ntesting ", fname)
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
   #=
     # test entropy variables
-    ARGS[1] = "input_vals_vortex2a.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex2a.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
   =#
 
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_vortex3dg.jl"
-    println("\n\ntesting ", ARGS[1])
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex3dg.jl"
+    println("\n\ntesting ", fname)
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
   #=
     # test entropy variables
-    ARGS[1] = "input_vals_vortex3a.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex3a.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
   =#
 
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_vortex4.jl"
-    println("\n\ntesting ", ARGS[1])
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex4.jl"
+    println("\n\ntesting ", fname)
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
 
   #=
     # test entropy variables
-    ARGS[1] = "input_vals_vortex4a.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex4a.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @test  calcNorm(eqn, eqn.res_vec)  < 1e-9
   =#
   end

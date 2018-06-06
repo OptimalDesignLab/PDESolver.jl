@@ -14,7 +14,7 @@ The parallel tests are run with:
 
 ```julia
   cd test/physics_module
-  mpirun -np 2 julia ./runtests_parallel.jl  TAG1 TAG2 ...
+  mpirun -np 2 julia ./runtests_parallel2.jl  TAG1 TAG2 ...
 ```
 
 ```julia
@@ -93,7 +93,7 @@ one of three catagories:
 These catagories correspond to `add_funcs1!`, `add_funcs2!`, and `add_funcs3!`
 in TestSet.jl.
 
-The function `run_testlist` runs a test list.  See the documentation of
+The function `runTestSystem` runs a test list.  See the documentation of
 these functions for details on how to use them.
 
 Note that it is acceptable for a test function to load input files internally.

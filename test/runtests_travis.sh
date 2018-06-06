@@ -12,7 +12,7 @@ then
   julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
-  mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
   err=$(( err + $?))
 
   mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
@@ -27,7 +27,7 @@ then
   julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
-  mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
   err=$(( err + $?))
 
   mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
@@ -42,7 +42,7 @@ then
   julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
-  #mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  #mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
   #err=$(( err + $?))
 
   #mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest

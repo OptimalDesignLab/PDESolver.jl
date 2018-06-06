@@ -4,8 +4,8 @@
 """
 function test_parallel2_comm()
 
-  ARGS[1] = "input_vals_parallel2.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_parallel2.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   myrank = mesh.myrank
   commsize = mesh.commsize
