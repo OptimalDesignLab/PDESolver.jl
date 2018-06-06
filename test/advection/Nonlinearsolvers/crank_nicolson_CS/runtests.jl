@@ -1,19 +1,17 @@
 @testset "---- Crank-Nicolson Convergence Tests, Complex Step Jacobian -----" begin
 start_dir = pwd()
 
-resize!(ARGS, 1)
-
 cd("./m1")
-ARGS[1] = "input_vals1.jl"
-mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+fname = "input_vals1.jl"
+mesh, sbp, eqn, opts = solvePDE(fname)
 
 cd("../m2")
-ARGS[1] = "input_vals1.jl"
-mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+fname = "input_vals1.jl"
+mesh, sbp, eqn, opts = solvePDE(fname)
 
 cd("../m3")
-ARGS[1] = "input_vals1.jl"
-mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+fname = "input_vals1.jl"
+mesh, sbp, eqn, opts = solvePDE(fname)
 
 cd("..")
 include("calc_line.jl")

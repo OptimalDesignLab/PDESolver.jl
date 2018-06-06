@@ -103,8 +103,8 @@ end
   Test calculation of numerical flux functions in 2D
 """
 function test_flux_2d()
-  ARGS[1] = "input_vals_channel_dg.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_channel_dg.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   @testset "----- Testing 2D Numerical Fluxes -----" begin
  
@@ -353,8 +353,8 @@ end
 """
 function test_flux_3d()
   # test 3D
-  ARGS[1] = "input_vals_3d.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_3d.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
   @testset "----- testing 3D  Numerical Fluxes -----" begin
 
     qL =  [1., 2, 3, 4, 15]

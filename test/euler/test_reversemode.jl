@@ -9,10 +9,8 @@ module
 
 function test_reversemode()
 
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_vortex_reversemode.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-#  include("../../src/solver/euler/startup.jl")
+  fname = "input_vals_vortex_reversemode.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
   Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 
 
@@ -1013,9 +1011,8 @@ function test_reversemode()
 
   end # End testset("--- Testing evalrevm_transposeproduct ---")
 
-  resize!(ARGS, 1)
-  ARGS[1] = "input_vals_3d_reversemode.jl"
-  include("../../src/solver/euler/startup.jl")
+  fname = "input_vals_3d_reversemode.jl"
+  solvePDE(fname)
   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
 
   @testset "--- Testing Pressure derivative in reverse mode in 3D ---" begin

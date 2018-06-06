@@ -911,8 +911,8 @@ end
 
 function test_ESS()
   @testset "----- testing ESS -----" begin
-    ARGS[1] = "input_vals_channel_dg_large.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_channel_dg_large.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     # evaluate the residual to confirm it is zero
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
@@ -941,8 +941,8 @@ function test_ESS()
         opts["numBC"] = 0
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
-        ARGS[1] = fname*".jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = fname*".jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
        
 
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
@@ -998,8 +998,8 @@ function test_ESS()
         opts["operator_type"] = "SBPGamma"
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
-        ARGS[1] = fname*".jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = fname*".jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
         
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -1040,8 +1040,8 @@ function test_ESS()
     opts["numBC"] = 0
     fname = "input_vals_ESS_test2"
     make_input(opts, fname)
-    ARGS[1] = fname*".jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = fname*".jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
    
 
     runECTest(mesh, sbp, eqn, opts, test_ref=false)

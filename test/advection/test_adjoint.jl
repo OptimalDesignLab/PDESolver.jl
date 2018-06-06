@@ -14,8 +14,8 @@ function test_adjoint()
 
   @testset "--- Testing Boundary Functional Computation on CG Mesh ---" begin
     clean_dict(arg_dict)
-    ARGS[1] = "input_vals_functional_CG.jl"
-    include("../../src/solver/advection/startup_advection.jl")  # initialization and construction
+    fname = "input_vals_functional_CG.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     println("use_DG = ", arg_dict["use_DG"])
 
 
@@ -35,8 +35,8 @@ function test_adjoint()
 
   @testset "--- Testing Boundary Functional & Adjoint Computation On DG Mesh ---" begin
 
-    ARGS[1] = "input_vals_functional_DG.jl"
-    mesh, sbp, eqn, opts, pmesh = createObjects(ARGS[1])
+    fname = "input_vals_functional_DG.jl"
+    mesh, sbp, eqn, opts, pmesh = createObjects(fname)
 
     @assert mesh.isDG == true
     @assert opts["jac_method"] == 2

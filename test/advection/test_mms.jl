@@ -15,13 +15,6 @@ function make_input_mms(opts0, degree; dg=false, operator="SBPOmega")
 
   read_input(opts)  # get default values
 
-#  fname = "input_vals_mms$degree.jl"
-#  rmfile(fname)
-#  f = open(fname, "w")
-#  print(f, "arg_dict = ")  # TODO: change this to use make_input
-#  println(f, opts)
-#  ARGS[1] = fname
-#  close(f)
   return opts
 end
 

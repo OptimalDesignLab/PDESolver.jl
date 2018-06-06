@@ -38,8 +38,8 @@ function runtests_parallel()
 
     start_dir = pwd()
     cd("./rk4/parallel")
-    ARGS[1] = "input_vals_parallel_runp.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_parallel_runp.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -49,8 +49,8 @@ function runtests_parallel()
     cd("../../")
 
     cd("./newton/parallel")
-    ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("./error_calc.dat")
@@ -59,8 +59,8 @@ function runtests_parallel()
     cd(start_dir)
 
     cd("./rk4_3d/parallel")
-    ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
@@ -69,8 +69,8 @@ function runtests_parallel()
     cd(start_dir)
 
     cd("./newton_3d/parallel")
-    ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     datas = readdlm("../serial/error_calc.dat")
     datap = readdlm("error_calc.dat")
     @test isapprox( datas[1], datap[1]) atol=1e-13
@@ -90,9 +90,9 @@ function test_precompute()
 
     # test rk4
     cd("./rk4/parallel")
-    ARGS[1] = "input_vals_parallel_runp.jl"
+    fname = "input_vals_parallel_runp.jl"
     #TODO: set opts["solve"] = false before doing this
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     fill!(eqn.res, 0.0)
     evalResidual(mesh, sbp, eqn, opts)
@@ -107,8 +107,8 @@ function test_precompute()
     # test newton
     cd(start_dir)
     cd("./newton/parallel")
-    ARGS[1] = "input_vals_parallel.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_parallel.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     fill!(eqn.res, 0.0)
     evalResidual(mesh, sbp, eqn, opts)
@@ -132,10 +132,8 @@ function test_adjoint_parallel()
 
   @testset "--- Testing Adjoint Computation on a Geometric Boundary ---" begin
 
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_functional_DG_parallel.jl"
-    # include(STARTUP_PATH)
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_functional_DG_parallel.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     objective = createFunctional(mesh, sbp, eqn, opts, 1)
     evalFunctional(mesh, sbp, eqn, opts, objective)

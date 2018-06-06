@@ -7,8 +7,8 @@ function test_jac_res()
 # check that finite differencing and complex stepping the residual agree
 
   @testset "----- Testing Jacobian -----" begin
-    ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8el.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     jac_fd = zeros(Float64, 3, 3, mesh.numEl)
     for el = 1:mesh.numEl
@@ -36,13 +36,13 @@ function test_jac_res()
 
     # now do complex step
     println("----- Doing Complex step -----")
-    include(ARGS[1])
+    include(fname)
     arg_dict["jac_method"] = 2
     f = open("input_vals_8elc.jl", "w")
     println(f, arg_dict)
     close(f)
-    ARGS[1] = "input_vals_8elc.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8elc.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
 
     jac_c = zeros(Float64, 3,3, mesh.numEl)
@@ -68,8 +68,8 @@ function test_jac_res()
 
     # back to finite differences
     println("----- Testing Finite Difference Jacobian -----")
-    ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8el.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # needed for calls to NewtonData below
@@ -104,9 +104,9 @@ function test_jac_res()
 
     # back to complex step
     println("----- Testing Complex Step Jacobian -----")
-    ARGS[1] = "input_vals_8elc.jl"
+    fname = "input_vals_8elc.jl"
     arg_dict["jac_method"] = 2  # something screwy is going on because this is necessary
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(fname)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # now test full jacobian
@@ -146,8 +146,8 @@ function test_jac_calc()
   @testset "----- Testing Jacobian calculation -----" begin
     # back to finite differences
     println("----- Testing Finite Difference Jacobian -----")
-    ARGS[1] = "input_vals_8el.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_8el.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # needed for calls to NewtonData below
@@ -181,10 +181,10 @@ function test_jac_calc()
 
     # back to complex step
     println("----- Testing Complex Step Jacobian -----")
-    ARGS[1] = "input_vals_8elc.jl"
+    fname = "input_vals_8elc.jl"
     arg_dict["run_type"] = 5  # something screwy is going on because this is necessary
     arg_dict["jac_method"] = 2
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(fname)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
     # now test full jacobian

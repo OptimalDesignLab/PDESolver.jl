@@ -15,9 +15,9 @@ function test_viscous()
 
   @testset "--- Testing Viscous Terms ---" begin
 
-    ARGS[1] = "input_viscous_polynomial_ser.jl"
-    # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(ARGS[1])
-    mesh, sbp, eqn, opts = PDESolver.run_solver(ARGS[1])
+    fname = "input_viscous_polynomial_ser.jl"
+    # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(fname)
+    mesh, sbp, eqn, opts = PDESolver.run_solver(fname)
     @assert mesh.isDG == true
     @assert opts["isViscous"] == true
 

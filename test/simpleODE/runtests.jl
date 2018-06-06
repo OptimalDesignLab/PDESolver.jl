@@ -36,8 +36,8 @@ function test_eq4()
   @testset "---- testing SimpleODE ----" begin
     start_dir = pwd()
     cd("./eqn4/")
-    ARGS[1] = "input_vals_simpleODE.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_simpleODE.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     for i = 1:length(eqn.q_vec)
       @test isapprox( eqn.q_vec[i], 4.0) atol=1e-10
