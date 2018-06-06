@@ -159,16 +159,16 @@ end
 
     Aliasing restrictions: none
 """->
-function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray)
+function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray, aux_vars_bndry::Abstract3DArray)
 
   # interpolate solutions
-  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, q, q_bndry)
 
   # calculate aux_vars
   for i=1:mesh.numBoundaryFaces
     for j=1:mesh.numNodesPerFace
       q_vals = ro_sview(eqn.q_bndry, :, j, i)
-      eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
+      aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end
 

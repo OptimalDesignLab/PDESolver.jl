@@ -584,7 +584,7 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
       #  println("  interpolateFace @time printed above")
     end
     if opts["precompute_q_bndry"]
-      interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+      interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
       # println("  interpolateFace @time printed above")
     end
   end
