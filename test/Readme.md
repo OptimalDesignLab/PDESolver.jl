@@ -14,7 +14,7 @@ The parallel tests are run with:
 
 ```julia
   cd test/physics_module
-  mpirun -np 2 julia ./runtests_parallel.jl  TAG1 TAG2 ...
+  mpirun -np 2 julia ./runtests_parallel2.jl  TAG1 TAG2 ...
 ```
 
 ```julia

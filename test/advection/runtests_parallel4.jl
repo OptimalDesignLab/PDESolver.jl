@@ -31,7 +31,7 @@ include("../tags.jl")
 global const AdvectionTests = TestList()
 
 include("Nonlinearsolvers/crank_nicolson_PETSc_parallel/runtests.jl")
-include("test_parallel2.jl")
+include("test_parallel4.jl")
 """
   Test energy stability in parallel
 """

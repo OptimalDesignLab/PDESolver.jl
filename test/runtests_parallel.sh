@@ -9,7 +9,7 @@ err=0
 start_dir=`pwd`
 
 cd ./advection
-  mpirun -np 2 julia $jflags ./runtests_parallel.jl
+  mpirun -np 2 julia $jflags ./runtests_parallel2.jl
   tmp=$?
   err=$((err + tmp))
 
@@ -30,7 +30,7 @@ cd ./advection
 cd $start_dir
 
 cd ./euler
-  mpirun -np 2 julia $jflags ./runtests_parallel.jl
+  mpirun -np 2 julia $jflags ./runtests_parallel2.jl
   tmp=$?
   err=$((err + tmp))
 
