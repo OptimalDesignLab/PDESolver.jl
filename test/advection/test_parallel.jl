@@ -128,8 +128,8 @@ function test_parallel_serialpart()
   fname = "input_vals_parallel_run"
   make_input(opts, fname)
 
-  fname = string(fname, ".jl")
-  mesh, sbp, eqn, opts = solvePDE(fname)
+  fname2 = string(fname, ".jl")
+  mesh, sbp, eqn, opts = solvePDE(fname2)
   cd(start_dir)
 
   # make the parallel version
