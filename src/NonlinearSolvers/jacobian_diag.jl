@@ -472,6 +472,7 @@ function findStablePerturbation!{T}(Jac::AbstractMatrix,
                                     u::AbstractVector,
                                     A::AbstractVector{T},
                                     Jacpert::AbstractMatrix)
+  # the call in filterDiagJac: findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
   @assert( size(Jac,1) == size(Jac,2) == size(Jacpert,1) == size(Jacpert,2)
            == length(u) )
   n = size(Jac,1)
