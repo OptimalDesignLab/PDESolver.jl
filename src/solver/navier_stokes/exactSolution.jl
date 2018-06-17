@@ -10,13 +10,13 @@ function (obj::ExactPolynomial)(
               params::ParamType{2},
               qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
   sigma = 0.5 
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   rhoInf = 1.0
   TInf = 1.0
-  uInf = params.Ma*cos(aoa)
-  vInf = params.Ma*sin(aoa)
+  uInf = params.euler_params.Ma*cos(aoa)
+  vInf = params.euler_params.Ma*sin(aoa)
   x = xy[1]
   y = xy[2]
   rho = (x-x*x)*(y-y*y) 
@@ -45,12 +45,12 @@ function (obj::ExactPolynomial_1)(
               qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   sigma = 0.5
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   rhoInf = 1.0
-  uInf = params.Ma*cos(aoa)
-  vInf = params.Ma*sin(aoa)
+  uInf = params.euler_params.Ma*cos(aoa)
+  vInf = params.euler_params.Ma*sin(aoa)
   TInf = 1.0
   x = xy[1]
   y = xy[2]
@@ -80,12 +80,12 @@ function (obj::ExactPolynomial_2)(
               qe::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
 
   sigma = 0.5
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   rhoInf = 1.0
-  uInf = params.Ma*cos(aoa)
-  vInf = params.Ma*sin(aoa)
+  uInf = params.euler_params.Ma*cos(aoa)
+  vInf = params.euler_params.Ma*sin(aoa)
   TInf = 1.0
   x = xy[1]
   y = xy[2]
@@ -118,10 +118,10 @@ function (obj::ExactTrigonometric)(
   pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0
-  aoa = params.aoa
+  aoa = params.euler_params.aoa
   rhoInf = 1.0
-  uInf = params.Ma*cos(aoa)
-  vInf = params.Ma*sin(aoa)
+  uInf = params.euler_params.Ma*cos(aoa)
+  vInf = params.euler_params.Ma*sin(aoa)
   TInf = 1.0
   x2 = 2*xy[1]*pi
   y2 = 2*xy[2]*pi

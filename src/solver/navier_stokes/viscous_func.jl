@@ -62,7 +62,7 @@ end
 #   Fv       : viscous flux
 # """->
 #
-function calcFvis_elem_direct(params::ParamType{2, :conservative},
+function calcFvis_elem_direct(params::ParamType{2},
                               sbp::AbstractSBP,
                               q::AbstractArray{Tsol, 2},
                               dxidx::AbstractArray{Tmsh, 3},
@@ -78,7 +78,7 @@ function calcFvis_elem_direct(params::ParamType{2, :conservative},
 
   dim = 2
   Pr      = 0.72
-  gamma   = params.gamma
+  gamma   = params.euler_params.gamma
   gamma_1 = gamma - 1.0
   coef_nondim = 1.0/(Pr*gamma_1)
   two3rd   = 2.0/3.0
@@ -156,7 +156,7 @@ function calcFvis_elem_direct(params::ParamType{2, :conservative},
   return nothing
 end
 
-function calcFvis_elem_direct(params::ParamType{3, :conservative},
+function calcFvis_elem_direct(params::ParamType{3},
                               sbp::AbstractSBP,
                               q::AbstractArray{Tsol, 2},
                               dxidx::AbstractArray{Tmsh, 3},
@@ -278,7 +278,7 @@ end
    * FvR : viscous flux on left side of interface
 
 """
-function calcFaceFvis(params::ParamType{Tdim, :conservative},
+function calcFaceFvis(params::ParamType{Tdim},
                       sbp::AbstractSBP,
                       sbpface::AbstractFace,
                       qL::AbstractArray{Tsol, 2},
@@ -361,7 +361,7 @@ end
 # Output:
 #   Fv    : viscous flux
 # """->
-function calcFvis(params::ParamType{Tdim, :conservative},
+function calcFvis(params::ParamType{Tdim},
                   q::AbstractArray{Tsol, 2},
                   dqdx::AbstractArray{Tsol, 3},
                   Fv::AbstractArray{Tsol, 3}) where {Tsol, Tdim}
@@ -394,7 +394,7 @@ end
 # Output:
 #   Fv      : viscous flux
 # """->
-function calcFvis(params::ParamType{2, :conservative},
+function calcFvis(params::ParamType{2},
                   Gv::AbstractArray{Tsol, 5},
                   dqdx::AbstractArray{Tsol, 3},
                   Fv::AbstractArray{Tsol, 3}) where Tsol
@@ -453,7 +453,7 @@ function calcFvis(params::ParamType{2, :conservative},
 
   return nothing
 end
-function calcFvis(params::ParamType{3, :conservative},
+function calcFvis(params::ParamType{3},
                   Gv::AbstractArray{Tsol, 5},
                   dqdx::AbstractArray{Tsol, 3},
                   Fv::AbstractArray{Tsol, 3}) where Tsol
@@ -594,7 +594,7 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor(params::ParamType{2, :conservative},
+function calcDiffusionTensor(params::ParamType{2},
                              q::AbstractArray{Tsol, 2},
                              Gv::AbstractArray{Tsol, 5}) where Tsol
   @assert(size(q, 2) == size(Gv, 5))
@@ -603,7 +603,7 @@ function calcDiffusionTensor(params::ParamType{2, :conservative},
   @assert(size(Gv, 2) == 2+2)
   @assert(size(Gv, 1) == 2+2)
   numNodes = size(q, 2)
-  gamma = params.gamma
+  gamma = params.euler_params.gamma
   gamma_1 = gamma - 1.0
   Pr = 0.72
   gamma_pr = gamma/Pr
@@ -739,7 +739,7 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor(params::ParamType{3, :conservative},
+function calcDiffusionTensor(params::ParamType{3},
                              q::AbstractArray{Tsol, 2},
                              Gv::AbstractArray{Tsol, 5}) where Tsol
   Tdim = 3
@@ -1103,7 +1103,7 @@ Input:
 Output
   jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2, :conservative},
+function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2},
                                            q::AbstractArray{Tsol, 2},
                                            nrm::AbstractArray{Tmsh, 2},
                                            Gv::AbstractArray{Tsol, 5}) where {Tmsh, Tsol}
@@ -1257,7 +1257,7 @@ end
 # NOTE: this is incorrect. states that grad T = 0 always by setting gamma_pr to 0, but what actually is
 #       necessary is that n dot grad T = 0.
 # TODO: extend the correct version of cDTOnAdiabaticWall (above) to 3D
-function calcDiffusionTensor_adiabaticWall(params::ParamType{3, :conservative},
+function calcDiffusionTensor_adiabaticWall(params::ParamType{3},
                                            q::AbstractArray{Tsol, 2},
                                            Gv::AbstractArray{Tsol, 5}) where Tsol
 
@@ -1638,7 +1638,7 @@ function (obj::AdiabaticWall)(
               q_in::AbstractArray{Tsol, 2},
               xy::AbstractArray{Tmsh, 2},
               norm::AbstractArray{Tmsh, 2},
-              params::ParamType{Tdim, :conservative},
+              params::ParamType{Tdim},
               q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh, Tdim}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
@@ -1663,18 +1663,18 @@ function (obj::ExactChannel)(
                           q_in::AbstractArray{Tsol, 2},
                           xyz::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{3, :conservative},
+                          params::ParamType{3},
                           qg::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
 
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma - 1
   sigma = 0.01
-  aoa = params.aoa
+  aoa = params.euler_params.aoa
   beta = params.sideslip_angle
   rhoInf = 1.0
-  uInf = params.Ma * cos(beta) * cos(aoa)
-  vInf = params.Ma * sin(beta) * -1
-  wInf = params.Ma * cos(beta) * sin(aoa)
+  uInf = params.euler_params.Ma * cos(beta) * cos(aoa)
+  vInf = params.euler_params.Ma * sin(beta) * -1
+  wInf = params.euler_params.Ma * cos(beta) * sin(aoa)
   TInf = 1.0
   numNodes = size(qg, 2)
   for n = 1 : numNodes
@@ -1720,7 +1720,7 @@ function (obj::ExactChannel)(
                           q_in::AbstractArray{Tsol, 2},
                           xy::AbstractArray{Tmsh, 2},
                           norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{2, :conservative},
+                          params::ParamType{2},
                           q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
@@ -1729,14 +1729,14 @@ function (obj::ExactChannel)(
   numNodes = size(q_in, 2)
   sigma = 0.1
 
-  gamma = params.gamma
+  gamma = params.euler_params.gamma
   gamma_1 = gamma - 1
 
-  aoa = params.aoa
+  aoa = params.euler_params.aoa
   qRef = zeros(Float64, dim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
 
   for n = 1 : numNodes
@@ -1782,7 +1782,7 @@ function (obj::Farfield)(
               q_in::AbstractArray{Tsol, 2},
               xy::AbstractArray{Tmsh, 2},
               norm::AbstractArray{Tmsh, 2},
-              params::ParamType{2, :conservative},
+              params::ParamType{2},
               q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
@@ -1791,11 +1791,11 @@ function (obj::Farfield)(
   dim      = size(norm, 1)
   numNodes = size(q_in, 2)
   lambda   = zeros(Float64, 3) 
-  gamma    = params.gamma
-  gamma_1  = params.gamma - 1
-  aoa      = params.aoa
+  gamma    = params.euler_params.gamma
+  gamma_1  = params.euler_params.gamma - 1
+  aoa      = params.euler_params.aoa
   gg_1     = (gamma*gamma_1)
-  MaInf    = params.Ma    
+  MaInf    = params.euler_params.Ma    
 
   # freestream values
   qInf = zeros(Float64, dim + 2)
@@ -1855,7 +1855,7 @@ function (obj::Farfield)(
               q_in::AbstractArray{Tsol, 2},
               xy::AbstractArray{Tmsh, 2},
               norm::AbstractArray{Tmsh, 2},
-              params::ParamType{3, :conservative},
+              params::ParamType{3},
               q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
   @assert( size(q_in, 1) == size(q_bnd,  1))
   @assert( size(q_in, 2) == size(q_bnd,  2))
@@ -1865,16 +1865,16 @@ function (obj::Farfield)(
   dim      = size(norm, 1)
   numNodes = size(q_in, 2)
   lambda   = zeros(Float64, 3) 
-  gamma    = params.gamma
-  gamma_1  = params.gamma_1
-  aoa      = params.aoa
+  gamma    = params.euler_params.gamma
+  gamma_1  = params.euler_params.gamma_1
+  aoa      = params.euler_params.aoa
   beta     = params.sideslip_angle
   gg_1     = (gamma*gamma_1)
-  MaInf    = params.Ma    
+  MaInf    = params.euler_params.Ma    
 
-  uInf = params.Ma * cos(beta) * cos(aoa)
-  vInf = params.Ma * sin(beta) * -1
-  wInf = params.Ma * cos(beta) * sin(aoa)
+  uInf = params.euler_params.Ma * cos(beta) * cos(aoa)
+  vInf = params.euler_params.Ma * sin(beta) * -1
+  wInf = params.euler_params.Ma * cos(beta) * sin(aoa)
   # freestream values
   qInf = zeros(Float64, dim + 2)
   qInf[1] = 1.0

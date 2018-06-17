@@ -166,7 +166,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData, opts::Dict,
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
-  cleanup(mesh, sbp, eqn, opts)
+  EulerEquationMod.cleanup(mesh, sbp, eqn.euler_eqn, opts)
 
   MPI.Barrier(mesh.comm)
 
@@ -189,9 +189,9 @@ end  # end function
 function postproc(mesh, sbp, eqn, opts)
 
   ##### Do postprocessing ######
+  myrank = mesh.myrank
   @mpi_master println("\nDoing postprocessing")
 
-  myrank = mesh.myrank
 
   if opts["do_postproc"] && opts["solve"]
     exfname = opts["exact_soln_func"]

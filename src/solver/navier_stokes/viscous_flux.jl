@@ -18,9 +18,9 @@ function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
                                   eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
 
-  Ma      = eqn.params.Ma
-  Re      = eqn.params.Re
-  gamma_1 = eqn.params.gamma_1
+  Ma      = eqn.params.euler_params.Ma
+  Re      = eqn.params.euler_params.Re
+  gamma_1 = eqn.params.euler_params.gamma_1
   Pr      = 0.72
   coef_nondim = Ma/Re
   interfaces  = sview(mesh.interfaces, :)
@@ -214,9 +214,9 @@ function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
                                   eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
   # freestream info
-  Ma = eqn.params.Ma
-  Re = eqn.params.Re
-  gamma_1 = eqn.params.gamma_1
+  Ma = eqn.params.euler_params.Ma
+  Re = eqn.params.euler_params.Re
+  gamma_1 = eqn.params.euler_params.gamma_1
   Pr = 0.72
   coef_nondim = Ma/Re
 
@@ -602,10 +602,10 @@ function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
   numNodesPerElem = mesh.numNodesPerElement
   numDofsPerNode  = mesh.numDofPerNode
 
-  gamma_1 = eqn.params.gamma_1
+  gamma_1 = eqn.params.euler_params.gamma_1
   Pr = 0.72
-  Ma = eqn.params.Ma
-  Re = eqn.params.Re
+  Ma = eqn.params.euler_params.Ma
+  Re = eqn.params.euler_params.Re
   coef_nondim = Ma/Re 
 
   Qx = Array{Tsbp}(numNodesPerElem, numNodesPerElem, dim)

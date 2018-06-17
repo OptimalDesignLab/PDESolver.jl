@@ -35,7 +35,8 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   src_orig = opts["SRCname"]
   opts["SRCname"] = "SRC0"
   EulerEquationMod.init(mesh, sbp, eqn.euler_eqn, opts, init_mesh=false)
-  opts["SRCName"] = src_orig
+  opts["SRCname"] = src_orig
+
 
   if init_mesh
     getBCFunctors(mesh, sbp, eqn, opts)
@@ -58,7 +59,8 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
   @assert eqn.commsize == 1
 
   params = eqn.params
-  params.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
+  time = params.time
+  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
@@ -69,13 +71,13 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
     # do in inviscid-type boundary integral
     # Because we only support non-precompute, all this function does is
     # the integration, so we can re-use the inviscid one
-    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalBoundaryIntegrals(mesh, sbp, eqn.euler_eqn, opts)
 #   println("boundary integral @time printed above")
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     # invisicd face integrals
-    EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn, opts)
+    EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn.euler_eqn, opts)
 #    println("face integral @time printed above")
   end
 
@@ -85,9 +87,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
 
  
   if eqn.params.isViscous == true
-    params.t_face += @elapsed evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
+    time.t_face += @elapsed evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
     # do the non-inviscid-type boundary integral
-    params.t_bndry += @elapsed evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
+    time.t_bndry += @elapsed evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
   end
 
   # apply inverse mass matrix to eqn.res, necessary for CN
@@ -118,6 +120,7 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   # do the Euler part
   # don't do the inviscid boundary conditions
   precompute_bc_orig = opts["precompute_boundary_flux"]
+  opts["precompute_boundary_flux"] = false
   EulerEquationMod.dataPrep(mesh, sbp, eqn.euler_eqn, opts)
   opts["precompute_boundary_flux"] = precompute_bc_orig
 
@@ -177,7 +180,7 @@ function evalSourceTerm(mesh::AbstractMesh{Tmsh},
   if opts["use_src_term"]
     # the source term signature are compatible, so use the Euler function
     # to evaluate it
-    EulerEquationMod.applySourceTerm(mesh, sbp, eqn.euler_eqn, opts, eqn.src_func)
+    EulerEquationMod.applySourceTerm(mesh, sbp, eqn, opts, eqn.src_func)
   end
 
   return nothing

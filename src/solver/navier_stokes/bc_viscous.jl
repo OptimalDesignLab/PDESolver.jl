@@ -14,8 +14,8 @@ function (obj::FreeStreamBC)(_params::ParamType,
               ) where {Tmsh, Tsol, Tres}
 
   params = _params.euler_params
-  obj = EulerEquationMod.FreeStreamBC()
-  obj(params, q, aux_vars, coords, nrm_xy, bndryflux)
+  obj2 = EulerEquationMod.FreeStreamBC()
+  obj2(params, q, aux_vars, coords, nrm_xy, bndryflux)
   return nothing
 end
 
@@ -67,14 +67,14 @@ function (obj::ExactChannelBC)(
               bndryflux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
 
   sigma = 0.01
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma - 1
+  aoa = params.euler_params.aoa
   beta = params.sideslip_angle
   rhoInf = 1.0
-  uInf = params.Ma * cos(beta) * cos(aoa)
-  vInf = params.Ma * sin(beta) * -1
-  wInf = params.Ma * cos(beta) * sin(aoa)
+  uInf = params.euler_params.Ma * cos(beta) * cos(aoa)
+  vInf = params.euler_params.Ma * sin(beta) * -1
+  wInf = params.euler_params.Ma * cos(beta) * sin(aoa)
   TInf = 1.0
   x = xyz[1]
   y = xyz[2]
@@ -121,7 +121,7 @@ end
 
 # low level function
 function (obj::ExactChannelBC)(
-              params::ParamType{2, :conservative},
+              params::ParamType{2},
               q::AbstractArray{Tsol,1},  
               aux_vars::AbstractArray{Tres, 1},  
               x::AbstractArray{Tmsh,1}, 
@@ -159,8 +159,8 @@ function (obj::zeroPressGradientBC)(
 
   dim = length(nrm_xy)
 
-	gamma = params.gamma
-	gamma_1 = params.gamma_1
+	gamma = params.euler_params.gamma
+	gamma_1 = params.euler_params.gamma_1
 	qg = params.qg
 	dim = 2
   rhoV2 = (norm(view(q, 2:dim+1))) / q[1]

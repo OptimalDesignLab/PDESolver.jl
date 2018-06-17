@@ -3,6 +3,8 @@
 using PDESolver
 using NavierStokesMod
 using Base.Test
+using ODLCommonTools
+import ODLCommonTools.sview
 
 @doc """
 Euler Equation -- test_viscous
@@ -28,6 +30,9 @@ function test_viscous()
     @testset "Checking Solution at Final Time Step" begin
 
       viscous_qvec_final_for_comparison = readdlm("viscous_files/solution_viscous_forcomparison_0.dat")
+      println("eqn.q_vec = ", eqn.q_vec)
+      println("q_vec_compare = ", viscous_qvec_final_for_comparison)
+      println("diff = ", eqn.q_vec - viscous_qvec_final_for_comparison)
 
       for dof_ix = 1:length(eqn.q_vec)
         diff = eqn.q_vec[dof_ix] - viscous_qvec_final_for_comparison[dof_ix]
@@ -55,8 +60,8 @@ function test_viscous()
         q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
         q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
 
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
 
         GtL_vec = reshape(GtL, 128, )
         GtR_vec = reshape(GtR, 128, )

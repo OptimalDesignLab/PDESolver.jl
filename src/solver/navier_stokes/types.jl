@@ -105,7 +105,7 @@ mutable struct NSData_{Tsol, Tres, Tdim, Tmsh} <: NSData{Tsol, Tres, Tdim}
   q_face::Array{Tsol, 4}     # q interpolated to face
   q_bndry::Array{Tsol, 3}    # q interpolated to boundary
   bndryflux::Array{Tres, 3}  # inviscid-type boundary flux
-  face_flux::Array{Tres, 3}  # inviscid-type face flux
+  flux_face::Array{Tres, 3}  # inviscid-type face flux
   area_sum::Array{Tmsh, 1}		  # the wet area of each element
   # vecflux_face::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
   vecflux_faceL::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
@@ -124,6 +124,9 @@ mutable struct NSData_{Tsol, Tres, Tdim, Tmsh} <: NSData{Tsol, Tres, Tdim}
                                                 :conservative}(mesh, sbp, opts)
 
     eqn.params = ParamType{Tdim, Tsol, Tres, Tmsh}(eqn.euler_eqn, mesh, sbp, opts, mesh.order)
+    eqn.comm = eqn.euler_eqn.comm
+    eqn.commsize = eqn.euler_eqn.commsize
+    eqn.myrank = eqn.euler_eqn.myrank
 
     # alias the arrays to avoid having to update them manually
     eqn.q = eqn.euler_eqn.q
@@ -134,7 +137,7 @@ mutable struct NSData_{Tsol, Tres, Tdim, Tmsh} <: NSData{Tsol, Tres, Tdim}
     eqn.q_face = eqn.euler_eqn.q_face
     eqn.q_bndry = eqn.euler_eqn.q_bndry
     eqn.bndryflux = eqn.euler_eqn.bndryflux
-    eqn.face_flux = eqn.euler_eqn.flux_face
+    eqn.flux_face = eqn.euler_eqn.flux_face
     eqn.Minv3D = eqn.euler_eqn.Minv3D
     eqn.Minv = eqn.euler_eqn.Minv
     eqn.M = eqn.euler_eqn.M
