@@ -13,9 +13,10 @@
 """
 function checkOptions(opts)
 
-  if opts["physics"] != PhysicsName
-    error("physics not specified as $PhysicsName, are you lost?")
-  end
+  # this is a problem for nested physics
+#  if opts["physics"] != PhysicsName
+#    error("physics not specified as $PhysicsName, are you lost?")
+#  end
 
 
   if opts["use_edge_res"]

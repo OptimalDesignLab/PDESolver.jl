@@ -78,6 +78,10 @@ function register_physics(modname::String, mod::Module, _createObjects::Function
  
   end
 
+  if _createObjects == PDESolver.createObjects
+    error("PDESolver.createObjects cannot be registered as the physics module _createObjects function, this would create an infinite loop")
+  end
+
   # if we get here, the registration is new
   PhysicsModDict[modname] = (mod, _createObjects, _checkOptions)
 

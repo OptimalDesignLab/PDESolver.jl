@@ -250,7 +250,6 @@ function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-include("source_viscous.jl")
 
 @doc """
 ### EulerEquationMod.SRCDict
@@ -270,10 +269,6 @@ global const SRCDict = Dict{String, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
-"SRCTrigonometric" => SRCTrigonometric(),
-"SRCDoubleSquare" => SRCDoubleSquare(),
-"SRCPolynomial" => SRCPolynomial(),
-"SRCChannel" => SRCChannel(),
 )
 
 

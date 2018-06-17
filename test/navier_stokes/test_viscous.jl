@@ -1,5 +1,9 @@
 #Test functional Integrate and adjoint for euler equation.
 
+using PDESolver
+using NavierStokesMod
+using Base.Test
+
 @doc """
 Euler Equation -- test_viscous
 
@@ -81,4 +85,6 @@ function test_viscous()
 
 end # End function test_viscous
 
-add_func1!(EulerTests, test_viscous, [TAG_VISCOUS, TAG_LONGTEST])
+#add_func1!(EulerTests, test_viscous, [TAG_VISCOUS, TAG_LONGTEST])
+
+test_viscous()

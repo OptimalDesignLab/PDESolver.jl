@@ -1,3 +1,14 @@
+mutable struct SRC0 <: SRCType
+end
+
+function (obj::SRC0)(
+              src::AbstractVector,
+              xyz::AbstractVector, 
+              params::ParamType{3}, 
+              t)
+ 
+  error("SRC0 should never be called")
+end
 
 #
 # Given PRIMITIVE variable and its 1st order and 
@@ -1001,3 +1012,30 @@ function (obj::SRCTrigonometric)(
   calcMmsSource(params, q, q_x, q_xx, src)
   return nothing
 end
+
+global const SRCDict = Dict{String, SRCType}(
+  "SRC0" => SRC0(),
+  "SRCTrigonometric" => SRCTrigonometric(),
+  "SRCDoubleSquare" => SRCDoubleSquare(),
+  "SRCPolynomial" => SRCPolynomial(),
+  "SRCChannel" => SRCChannel()
+)
+
+
+"""
+### NavierStokesMod.getSRCFunctors
+
+  This function gets the functor specified by opts["SRCname"] and stores
+  it to the equation object.  Currently one 1 source functor is allowed.
+
+"""
+function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, 
+                        eqn::NSData, opts)
+
+  # currently we only allow 1 source functor
+  eqn.src_func = SRCDict[opts["SRCname"]]
+  println("using source term functor ", eqn.src_func)
+  return nothing
+end
+
+

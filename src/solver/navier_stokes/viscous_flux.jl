@@ -12,10 +12,10 @@ Input:
   opts :
 Output:
 
-# """->
+"""->
 function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
                                   sbp::AbstractSBP,
-                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
 
   Ma      = eqn.params.Ma
@@ -211,7 +211,7 @@ end # end of function calcViscousFlux_interior
 
 function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
                                   sbp::AbstractSBP,
-                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
   # freestream info
   Ma = eqn.params.Ma
@@ -409,7 +409,7 @@ Output:
 """->
 function evalFaceIntegrals_vector(mesh::AbstractDGMesh{Tmsh},
                                   sbp::AbstractSBP,
-                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
   sbpface = mesh.sbpface
@@ -506,7 +506,7 @@ Output:
 """->
 function evalBoundaryIntegrals_vector(mesh::AbstractMesh{Tmsh},
                                       sbp::AbstractSBP,
-                                      eqn::EulerData{Tsol, Tres, Tdim},
+                                      eqn::NSData{Tsol, Tres, Tdim},
                                       opts) where {Tmsh, Tsol, Tres, Tdim}
 
   sbpface = mesh.sbpface
@@ -578,7 +578,7 @@ end  # end evalBoundaryIntegrals_vector
 
 
 
-@doc """
+"""
 
 Integrate ∫ ∇ϕ⋅F dΩ
 TODO: consider combine it together with `weakdifferentiate`
@@ -590,10 +590,10 @@ Input:
   res    :
 Output:
 
-# """->
+"""
 function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP{Tsbp},
-                             eqn::EulerData{Tsol, Tres, Tdim},
+                             eqn::NSData{Tsol, Tres, Tdim},
                              res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tsol, Tres, Tdim}
   @assert (sbp.numnodes ==  size(res,2))
 
@@ -632,5 +632,84 @@ function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
       end
     end
   end
+end
+
+
+"""
+  This flux function throws an error. Useful for defaults.
+"""
+mutable struct ErrorFlux <: FluxType
+end
+
+function (obj::ErrorFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres}) where {Tsol, Tres}
+
+  error("ErrorFlux called.")
+  return nothing
+end
+
+
+
+"""
+  Calls the [`SIPG`](@ref) (viscous) flux
+"""
+mutable struct SIPGViscousFlux <: FluxType
+end
+
+function (obj::SIPGViscousFlux)(params::ParamType,
+              sbp::AbstractSBP,
+              sbpface,    # TODO: type
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              dxidxL,     # TODO: type
+              jacL,       # TODO: type
+              dxidxR,     # TODO: type
+              jacR,       # TODO: type
+              face,       # TODO: type
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+
+  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
+  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
+  return nothing
+end
+
+
+"""
+### NavierStokesMod.FluxDict
+
+  This dictonary maps the names of the fluxes (Strings) to the
+  functor object itself.  All flux functors should be added to the dictionary.
+
+  TODO: document signature of the functors here
+
+"""
+global const FluxDict = Dict{String, FluxType}(
+"SIPGViscousFlux" => SIPGViscousFlux(),
+"ErrorFlux" => ErrorFlux(),
+)
+
+"""
+### NavierStokesMod.getFluxFunctors
+
+  This function retrieves the flux functors from the dictonary and
+  stores them to eqn.viscous_flux_func.
+
+  Inputs:
+    mesh: an AbstractDGMesh
+    sbp
+    eqn
+    opts
+"""
+function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+
+  name = opts["Viscous_flux_name"]
+  eqn.viscous_flux_func = FluxDict[name]
+
+  return nothing
 end
 

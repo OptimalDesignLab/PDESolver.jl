@@ -53,3 +53,20 @@ function registerOptionsChecker(physics_name::String, func::Function)
 
   return nothing
 end
+
+"""
+  Prints the name of all currently registered physics modules and the module
+  name itself
+"""
+function printPhysicsModules(f::IO=STDOUT)
+
+  n = length(keys(PhysicsOptionsFuncs))
+  println(f, "Currently registered physics modules: ", n)
+  for (name, val) in PhysicsOptionsFuncs
+    println(f, "  ", name)
+  end
+
+  return nothing
+end
+
+

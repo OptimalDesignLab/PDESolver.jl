@@ -78,7 +78,7 @@ arg_dict   = Dict{Any, Any}(
   "real_time"          => false,
 
   "write_timing"       => true,
-  "physics"            => "Euler",
+  "physics"            => "NavierStokes",
 
   "output_freq"        => 1,
 

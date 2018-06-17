@@ -1654,7 +1654,6 @@ function (obj::reanalysisBC)(params::AbstractParamType{Tdim},
   return nothing
 end
 
-include("bc_viscous.jl")
 
 # every time a new boundary condition is created,
 # add it to the dictionary
@@ -1685,16 +1684,13 @@ global const BCDict = Dict{String, BCType}(
 "inviscidChannelFreeStreamBC" => inviscidChannelFreeStreamBC(),
 "reanalysisBC" => reanalysisBC(),
 "defaultBC" => defaultBC(),
-"nonslipBC" => nonslipBC(),
-"ExactChannelBC" => ExactChannelBC(),
-"zeroPressGradientBC" => zeroPressGradientBC(),
 )
 
 @doc """
 ### EulerEquationMod.getBCFunctors
 
   This function uses the opts dictionary to populate mesh.bndry_funcs with
-  the the functors
+  the functors
 
     func(params::ParamType,
          q::AbstractArray{Tsol,1},

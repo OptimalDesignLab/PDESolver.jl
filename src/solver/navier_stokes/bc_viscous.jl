@@ -1,3 +1,27 @@
+# boundary condition functions
+
+"""
+  Thin wrapper around EulerEquationMod.FreeStreamBC
+"""
+mutable struct FreeStreamBC <: BCType
+end
+
+function (obj::FreeStreamBC)(_params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              ) where {Tmsh, Tsol, Tres}
+
+  params = _params.euler_params
+  obj = EulerEquationMod.FreeStreamBC()
+  obj(params, q, aux_vars, coords, nrm_xy, bndryflux)
+  return nothing
+end
+
+
+
+
 mutable struct nonslipBC <: BCType
 end
 # low level function
@@ -153,3 +177,40 @@ function (obj::zeroPressGradientBC)(
 
 	return nothing
 end
+
+global const BCDict = Dict{String, BCType}(
+  "FreeStreamBC" => FreeStreamBC(),
+  "nonslipBC" => nonslipBC(),
+  "ExactChannelBC" => ExactChannelBC(),
+  "zeroPressGradientBC" => zeroPressGradientBC(),
+)
+
+"""
+### NavierStokesnMod.getBCFunctors
+
+  This function uses the opts dictionary to populate mesh.bndry_funcs with
+  the functors
+
+    func(params::ParamType,
+         q::AbstractArray{Tsol,1},
+         aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+         nrm_xy::AbstractArray{Tmsh,1},
+         bndryflux::AbstractArray{Tres, 1},
+         bndry::BoundaryNode=NullBoundaryNode)
+
+
+  This is a high level function.
+"""
+# use this function to populate access the needed values in BCDict
+function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData, opts)
+
+  for i=1:mesh.numBC
+    key_i = string("BC", i, "_name")
+    val = opts[key_i]
+    mesh.bndry_funcs[i] = BCDict[val]
+  end
+
+  return nothing
+end # end function getBCFunctors
+
+
