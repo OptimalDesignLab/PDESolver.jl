@@ -59,22 +59,15 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
 
   @assert eqn.commsize == 1
 
-  println("----- Entered evalResidual -----")
   params = eqn.params
   time = params.time
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
-
-  println("after dataprep, eqn.res = \n", eqn.res)
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #    println("volume integral @time printed above")
   end
 
-  println("after volume integrals, eqn.res = \n", eqn.res)
-
-  println("eqn.bndryflux = \n", eqn.bndryflux)
-  println("eqn.euler_eqn.bndryflux = \n", eqn.euler_eqn.bndryflux)
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     # do in inviscid-type boundary integral
     # Because we only support non-precompute, all this function does is
@@ -83,7 +76,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
 #   println("boundary integral @time printed above")
   end
 
-  println("after boundary integrals, eqn.res = \n", eqn.res)
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     # invisicd face integrals
@@ -91,20 +83,15 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
 #    println("face integral @time printed above")
   end
 
-  println("after face integrals, eqn.res = \n", eqn.res)
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
 #  println("source integral @time printed above")
 
-  println("after source integrals, eqn.res = \n", eqn.res)
  
   if eqn.params.isViscous == true
     time.t_face += @elapsed evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
-
-    println("after viscous face integrals, eqn.res = \n", eqn.res)
     # do the non-inviscid-type boundary integral
     time.t_bndry += @elapsed evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
-    println("after viscous boundary integrals, eqn.res = \n", eqn.res)
   end
 
   # apply inverse mass matrix to eqn.res, necessary for CN
