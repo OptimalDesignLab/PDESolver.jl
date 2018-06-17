@@ -3,7 +3,7 @@ using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
 
-push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))  # get TestSystem
 
 using PDESolver
 #using Base.Test
@@ -56,8 +56,6 @@ include("test_parallel_serialpart.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
-
-include("test_viscous.jl")
 
 #------------------------------------------------------------------------------
 # run tests
