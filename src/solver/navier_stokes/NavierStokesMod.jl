@@ -26,12 +26,12 @@ include("types.jl")            # type definitions
 include("startup_func.jl")     # startup functions
 include("check_options.jl")    # physics specific options checkgin
 include("navier_stokes.jl")    # main residual evaluation
-include("util_viscous.jl")     # utilities
-include("bc_viscous.jl")       # viscous boundary condition
-include("viscous_flux.jl")     # viscous face flux
+include("util.jl")     # utilities
+include("bc.jl")       # viscous boundary condition
+include("flux.jl")     # viscous face flux
 include("viscous_func.jl")     # more viscous stuff
-include("source_viscous.jl")   # viscous source term
-include("ic_viscous.jl")       # initial conditions
+include("source.jl")   # viscous source term
+include("ic.jl")       # initial conditions
 
 
 """
