@@ -54,11 +54,15 @@ function test_viscous()
       nfaces = length(mesh.interfaces)
 
       for interface = [3 4]
+        println("interface = ", interface)
         fill!(GtL, 0.0)
         fill!(GtR, 0.0)
 
         q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
         q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
+
+        println("q_faceL = \n", q_faceL)
+        println("q_faceR = \n", q_faceR)
 
         NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
         NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
@@ -66,11 +70,18 @@ function test_viscous()
         GtL_vec = reshape(GtL, 128, )
         GtR_vec = reshape(GtR, 128, )
 
+        println("GtL_vec = \n", GtL_vec)
+        println("GtR_vec = \n", GtR_vec)
+
         GtL_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtL_vec.dat")
         GtR_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtR_vec.dat")
 
         GtL_vec_to_check_against = readdlm(GtL_file_to_check_against)
         GtR_vec_to_check_against = readdlm(GtR_file_to_check_against)
+
+        println("GtL_ref = \n", GtL_vec_to_check_against)
+        println("GtR_ref = \n", GtR_vec_to_check_against)
+
 
         for ii = 1:length(GtL_vec)
 

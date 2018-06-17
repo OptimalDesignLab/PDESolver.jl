@@ -34,13 +34,14 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   # because the Navier Stokes module will handle the it
   src_orig = opts["SRCname"]
   opts["SRCname"] = "SRC0"
-  EulerEquationMod.init(mesh, sbp, eqn.euler_eqn, opts, init_mesh=false)
+  # see `getBCFunctors` in this module for why init_mesh=true
+  EulerEquationMod.init(mesh, sbp, eqn.euler_eqn, opts, init_mesh=true)
   opts["SRCname"] = src_orig
 
 
   if init_mesh
-    getBCFunctors(mesh, sbp, eqn, opts)
-    getBCFunctors(pmesh, sbp, eqn, opts)
+#    getBCFunctors(mesh, sbp, eqn, opts)
+#    getBCFunctors(pmesh, sbp, eqn, opts)
   end
 
   getSRCFunctors(mesh, sbp, eqn, opts)
@@ -58,15 +59,22 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
 
   @assert eqn.commsize == 1
 
+  println("----- Entered evalResidual -----")
   params = eqn.params
   time = params.time
   time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
+
+  println("after dataprep, eqn.res = \n", eqn.res)
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
 #    println("volume integral @time printed above")
   end
 
+  println("after volume integrals, eqn.res = \n", eqn.res)
+
+  println("eqn.bndryflux = \n", eqn.bndryflux)
+  println("eqn.euler_eqn.bndryflux = \n", eqn.euler_eqn.bndryflux)
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     # do in inviscid-type boundary integral
     # Because we only support non-precompute, all this function does is
@@ -75,21 +83,28 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
 #   println("boundary integral @time printed above")
   end
 
+  println("after boundary integrals, eqn.res = \n", eqn.res)
+
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     # invisicd face integrals
     EulerEquationMod.evalFaceIntegrals(mesh, sbp, eqn.euler_eqn, opts)
 #    println("face integral @time printed above")
   end
 
+  println("after face integrals, eqn.res = \n", eqn.res)
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
 #  println("source integral @time printed above")
 
+  println("after source integrals, eqn.res = \n", eqn.res)
  
   if eqn.params.isViscous == true
     time.t_face += @elapsed evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
+
+    println("after viscous face integrals, eqn.res = \n", eqn.res)
     # do the non-inviscid-type boundary integral
     time.t_bndry += @elapsed evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
+    println("after viscous boundary integrals, eqn.res = \n", eqn.res)
   end
 
   # apply inverse mass matrix to eqn.res, necessary for CN
@@ -118,11 +133,7 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                    eqn::NSData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   # do the Euler part
-  # don't do the inviscid boundary conditions
-  precompute_bc_orig = opts["precompute_boundary_flux"]
-  opts["precompute_boundary_flux"] = false
   EulerEquationMod.dataPrep(mesh, sbp, eqn.euler_eqn, opts)
-  opts["precompute_boundary_flux"] = precompute_bc_orig
 
   # do the viscous part
   if eqn.params.isViscous == true

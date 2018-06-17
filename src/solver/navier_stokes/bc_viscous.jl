@@ -1,27 +1,5 @@
 # boundary condition functions
 
-"""
-  Thin wrapper around EulerEquationMod.FreeStreamBC
-"""
-mutable struct FreeStreamBC <: BCType
-end
-
-function (obj::FreeStreamBC)(_params::ParamType,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1},
-              ) where {Tmsh, Tsol, Tres}
-
-  params = _params.euler_params
-  obj2 = EulerEquationMod.FreeStreamBC()
-  obj2(params, q, aux_vars, coords, nrm_xy, bndryflux)
-  return nothing
-end
-
-
-
-
 mutable struct nonslipBC <: BCType
 end
 # low level function
@@ -179,7 +157,6 @@ function (obj::zeroPressGradientBC)(
 end
 
 global const BCDict = Dict{String, BCType}(
-  "FreeStreamBC" => FreeStreamBC(),
   "nonslipBC" => nonslipBC(),
   "ExactChannelBC" => ExactChannelBC(),
   "zeroPressGradientBC" => zeroPressGradientBC(),
@@ -204,6 +181,10 @@ global const BCDict = Dict{String, BCType}(
 # use this function to populate access the needed values in BCDict
 function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData, opts)
 
+  # the boundary conditions should switch over to the same model as the 
+  # other physics modules, but for now `calcViscousFlux_boundary` internally
+  # picks the right functor
+  error("getBCFunctors is not (currently) used for $PhysicsName")
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
