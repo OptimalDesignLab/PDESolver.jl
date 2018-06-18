@@ -152,6 +152,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
       # Bv = zeros(Float64, length(q_vec), )
       Bv = zeros(Complex128, length(q_vec))
+      tmp_imag = zeros(Float64, length(eqn.q_vec))
       dqimag_vec = zeros(Bv)
       @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
 
@@ -270,7 +271,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # stabilize q_vec: needs to be before q_vec update
     if opts["stabilize_v"]
       # Stage 1: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv)   # q_vec now obtained from eqn.q_vec
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
 
     if opts["write_L2vnorm"]
@@ -360,7 +361,7 @@ function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       # call to calcStabilizedQUpdate should be HERE, before the update to q_vec at this stage
       if opts["stabilize_v"]
-        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv)   # q_vec now obtained from eqn.q_vec
+        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
       end
 
       # LSERK solution update
@@ -707,15 +708,29 @@ end     # end function calcQuadWeight
         In the formulation, this is B*v = B*imag(q_vec)
 """
 function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
-                                stab_assembler, t, Bv)
+                                stab_assembler, t, Bv, tmp_imag)
                          # q_vec::AbstractArray{Tsol, 1},
                          # Bv::AbstractArray{Tsol, 1})
                          # stab_A::DiagJac,
                          # stab_assembler::AssembleDiagJacData,
   MatZeroEntries(stab_A)
   # -> TODO modify eqn.q_vec to only be real
+
+  fill!(tmp_imag, 0.0)
+  for j = 1:length(eqn.q_vec)
+    tmp_imag[j] = imag(eqn.q_vec[j])
+    # eqn.q_vec[j] = real(eqn.q_vec[j])
+    eqn.q_vec[j] = complex(real(eqn.q_vec[j]), 0.0)
+  end
+
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)     # calcs Qx*Ax + Qy*Ay     # TODO: is stab_assembler.A complex or real
   filterDiagJac(mesh, eqn.q_vec, stab_A)        # stab_A is now B in the derivation
+
+  for j = 1:length(eqn.q_vec)
+    eqn.q_vec[j] = complex(real(eqn.q_vec[j]), tmp_imag[j])
+  end
+
+
 
   # -> TODO make sure q_vec has its complex part back!!!
 
