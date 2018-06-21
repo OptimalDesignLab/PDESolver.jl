@@ -484,13 +484,13 @@ function dataPrep{Tmsh, Tsol, Tres}(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 #  println("  getAuxVars @time printed above")
 
   if opts["check_density"]
-    checkDensity(eqn)
+    checkDensity(mesh, eqn)
 #    println("  checkDensity @time printed above")
   end
 
   if opts["check_pressure"]
 #    throw(ErrorException("I'm done"))
-    checkPressure(eqn)
+    checkPressure(mesh, eqn)
 #    println("  checkPressure @time printed above")
   end
 
@@ -560,7 +560,7 @@ end # end function dataPrep
   This is a mid level function.
 """->
 # mid level function
-function checkDensity{Tsol}(eqn::EulerData{Tsol})
+function checkDensity{Tsol}(mesh, eqn::EulerData{Tsol})
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -571,7 +571,17 @@ for i=1:numel
     if real(q_cons[1]) < 0.0
       println("q_conservative = ", q_cons)
     end
-    @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
+    # @assert( real(q_cons[1]) > 0.0, "element $i, node $j. Density < 0")
+    if real(q_cons[1]) > 0.0
+      nothing
+    else
+      PdePumiInterface.saveSolutionToMesh(mesh, eqn.q_vec)
+      PdePumiInterface.writeVisFiles(mesh, "solution_fail")
+      myrank = mesh.myrank
+      coords = mesh.coords[:, j, i]
+      throw(AssertionError("\nrank $myrank, element $i, node $j. coords $coords. \nDensity < 0"))
+      # throw(AssertionError("rank $myrank, element $i, node $j. Density < 0"))
+    end
   end
 end
 
@@ -592,7 +602,7 @@ end
 
   This is a mid level function
 """->
-function checkPressure(eqn::EulerData)
+function checkPressure(mesh, eqn::EulerData)
 # check that density is positive
 
 (ndof, nnodes, numel) = size(eqn.q)
@@ -604,7 +614,17 @@ for i=1:numel
     q = sview(eqn.q, :, j, i)
     aux_vars = sview(eqn.aux_vars,:, j, i)
     press = @getPressure(aux_vars)
-    @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
+    # @assert( real(press) > 0.0, "element $i, node $j, q = $q, press = $press")
+    if real(press) > 0.0
+      nothing
+    else
+      PdePumiInterface.saveSolutionToMesh(mesh, eqn.q_vec)
+      PdePumiInterface.writeVisFiles(mesh, "solution_fail")
+      # throw(AssertionError("element $i, node $j, q = $q, press = $press"))
+      myrank = mesh.myrank
+      coords = mesh.coords[:, j, i]
+      throw(AssertionError("\nrank $myrank, element $i, node $j. coords: $coords. \npress = $press"))
+    end
   end
 end
 
