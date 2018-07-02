@@ -161,7 +161,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
-if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30)
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 30)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -207,13 +207,13 @@ else
 end
 
 # parallel options
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
   get!(arg_dict, "parallel_type", 1)
 else
   get!(arg_dict, "parallel_type", 2)
 end
 
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
   if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
@@ -295,6 +295,11 @@ get!(arg_dict, "write_kinetic_energydt_freq", 1)
 get!(arg_dict, "write_drag", false)
 get!(arg_dict, "write_drag_fname", "drag.dat")
 get!(arg_dict, "write_drag_freq", 1)
+
+# L2 v norm
+get!(arg_dict, "write_L2vnorm", false)
+get!(arg_dict, "write_L2vnorm_fname", "L2_v_norm.dat")
+get!(arg_dict, "write_L2vnorm_freq", 1)
 
 get!(arg_dict, "check_density", true)
 get!(arg_dict, "check_pressure", true)
@@ -446,6 +451,9 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
   error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
 end
+get!(arg_dict, "perturb_Ma", false)
+get!(arg_dict, "perturb_Ma_magnitude", 0.0)
+get!(arg_dict, "stabilize_v", false)
 
 # Adjoint computation options
 get!(arg_dict, "need_adjoint", false)
@@ -613,7 +621,7 @@ function checkForIllegalOptions_post(arg_dict)
   commsize = MPI.Comm_size(MPI.COMM_WORLD)
 
   jac_type = arg_dict["jac_type"]
-  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30)
+  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30 && arg_dict["run_type"] != 31 && arg_dict["run_type"] != 90)
   error("Invalid jacobian type for parallel run")
 end
 
@@ -630,9 +638,9 @@ end
   end
 
   # error if checkpointing not supported
-  checkpointing_run_types = [1, 30, 20]
+  checkpointing_run_types = [1, 30, 20, 31, 90]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
-    error("checkpointing only supported with RK4 and LSERK and CN")
+    error("checkpointing only supported with RK4 and LSERK and CN and explicit Euler")
   end
 
   if arg_dict["use_checkpointing"]
@@ -652,6 +660,22 @@ end
 
   if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
     error("cannot use volume preconditioner with any method except CN")
+  end
+
+  # Direct sensitivity of drag wrt Ma checks
+  if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+    error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+  end
+  if arg_dict["perturb_Ma"] == true && arg_dict["write_drag"] == false
+    error("\n Options error: perturb_Ma is true, but this is only implemented in the
+           context of direct sensitivity of Cd wrt Ma, and write_drag == false.")
+  end
+  if arg_dict["perturb_Ma"] == true && arg_dict["perturb_Ma_magnitude"] == 0.0
+    error("\n Options error: perturb_Ma is true, but the option for setting the perturbation
+           magnitude, perturb_Ma_magnitude, is unset or set to 0.0.")
+  end
+  if arg_dict["stabilize_v"] == true && arg_dict["perturb_Ma"] == false
+    error("\n Direct sensitivity stabilization turned on, but perturb_Ma is false.")
   end
 
   if arg_dict["isViscous"] && commsize > 1
