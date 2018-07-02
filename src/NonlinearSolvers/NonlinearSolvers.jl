@@ -23,6 +23,8 @@ include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("lserk.jl")
   export lserk54
+include("lserk_ds.jl")
+  export lserk54_ds
 
 include("explicit_euler.jl")
   export explicit_euler

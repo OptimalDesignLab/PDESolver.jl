@@ -34,7 +34,7 @@
 
   See the documentation for rk4.
 """
-function lserk54(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
+function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), 
@@ -554,13 +554,13 @@ end  # end lserk54
 """
   See rk4 method with same signature
 """
-function lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+function lserk54_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts,
              timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-  t = lserk54(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+  t = lserk54_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
               q_vec::AbstractVector, res_vec::AbstractVector,
               pde_pre_func, pde_post_func, ctx, opts, timing; 
               majorIterationCallback=majorIterationCallback, res_tol=res_tol,
