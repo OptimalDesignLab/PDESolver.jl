@@ -16,6 +16,9 @@ where input_file_name.jl is in your current directory.
               1 = rk4
               5 = steady Newton, FD or CS is specified with jac_method
               20 = Crank-Nicolson
+              30 = LSERK
+              31 = LSERK w/ dirsens via CS'ing Ma research code
+              90 = Explicit Euler
 "jac_method" : what method to use for computing the Jacobian (finite difference,
                or complex step, determined from "run_type", 1 finite difference
                2 = complex step
@@ -136,7 +139,7 @@ where input_file_name.jl is in your current directory.
                  This option is dangerous if misused.
 
 # parameters used by boundary and initial condiitions
-"Ma" : free stream Mach number (floating point)
+"Ma" : free stream Mach number (should be floating point, but complex is supported for CSing)
 "Re" : Reynolds number (using the chord length as the distance) (floatingpoint)
 "aoa" : angle of attack in degrees (floating point)
 #"rho_free" : free stream density
@@ -228,6 +231,9 @@ Note that any values associated with these options are shared with the regular
 "write_drag_freq" : write drag this many timesteps if "write_drag" is true. Integer. Default 1.
 "write_drag_fname" : file name (with extension) to write drag to. Default "drag.dat".
 
+"write_L2vnorm" : write L2vnorm every time iteration. Bool. Default false.
+"write_L2vnorm_freq" : write L2vnorm this many timesteps if "write_L2vnorm" is true. Integer. Default 1.
+"write_L2vnorm_fname" : file name (with extension) to write L2vnorm to. Default "L2_v_norm.dat".
 
 "check_density" : whether not to check that density > 0 every residual
                   evalution, (Bool), default true
@@ -424,6 +430,13 @@ Note that any values associated with these options are shared with the regular
                  (ie. BC1, BC2, etc.), (Array{Int, 1})
 "force_mesh_complex": if true, forces Tmsh to be Complex128 even if it would
                       not otherwise be, (Bool), default false
+
+# Direct sensitivity of drag wrt Ma options
+"perturb_Ma": perturb Mach number using complex step
+"perturb_Ma_magnitude": magnitude of the complex perturbation to be applied to Ma.
+                        This is a real value, example: 1e-20.
+                        It gets complexified later, in types.jl.
+"stabilize_v": turn on experimental stabilization of v, the direct sensitivity vector
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved
