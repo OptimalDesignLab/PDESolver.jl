@@ -157,7 +157,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   gamma::Float64 # ratio of specific heats
   gamma_1::Float64 # = gamma - 1
 
-  Ma::Float64  # free stream Mach number
+  Ma::Tsol  # free stream Mach number
   Re::Float64  # free stream Reynolds number
 
   # these quantities are dimensional (ie. used for non-dimensionalization)
@@ -166,7 +166,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   rho_free::Float64  # free stream density
   p_free::Float64  # free stream pressure
   T_free::Float64 # free stream temperature
-  E_free::Float64 # free stream energy (4th conservative variable)
+  E_free::Tsol # free stream energy (4th conservative variable)
   a_free::Float64 # free stream speed of sound (computed from p_free and rho_free)
 
   edgestab_gamma::Float64  # edge stabilization parameter
@@ -255,6 +255,11 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     v_vals2 = zeros(Tsol, Tdim + 2)
     Lambda = zeros(Tsol, Tdim + 2)
 
+    # temporary storage for calcBoundaryFunctionalIntegrand_diff
+    tmp_qg_intermediate = zeros(Tsol, Tdim + 2)
+    tmp_qg_diff = zeros(Tsol, Tdim + 2, Tdim + 2)
+    tmp_euler_flux_Jac = zeros(Tsol, Tdim + 2, Tdim + 2)
+
     q_el1 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
     q_el2 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
     q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
@@ -339,8 +344,15 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     cv = R/gamma_1
 
     Ma = opts["Ma"]
+    if opts["perturb_Ma"] == true
+      Ma_pert = opts["perturb_Ma_magnitude"]
+      pert = complex(0, Ma_pert)
+      Ma += pert
+      # println(" === Perturbing Ma. New Ma: ", Ma, " ===")
+    end
+
     Re = opts["Re"]
-    aoa = opts[ "aoa"]*pi/180
+    aoa = opts["aoa"]*pi/180
     sideslip_angle = opts["sideslip_angle"]
     E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
     rho_free = 1.0
@@ -431,7 +443,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     end
 
     return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
+               Lambda, 
+               tmp_qg_intermediate, tmp_qg_diff, tmp_euler_flux_Jac,
+               q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
                res_el1, res_el2,
                qs_el1, qs_el2, ress_el1, ress_el2,
                w_vals_stencil, w_vals2_stencil, res_vals1, 
@@ -931,7 +945,7 @@ function openLoggingFiles(mesh, opts)
 
 
   # use the fact that the key names are formulaic
-  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy", "drag"]
+  names = ["entropy", "integralq", "kinetic_energy", "kinetic_energydt", "enstrophy", "drag", "L2vnorm"]
   @mpi_master for name in names  # only open files on the master process
     keyname = string("write_", name)
     if opts[keyname]  # if this file is being written
