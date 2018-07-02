@@ -575,9 +575,11 @@ for i=1:numel
     if real(q_cons[1]) > 0.0
       nothing
     else
-      PdePumiInterface.saveSolutionToMesh(mesh, eqn.q_vec)
-      PdePumiInterface.writeVisFiles(mesh, "solution_fail")
       myrank = mesh.myrank
+      if mesh.commsize == 1   # only write vis files in serial
+        PdePumiInterface.saveSolutionToMesh(mesh, eqn.q_vec)
+        PdePumiInterface.writeVisFiles(mesh, "solution_fail")
+      end
       coords = mesh.coords[:, j, i]
       throw(AssertionError("\nrank $myrank, element $i, node $j. coords $coords. \nDensity < 0"))
       # throw(AssertionError("rank $myrank, element $i, node $j. Density < 0"))
@@ -618,10 +620,12 @@ for i=1:numel
     if real(press) > 0.0
       nothing
     else
-      PdePumiInterface.saveSolutionToMesh(mesh, eqn.q_vec)
-      PdePumiInterface.writeVisFiles(mesh, "solution_fail")
-      # throw(AssertionError("element $i, node $j, q = $q, press = $press"))
       myrank = mesh.myrank
+      if mesh.commsize == 1     # only write vis files in serial
+        PdePumiInterface.saveSolutionToMesh(mesh, eqn.q_vec)
+        PdePumiInterface.writeVisFiles(mesh, "solution_fail")
+      end
+      # throw(AssertionError("element $i, node $j, q = $q, press = $press"))
       coords = mesh.coords[:, j, i]
       throw(AssertionError("\nrank $myrank, element $i, node $j. coords: $coords. \npress = $press"))
     end

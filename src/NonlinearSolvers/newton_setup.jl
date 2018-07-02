@@ -505,19 +505,30 @@ function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
+  myrank = mesh.myrank
+  @mpi_master println(BSTDOUT,"newton_setup.jl: entered calcLinearOperator 1")
    
-  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)      # here is the halt if commsize > 6
+
+  @mpi_master println(BSTDOUT,"newton_setup.jl: after calcLinearOperator inner call")
 
   lo2 = getBaseLO(lo)
+
+  @mpi_master println(BSTDOUT,"newton_setup.jl: after getBaseLO call")
+
   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
 
+  @mpi_master println(BSTDOUT,"newton_setup.jl: after physicsJac call")
+
   if opts["newton_globalize_euler"]
+    @mpi_master println(BSTDOUT,"newton_setup.jl: in newton_globalize_euler check")
     # TODO: updating the Euler parameter here is potentially wrong if we
     #       are not updating the Jacobian at every newton step
     updateEuler(lo)
     applyEuler(mesh, sbp, eqn, opts, lo)
   end
 
+  @mpi_master println(BSTDOUT,"newton_setup.jl: leaving calcLinearOperator 1")
   return nothing
 end
 
@@ -525,12 +536,16 @@ function calcLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
+  myrank = mesh.myrank
+  @mpi_master println(BSTDOUT,"newton_setup.jl: entered calcLinearOperator 2")
+
   if opts["newton_globalize_euler"]
     updateEuler(lo)
   end
 
   setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  @mpi_master println(BSTDOUT,"newton_setup.jl: leaving calcLinearOperator 2")
   return nothing
 end
 

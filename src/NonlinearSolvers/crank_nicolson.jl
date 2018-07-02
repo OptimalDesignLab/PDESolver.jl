@@ -392,10 +392,15 @@ function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
+  myrank = mesh.myrank
+  @mpi_master println(BSTDOUT,"crank_nicolson.jl: entered calcLinearOperator 1")
+
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+  @mpi_master println(BSTDOUT,"crank_nicolson.jl: after calcLinearOperator inner call")
 
   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  @mpi_master println(BSTDOUT,"crank_nicolson.jl: leaving calcLinearOperator 1")
   return nothing
 end
 
@@ -423,10 +428,14 @@ function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
   
+  myrank = mesh.myrank
+  @mpi_master println(BSTDOUT,"crank_nicolson.jl: entered calcLinearOperator 2")
+
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
   setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  @mpi_master println(BSTDOUT,"crank_nicolson.jl: leaving calcLinearOperator 2")
   return nothing
 end
 

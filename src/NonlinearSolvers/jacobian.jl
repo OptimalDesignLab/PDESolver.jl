@@ -143,9 +143,10 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
        @verbose5 @mpi_master println(BSTDOUT, "calculating Petsc jacobian")
       if calc_jac_explicit
-        println("calculating Jacobian explicitly")
+        @mpi_master println("calculating Jacobian explicitly")
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
+        @mpi_master println("done calculating Jacobian explicitly")
       else
         res_dummy = Array(Float64, 0, 0, 0)  # not used, so don't allocation memory
 
@@ -158,6 +159,8 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   end  # end of jac_method check
 
+  @mpi_master println("jacobian.jl: end of jac_method check")
+
   # TODO: all printing should actually be handled outside of this function
   @verbose5 if print_jacobian_timing
     @mpi_master print(BSTDOUT, "jacobian calculation: ")
@@ -166,6 +169,24 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
   flush(BSTDOUT)
 
+  @mpi_master println("jacobian.jl: end of physicsJac")
+  @mpi_master printbacktrace()
+  #=
+   in printbacktrace at /users/ashlea/.julia/v0.4/ODLCommonTools/src/misc.jl:39
+ in physicsJac at /users/ashlea/.julia/v0.4/PDESolver/src/NonlinearSolvers/jacobian.jl:173
+ in calcLinearOperator at /users/ashlea/.julia/v0.4/PDESolver/src/NonlinearSolvers/newton_setup.jl:512
+ in calcPCandLO at /users/ashlea/.julia/v0.4/PDESolver/src/linearsolvers/ls_standard.jl:126
+ in newtonInner at /users/ashlea/.julia/v0.4/PDESolver/src/NonlinearSolvers/newton.jl:216
+ in crank_nicolson at /users/ashlea/.julia/v0.4/PDESolver/src/NonlinearSolvers/crank_nicolson.jl:164
+ [inlined code] from util.jl:155
+ in call_nlsolver at /users/ashlea/.julia/v0.4/PDESolver/src/solver/common.jl:474
+ in solve_euler at /users/ashlea/.julia/v0.4/PDESolver/src/solver/euler/startup_func.jl:274
+ in run_euler at /users/ashlea/.julia/v0.4/PDESolver/src/solver/euler/startup_func.jl:23
+ in include at ./boot.jl:261
+ in include_from_node1 at ./loading.jl:304
+ in process_options at ./client.jl:280
+ in _start at ./client.jl:378
+ =#
   return nothing
 
 end   # end of physicsJac function

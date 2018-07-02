@@ -558,12 +558,16 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 30  # lserk54
 
-      println("Entering lserk54. Calling from call_nlsolver() in common.jl.")
+      if mesh.myrank == 0
+        println("Entering lserk54. Calling from call_nlsolver() in common.jl.")
+      end
       t = lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
     elseif flag == 90  # explicit euler
 
-      println("Entering explicit_euler. Calling from call_nlsolver() in common.jl.")
+      if mesh.myrank == 0
+        println("Entering explicit_euler. Calling from call_nlsolver() in common.jl.")
+      end
       t = explicit_euler(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
 

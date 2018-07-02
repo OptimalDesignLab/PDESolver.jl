@@ -113,6 +113,8 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
                      eqn::AbstractSolutionData, opts::Dict, ctx_residual, t;
                      start_comm=false)
 
+  myrank = mesh.myrank
+  @mpi_master println(BSTDOUT,"ls_standard.jl: entered calcLinearOperator")
 
   if typeof(ls.pc) <: PCNone
     if start_comm && needParallelData(ls.lo)
@@ -135,6 +137,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
     calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
   end
 
+  @mpi_master println(BSTDOUT,"ls_standard.jl: leaving calcLinearOperator")
   return nothing
 end
 

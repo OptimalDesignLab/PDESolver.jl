@@ -216,6 +216,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
       calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
     end
 
+    @mpi_master println("newton.jl: after calcLO stuff")
+
     # compute eigs, condition number, etc.
     doMatrixCalculations(newton_data, opts)
 
@@ -266,7 +268,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     end
 
     updateKrylov(newton_data)
-    @verbose5 @mpi_master print(BSTDOUT, "\n")
+    @verbose5 @mpi_master print(BSTDOUT, "end this iter in newton loop\n")
     
   end  # end loop over newton iterations
 
