@@ -107,11 +107,18 @@ function getDataTypes(opts::Dict)
 
   calc_jac_explicit = opts["calc_jac_explicit"]
 
-  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30  # normal run
-    Tmsh = Float64
-    Tsbp = Float64
-    Tsol = Float64
-    Tres = Float64
+  if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 31 || flag == 90  # normal run
+    if opts["perturb_Ma"]
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Complex128
+      Tres = Complex128
+    else
+      Tmsh = Float64
+      Tsbp = Float64
+      Tsol = Float64
+      Tres = Float64
+    end
   elseif flag == 2  # calculate dR/du
     Tmsh = Float64
     Tsbp = Float64
@@ -575,7 +582,13 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     elseif flag == 30  # lserk54
 
+      println("Entering lserk54. Calling from call_nlsolver() in common.jl.")
       t = lserk54(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
+
+    elseif flag == 31  # lserk54_ds
+
+      println("Entering lserk54_ds. Calling from call_nlsolver() in common.jl.")
+      t = lserk54_ds(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
 
     elseif flag == 40  # predictor-corrector newton
@@ -585,6 +598,11 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
       @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
+
+    elseif flag == 90  # lserk54_ds
+
+      println("Entering explicit_euler. Calling from call_nlsolver() in common.jl.")
+      t = explicit_euler(evalResidual, opts["delta_t"], opts["t_max"], eqn.q_vec, eqn.res_vec, (mesh, sbp, eqn), opts, eqn.params.time, majorIterationCallback=eqn.majorIterationCallback, res_tol=opts["res_abstol"], real_time=opts["real_time"])
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
