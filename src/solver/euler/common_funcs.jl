@@ -198,6 +198,14 @@ function calcFreeStream(params::ParamType2,
   sol[2] = rho*Ma*cos(params.aoa)
   sol[3] = rho*Ma*sin(params.aoa)
 
+  # 201805 These lines were for debugging the Mach perturbation direct sens
+  # basically ensuring that the first term, partial Cd / partial M 
+  # is the only contribution. That passed. Leaving this here for now though.
+  # sol[2] = 0.5
+  # sol[3] = 0.0
+  # sol[4] = real(sol[4])
+
+
   return nothing
 end
 
@@ -216,7 +224,8 @@ function calcFreeStream(params::ParamType3,
 
   sol[2] = rho*Ma*cos(params.aoa)
   sol[3] = 0.0
-  sol[4] = -rho*Ma*sin(params.aoa)
+  # sol[4] = -rho*Ma*sin(params.aoa)
+  sol[4] = rho*Ma*sin(params.aoa)				# TODO
 
   return nothing
 end
