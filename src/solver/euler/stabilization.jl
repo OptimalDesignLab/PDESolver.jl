@@ -542,7 +542,7 @@ function stabscale(q::AbstractArray{Tsol,1},
 
     U = vel_x*(h_x/h) + vel_y*(h_y/h)
 
-    return (abs(U) + speed_sound)*edge_stab_gamma*h^(2)
+    return (absvalue(U) + speed_sound)*edge_stab_gamma*h^(2)
 
   end
 

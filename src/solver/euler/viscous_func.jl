@@ -1148,7 +1148,7 @@ function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2, :conservative},
     # 
     cx = gamma_pr
     cy = 0.0
-    if abs(cy) < 1.e-13
+    if absvalue(cy) < 1.e-13
       cx = 0
       cy = 0
     else

@@ -27,7 +27,7 @@ function (obj::DirichletTrig)(
                           q::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}  # (numDofPerNode))
   k = 2.0
   q[:] = sin(2*k*pi*xy[1])*sin(2*k*pi*xy[2])
-  if abs(q[1]) > 1.0E-10
+  if absvalue(q[1]) > 1.0E-10
     error("some problem!")
   end
   return nothing

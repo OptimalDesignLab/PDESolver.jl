@@ -177,10 +177,10 @@ function postproc(mesh, sbp, eqn, opts)
     end
     functional_value = Array{typeof(eqn.q[1,1,1])}(mesh.numDofPerNode)
     eqn.functional(mesh, sbp, eqn, opts, functional_value)
-    println("functional = ", abs(real(functional_value[1]) - exactFunctional))
+    println("functional = ", absvalue(real(functional_value[1]) - exactFunctional))
     fname = "functional.dat"
     f = open(fname, "w")
-    println(f, abs(real(functional_value[1]) - exactFunctional))
+    println(f, absvalue(real(functional_value[1]) - exactFunctional))
     close(f)
   end
 

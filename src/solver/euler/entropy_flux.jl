@@ -209,7 +209,7 @@ function contractResEntropyVars2(
   end
 
   # now do the sum in the order of decreasing absolute value
-  pvec = sortperm(abs(vals))
+  pvec = sortperm(absvalue(vals))
   val = zero(Tres)
   for i=mesh.numNodes:-1:1  # decreasing absolute value
     val += vals[pvec[i]]

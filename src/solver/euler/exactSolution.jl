@@ -189,8 +189,8 @@ function calcErrorL2Norm(mesh::AbstractMesh{Tmsh},
                 dq = Float64(q[v] - qe[v])
         l2norm += dq*dq*sbp.w[n]/jac
 
-        if lInfnorm < abs(dq)
-          lInfnorm = abs(dq)
+        if lInfnorm < absvalue(dq)
+          lInfnorm = absvalue(dq)
         end
 
         # if abs(dq) > 1.0e-4

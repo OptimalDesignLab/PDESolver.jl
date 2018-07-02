@@ -224,7 +224,7 @@ function calcProjectedAreaContribution!(sbpface::AbstractFace{Tsbp},
   projarea = zero(Tmsh)
   for f = 1:size(nrm,3)
     for i = 1:sbpface.numnodes
-      projarea += 0.5*sbpface.wface[i]*abs(nrm[di,i,f])
+      projarea += 0.5*sbpface.wface[i]*absvalue(nrm[di,i,f])
     end
   end
   return projarea
