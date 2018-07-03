@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Build Options",
     "title": "Non-Standard Packages",
     "category": "section",
-    "text": "The dependencies that are not registered packages are installed by manually  cloning their repositories and building them.  Commit hashes are used to  identify versions known to work.  The commits are checked out into a branch called pdesolver_version.If a package is already installed, by default it will left alone (ie. the  specified commit will not be checked out).  This behavior can be overrided  by declaring certain environmental variables in the shell before launching  Julia (see below)"
+    "text": "The build system install dependencies that are not registered packages by manually  cloning their repositories and building them.  Commit hashes are used to  identify versions known to work.  The commits are checked out into a branch called pdesolver_version.If a package is already installed, by default it will left alone (ie. the  specified commit will not be checked out).  This behavior can be overrided  by declaring certain environmental variables in the shell before launching  Julia (see below)"
 },
 
 {
@@ -157,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Build Options",
     "title": "Manual Installation Process",
     "category": "section",
-    "text": "The packages listed in the REQUIRE file can be installed manually, by  cloning the repository and checkout out a particular commit known to work. This will force the checking out of he commit and re-building of the package  even if it is already installed."
+    "text": "The build system can install packeges listed in the REQUIRE file manually, by  cloning the repository and checkout out a particular commit known to work. This will force the checking out of he commit and re-building of the package  even if it is already installed."
 },
 
 {
@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Build Options",
     "title": "Environmental Variables",
     "category": "section",
-    "text": "PDESOLVER_INSTALL_DEPS_MANUAL: install the packages in the REQUIRE filemanually.  If the package is already installed, does nothing (does not check out the specified version).PDESOLVER_FORCE_DEP_INSTALL_ALL: forces the checkout and re-installation of the non-standard packages, even if already installedPDESOLVER_FORCE_DEP_INSTALL_pkg_name: force the checkout and re-installationof the package named pkg_name.For all these environmental variables, the value is not important, only the  existance of the variable."
+    "text": "PDESOLVER_INSTALL_DEPS_MANUAL: install the packages in the REQUIRE filemanually.  If the package is already installed, does nothing (does not check out the specified version).PDESOLVER_FORCE_DEP_INSTALL_ALL: forces the checkout and re-installation of the non-standard packages, even if already installedPDESOLVER_FORCE_DEP_INSTALL_pkg_name: force the checkout and re-installationof the package named pkg_name.For all these environmental variables, the value is not important, only the  existance of the variable.After setting the required environment variables, either run Pkg.build() in the Julia REPL or have Julia execute the script deps/build.jl."
 },
 
 {
@@ -2489,22 +2489,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/types.html#EulerEquationMod.calcElemSurfaceArea-Union{Tuple{ODLCommonTools.AbstractMesh{Tmsh},SummationByParts.AbstractSBP,EulerEquationMod.EulerData{Tsol,Tres,Tdim,var_type} where var_type}, Tuple{Tdim}, Tuple{Tmsh}, Tuple{Tres}, Tuple{Tsol}} where Tdim where Tres where Tsol where Tmsh",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.calcElemSurfaceArea",
-    "category": "method",
-    "text": "EulerEquationMod.calcElemFurfaceArea\n\nThis function calculates the wet area of each element. A weight of 2 is given to faces with Dirichlet boundary conditions. Arguments: mesh: AbstractMesh sbp: SBP operator eqn: an implementation of EulerData. Does not have to be fully initialized.\n\n\n\n"
-},
-
-{
-    "location": "solver/euler/types.html#EulerEquationMod.calcTraceInverseInequalityConst-Union{Tuple{SummationByParts.AbstractSBP{Tsbp},SummationByParts.AbstractFace{Tsbp}}, Tuple{Tsbp}} where Tsbp",
-    "page": "Datatypes",
-    "title": "EulerEquationMod.calcTraceInverseInequalityConst",
-    "category": "method",
-    "text": "Compute the constant coefficent in inverse trace ineqality, i.e., the largest eigenvalue of  B^{1/2} R H^{-1} R^{T} B^{1/2}\n\nInput:   sbp Output:   cont_tii\n\n\n\n"
-},
-
-{
     "location": "solver/euler/types.html#EulerEquationMod.cleanup-Tuple{ODLCommonTools.AbstractMesh,SummationByParts.AbstractSBP,EulerEquationMod.EulerData,Any}",
     "page": "Datatypes",
     "title": "EulerEquationMod.cleanup",
@@ -2897,14 +2881,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "solver/euler/flux.html#EulerEquationMod.SIPGViscousFlux",
-    "page": "Face Integrals",
-    "title": "EulerEquationMod.SIPGViscousFlux",
-    "category": "type",
-    "text": "Calls the SIPG (viscous) flux\n\n\n\n"
-},
-
-{
     "location": "solver/euler/flux.html#sec:euler_flux_functors-1",
     "page": "Face Integrals",
     "title": "Flux Functors",
@@ -3293,11 +3269,11 @@ var documenterSearchIndex = {"docs": [
     "page": "Boundary Integrals",
     "title": "EulerEquationMod.getBCFunctors",
     "category": "method",
-    "text": "EulerEquationMod.getBCFunctors\n\nThis function uses the opts dictionary to populate mesh.bndry_funcs with   the the functors\n\nfunc(params::ParamType,\n     q::AbstractArray{Tsol,1},\n     aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},\n     nrm_xy::AbstractArray{Tmsh,1},\n     bndryflux::AbstractArray{Tres, 1},\n     bndry::BoundaryNode=NullBoundaryNode)\n\nThis is a high level function.\n\n\n\n"
+    "text": "EulerEquationMod.getBCFunctors\n\nThis function uses the opts dictionary to populate mesh.bndry_funcs with   the functors\n\nfunc(params::ParamType,\n     q::AbstractArray{Tsol,1},\n     aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},\n     nrm_xy::AbstractArray{Tmsh,1},\n     bndryflux::AbstractArray{Tres, 1},\n     bndry::BoundaryNode=NullBoundaryNode)\n\nThis is a high level function.\n\n\n\n"
 },
 
 {
-    "location": "solver/euler/bc.html#EulerEquationMod.interpolateBoundary-Tuple{ODLCommonTools.AbstractDGMesh,Any,Any,Any,AbstractArray{T,3} where T,AbstractArray{T,3} where T}",
+    "location": "solver/euler/bc.html#EulerEquationMod.interpolateBoundary-Tuple{ODLCommonTools.AbstractDGMesh,Any,Any,Any,AbstractArray{T,3} where T,AbstractArray{T,3} where T,AbstractArray{T,3} where T}",
     "page": "Boundary Integrals",
     "title": "EulerEquationMod.interpolateBoundary",
     "category": "method",
@@ -5145,6 +5121,14 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "input/input.html#Input.assertKeyPresent-Tuple{Dict,String}",
+    "page": "Introduction",
+    "title": "Input.assertKeyPresent",
+    "category": "method",
+    "text": "Throws a (descriptive) error if key is not present\n\nInputs\n\narg_dict: the options dictionary\nkey: String\n\n\n\n"
+},
+
+{
     "location": "input/input.html#Input.checkBCOptions-Tuple{Any}",
     "page": "Introduction",
     "title": "Input.checkBCOptions",
@@ -5174,6 +5158,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Input.checkKeys",
     "category": "method",
     "text": "PDESolver.checkKeys\n\nThis function verifies all the keys in the first argument are also keys   of the second argument and prints a warning to STDERR if they are not.\n\nInputs     arg_dict: first dictonary     known_keys: second dictonary\n\nOutputs:     cnt: number of unrecognized keys\n\n\n\n"
+},
+
+{
+    "location": "input/input.html#Input.checkPhysicsSpecificOptions-Tuple{Any}",
+    "page": "Introduction",
+    "title": "Input.checkPhysicsSpecificOptions",
+    "category": "method",
+    "text": "Check that the physics module specified the required options\n\n\n\n"
 },
 
 {
@@ -7445,7 +7437,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Local Testing",
     "title": "Test System",
     "category": "section",
-    "text": "The Ticon test system is composed of functions that test different aspects of the code.  The test system allows tags to be associated with each test function, and selective running of tests based on their tags. Currently, each physics module has its own set of tags and test list. The serial tests for a single physics module  are run as follows:  cd test/physics_module\n  julia ./runtests.jl  TAG1 TAG2 ...The parallel tests are run with:  cd test/physics_module\n  mpirun -np 2 julia ./runtests_parallel.jl  TAG1 TAG2 ...  cd test/physics_module\n  mpirun -np 4 julia ./runtests_parallel4.jl  TAG1 TAG2 ...for the 2 and 4 processors tests, respectivelyThe parallel tests for all physics modules are run with:  ./runtests_parallel.sh TAG1 TAG2...and all tests (serial + parallel) for all physics modules are run with  ./runtests.sh TAG1 TAG2Running the tests in a single julia session can be faster because the code does not have to be recompiled for each physics.  The serial tests can be run with:  julia ./runtests.jl TAG1 TAG2 ...the 2 processor tests with  mpirun -np 2 julia ./runtests_parallel2.jl TAG1 TAG2 ...and the 4 processor tests with  mpirun -np 4 julia ./runtests_parallel4.jl TAG1 TAG2 ...All the tests (serial + parallel) can be run with  ./runtests_fast.sh TAG1 TAG2 ...For all scripts except runtests_fast.sh, if no tags are specified, all tests are run. If any tags are specified, only functions matching those tags are run. For runtest_fast.sh only the tests with TAG_SHORTTEST are run by default. If any tags are specified, only tests matching the tags (and not TAG_SHORTTEST are run). The list of currently defined tags can be found in ./tags.jl Note that the serial tests must  be run before the parallel tests. All test must have one of LengthTags associated with them. Any test that takes less than 60 seconds to run should be specified as a TAG_SHORTTEST, otherwise TAG_LONGTEST."
+    "text": "The Ticon test system is composed of functions that test different aspects of the code.  The test system allows tags to be associated with each test function, and selective running of tests based on their tags. Currently, each physics module has its own set of tags and test list. The serial tests for a single physics module  are run as follows:  cd test/physics_module\n  julia ./runtests.jl  TAG1 TAG2 ...The parallel tests are run with:  cd test/physics_module\n  mpirun -np 2 julia ./runtests_parallel2.jl  TAG1 TAG2 ...  cd test/physics_module\n  mpirun -np 4 julia ./runtests_parallel4.jl  TAG1 TAG2 ...for the 2 and 4 processors tests, respectivelyThe parallel tests for all physics modules are run with:  ./runtests_parallel.sh TAG1 TAG2...and all tests (serial + parallel) for all physics modules are run with  ./runtests.sh TAG1 TAG2Running the tests in a single julia session can be faster because the code does not have to be recompiled for each physics.  The serial tests can be run with:  julia ./runtests.jl TAG1 TAG2 ...the 2 processor tests with  mpirun -np 2 julia ./runtests_parallel2.jl TAG1 TAG2 ...and the 4 processor tests with  mpirun -np 4 julia ./runtests_parallel4.jl TAG1 TAG2 ...All the tests (serial + parallel) can be run with  ./runtests_fast.sh TAG1 TAG2 ...For all scripts except runtests_fast.sh, if no tags are specified, all tests are run. If any tags are specified, only functions matching those tags are run. For runtest_fast.sh only the tests with TAG_SHORTTEST are run by default. If any tags are specified, only tests matching the tags (and not TAG_SHORTTEST are run). The list of currently defined tags can be found in ./tags.jl Note that the serial tests must  be run before the parallel tests. All test must have one of LengthTags associated with them. Any test that takes less than 60 seconds to run should be specified as a TAG_SHORTTEST, otherwise TAG_LONGTEST."
 },
 
 {
@@ -7453,7 +7445,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Local Testing",
     "title": "Adding Tests",
     "category": "section",
-    "text": "Each physics module maintains a TestSet object which contains a list of tests and their associated tags.  See the previous paragraph for a note about the required tags.  TestSet.jl provides an API for adding tests to the list.All tests must be enclosed in functions.  These functions must fit into one of three catagories:zero argument functions\nfunctions that take the arguments (mesh, sbp, eqn, opts) as produced by an input file which already exists\nfunctions that take the arguments (mesh, sbp, eqn, opts) as produced by modifying an existing input fileThese catagories correspond to add_funcs1!, add_funcs2!, and add_funcs3! in TestSet.jl.The function run_testlist runs a test list.  See the documentation of these functions for details on how to use them.Note that it is acceptable for a test function to load input files internally. The benefit to type 2 functions over type 1 functions is in the case when several functions share an input file.  The test system will only load the file once if possible, rather than for every test function that uses is. Consequently, each test function must not depend on modifications made to the the (mesh, sbp, eqn,  opts) objects by other test functions, because the objects may or may not be re-initialized between calls to the test functions.  Also, because tags can be used to selectively run tests, it cannot be guaranteed that a particular test will run before another one."
+    "text": "Each physics module maintains a TestSet object which contains a list of tests and their associated tags.  See the previous paragraph for a note about the required tags.  TestSet.jl provides an API for adding tests to the list.All tests must be enclosed in functions.  These functions must fit into one of three catagories:zero argument functions\nfunctions that take the arguments (mesh, sbp, eqn, opts) as produced by an input file which already exists\nfunctions that take the arguments (mesh, sbp, eqn, opts) as produced by modifying an existing input fileThese catagories correspond to add_funcs1!, add_funcs2!, and add_funcs3! in TestSet.jl.The function runTestSystem runs a test list.  See the documentation of these functions for details on how to use them.Note that it is acceptable for a test function to load input files internally. The benefit to type 2 functions over type 1 functions is in the case when several functions share an input file.  The test system will only load the file once if possible, rather than for every test function that uses is. Consequently, each test function must not depend on modifications made to the the (mesh, sbp, eqn,  opts) objects by other test functions, because the objects may or may not be re-initialized between calls to the test functions.  Also, because tags can be used to selectively run tests, it cannot be guaranteed that a particular test will run before another one."
 },
 
 {
@@ -7501,7 +7493,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test API",
     "title": "TestSystem.TestList",
     "category": "type",
-    "text": "This type stores all the data that describes a set of tests and their   associated tags.\n\nFields:     funcs: list of functions that contain the tests.  The order in which            the tests run is the same as the order of insertion\n\nfunc_tags: Vector, same length as funcs, where each element is a vector\n           of tags associated with each func.\n\nfunc_type:  Vector, same length as funcs, describing how to run each\n            function. 1 = no arguments, 2 = args = (mesh, sbp, eqn, opts),\n            3 = (mesh, sbp, eqn, opts), using a modified version of an\n            existing input file\ninput_name: Vector, same length as funcs, containing the name of the input\n            file to use with each function.  For func_type == 1 this value\n            is unused, for func type == 2 it is used directly, for \n            func_type == 3 it is modified and written to a new name\n            according to mod_input\n\nmod_input: Vector, same length as funcs, where each element is a dictionary.\n           For func_type == 3 the input file specified by input_name is\n           modified with these keys.  There must also be a key called\n           \"new_fname\" that specifies name to write the modified file\n           to (not including file extension.  \n           This modified file will be loaded before the function \n           is called.\n\ntag_list: collection of all known tags\n\n\n\n"
+    "text": "This type stores all the data that describes a set of tests and their   associated tags.\n\n** Fields**\n\nfuncs: list of functions that contain the tests.  The order in which       the tests run is the same as the order of insertion\nfunc_tags: Vector, same length as funcs, where each element is a vector           of tags associated with each func.\nfunc_type:  Vector, same length as funcs, describing how to run each            function. 1 = no arguments, 2 = args = (mesh, sbp, eqn, opts),            3 = (mesh, sbp, eqn, opts), using a modified version of an            existing input file\ninput_name: Vector, same length as funcs, containing the name of the input            file to use with each function.  For func_type == 1 this value            is unused, for func type == 2 it is used directly, for             func_type == 3 it is modified and written to a new name            according to mod_input\nmod_input: Vector, same length as funcs, where each element is a dictionary.           For func_type == 3 the input file specified by input_name is           modified with these keys.  There must also be a key called           \"new_fname\" that specifies name to write the modified file           to (not including file extension.             This modified file will be loaded before the function            is called.\ntag_list: collection of all known tags\n\n\n\n"
 },
 
 {
@@ -7509,7 +7501,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test API",
     "title": "TestSystem.add_func1!",
     "category": "function",
-    "text": "This function adds a new test function of func_type == 1 to the list   (a function that takes no arguments).\n\nInputs     test_list: the list of tests to append the function to     func: the function     tags: an array of tags associated with this function.  The user is free           to modify this array afterwards, but not to mutate the strings within           the array. (optional)\n\n\n\n"
+    "text": "This function adds a new test function of func_type == 1 to the list   (a function that takes no arguments).\n\nInputs\n\ntest_list: the list of tests to append the function to\nfunc: the function\ntags: an array of tags associated with this function.  The user is free      to modify this array afterwards, but not to mutate the strings within      the array. (optional)\n\n\n\n"
 },
 
 {
@@ -7517,7 +7509,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test API",
     "title": "TestSystem.add_func2!",
     "category": "function",
-    "text": "This function adds a new test function of func_type == 2 to the list   (a function that takes the arguments (mesh, sbp, eqn, opts), as   obtained from the input file specified).\n\nInputs     test_list: the list of tests to append the function to     func: the function     input_name: name of input file to be used with this function     tags: an array of tags associated with this function.  The user is free           to modify this array afterwards, but not to mutate the strings within           the array. (optional)\n\n\n\n"
+    "text": "This function adds a new test function of func_type == 2 to the list   (a function that takes the arguments (mesh, sbp, eqn, opts), as   obtained from the input file specified).\n\nInputs\n\ntest_list: the list of tests to append the function to\nfunc: the function\ninput_name: name of input file to be used with this function\ntags: an array of tags associated with this function.  The user is free      to modify this array afterwards, but not to mutate the strings within      the array. (optional)\n\n\n\n"
 },
 
 {
@@ -7525,7 +7517,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test API",
     "title": "TestSystem.add_func3!",
     "category": "function",
-    "text": "This function adds a new test function of func_type == 2 to the list   (a function that takes the arguments (mesh, sbp, eqn, opts), as   obtained from modifying the input file specified).\n\nInputs     test_list: the list of tests to append the function to     func: the function     input_name: name of input file to be modified for use with this function     mod_dict: dictionary of keys to be added (or replaced) in the input file     tags: an array of tags associated with this function.  The user is free           to modify this array afterwards, but not to mutate the strings within           the array. (optional)\n\n\n\n"
+    "text": "This function adds a new test function of func_type == 3 to the list   (a function that takes the arguments (mesh, sbp, eqn, opts), as   obtained from modifying the input file specified).\n\nInputs\n\ntest_list: the list of tests to append the function to\nfunc: the function\ninput_name: name of input file to be modified for use with this function\nmod_dict: dictionary of keys to be added (or replaced) in the input file\ntags: an array of tags associated with this function.  The user is free       to modify this array afterwards, but not to mutate the strings within       the array. (optional)\n\n\n\n"
 },
 
 {
@@ -7537,11 +7529,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "test/TestSystem.html#TestSystem.runTestSystem-Tuple{TestSystem.TestList,Function,Array{String,1}}",
+    "page": "Test API",
+    "title": "TestSystem.runTestSystem",
+    "category": "method",
+    "text": "This function runs a test list, according to the tags supplied.  Unlike    run_tests, this function supplies default behavior for the tags   list.  If the list is empty, then all tests are run, otherwise only the   specified tag are run.  See run_tests for argument descriptions.\n\nInputs\n\ntestlist\nprep_func\ntags\n\n\n\n"
+},
+
+{
     "location": "test/TestSystem.html#TestSystem.run_testlist",
     "page": "Test API",
     "title": "TestSystem.run_testlist",
     "category": "function",
-    "text": "This function runs a test list.  Tests are run in the order they were   loaded into the TestList object.  This implementation handles the case of   several tests sets sharing an input file efficiencly, ie. if several test    functions use the same input file and are placed in the test list    consecutively, the input file will be loaded only once.\n\nA list of tags can be optionally supplied.  In this case, only the tests   that have the specified tags will be run.  If no list is supplied, all tags   are run.\n\nInputs:     testlist: a TestList loaded with functions     prep_func = function used with test functions of type 2 or 3.  It must                 have signature prep_func(fname::String). fname is the                 name of hte input file associated with the test function     tags: an array of tags (optional)\n\n\n\n"
+    "text": "This function runs a test list.  Tests are run in the order they were   loaded into the TestList object.  This implementation handles the case of   several tests sets sharing an input file efficiencly, ie. if several test    functions use the same input file and are placed in the test list    consecutively, the input file will be loaded only once.\n\nA list of tags can be optionally supplied.  In this case, only the tests   that have the specified tags will be run.  If no list is supplied, all tags   are run.\n\nInputs\n\ntestlist: a TestList loaded with functions\nprep_func = function used with test functions of type 2 or 3.  It must             have signature prep_func(fname::String). fname is the             name of hte input file associated with the test function\ntags: an array of tags (optional)\n\n\n\n"
 },
 
 {
@@ -7549,7 +7549,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test API",
     "title": "TestSystem.check_tags",
     "category": "method",
-    "text": "This function checks that all necessary tags are present and throws   an exception is they are not.\n\nCurrently this only verifies that one of LengthTags is present\n\nInputs:     func: the function (only needed to produce error message)     tags: the tags for this function\n\nOutputs: none\n\n\n\n"
+    "text": "This function checks that all necessary tags are present and throws   an exception is they are not.\n\nCurrently this only verifies that one of LengthTags is present\n\nInputs\n\nfunc: the function (only needed to produce error message)\ntags: the tags for this function\n\nOutputs: none\n\n\n\n"
 },
 
 {
