@@ -88,7 +88,7 @@ function test_adjoint()
 
   end # End testset("--- Testing Functional Computation On a Boundary ---")
 
-  @testset "--- Tesing adjoint computation on the boundary for DG Meshes---" begin
+  @testset "--- Testing adjoint computation on the boundary for DG Meshes---" begin
     # println("testing adjoint functions\n")
     resize!(ARGS, 1)
     ARGS[1] = "input_vals_airfoil.jl"
@@ -183,7 +183,7 @@ function test_adjoint()
 
     end # End  testset("Checking complete derivative of a functional using adjoint vector")
 
-  end # End testset("--- Tesing adjoint computation on the boundary for DG Meshes---")
+  end # End testset("--- Testing adjoint computation on the boundary for DG Meshes---")
 
 end # End function test_adjoint
 
