@@ -58,6 +58,11 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   v_vals2::Array{Tsol, 1}
   Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
 
+  # temporary storage for calcBoundaryFunctionalIntegrand_diff
+  tmp_qg_intermediate::Array{Tsol, 1}     # this is qg_temp, before rename
+  tmp_qg_diff::Array{Tsol, 2}
+  tmp_euler_flux_Jac::Array{Tsol, 2}
+
   # temporary storage for element level solution
   q_el1::Array{Tsol, 2}
   q_el2::Array{Tsol, 2}

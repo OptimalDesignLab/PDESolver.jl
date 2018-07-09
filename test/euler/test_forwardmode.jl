@@ -14,13 +14,15 @@ function test_forwardmode()
   include("../../src/solver/euler/startup.jl")
   Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 
-  facts("--- Testing Boundary Functional In Forward Mode ---") do
+  # facts("--- Testing Boundary Functional In Forward Mode ---") do
+  @testset "--- Testing Boundary Functional In Forward Mode ---" begin
 
     # Create functional object
     drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
 
-    context("Checking Boundary Functional Integrand w.r.t q") do
+    # context("Checking Boundary Functional Integrand w.r.t q") do
+    @testset "Checking Boundary Functional Integrand w.r.t q" begin
 
       # Uses conservative variables
       Tdim = mesh.dim
@@ -72,12 +74,13 @@ function test_forwardmode()
             q[k] -= pert
             # checking the col of b_i_d that corresponds to this CS'd boundary integrand
             error = norm(boundary_integrand_diff[:,k] - boundary_integrand[:], 2)
-            @fact error --> roughly(0.0, atol=1e-10)
+            # @fact error --> roughly(0.0, atol=1e-10)
+            @test isapprox(error, 0.0) atol=1e-10
           end # End for k = 1:length(q)
         end # End for j = 1:mesh.sbpface.numnodes
       end   # End for i = 1:nfaces
-    end # End context("Checking Boundary Functional Integrand w.r.t q")
-  end # End facts("--- Testing Boundary Functional In Reverse Mode ---")
+    end # End @testset "Checking Boundary Functional Integrand w.r.t q"
+  end # End @testset "--- Testing Boundary Functional In Reverse Mode ---"
 
   return nothing
 end # End function test_forwardmode
