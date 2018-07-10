@@ -30,7 +30,6 @@ include("../tags.jl")
 # test list
 global const EulerTests = TestList()
 
-#=
 include("test_eqn_deepcopy.jl")     # note: eqn gets written random values to it, so anything that 
 include("test_empty.jl")
 include("test_input.jl")
@@ -46,9 +45,7 @@ include("test_bc.jl")
 include("test_interp.jl")
 include("test_jac.jl")
 include("test_adjoint.jl")
-=#
 include("test_forwardmode.jl")
-#=
 include("test_reversemode.jl")
 include("test_flux.jl")
 include("test_ESS.jl")
@@ -62,7 +59,6 @@ include("test_staggered.jl")
 include("test_checkpoint.jl")
 
 include("test_viscous.jl")
-=#
 
 #------------------------------------------------------------------------------
 # run tests

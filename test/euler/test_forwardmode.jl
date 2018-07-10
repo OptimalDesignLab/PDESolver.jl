@@ -18,7 +18,8 @@ function test_forwardmode()
   @testset "--- Testing Boundary Functional In Forward Mode ---" begin
 
     # Create functional object
-    drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    # drag = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    drag = EulerEquationMod.createFunctional(mesh, sbp, eqn, opts, 1)     # 1 is the functional num def'd in the input file
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, drag)
 
     # context("Checking Boundary Functional Integrand w.r.t q") do

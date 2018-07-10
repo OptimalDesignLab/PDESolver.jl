@@ -161,7 +161,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
-if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 30)
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -448,9 +448,6 @@ get!(arg_dict, "functional_error", false)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
 
-if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
-  error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
-end
 get!(arg_dict, "perturb_Ma", false)
 get!(arg_dict, "perturb_Ma_magnitude", 0.0)
 get!(arg_dict, "stabilize_v", false)
@@ -663,9 +660,9 @@ end
   end
 
   # Direct sensitivity of drag wrt Ma checks
-  if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
-    error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
-  end
+  # if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+    # error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+  # end
   if arg_dict["perturb_Ma"] == true && arg_dict["write_drag"] == false
     error("\n Options error: perturb_Ma is true, but this is only implemented in the
            context of direct sensitivity of Cd wrt Ma, and write_drag == false.")

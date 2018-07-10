@@ -128,7 +128,8 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   # v is the direct sensitivity, du/dM
   # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
   if opts["write_drag"]
-    objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    # objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+    objective = EulerEquationMod.createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional num
     drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
     @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
     @mpi_master println(f_drag, 1, " ", drag)

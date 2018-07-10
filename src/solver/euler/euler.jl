@@ -464,7 +464,8 @@ function majorIterationCallback(itr::Integer,
     @mpi_master f = eqn.file_dict[opts["write_drag_fname"]]
 
     if (itr % opts["write_drag_freq"]) == 0
-      objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      # objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      objective = EulerEquationMod.createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional number
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       @mpi_master println(f, itr, " ", drag)
     end

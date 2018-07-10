@@ -33,14 +33,19 @@ arg_dict = Dict{String, Any}(
 "step_tol" => 1e-10,
 "itermax" => 30, # 30
 
-"num_functionals" => 1,
-"functional_name1" => "lift",
-"functional_bcs1" => [4],
+# ======== old functional stuff, pre v0.6
+# "num_functionals" => 1,
+# "functional_name1" => "lift",
+# "functional_bcs1" => [4],
 # "analytical_functional_val" => -1/1.4,
 
 # Objective Functional computation keys
-"objective_function" => "drag",
-"objective_bcs" => [4],
+# "objective_function" => "drag",
+# "objective_bcs" => [4],
+
+"num_functionals" => 1,
+"functional_name1" => "drag",
+"functional_bcs1" => [4],
 
 # Adjoint computation keys
 "need_adjoint" => true,

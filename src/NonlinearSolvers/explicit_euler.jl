@@ -101,7 +101,8 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
   # capture direct sensitivity at the IC
   # v is the direct sensitivity, du/dM
   # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
-  objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+  # objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+  objective = EulerEquationMod.createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional num
   drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
   @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
   @mpi_master println(f_drag, 1, " ", drag)
@@ -232,7 +233,8 @@ function explicit_euler(f::Function, delta_t::AbstractFloat, t_max::AbstractFloa
       term2 = zeros(eqn.q)
       # evalFunctional calls disassembleSolution, which puts q_vec into q
       # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
-      objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      # objective = EulerEquationMod.createObjectiveFunctionalData(mesh, sbp, eqn, opts)
+      objective = EulerEquationMod.createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional num
       EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
       # do the dot product of the two terms, and save
