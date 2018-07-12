@@ -29,6 +29,9 @@ include("lserk_ds.jl")
 include("explicit_euler.jl")
   export explicit_euler
 
+include("drag_timeaverage.jl")
+  export calcDragTimeAverage, calcFinalIter, calcQuadWeight
+
 include("jac_recalc.jl")
 include("preconditioning_types.jl")
 include("newton.jl")

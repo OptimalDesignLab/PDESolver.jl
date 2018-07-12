@@ -461,6 +461,7 @@ function majorIterationCallback(itr::Integer,
   end
 
   if opts["write_drag"]
+    #=
     @mpi_master f = eqn.file_dict[opts["write_drag_fname"]]
 
     if (itr % opts["write_drag_freq"]) == 0
@@ -473,6 +474,7 @@ function majorIterationCallback(itr::Integer,
     @mpi_master if (itr % opts["output_freq"]) == 0
       flush(f)
     end
+    =#
   end
 
   #=

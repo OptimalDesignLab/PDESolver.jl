@@ -674,6 +674,9 @@ end
   if arg_dict["stabilize_v"] == true && arg_dict["perturb_Ma"] == false
     error("\n Direct sensitivity stabilization turned on, but perturb_Ma is false.")
   end
+  if arg_dict["perturb_Ma"] == false && arg_dict["write_L2vnorm"] == true
+    error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma set.")
+  end
 
   if arg_dict["isViscous"] && commsize > 1
     error("Viscous terms not working in parallel.")
