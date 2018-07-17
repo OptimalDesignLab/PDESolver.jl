@@ -149,7 +149,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
        @verbose5 @mpi_master println(BSTDOUT, "calculating Petsc jacobian")
       if calc_jac_explicit
-        println("calculating Jacobian explicitly")
+        println(BSTDOUT, "calculating Jacobian explicitly")
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else
@@ -158,7 +158,6 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
         tmp, t_jac, t_gc, alloc = @time_all calcJacobianSparse(mesh, sbp, eqn,
                                             opts, func, res_dummy, pert, jac, t)
       end
-
 
     end   # end of jac_type check
 

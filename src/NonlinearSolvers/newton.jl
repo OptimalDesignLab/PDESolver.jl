@@ -216,6 +216,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # recalculate PC and Jacobian if needed
     doRecalculation(newton_data.recalc_policy, i,
                     ls, mesh, sbp, eqn, opts, ctx_residual, t)
+
     #=             
     recalc_type = decideRecalculation(newton_data.recalc_policy, i)
     if recalc_type == RECALC_BOTH
@@ -246,7 +247,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     flush(BSTDOUT)
     tsolve = @elapsed linearSolve(ls, res_0, delta_q_vec, verbose)
     eqn.params.time.t_solve += tsolve
-    step_norm = norm(delta_q_vec)  #TODO: use calcNorm()
+    step_norm = calcNorm(eqn, delta_q_vec)
     recordStepNorm(newton_data, step_norm)
 
     # perform Newton update

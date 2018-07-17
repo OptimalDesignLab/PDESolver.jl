@@ -174,7 +174,6 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       doRecalculation(recalc_policy, i,
                     ls, mesh, sbp, eqn_nextstep, opts, ctx_residual, t_nextstep)
 
-
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
                   rhs_vec, ctx_residual, t_nextstep)
     end

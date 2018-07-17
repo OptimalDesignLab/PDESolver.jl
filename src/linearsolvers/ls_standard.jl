@@ -228,7 +228,7 @@ end
   for details.
 """
 function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
-                     x::AbstractVector, verbose=5)
+                              x::AbstractVector, verbose=5)
 
   # call the specific solver
 
@@ -243,9 +243,9 @@ function linearSolveTranspose(ls::StandardLinearSolver, b::AbstractVector,
   return nothing
 end
 
-function _linearSolve(
-ls::StandardLinearSolver{Tpc, Tlo},
-b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractDenseLO, Tpc}
+function _linearSolve(ls::StandardLinearSolver{Tpc, Tlo},
+                      b::AbstractVector, x::AbstractVector;
+                      trans=false) where {Tlo <: AbstractDenseLO, Tpc}
 
   @assert typeof(ls.pc) <: PCNone
 
@@ -283,9 +283,9 @@ end
 """
 global const SKYLAKE_STACKSMASH=true
 
-function _linearSolve(
-ls::StandardLinearSolver{Tpc, Tlo},
-b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractSparseDirectLO, Tpc}
+function _linearSolve(ls::StandardLinearSolver{Tpc, Tlo},
+                      b::AbstractVector, x::AbstractVector;
+                      trans=false) where {Tlo <: AbstractSparseDirectLO, Tpc}
 
   @assert typeof(ls.pc) <: PCNone
 
@@ -365,7 +365,6 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
   # Reuse preconditionre until next time setupPC() is called
   PCSetReusePreconditioner(pc2.pc, PETSC_TRUE)
   
-
   return nothing
 end
 
