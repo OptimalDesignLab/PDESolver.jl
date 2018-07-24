@@ -16,6 +16,7 @@ mutable struct ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
   isViscous::Bool  # can this ever be false?
   penalty_relaxation::Float64
   const_tii::Float64
+  Re::Float64  # free stream Reynolds number
 
   function ParamType{Tdim, Tsol, Tres, Tmsh}(euler_eqn::EulerEquationMod.EulerData, mesh, sbp, opts, order::Integer) where {Tdim, Tsol, Tres, Tmsh} 
  
@@ -36,6 +37,7 @@ mutable struct ParamType{Tdim, Tsol, Tres, Tmsh} <: AbstractParamType{Tdim}
       params.const_tii = calcTraceInverseInequalityConst(sbp, mesh.sbpface)
     end
 
+    params.Re = opts["Re"]
     return params
   end
 

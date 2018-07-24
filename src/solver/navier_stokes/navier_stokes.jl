@@ -140,6 +140,9 @@ end
 
 """
   Does the volume integrals
+
+  Calls the Euler module do to the first part and then differentiates the
+  result again.
 """
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::NSData{Tsol, Tres, Tdim},
@@ -157,6 +160,9 @@ end
 
 """
   Updates the residual with the source term contribution.
+
+  Source terms are defined in this module (not Euler), although currently
+  the source term functors are compatible.
 
   **Inputs**:
 

@@ -158,7 +158,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   gamma_1::Float64 # = gamma - 1
 
   Ma::Float64  # free stream Mach number
-  Re::Float64  # free stream Reynolds number
 
   # these quantities are dimensional (ie. used for non-dimensionalization)
   aoa::Tsol  # angle of attack (radians)
@@ -336,7 +335,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     cv = R/gamma_1
 
     Ma = opts["Ma"]
-    Re = opts["Re"]
     aoa = opts[ "aoa"]*pi/180
     sideslip_angle = opts["sideslip_angle"]
     E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
@@ -427,7 +425,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                velocity_deriv, velocity_deriv_xy,
                flux_jac, res_jac,
                flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
-               h, cv, R, R_ND, gamma, gamma_1, Ma, Re, aoa, sideslip_angle,
+               h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,

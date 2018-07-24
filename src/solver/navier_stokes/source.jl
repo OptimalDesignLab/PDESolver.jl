@@ -123,7 +123,7 @@ function calcMmsSource(params::ParamType{3},
 
   # these coefficients are from nondimensionalization.
   Pr = 0.72
-  c1 = params.euler_params.Ma/params.euler_params.Re
+  c1 = params.euler_params.Ma/params.Re
   c2 = c1/(Pr*gamma_1)
   src[2] -= c1*(txx_x + txy_y + txz_z)
   src[3] -= c1*(tyx_x + tyy_y + tyz_z)
@@ -200,7 +200,7 @@ function calcMmsSource(params::ParamType{2},
   tyx_y = txy_y
 
   Pr = 0.72
-  c1 = params.euler_params.Ma/params.euler_params.Re
+  c1 = params.euler_params.Ma/params.Re
   c2 = c1/(Pr*gamma_1)
   src[2] -= c1*(txx_x + txy_y)
   src[3] -= c1*(tyx_x + tyy_y)
