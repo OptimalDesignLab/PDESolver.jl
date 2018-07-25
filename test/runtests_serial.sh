@@ -17,6 +17,14 @@ cd ./euler
   err=$((err + tmp))
 cd $start_dir
 
+cd ./navier_stokes
+  $jj $jflags ./runtests.jl $tags
+  tmp=$?
+  err=$((err + tmp))
+cd $start_dir
+
+
+
 cd ./advection
   $jj $jflags ./runtests.jl $tags
   tmp=$?

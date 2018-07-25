@@ -1,4 +1,3 @@
-#Test functional Integrate and adjoint for euler equation.
 
 @doc """
 Euler Equation -- test_viscous
@@ -51,8 +50,8 @@ function test_viscous()
         q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
         q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
 
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
 
         GtL_vec = reshape(GtL, 128, )
         GtR_vec = reshape(GtR, 128, )
@@ -81,4 +80,4 @@ function test_viscous()
 
 end # End function test_viscous
 
-add_func1!(EulerTests, test_viscous, [TAG_VISCOUS, TAG_LONGTEST])
+add_func1!(NSTests, test_viscous, [TAG_SHORTTEST])

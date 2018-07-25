@@ -951,31 +951,6 @@ function (obj::IRSLFFlux)(params::ParamType,
   return nothing
 end
 
-"""
-  Calls the [`SIPG`](@ref) (viscous) flux
-"""
-mutable struct SIPGViscousFlux <: FluxType
-end
-
-function (obj::SIPGViscousFlux)(params::ParamType,
-              sbp::AbstractSBP,
-              sbpface,    # TODO: type
-              uL::AbstractArray{Tsol,1},
-              uR::AbstractArray{Tsol,1},
-              dxidxL,     # TODO: type
-              jacL,       # TODO: type
-              dxidxR,     # TODO: type
-              jacR,       # TODO: type
-              face,       # TODO: type
-              F::AbstractVector{Tres}) where {Tsol, Tres}
-
-  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
-  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
-  return nothing
-end
-
-
-
 @doc """
 ### EulerEquationMod.FluxDict
 
@@ -1002,7 +977,6 @@ global const FluxDict = Dict{String, FluxType}(
 "DucrosFlux" => DucrosFlux(),
 "IRFlux" => IRFlux(),
 "IRSLFFlux" => IRSLFFlux(),
-"SIPGViscousFlux" => SIPGViscousFlux()
 )
 
 @doc """
@@ -1023,9 +997,7 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   eqn.flux_func = FluxDict[name]
   name = opts["Volume_flux_name"]
   eqn.volume_flux_func = FluxDict[name]
-  # note, don't want SAT type, we want the viscous flux.  only SIPG exists now
-  name = opts["Viscous_flux_name"]
-  eqn.viscous_flux_func = FluxDict[name]
+
   return nothing
 end
 

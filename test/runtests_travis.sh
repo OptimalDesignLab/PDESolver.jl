@@ -33,6 +33,11 @@ then
   mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
   err=$(( err + $?))
 
+  # do the viscous tests here because they are short and rely on Euler
+  cd ../navier_stokes
+  julia ./runtests.jl tag_shorttest
+  err=$(( err + $?))
+
   cd ..
 fi
 

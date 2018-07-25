@@ -213,9 +213,6 @@ include("startup_func.jl")  # function for invoking the solver
 include("dataprep_rev.jl")
 include("evaldRdm.jl")
 include("homotopy.jl")
-include("util_viscous.jl")
-include("viscous_flux.jl")
-include("viscous_func.jl")
 
 # Jacobian calculation
 include("evalJacobian.jl")

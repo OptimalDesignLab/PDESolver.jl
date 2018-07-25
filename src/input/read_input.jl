@@ -572,7 +572,9 @@ function checkForIllegalOptions_pre(arg_dict)
   end
 
   if !haskey(PhysicsOptionsFuncs, arg_dict["physics"])
-    error("Attempting to load an unregistered physics")
+    println(STDERR, "Attempting to load an unregistered physics ", arg_dict["physics"])
+    printPhysicsModules(STDERR)
+    error("Unrecognized physics: $(arg_dict["physics"])")
   end
 
   # Ensure that jac-method is not specified

@@ -163,11 +163,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
-  if eqn.params.isViscous == true
-    evalFaceIntegrals_vector(mesh, sbp, eqn, opts)
-    evalBoundaryIntegrals_vector(mesh, sbp, eqn, opts)
-  end
-  
+ 
   return nothing
 end  # end evalResidual
 
@@ -180,16 +176,32 @@ end  # end evalResidual
   the first residual evaluation.
   Any operations that need to be performed at the beginning of *each*
   residual evaluation should go in dataPrep
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * pmesh (equal to `mesh` by default)
+
+  **Keyword Arguments**
+
+   * init_mesh: set the boundary condition functors, default true,
+                should false if `eqn`is nested inside another physics
+                module's [`AbstractSolutionData`](@ref) object.
 """
 # high level functions
 function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
-eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh; init_mesh=true) where {Tmsh, Tsol, Tres}
 
   # println("\nInitializing Euler module")
 
   # get BC functors
-  getBCFunctors(mesh, sbp, eqn, opts)
-  getBCFunctors(pmesh, sbp, eqn, opts)
+  if init_mesh
+    getBCFunctors(mesh, sbp, eqn, opts)
+    getBCFunctors(pmesh, sbp, eqn, opts)
+  end
 
   getSRCFunctors(mesh, sbp, eqn, opts)
   if mesh.isDG
@@ -202,7 +214,9 @@ eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
     mesh2 = mesh.mesh2
     sbp2 = mesh.sbp2
     
-    getBCFunctors(mesh2, sbp2, eqn, opts)
+    if init_mesh
+      getBCFunctors(mesh2, sbp2, eqn, opts)
+    end
 
     getSRCFunctors(mesh2, sbp2, eqn, opts)
     if mesh2.isDG
@@ -232,9 +246,9 @@ function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 end
 
 function majorIterationCallback(itr::Integer,
-       mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP,
-       eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO) where {Tmsh, Tsol, Tres, Tdim}
+                                mesh::AbstractMesh{Tmsh},
+                                sbp::AbstractSBP,
+                                eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("Performing major Iteration Callback")
 
@@ -595,17 +609,6 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     # println("  getBCFluxes @time printed above")
   end
   
-  if eqn.params.isViscous == true
-		# fill!(eqn.vecflux_face, 0.0)
-		fill!(eqn.vecflux_faceL, 0.0)
-		fill!(eqn.vecflux_faceR, 0.0)
-
-		calcViscousFlux_interior(mesh, sbp, eqn, opts)
-
-		fill!(eqn.vecflux_bndry, 0.0)
-		calcViscousFlux_boundary(mesh, sbp, eqn, opts)
-  end
-
   # is this needed for anything besides edge stabilization?
   if eqn.params.use_edgestab
     stabscale(mesh, sbp, eqn)
@@ -723,7 +726,8 @@ end
   This is a mid level function.
 """
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
-    sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
+                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
   if integral_type == 1  # regular volume integrals
@@ -749,15 +753,12 @@ function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
 
-  if eqn.params.isViscous == true
-    weakdifferentiate2!(mesh, sbp, eqn, eqn.res)
-  end
   # artificialViscosity(mesh, sbp, eqn)
 
 end  # end evalVolumeIntegrals
 
 
- """
+"""
   This function evaluates the boundary integrals in the Euler equations by
   calling the appropriate SBP function on eqn.bndryflux, which must be populated
   before calling this function.  eqn.res is updated with the result

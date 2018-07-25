@@ -62,7 +62,7 @@ end
 #   Fv       : viscous flux
 # """->
 #
-function calcFvis_elem_direct(params::ParamType{2, :conservative},
+function calcFvis_elem_direct(params::ParamType{2},
                               sbp::AbstractSBP,
                               q::AbstractArray{Tsol, 2},
                               dxidx::AbstractArray{Tmsh, 3},
@@ -78,7 +78,7 @@ function calcFvis_elem_direct(params::ParamType{2, :conservative},
 
   dim = 2
   Pr      = 0.72
-  gamma   = params.gamma
+  gamma   = params.euler_params.gamma
   gamma_1 = gamma - 1.0
   coef_nondim = 1.0/(Pr*gamma_1)
   two3rd   = 2.0/3.0
@@ -156,7 +156,7 @@ function calcFvis_elem_direct(params::ParamType{2, :conservative},
   return nothing
 end
 
-function calcFvis_elem_direct(params::ParamType{3, :conservative},
+function calcFvis_elem_direct(params::ParamType{3},
                               sbp::AbstractSBP,
                               q::AbstractArray{Tsol, 2},
                               dxidx::AbstractArray{Tmsh, 3},
@@ -278,7 +278,7 @@ end
    * FvR : viscous flux on left side of interface
 
 """
-function calcFaceFvis(params::ParamType{Tdim, :conservative},
+function calcFaceFvis(params::ParamType{Tdim},
                       sbp::AbstractSBP,
                       sbpface::AbstractFace,
                       qL::AbstractArray{Tsol, 2},
@@ -361,7 +361,7 @@ end
 # Output:
 #   Fv    : viscous flux
 # """->
-function calcFvis(params::ParamType{Tdim, :conservative},
+function calcFvis(params::ParamType{Tdim},
                   q::AbstractArray{Tsol, 2},
                   dqdx::AbstractArray{Tsol, 3},
                   Fv::AbstractArray{Tsol, 3}) where {Tsol, Tdim}
@@ -394,7 +394,7 @@ end
 # Output:
 #   Fv      : viscous flux
 # """->
-function calcFvis(params::ParamType{2, :conservative},
+function calcFvis(params::ParamType{2},
                   Gv::AbstractArray{Tsol, 5},
                   dqdx::AbstractArray{Tsol, 3},
                   Fv::AbstractArray{Tsol, 3}) where Tsol
@@ -453,7 +453,7 @@ function calcFvis(params::ParamType{2, :conservative},
 
   return nothing
 end
-function calcFvis(params::ParamType{3, :conservative},
+function calcFvis(params::ParamType{3},
                   Gv::AbstractArray{Tsol, 5},
                   dqdx::AbstractArray{Tsol, 3},
                   Fv::AbstractArray{Tsol, 3}) where Tsol
@@ -594,7 +594,7 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor(params::ParamType{2, :conservative},
+function calcDiffusionTensor(params::ParamType{2},
                              q::AbstractArray{Tsol, 2},
                              Gv::AbstractArray{Tsol, 5}) where Tsol
   @assert(size(q, 2) == size(Gv, 5))
@@ -603,7 +603,7 @@ function calcDiffusionTensor(params::ParamType{2, :conservative},
   @assert(size(Gv, 2) == 2+2)
   @assert(size(Gv, 1) == 2+2)
   numNodes = size(q, 2)
-  gamma = params.gamma
+  gamma = params.euler_params.gamma
   gamma_1 = gamma - 1.0
   Pr = 0.72
   gamma_pr = gamma/Pr
@@ -739,7 +739,7 @@ q = conservative variable at a node
 Output
 jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensor(params::ParamType{3, :conservative},
+function calcDiffusionTensor(params::ParamType{3},
                              q::AbstractArray{Tsol, 2},
                              Gv::AbstractArray{Tsol, 5}) where Tsol
   Tdim = 3
@@ -1103,7 +1103,7 @@ Input:
 Output
   jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
-function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2, :conservative},
+function calcDiffusionTensorOnAdiabaticWall(params::ParamType{2},
                                            q::AbstractArray{Tsol, 2},
                                            nrm::AbstractArray{Tmsh, 2},
                                            Gv::AbstractArray{Tsol, 5}) where {Tmsh, Tsol}
@@ -1257,7 +1257,7 @@ end
 # NOTE: this is incorrect. states that grad T = 0 always by setting gamma_pr to 0, but what actually is
 #       necessary is that n dot grad T = 0.
 # TODO: extend the correct version of cDTOnAdiabaticWall (above) to 3D
-function calcDiffusionTensor_adiabaticWall(params::ParamType{3, :conservative},
+function calcDiffusionTensor_adiabaticWall(params::ParamType{3},
                                            q::AbstractArray{Tsol, 2},
                                            Gv::AbstractArray{Tsol, 5}) where Tsol
 
@@ -1619,308 +1619,4 @@ function calcDiffusionTensor_adiabaticWall(params::ParamType{3, :conservative},
   return nothing
 end
 
-abstract type AbstractBoundaryValueType end
-
-@doc """
-
-compute the adiabatic wall boundary value
-
-Input:
-q_in    :: conservative variables on boundary face
-norm    :: outward unit normal of the boundary face
-Output:
-q_bnd    :: the boundary value
-
-"""->
-mutable struct AdiabaticWall <: AbstractBoundaryValueType
-end
-function (obj::AdiabaticWall)(
-              q_in::AbstractArray{Tsol, 2},
-              xy::AbstractArray{Tmsh, 2},
-              norm::AbstractArray{Tmsh, 2},
-              params::ParamType{Tdim, :conservative},
-              q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh, Tdim}
-  @assert( size(q_in, 1) == size(q_bnd,  1))
-  @assert( size(q_in, 2) == size(q_bnd,  2))
-  @assert( size(q_in, 2) == size(norm,  2))
-
-  dim = size(norm, 1)
-  numNodes = size(q_in, 2)
-
-  for n = 1 : numNodes
-    q_bnd[1, n] = q_in[1, n]
-    # noslip condition
-    q_bnd[2:dim+1, n] = 0.0
-    q_bnd[dim+2, n] = q_in[dim+2, n]
-  end
-
-  return nothing
-end
-
-mutable struct ExactChannel<: AbstractBoundaryValueType
-end
-function (obj::ExactChannel)(
-                          q_in::AbstractArray{Tsol, 2},
-                          xyz::AbstractArray{Tmsh, 2},
-                          norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{3, :conservative},
-                          qg::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
-
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
-  sigma = 0.01
-  aoa = params.aoa
-  beta = params.sideslip_angle
-  rhoInf = 1.0
-  uInf = params.Ma * cos(beta) * cos(aoa)
-  vInf = params.Ma * sin(beta) * -1
-  wInf = params.Ma * cos(beta) * sin(aoa)
-  TInf = 1.0
-  numNodes = size(qg, 2)
-  for n = 1 : numNodes
-    x = xyz[1,n]
-    y = xyz[2,n]
-    z = xyz[3,n]
-
-    rho = rhoInf * (1 + sigma*x*y*z)
-    ux = sin(pi*x) + 1
-    uy = sin(pi*y) + 1
-    uz = sin(pi*z) + 1
-    u  = (1 + sigma*ux * uy * uz )* uInf
-    vx = sin(pi*x) + 1
-    vy = sin(pi*y) + 1
-    vz = sin(pi*z) + 1
-    v  = (1 + sigma*vx * vy * vz )* vInf
-    wx = sin(pi*x) + 1
-    wy = sin(pi*y) + 1
-    wz = sin(pi*z) + 1
-    w  = (1 + sigma*wx * wy * wz) * wInf
-    T  = TInf 
-
-    if !params.isViscous
-      u += 0.2 * uInf
-      v += 0.2 * vInf
-      w += 0.2 * wInf
-    end
-
-    qg[1,n] = rho
-    qg[2,n] = rho*u
-    qg[3,n] = rho*v
-    qg[4,n] = rho*w
-    qg[5,n] = T/(gamma * gamma_1) + 0.5 * (u*u + v*v + w*w)
-    qg[5,n] *= rho
-  end
-
-  return nothing
-end
-
-
-
-function (obj::ExactChannel)(
-                          q_in::AbstractArray{Tsol, 2},
-                          xy::AbstractArray{Tmsh, 2},
-                          norm::AbstractArray{Tmsh, 2},
-                          params::ParamType{2, :conservative},
-                          q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
-  @assert( size(q_in, 1) == size(q_bnd,  1))
-  @assert( size(q_in, 2) == size(q_bnd,  2))
-  @assert( size(q_in, 2) == size(norm,  2))
-  dim = size(norm, 1)
-  numNodes = size(q_in, 2)
-  sigma = 0.1
-
-  gamma = params.gamma
-  gamma_1 = gamma - 1
-
-  aoa = params.aoa
-  qRef = zeros(Float64, dim+2)
-  qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
-  qRef[4] = 1.0
-
-  for n = 1 : numNodes
-    x = xy[1, n]
-    y = xy[2, n]
-    rho = qRef[1] * (sigma*exp(sin(0.5*pi*(x+y))) +  1.0)
-    ux  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[2]
-    uy  = exp(y) * sin(pi*y)
-    u   = ux * uy
-    vx  = (exp(x) * sin(pi*x) * sigma + 1) * qRef[3]
-    vy  = exp(y) * sin(pi*y)
-    v   = vx * vy
-    T   = (1 + sigma*exp(0.1*x+0.1*y)) * qRef[4]
-    # T   = qRef[4]
-    if !params.isViscous
-      u += 0.2 * qRef[2]
-    end
-    q_bnd[1, n] = rho 
-    q_bnd[2, n] = rho * u
-    q_bnd[3, n] = rho * v
-    q_bnd[4, n] = T/(gamma*gamma_1) + 0.5 * (u*u + v*v)
-    q_bnd[4, n] *= rho 
-  end
-
-  return nothing
-end
-
-@doc """
-
-compute the farfield boundary value
-
-Input:
-q_in    :: conservative variables on boundary face
-norm    :: outward unit normal of the boundary face
-Output:
-q_bnd    :: the boundary value
-
-"""->
-mutable struct Farfield <: AbstractBoundaryValueType
-end
-
-function (obj::Farfield)(
-              q_in::AbstractArray{Tsol, 2},
-              xy::AbstractArray{Tmsh, 2},
-              norm::AbstractArray{Tmsh, 2},
-              params::ParamType{2, :conservative},
-              q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
-  @assert( size(q_in, 1) == size(q_bnd,  1))
-  @assert( size(q_in, 2) == size(q_bnd,  2))
-  @assert( size(q_in, 2) == size(norm,  2))
-
-  dim      = size(norm, 1)
-  numNodes = size(q_in, 2)
-  lambda   = zeros(Float64, 3) 
-  gamma    = params.gamma
-  gamma_1  = params.gamma - 1
-  aoa      = params.aoa
-  gg_1     = (gamma*gamma_1)
-  MaInf    = params.Ma    
-
-  # freestream values
-  qInf = zeros(Float64, dim + 2)
-  qInf[1] = 1.0
-  qInf[2] = qInf[1]*MaInf*cos(aoa)
-  qInf[3] = qInf[1]*MaInf*sin(aoa)
-  qInf[4] = qInf[1]*(1.0/gg_1 + 0.5*MaInf*MaInf)
-
-  for n = 1 : numNodes
-    #
-    # contravariant velocity
-    #
-    u = q_in[2,n] / q_in[1,n]
-    v = q_in[3,n] / q_in[1,n]
-    vn = u*norm[1, n] + v*norm[2, n]
-    v2 = u*u + v*v 
-    T = gg_1*(q_in[4,n]/q_in[1,n] - 0.5*v2)
-    a = sqrt(T)
-    #
-    # eigenvalues
-    # 
-    lambda[1] = real(vn)
-    lambda[2] = real(vn + a)
-    lambda[3] = real(vn - a)
-
-    if lambda[2] <= 0.0            # supersonic inflow
-      q_bnd[:, n] = qInf[:]
-    elseif lambda[3] >= 0.0        # supersonic outflow
-      q_bnd[:, n] = q_in[:, n]
-    elseif lambda[1] <= 0.0        # subsonic inflow
-      p = q_in[1,n]*T/gamma 
-      q_bnd[1, n] = qInf[1]
-      q_bnd[2, n] = qInf[2]
-      q_bnd[3, n] = qInf[3]
-      q_bnd[4, n] = p/gamma_1 + 0.5*MaInf*MaInf*qInf[1]
-    else                        # subsonic outflow
-      pInf = 1.0/gamma
-      q_bnd[1, n] = q_in[1, n]
-      q_bnd[2, n] = q_in[2, n]
-      q_bnd[3, n] = q_in[3, n]
-      q_bnd[4, n] = pInf/gamma_1 + 0.5*q_in[1,n] * v2
-    end    
-    
-    # DEBUG ONLY
-    # q_bnd[:,n] = qInf[:]
-    # DEBUG END
-  end
-
-  return nothing
-end
-
-#
-# TODO: combine this with the 2D version. The only difference
-# between 2D and 3D is the freestream conditions.
-#
-function (obj::Farfield)(
-              q_in::AbstractArray{Tsol, 2},
-              xy::AbstractArray{Tmsh, 2},
-              norm::AbstractArray{Tmsh, 2},
-              params::ParamType{3, :conservative},
-              q_bnd::AbstractArray{Tsol, 2}) where {Tsol, Tmsh}
-  @assert( size(q_in, 1) == size(q_bnd,  1))
-  @assert( size(q_in, 2) == size(q_bnd,  2))
-  @assert( size(q_in, 2) == size(norm,  2))
-  @assert( size(norm, 1) == 3 )
-
-  dim      = size(norm, 1)
-  numNodes = size(q_in, 2)
-  lambda   = zeros(Float64, 3) 
-  gamma    = params.gamma
-  gamma_1  = params.gamma_1
-  aoa      = params.aoa
-  beta     = params.sideslip_angle
-  gg_1     = (gamma*gamma_1)
-  MaInf    = params.Ma    
-
-  uInf = params.Ma * cos(beta) * cos(aoa)
-  vInf = params.Ma * sin(beta) * -1
-  wInf = params.Ma * cos(beta) * sin(aoa)
-  # freestream values
-  qInf = zeros(Float64, dim + 2)
-  qInf[1] = 1.0
-  qInf[2] = qInf[1]*uInf
-  qInf[3] = qInf[1]*vInf
-  qInf[4] = qInf[1]*wInf
-  qInf[5] = qInf[1]*(1.0/gg_1 + 0.5*MaInf*MaInf)
-
-  for n = 1 : numNodes
-    #
-    # contravariant velocity
-    #
-    vn = q_in[2, n]*norm[1, n] + q_in[3, n]*norm[2, n] + q_in[4,n] *norm[3,n]
-    vn = vn/q_in[1,n]
-    v2 = q_in[2,n]*q_in[2,n] + q_in[3,n]*q_in[3,n] + q_in[4,n]*q_in[4,n]
-    v2 /= q_in[1,n]*q_in[1,n]
-    T = gg_1*(q_in[5,n]/q_in[1,n] - 0.5*v2)
-    a = sqrt(T)
-    #
-    # eigenvalues
-    # 
-    lambda[1] = real(vn)
-    lambda[2] = real(vn + a)
-    lambda[3] = real(vn - a)
-
-    # depending on eigenvalue, set state boundary value to exterior or interior (depending on field)
-    if lambda[2] <= 0.0            # supersonic inflow
-      q_bnd[:, n] = qInf[:]
-    elseif lambda[3] >= 0.0        # supersonic outflow
-      q_bnd[:, n] = q_in[:, n]
-    elseif lambda[1] <= 0.0        # subsonic inflow
-      p = q_in[1,n]*T/gamma 
-      q_bnd[1:dim+1, n] = qInf[1:dim+1]
-      q_bnd[dim+2, n] = p/gamma_1 + 0.5*MaInf*MaInf*qInf[1]
-    else                        # subsonic outflow
-      pInf = 1.0/gamma
-      q_bnd[1:dim+1, n] = q_in[1:dim+1, n]
-      rhoV2 = q_in[1, n] * v2
-      q_bnd[dim+2, n] = pInf/gamma_1 + 0.5*rhoV2
-    end    
-    
-    # debug only
-    q_bnd[:,n] = qInf[:]        # for MMS in which q at boundary equals to qInf
-    # end
-  end
-
-  return nothing
-end
 

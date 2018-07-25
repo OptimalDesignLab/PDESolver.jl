@@ -22,6 +22,19 @@ fi
 
 cd $start_dir
 
+cd ./navier_stokes
+$jj $jflags ./runtests.jl
+tmp=$?
+err=$((err + tmp))
+
+if [[ $err -gt 0 ]];
+then
+    exit $err
+fi
+
+cd $start_dir
+
+
 cd ./advection
 $jj $jflags ./runtests.jl
 tmp=$?
