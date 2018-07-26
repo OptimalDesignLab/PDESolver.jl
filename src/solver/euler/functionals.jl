@@ -108,7 +108,7 @@ end
   Type for computing the entropy flux rate over a boundary (integral S * u_i dot n_i
   dGamma), where S is the entropy function (from the IR entropy variables).
 """
-mutable struct EntropyFlux{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct EntropyFluxData{Topt} <: AbstractIntegralFunctional{Topt}
   bcnums::Array{Int, 1}
   ndof::Int
   val::Topt
@@ -120,7 +120,7 @@ end
 """
 function EntropyFluxConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
                             bcnums) where Topt
-  return EntropyFlux{Topt}(bcnums, 1, 0.0)
+  return EntropyFluxData{Topt}(bcnums, 1, 0.0)
 end
 
 

@@ -33,6 +33,7 @@ if !tag_defs
   global const TAG_PARALLEL_DERIVATIVES = "tag_parallel_derivatives"
   global const TAG_CHECKPOINT = "tag_checkpoint"
   global const TAG_JAC = "tag_jac"
+  global const TAG_FUNCTIONAL = "tag_functional"
 
   global const TAG_PARALLEL = "tag_parallel"
 

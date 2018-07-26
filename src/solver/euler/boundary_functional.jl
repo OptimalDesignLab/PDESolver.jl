@@ -508,13 +508,13 @@ function calcBoundaryFunctionalIntegrand(params::ParamType{2},
   return nothing
 end
 
-function calcBoundaryFunctionalIntegrand{Tdim}(params::ParamType{Tdim},
+function calcBoundaryFunctionalIntegrand(params::ParamType{Tdim},
                        q::AbstractArray{Tsol,1},
                        aux_vars::AbstractArray{Tres, 1},
                        nrm::AbstractArray{Tmsh},
                        node_info::AbstractArray{Int},
                        objective::EntropyFluxData,
-                       val::AbstractArray{Tsol,1}) where {Tsol, Tres, Tmsh}
+                       val::AbstractArray{Tsol,1}) where {Tsol, Tres, Tmsh, Tdim}
 
   # compute u dot n
   unet = zero(Tres)
