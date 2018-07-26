@@ -84,7 +84,9 @@ function evalBoundaryIntegrals_vector(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end evalBoundaryIntegrals_vector
 
-
+"""
+  Computes the flux for the viscous part of the boundary condition.
+"""
 function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
                                   sbp::AbstractSBP,
                                   eqn::NSData{Tsol, Tres, Tdim},
@@ -272,7 +274,7 @@ end
 
 
 #------------------------------------------------------------------------------
-# functions for computing qR
+# functions for computing qR/ the inviscid part of the boundary condition
 
 abstract type AbstractBoundaryValueType end
 
@@ -739,7 +741,11 @@ function (obj::zeroPressGradientBC)(
 	return nothing
 end
 
-global const BCDict = Dict{String, BCType}(
+"""
+  Stores the functors for the inviscid part of the boundary condition.
+  These must have the same signature as the Euler module boundary conditions.
+"""
+global const BCDict_inviscid = Dict{String, BCType}(
   "nonslipBC" => nonslipBC(),
   "ExactChannelBC" => ExactChannelBC(),
   "zeroPressGradientBC" => zeroPressGradientBC(),
@@ -761,7 +767,6 @@ global const BCDict = Dict{String, BCType}(
 
   This is a high level function.
 """
-# use this function to populate access the needed values in BCDict
 function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData, opts)
 
   # the boundary conditions should switch over to the same model as the 
@@ -772,16 +777,21 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData, opts)
   # In the meantime, `calcViscousFlux_boundary` is getting its functors
   # internally, and the invisicd functors are stored in the mesh.
   #
-  # As of this writing, I believe the only boundary condition that works is
-  # the FreeStreamBC, because it exists for both viscous and inviscid.
-  # Eventually the inviscid part of every viscous boundary condition will
-  # need to exist and both boundary conditions applied (related to the
-  # comment above about each eqn object having its own BC functor array.
-  error("getBCFunctors is not (currently) used for $PhysicsName")
+  # The BCDict_inviscid has the inviscid part, and a BCDict will need to
+  # be created to store the viscous part.  Currently if an inviscid boundary
+  # condition cannot be found in BCDict_inviscid, we fall back to looking in
+  # the Euler module (not sure this is a good idea, it could silently create
+  # incorrect matches).
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-    mesh.bndry_funcs[i] = BCDict[val]
+    if haskey(BCDict_inviscid, val)
+      mesh.bndry_funcs[i] = BCDict_inviscid[val]
+    elseif haskey(EulerEquationMod.BCDict, val)
+      mesh.bndry_funcs[i] = EulerEquationMod.BCDict[val]
+    else
+      error("boundary condition named $val not present in either Navier-Stokes or Euler module")
+    end
   end
 
   return nothing

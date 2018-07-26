@@ -34,14 +34,14 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   # because the Navier Stokes module will handle the it
   src_orig = opts["SRCname"]
   opts["SRCname"] = "SRC0"
-  # see `getBCFunctors` in this module for why init_mesh=true
-  EulerEquationMod.init(mesh, sbp, eqn.euler_eqn, opts, init_mesh=true)
+  # don't get boundary conditions from Euler, get them from Navier-Stokes
+  EulerEquationMod.init(mesh, sbp, eqn.euler_eqn, opts, init_mesh=false)
   opts["SRCname"] = src_orig
 
 
   if init_mesh
-#    getBCFunctors(mesh, sbp, eqn, opts)
-#    getBCFunctors(pmesh, sbp, eqn, opts)
+    getBCFunctors(mesh, sbp, eqn, opts)
+    getBCFunctors(pmesh, sbp, eqn, opts)
   end
 
   getSRCFunctors(mesh, sbp, eqn, opts)
