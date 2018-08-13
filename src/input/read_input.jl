@@ -660,6 +660,14 @@ end
   end
 
   # Direct sensitivity of drag wrt Ma checks
+
+  #   This is commented out because of the new method of assigning objective functions. 
+  #   They are set like this:
+  #       "num_functionals" => 1,
+  #       "functional_name1" => "drag",
+  #       "functional_bcs1" => [1],
+  #   So any check like this one that is commented out will have to check all the functional_nameX keys,
+  #     where X is an integer.
   # if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
     # error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
   # end
