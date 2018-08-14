@@ -31,6 +31,15 @@ function read_input_file(fname::AbstractString)
 
   fpath = joinpath(pwd(), fname)
 
+  #----------------------------------------------------------
+  # check for duplicate keys in input dictionary
+  #
+  # The BADLANG var is to suppress a locale warning on scorec machines. See
+  # http://www-01.ibm.com/support/docview.wss?uid=swg21241025 or 
+  # http://perldoc.perl.org/perllocale.html#LOCALE-PROBLEMS
+  scriptpath = joinpath(Pkg.dir("PDESolver"), "src", "scripts", "check_dict_for_dupes.pl")
+  run(`bash -c "PERL_BADLANG=0 perl $scriptpath $fname"`)
+
   # this uses eval, which is evil (and not statically compilable)
   arg_dict = evalfile(fpath)  # include file in the users pwd()
 
