@@ -5,35 +5,36 @@ module TestSystem
 using Input
 
 global const TAG_DEFAULT = "tag_default"  # tag that every function must have
-include("tags.jl")
+include("tags.jl")  # list of tags
 
 global const EmptyDict = Dict{Any, Any}()
 
 export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist,
-       not_isapprox
+       runTestSystem, not_isapprox
 
 """
   This type stores all the data that describes a set of tests and their
   associated tags.
 
-  Fields:
-    funcs: list of functions that contain the tests.  The order in which
+  ** Fields**
+
+   * funcs: list of functions that contain the tests.  The order in which
            the tests run is the same as the order of insertion
 
-    func_tags: Vector, same length as funcs, where each element is a vector
+   * func_tags: Vector, same length as funcs, where each element is a vector
                of tags associated with each func.
 
-    func_type:  Vector, same length as funcs, describing how to run each
+   * func_type:  Vector, same length as funcs, describing how to run each
                 function. 1 = no arguments, 2 = args = (mesh, sbp, eqn, opts),
                 3 = (mesh, sbp, eqn, opts), using a modified version of an
                 existing input file
-    input_name: Vector, same length as funcs, containing the name of the input
+   * input_name: Vector, same length as funcs, containing the name of the input
                 file to use with each function.  For func_type == 1 this value
                 is unused, for func type == 2 it is used directly, for 
                 func_type == 3 it is modified and written to a new name
                 according to mod_input
 
-    mod_input: Vector, same length as funcs, where each element is a dictionary.
+   * mod_input: Vector, same length as funcs, where each element is a dictionary.
                For func_type == 3 the input file specified by input_name is
                modified with these keys.  There must also be a key called
                "new_fname" that specifies name to write the modified file
@@ -41,7 +42,7 @@ export TAG_DEFAULT, TestList, add_func1!, add_func2!, add_func3!, run_testlist,
                This modified file will be loaded before the function 
                is called.
 
-    tag_list: collection of all known tags
+   * tag_list: collection of all known tags
 """
 mutable struct TestList
   funcs::Vector{Function}  # functions containing the tests
@@ -72,10 +73,11 @@ end  # end type definition
   This function adds a new test function of func_type == 1 to the list
   (a function that takes no arguments).
 
-  Inputs
-    test_list: the list of tests to append the function to
-    func: the function
-    tags: an array of tags associated with this function.  The user is free
+  **Inputs**
+
+   * test_list: the list of tests to append the function to
+   * func: the function
+   * tags: an array of tags associated with this function.  The user is free
           to modify this array afterwards, but not to mutate the strings within
           the array. (optional)
 
@@ -110,15 +112,16 @@ end
 
 
 """
-  This function adds a new test function of func_type == 2 to the list
+  This function adds a new test function of `func_type == 2` to the list
   (a function that takes the arguments (mesh, sbp, eqn, opts), as
   obtained from the input file specified).
 
-  Inputs
-    test_list: the list of tests to append the function to
-    func: the function
-    input_name: name of input file to be used with this function
-    tags: an array of tags associated with this function.  The user is free
+  **Inputs**
+
+   * test_list: the list of tests to append the function to
+   * func: the function
+   * input_name: name of input file to be used with this function
+   * tags: an array of tags associated with this function.  The user is free
           to modify this array afterwards, but not to mutate the strings within
           the array. (optional)
 
@@ -153,18 +156,19 @@ function add_func2!(testlist::TestList, func::Function, input_name::String,
 end
 
 """
-  This function adds a new test function of func_type == 2 to the list
-  (a function that takes the arguments (mesh, sbp, eqn, opts), as
+  This function adds a new test function of `func_type == 3` to the list
+  (a function that takes the arguments `(mesh, sbp, eqn, opts)`, as
   obtained from modifying the input file specified).
 
-  Inputs
-    test_list: the list of tests to append the function to
-    func: the function
-    input_name: name of input file to be modified for use with this function
-    mod_dict: dictionary of keys to be added (or replaced) in the input file
-    tags: an array of tags associated with this function.  The user is free
-          to modify this array afterwards, but not to mutate the strings within
-          the array. (optional)
+  **Inputs**
+
+   * test_list: the list of tests to append the function to
+   * func: the function
+   * input_name: name of input file to be modified for use with this function
+   * mod_dict: dictionary of keys to be added (or replaced) in the input file
+   * tags: an array of tags associated with this function.  The user is free
+           to modify this array afterwards, but not to mutate the strings within
+           the array. (optional)
 
 """
 function add_func3!(testlist::TestList, func::Function, input_name::String,
@@ -202,9 +206,10 @@ end
 
   Currently this only verifies that one of LengthTags is present
 
-  Inputs:
-    func: the function (only needed to produce error message)
-    tags: the tags for this function
+  **Inputs**
+
+   * func: the function (only needed to produce error message)
+   * tags: the tags for this function
 
   Outputs: none
 """
@@ -231,12 +236,13 @@ end
   that have the specified tags will be run.  If no list is supplied, all tags
   are run.
 
-  Inputs:
-    testlist: a TestList loaded with functions
-    prep_func = function used with test functions of type 2 or 3.  It must
-                have signature prep_func(fname::String). fname is the
-                name of hte input file associated with the test function
-    tags: an array of tags (optional)
+  **Inputs**
+
+   * testlist: a TestList loaded with functions
+   * prep_func = function used with test functions of type 2 or 3.  It must
+                 have signature prep_func(fname::String). fname is the
+                 name of hte input file associated with the test function
+   * tags: an array of tags (optional)
 
 """
 function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{String}=String[TAG_DEFAULT])
@@ -254,6 +260,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
   opts = 0
 
   ftiming = open("timing.dat", "w")
+  input_name_prev = ""  # holds the previous input name
   for i=1:ntests
     func_i = testlist.funcs[i]
     func_tags_i = testlist.func_tags[i]
@@ -269,17 +276,19 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
         # run this test
         t_test = @elapsed if functype_i == 1  # function with no arguments
           func_i()
+
         elseif functype_i == 2  # function with all 4 arguments
-          if ARGS[1] != input_name_i
-            ARGS[1] = input_name_i
-            println("about to run prep function ", prep_func, " on input ", ARGS[1])
-            mesh, sbp, eqn, opts = prep_func(ARGS[1])
-          end
+#          if input_name_i != input_name_prev
+            println("about to run prep function ", prep_func, " on input ", input_name_i)
+            mesh, sbp, eqn, opts = prep_func(input_name_i)
+#          end
           func_i(mesh, sbp, eqn, opts)
+          input_name_prev = input_name_i
+
         elseif functype_i == 3  # modify input before running
           new_fname = input_mod_i["new_fname"]*".jl"
 
-          if ARGS[1] != new_fname  # don't create a file if it was done already
+          if input_name_prev != new_fname  # don't create a file if it was done already
             arg_dict = evalfile(joinpath(pwd(), input_name_i))
 
             for (key, val) in input_mod_i
@@ -288,10 +297,10 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
               end
             end
 
-            make_input(arg_dict, input_mod_i["new_fname"])
+            make_input(arg_dict, new_fname)
 
-            ARGS[1] = new_fname
-            mesh, sbp, eqn, opts = prep_func(ARGS[1])
+            mesh, sbp, eqn, opts = prep_func(new_fname)
+            input_name_prev = new_fname
           end  # end if file already created
 
           func_i(mesh, sbp, eqn, opts)
@@ -299,9 +308,9 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
           throw(ErrorException("unsupported function type"))
         end
 
-        println(ftiming, func_i, ": ", t_test, " second")
+        println(ftiming, func_i, ": ", t_test, " seconds")
 
-        continue  # don't run this test more than once even if it matches
+        break  # don't run this test more than once even if it matches
                   # multiple tags
 
       end  # end if tag matches
@@ -313,6 +322,34 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
 
   return nothing
 end
+
+"""
+  This function runs a test list, according to the tags supplied.  Unlike 
+  [`run_tests`](@ref), this function supplies default behavior for the `tags`
+  list.  If the list is empty, then all tests are run, otherwise only the
+  specified tag are run.  See [`run_tests`](@ref) for argument descriptions.
+
+  **Inputs**
+
+   * testlist
+   * prep_func
+   * tags
+"""
+function runTestSystem(testlist::TestList, prep_func::Function, tags::Vector{String})
+
+  nargs = length(tags)
+  if nargs == 0
+    tags2 = String[TAG_DEFAULT]
+  else
+    tags2 = Array{String}(nargs)
+    copy!(tags2, tags)
+  end
+
+  run_testlist(testlist, prep_func, tags2)
+
+  return nothing
+end
+
 
 """
   Helper function to compute !isapprox(args..., kwargs) in @test macros because

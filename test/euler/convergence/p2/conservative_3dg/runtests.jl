@@ -2,15 +2,13 @@ function test_convergence_p2_3dg()
   @testset "---- P2 Conservative 3DG Convergence Tests -----" begin
     start_dir = pwd()
 
-    resize!(ARGS, 1)
-
     cd("./m1")
-    ARGS[1] = "input_vals_vortex3.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex3.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("../m2")
-    ARGS[1] = "input_vals_vortex3.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_vortex3.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("..")
 

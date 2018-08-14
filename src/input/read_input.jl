@@ -38,6 +38,21 @@ function read_input_file(fname::AbstractString)
     throw(ErrorException("Input file does not contain a dictionary"))
   end
 
+  get!(arg_dict, "no_input_duplicates_check", false)
+
+  #----------------------------------------------------------
+  # check for duplicate keys in input dictionary
+  #
+  # The BADLANG var is to suppress a locale warning on scorec machines. See
+  # http://www-01.ibm.com/support/docview.wss?uid=swg21241025 or 
+  # http://perldoc.perl.org/perllocale.html#LOCALE-PROBLEMS
+  if ! arg_dict["no_input_duplicates_check"]
+    scriptpath = joinpath(Pkg.dir("PDESolver"), "src", "scripts", "check_dict_for_dupes.pl")
+    run(`bash -c "PERL_BADLANG=0 perl $scriptpath $fname"`)
+  else
+    println("Skipping input dictionary duplicates check.")
+  end
+
   return arg_dict
 end
 
@@ -452,6 +467,18 @@ get!(arg_dict, "perturb_Ma", false)
 get!(arg_dict, "perturb_Ma_magnitude", 0.0)
 get!(arg_dict, "stabilize_v", false)
 
+#   This is commented out because of the new method of assigning objective functions.
+#   They are set like this:
+#       "num_functionals" => 1,
+#       "functional_name1" => "drag",
+#       "functional_bcs1" => [1],
+#   So any check like this one that is commented out will have to check all the functional_nameX keys,
+#     where X is an integer.
+#
+# if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+  # error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+# end
+
 # Adjoint computation options
 get!(arg_dict, "need_adjoint", false)
 get!(arg_dict, "write_adjoint", false)
@@ -577,7 +604,9 @@ function checkForIllegalOptions_pre(arg_dict)
   end
 
   if !haskey(PhysicsOptionsFuncs, arg_dict["physics"])
-    error("Attempting to load an unregistered physics")
+    println(STDERR, "Attempting to load an unregistered physics ", arg_dict["physics"])
+    printPhysicsModules(STDERR)
+    error("Unrecognized physics: $(arg_dict["physics"])")
   end
 
   # Ensure that jac-method is not specified
@@ -691,6 +720,7 @@ end
   end
 
   checkBCOptions(arg_dict)
+  checkPhysicsSpecificOptions(arg_dict)
 
   return nothing
 end
@@ -738,6 +768,36 @@ function checkBCOptions(arg_dict)
     if vals != unique(vals)
       throw(ErrorException("cannot apply a boundary condition to a model entity more than once: BC$i has repeated model entities"))
     end
+  end
+
+  return nothing
+end
+
+
+"""
+  Check that the physics module specified the required options
+"""
+function checkPhysicsSpecificOptions(arg_dict)
+
+  assertKeyPresent(arg_dict, "calc_jac_explicit")
+  assertKeyPresent(arg_dict, "preallocate_jacobian_coloring")
+
+  return nothing
+end
+
+
+"""
+  Throws a (descriptive) error if key is not present
+
+  **Inputs**
+
+   * arg_dict: the options dictionary
+   * key: String
+"""
+function assertKeyPresent(arg_dict::Dict, key::String)
+
+  if !haskey(arg_dict, key)
+    error("options key $key not found")
   end
 
   return nothing

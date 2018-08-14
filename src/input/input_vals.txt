@@ -458,3 +458,7 @@ Note that any values associated with these options are shared with the regular
 # Advection specific options
 "advection_velocity" : advection velocity vector, length 2 in 2D and 3 in 3D,
                        (Vector{Float64}), default [1.0, 1.0, 1.0]
+
+# Input duplicate checking option
+"no_input_duplicates_check" : Bool. If set, do not check the input dictionary for duplicates. 
+                              Default: false

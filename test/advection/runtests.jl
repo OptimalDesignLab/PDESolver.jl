@@ -49,7 +49,7 @@ include("test_GLS2.jl")
 include("test_dg.jl")
 include("test_staggered.jl")
 include("test_adjoint.jl")
-include("test_parallel.jl")
+include("test_parallel_serialpart.jl")
 include( "./energy/runtests.jl")
 #cd("./Nonlinearsolvers/")
 include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
@@ -59,17 +59,7 @@ include(joinpath(pwd(), "Nonlinearsolvers", "runtests_serial.jl"))
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Advection tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(AdvectionTests, solvePDE, tags)
+  runTestSystem(AdvectionTests, solvePDE, ARGS)
 end
 
 println("finished running tests")

@@ -1,4 +1,3 @@
-#Test functional Integrate and adjoint for euler equation.
 
 @doc """
 Euler Equation -- test_viscous
@@ -15,9 +14,9 @@ function test_viscous()
 
   @testset "--- Testing Viscous Terms ---" begin
 
-    ARGS[1] = "input_viscous_polynomial_ser.jl"
-    # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(ARGS[1])
-    mesh, sbp, eqn, opts = PDESolver.run_solver(ARGS[1])
+    fname = "input_viscous_polynomial_ser.jl"
+    # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(fname)
+    mesh, sbp, eqn, opts = PDESolver.run_solver(fname)
     @assert mesh.isDG == true
     @assert opts["isViscous"] == true
 
@@ -51,8 +50,8 @@ function test_viscous()
         q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
         q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
 
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
 
         GtL_vec = reshape(GtL, 128, )
         GtR_vec = reshape(GtR, 128, )
@@ -81,4 +80,4 @@ function test_viscous()
 
 end # End function test_viscous
 
-add_func1!(EulerTests, test_viscous, [TAG_VISCOUS, TAG_LONGTEST])
+add_func1!(NSTests, test_viscous, [TAG_SHORTTEST])

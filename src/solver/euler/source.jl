@@ -26,10 +26,10 @@
   Aliasing restrictions: params.q_vals cannot be in use
 
 """->
-function applySourceTerm(mesh,sbp, eqn, opts, src_func::SRCType)
+function applySourceTerm(mesh, sbp, eqn, opts, src_func::SRCType)
 #TODO: check that the k loop vectorizes
   weights = sbp.w
-  q_vals = eqn.params.q_vals
+  q_vals = zeros(eltype(eqn.q), mesh.numDofPerNode)
   t = eqn.params.t
 
   for i=1:mesh.numEl
@@ -250,7 +250,6 @@ function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-include("source_viscous.jl")
 
 @doc """
 ### EulerEquationMod.SRCDict
@@ -270,10 +269,6 @@ global const SRCDict = Dict{String, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
-"SRCTrigonometric" => SRCTrigonometric(),
-"SRCDoubleSquare" => SRCDoubleSquare(),
-"SRCPolynomial" => SRCPolynomial(),
-"SRCChannel" => SRCChannel(),
 )
 
 

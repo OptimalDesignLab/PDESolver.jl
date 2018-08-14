@@ -120,7 +120,6 @@ function test_eqn_copy()
     @test ( (eqn_copy.params.gamma == eqn.params.gamma) )== true
     @test ( (eqn_copy.params.gamma_1 == eqn.params.gamma_1) )== true
     @test ( (eqn_copy.params.Ma == eqn.params.Ma) )== true
-    @test ( (eqn_copy.params.Re == eqn.params.Re) )== true
     @test ( (eqn_copy.params.aoa == eqn.params.aoa) )== true
     @test ( (eqn_copy.params.rho_free == eqn.params.rho_free) )== true
     @test ( (eqn_copy.params.E_free == eqn.params.E_free) )== true
@@ -182,7 +181,6 @@ function test_eqn_copy()
     @test ( (eqn_copy.params_entropy.gamma == eqn.params_entropy.gamma) )== true
     @test ( (eqn_copy.params_entropy.gamma_1 == eqn.params_entropy.gamma_1) )== true
     @test ( (eqn_copy.params_entropy.Ma == eqn.params_entropy.Ma) )== true
-    @test ( (eqn_copy.params_entropy.Re == eqn.params_entropy.Re) )== true
     @test ( (eqn_copy.params_entropy.aoa == eqn.params_entropy.aoa) )== true
     @test ( (eqn_copy.params_entropy.rho_free == eqn.params_entropy.rho_free) )== true
     @test ( (eqn_copy.params_entropy.E_free == eqn.params_entropy.E_free) )== true
@@ -424,7 +422,6 @@ R  Float64  true
 gamma  Float64  true
 gamma_1  Float64  true
 Ma  Float64  true
-Re  Float64  true
 aoa  Float64  true
 rho_free  Float64  true
 E_free  Float64  true
@@ -485,7 +482,6 @@ R  Float64  true
 gamma  Float64  true
 gamma_1  Float64  true
 Ma  Float64  true
-Re  Float64  true
 aoa  Float64  true
 rho_free  Float64  true
 E_free  Float64  true
@@ -546,7 +542,6 @@ R  Float64  true
 gamma  Float64  true
 gamma_1  Float64  true
 Ma  Float64  true
-Re  Float64  true
 aoa  Float64  true
 rho_free  Float64  true
 E_free  Float64  true

@@ -52,8 +52,8 @@ end  # end function
 function test_GLS2_term()
   @testset "----- Testing GLS2 -----" begin
 
-    ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_GLS2.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     eqn.params.alpha_x = 2.0
     eqn.params.alpha_y = 1.0
@@ -95,15 +95,15 @@ function test_GLS2_term()
 
     # now do complex step
     println("----- Doing Complex Step -----")
-    ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_GLS2.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     arg_dict["run_type"] = 5  # complex step run
     arg_dict["jac_method"] = 2  # complex step run
     f = open("input_vals_GLS2c.jl", "w")
     println(f, arg_dict)
     close(f)
-    ARGS[1] = "input_vals_GLS2c.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_GLS2c.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     # set q to something interesting
     for i=1:mesh.numEl
@@ -129,8 +129,8 @@ function test_GLS2_jac()
   # finite difference checks
   @testset "----- Performing GLS2 Finite Difference Checks -----" begin
 
-    ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_GLS2.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     eqn.src_func = AdvectionEquationMod.SRCDict["SRC0"]
     eqn.params.alpha_x = 2.0
     eqn.params.alpha_y = 1.0
@@ -174,15 +174,15 @@ function test_GLS2_jac()
 
     # now do complex step
     println("----- Doing Complex Step -----")
-    ARGS[1] = "input_vals_GLS2.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_GLS2.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     arg_dict["run_type"] = 5  # complex step run
     arg_dict["jac_method"] = 2
     f = open("input_vals_GLS2c.jl", "w")
     println(f, arg_dict)
     close(f)
-    ARGS[1] = "input_vals_GLS2c.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_GLS2c.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     # set q to something interesting
     for i=1:mesh.numEl

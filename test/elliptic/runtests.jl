@@ -35,17 +35,7 @@ include("test_conv_rate.jl")
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Elliptic tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(EllipticTests, solvePDE, tags)
+  runTestSystem(EllipticTests, solvePDE, ARGS)
 end
 
 

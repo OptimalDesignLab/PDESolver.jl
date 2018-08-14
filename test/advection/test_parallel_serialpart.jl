@@ -4,8 +4,8 @@
   Test the parallel communication constructs.
 """
 function test_parallel_mpi()
-  ARGS[1] = "input_vals_parallel.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_parallel.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   # test the Utils parallel functions
   @testset "----- Testing Parallel Functions -----" begin
@@ -117,8 +117,8 @@ end
 add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST])
 
 function test_parallel_serialpart()
-  ARGS[1] = "input_vals_parallel.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_parallel.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   # do a serial rk4 run to compare against later
   start_dir = pwd()
@@ -128,8 +128,8 @@ function test_parallel_serialpart()
   fname = "input_vals_parallel_run"
   make_input(opts, fname)
 
-  ARGS[1] = string(fname, ".jl")
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname2 = string(fname, ".jl")
+  mesh, sbp, eqn, opts = solvePDE(fname2)
   cd(start_dir)
 
   # make the parallel version
@@ -140,8 +140,8 @@ function test_parallel_serialpart()
   # serial newton
   start_dir = pwd()
   cd("./newton/serial")
-  ARGS[1] = "input_vals_serial.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_serial.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
   cd(start_dir)
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
   opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
@@ -151,8 +151,8 @@ function test_parallel_serialpart()
   # 3D rk4
   start_dir = pwd()
   cd("./rk4_3d/serial")
-  ARGS[1] = "input_vals_rk4_3d.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_rk4_3d.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   # make the parallel version
   cd(start_dir)
@@ -171,8 +171,8 @@ function test_parallel_serialpart()
   make_input(opts, string("./newton_3d/serial/", "input_vals_serial"))
 
   cd("./newton_3d/serial")
-  ARGS[1] = "input_vals_serial.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_serial.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   cd(start_dir)
 end

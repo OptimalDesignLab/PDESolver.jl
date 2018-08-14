@@ -152,9 +152,8 @@ function test_gls_channel(mesh, sbp, eqn, opts)
 
 
   @testset "----- Testing GLS3 channel -----" begin
- #   resize!(ARGS, 1)
- #   ARGS[1] = "input_vals_channel_gls.jl"
- #   mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+ #   fname = "input_vals_channel_gls.jl"
+ #   mesh, sbp, eqn, opts = solvePDE(fname)
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     test_GLS(mesh, sbp, eqn, opts)
   end  # end facts block
@@ -176,19 +175,15 @@ function test_gls_vortex()
     if true
       @testset "----- Testing GLS3 p$p  on isentropic vortex -----" begin
         # test on isentropic vortex
-        include("input_vals_vortex3.jl")
+        arg_dict = read_input_file("input_vals_vortex3.jl")
         arg_dict["order"] = p
         arg_dict["solve"] = false
         arg_dict["variable_type"] = :entropy
         #TODO: use make_input function instead
-        f = open("input_vals_vortex3_gls.jl", "w")
-        print(f, "arg_dict = ")
-        println(f, arg_dict)
-        close(f)
+        make_input(arg_dict, "input_vals_vortex3_gls")
 
-        resize!(ARGS, 1)
-        ARGS[1] = "input_vals_vortex3_gls.jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = "input_vals_vortex3_gls.jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
         array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
         test_GLS(mesh, sbp, eqn ,opts)
       end  # end facts block
@@ -208,16 +203,16 @@ function test_gls_fd()
   for p = 1:4
     if true
       @testset "----- Performing GLS3 p$p finite difference checks -----" begin
-        ARGS[1] = "input_vals_vortex3_gls.jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = "input_vals_vortex3_gls.jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
 
         arg_dict["order"] = p
         f = open("input_vals_vortex3_gls.jl", "w")
         print(f, "arg_dict = ")
         println(f, arg_dict)
         close(f)
-        ARGS[1] = "input_vals_vortex3_gls.jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = "input_vals_vortex3_gls.jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
 
         # rescale the problem
         for i = 1:length(eqn.q)
@@ -254,8 +249,8 @@ function test_gls_fd()
         print(f, "arg_dict = ")
         println(f, arg_dict)
         close(f)
-        ARGS[1] = "input_vals_vortex3c_gls.jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = "input_vals_vortex3c_gls.jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
 
         # rescale the problem
         for i = 1:length(eqn.q)

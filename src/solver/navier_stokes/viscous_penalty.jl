@@ -11,7 +11,7 @@
 """
 function cmptIPMat(mesh::AbstractMesh{Tmsh},
                    sbp::AbstractSBP,
-                   eqn::EulerData{Tsol, Tres, Tdim},
+                   eqn::NSData{Tsol, Tres, Tdim},
                    opts,
                    iface::Int,
                    GtL::AbstractArray{Tsol, 5},
@@ -28,7 +28,7 @@ end
 
 function cmptIPMat_SIPG(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP,
-                        eqn::EulerData{Tsol, Tres, 2},
+                        eqn::NSData{Tsol, Tres, 2},
                         opts,
                         iface::Int,
                         GtL::AbstractArray{Tsol, 5},
@@ -39,7 +39,7 @@ end
 
 function cmptIPMat_BR2(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP,
-                       eqn::EulerData{Tsol, Tres, 2},
+                       eqn::NSData{Tsol, Tres, 2},
                        opts,
                        iface::Int,
                        GtL::AbstractArray{Tsol, 5},
@@ -50,7 +50,7 @@ end
 
 function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
                            sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 2},
+                           eqn::NSData{Tsol, Tres, 2},
                            opts,
                            iface::Int,
                            GtL::AbstractArray{Tsol, 5},
@@ -171,7 +171,7 @@ end
 
 function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
                            sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 3},
+                           eqn::NSData{Tsol, Tres, 3},
                            opts,
                            iface::Int,
                            GtL::AbstractArray{Tsol, 5},
@@ -478,7 +478,7 @@ end
 """
 function cmptBPMat(mesh::AbstractMesh{Tmsh},
                    sbp::AbstractSBP,
-                   eqn::EulerData{Tsol, Tres, Tdim},
+                   eqn::NSData{Tsol, Tres, Tdim},
                    opts,
                    iface::Int,
                    Gt::AbstractArray{Tsol, 5},
@@ -494,7 +494,7 @@ end
 
 function cmptBPMat_SIPG(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP,
-                        eqn::EulerData{Tsol, Tres, 2},
+                        eqn::NSData{Tsol, Tres, 2},
                         opts,
                         iface::Int,
                         Gt::AbstractArray{Tsol, 5},
@@ -504,7 +504,7 @@ end
 
 function cmptBPMat_BR2(mesh::AbstractMesh{Tmsh},
                        sbp::AbstractSBP,
-                       eqn::EulerData{Tsol, Tres, 2},
+                       eqn::NSData{Tsol, Tres, 2},
                        opts,
                        iface::Int,
                        Gt::AbstractArray{Tsol, 5},
@@ -514,7 +514,7 @@ end
 
 function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
                            sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 2},
+                           eqn::NSData{Tsol, Tres, 2},
                            opts,
                            iface::Int,
                            Gt::AbstractArray{Tsol, 5},
@@ -630,7 +630,7 @@ end
 
 function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
                            sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 3},
+                           eqn::NSData{Tsol, Tres, 3},
                            opts,
                            iface::Int,
                            Gt::AbstractArray{Tsol, 5},

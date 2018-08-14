@@ -1524,9 +1524,9 @@ end
   Aliasing restrictions: none
 """->
 function matVecA0inv(mesh::AbstractMesh{Tmsh},
-sbp::AbstractSBP,
-eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts,
-res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
+                     sbp::AbstractSBP,
+                     eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts,
+                     res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
   A0inv = Array{Tsol}(mesh.numDofPerNode, mesh.numDofPerNode)
@@ -1551,11 +1551,12 @@ res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
   return nothing
 end
 
+#TODO: move this to Utils?
 # no-op, because for conservative variables this is A0inv is the identity matrix
 function matVecA0inv(mesh::AbstractMesh{Tmsh},
-sbp::AbstractSBP,
-eqn::EulerData{Tsol, Tres, Tdim, :conservative},
-opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
+                     sbp::AbstractSBP,
+                     eqn::AbstractSolutionData,
+                     opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol}
 
   return nothing
 end

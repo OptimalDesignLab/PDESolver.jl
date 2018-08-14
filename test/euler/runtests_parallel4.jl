@@ -35,18 +35,7 @@ include("test_jacp.jl")
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Euler 4 process tests -----" begin
-
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
-
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(EulerTests, solvePDE, tags)
+  runTestSystem(EulerTests, solvePDE, ARGS)
 end
 
 #------------------------------------------------------------------------------

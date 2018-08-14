@@ -4,11 +4,10 @@ function test_parallel_derivatives()
 
   @testset "--- Checking Complete Derivative w.r.t angle of attack for a 2D airfoil ---" begin
 
-    ARGS[1] = "./input_vals_airfoil_parallel.jl"
+    fname = "./input_vals_airfoil_parallel.jl"
 
     # Get the adjoint vector
-#    include("../../src/solver/euler/startup.jl")
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    mesh, sbp, eqn, opts = solvePDE(fname)
     objective = createFunctional(mesh, sbp, eqn, opts, 1)
     EulerEquationMod.evalFunctional(mesh, sbp, eqn, opts, objective)
 

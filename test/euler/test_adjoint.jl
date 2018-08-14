@@ -16,8 +16,8 @@ function test_adjoint()
 
   @testset "--- Testing Functional Computation On a Boundary ---" begin
 
-    ARGS[1] = "input_vals_vortex_adjoint_DG.jl"
-    mesh, sbp, eqn, opts, pmesh = createObjects(ARGS[1])
+    fname = "input_vals_vortex_adjoint_DG.jl"
+    mesh, sbp, eqn, opts, pmesh = createObjects(fname)
     @assert mesh.isDG == true
     @assert opts["jac_method"] == 2
     @assert opts["run_type"] == 5
@@ -90,10 +90,8 @@ function test_adjoint()
 
   @testset "--- Testing adjoint computation on the boundary for DG Meshes---" begin
     # println("testing adjoint functions\n")
-    resize!(ARGS, 1)
-    ARGS[1] = "input_vals_airfoil.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-#    include("../../src/solver/euler/startup.jl")  #TODO: use solvePDE
+    fname = "input_vals_airfoil.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     @assert opts["aoa"] == 2.0
 
     lift = createFunctional(mesh, sbp, eqn, opts, 1)

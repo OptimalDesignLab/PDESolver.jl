@@ -3,7 +3,7 @@ using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
 
-push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))  # get TestSystem
 
 using PDESolver
 #using Base.Test
@@ -53,27 +53,16 @@ include("test_curvilinear.jl")
 include("test_rk4.jl")
 include(joinpath("./convergence/runtests.jl"))
 include("Utils.jl")
-include("test_parallel.jl")
+include("test_parallel_serialpart.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
 
-include("test_viscous.jl")
-
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Euler tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
 
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(EulerTests, solvePDE, tags)
+  runTestSystem(EulerTests, solvePDE, ARGS)
 end
 
 

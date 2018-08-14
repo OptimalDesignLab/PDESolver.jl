@@ -38,6 +38,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/navier_stokes"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 
 # load the modules

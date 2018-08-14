@@ -5,11 +5,11 @@
 """
 function test_parallel()
   start_dir = pwd()
-  ARGS[1] = "input_vals_vortex3.jl"
+  fname = "input_vals_vortex3.jl"
 
   # rk4
   cd("./rk4/serial")
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  mesh, sbp, eqn, opts = solvePDE(fname)
   cd("../parallel")
 
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
@@ -17,7 +17,7 @@ function test_parallel()
 
   # staggered grid
   cd("../staggered_serial")
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   cd("../staggered_parallel")
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
@@ -39,7 +39,7 @@ function test_parallel()
   cd("./lserk/serial")
   opts["run_type"] = 30
   make_input(opts, "input_vals_vortex3")
-  mesh, sbp, eqn,  opts = solvePDE(ARGS[1])
+  mesh, sbp, eqn,  opts = solvePDE(fname)
 
   cd("../parallel")
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
@@ -48,8 +48,8 @@ function test_parallel()
 
   # newton
   cd("../../newton/serial")
-  ARGS[1] = "input_vals_vortex3.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_vortex3.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
 
   cd("../parallel")
