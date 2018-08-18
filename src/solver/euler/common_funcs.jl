@@ -47,7 +47,7 @@ function calcIsentropicVortex(params::ParamType2,
 
   # calculate r, theta coordinates from x,y
   r = sqrt(x*x + y*y)
-  theta = atan2(real(y),real(x))  # angle in radians
+  theta = atan2(y, x)  # angle in radians
 
   # calculate values at r radius
   tmp1 = ((gamma-1)/2)*M_in*M_in
