@@ -204,7 +204,7 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
           integrand_deriv::AbstractArray{Tsol, 1}, node_info,
           functionalData::MassFlowData) where {Tsol, Tres, Tmsh}
 
-  node_info = [1, 2, 3]
+  node_info = [1, 2, 3]  #TODO: what is this doing??? node_info is an argument
   h = 1e-20
   pert = Complex128(0, h)
   val = zeros(Complex128, 1)
@@ -221,3 +221,30 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# generic fallback: complex step it
+
+function calcIntegrandDeriv(opts, params::ParamType{2},
+          q::AbstractArray{Tsol,1},
+          aux_vars::AbstractArray{Tres, 1},
+          nrm::AbstractArray{Tmsh},
+          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+          functionalData::Tfunc) where {Tsol, Tres, Tmsh, Tfunc<:AbstractIntegralFunctional}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+  val = zeros(Complex128, 1)
+  for i=1:length(q)
+    q[i] += pert
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
+                                          functionalData, val)
+    integrand_deriv[i] = imag(val[1])/h
+    q[i] -= pert
+  end
+
+  return nothing
+end
+
+
