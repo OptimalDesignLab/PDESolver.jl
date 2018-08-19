@@ -38,6 +38,21 @@ function read_input_file(fname::AbstractString)
     throw(ErrorException("Input file does not contain a dictionary"))
   end
 
+  get!(arg_dict, "no_input_duplicates_check", false)
+
+  #----------------------------------------------------------
+  # check for duplicate keys in input dictionary
+  #
+  # The BADLANG var is to suppress a locale warning on scorec machines. See
+  # http://www-01.ibm.com/support/docview.wss?uid=swg21241025 or 
+  # http://perldoc.perl.org/perllocale.html#LOCALE-PROBLEMS
+  if ! arg_dict["no_input_duplicates_check"]
+    scriptpath = joinpath(Pkg.dir("PDESolver"), "src", "scripts", "check_dict_for_dupes.pl")
+    run(`bash -c "PERL_BADLANG=0 perl $scriptpath $fname"`)
+  else
+    println("Skipping input dictionary duplicates check.")
+  end
+
   return arg_dict
 end
 
@@ -443,9 +458,17 @@ get!(arg_dict, "functional_error", false)
 get!(arg_dict, "functional_error_outfname", "functional_error")
 get!(arg_dict, "analytical_functional_val", 0.0)
 
-if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
-  error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
-end
+#   This is commented out because of the new method of assigning objective functions.
+#   They are set like this:
+#       "num_functionals" => 1,
+#       "functional_name1" => "drag",
+#       "functional_bcs1" => [1],
+#   So any check like this one that is commented out will have to check all the functional_nameX keys,
+#     where X is an integer.
+#
+# if arg_dict["write_drag"] == true && arg_dict["objective_function"] != "drag"
+  # error(" Options error: write_drag is true, but objective_function is not drag. Exiting.")
+# end
 
 # Adjoint computation options
 get!(arg_dict, "need_adjoint", false)
