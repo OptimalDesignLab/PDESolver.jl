@@ -47,7 +47,7 @@ function calcIsentropicVortex(params::ParamType2,
 
   # calculate r, theta coordinates from x,y
   r = sqrt(x*x + y*y)
-  theta = atan2(real(y),real(x))  # angle in radians
+  theta = atan2(y, x)  # angle in radians
 
   # calculate values at r radius
   tmp1 = ((gamma-1)/2)*M_in*M_in
@@ -404,15 +404,17 @@ function calcUnsteadyVortex2(params::ParamType{Tdim},
   y0 = 0
   epsilon = 5.0
   Ma = 0.5
-  alpha = 45.0  # degrees
+#  alpha = 45.0  # degrees
+  sind_alpha = 0.7071067811865476
+  cosd_alpha = 0.7071067811865476
 #  cinf = 1.0  # assumption, I think this is a free parameter
 #  Uinf = Ma*cinf
 
   Uinf = 1.0
   cinf = Ma/Uinf
 
-  ycoeff = y - y0 - Uinf*sind(alpha)*t
-  xcoeff = x - x0 - Uinf*cosd(alpha)*t
+  ycoeff = y - y0 - Uinf*sind_alpha*t
+  xcoeff = x - x0 - Uinf*cosd_alpha*t
   f = 1 - ( xcoeff^2 + ycoeff^2 )
 
   coeff1 = epsilon*epsilon*Ma*Ma*gamma_1/(8*pi*pi)
@@ -421,9 +423,9 @@ function calcUnsteadyVortex2(params::ParamType{Tdim},
   rho = T^(1/gamma_1)
  
 #  u1 = Uinf - (epsilon*y/(2*pi))*e^(f/2)
-  u1 = Uinf*cosd(alpha) - (epsilon*ycoeff/(2*pi))*exp(f/2)
+  u1 = Uinf*cosd_alpha - (epsilon*ycoeff/(2*pi))*exp(f/2)
 #  u2 = (epsilon*xcoeff/(2*pi))*e^(f/2)
-  u2 = Uinf*sind(alpha) + ((epsilon*xcoeff)/(2*pi))*exp(f/2)
+  u2 = Uinf*sind_alpha + ((epsilon*xcoeff)/(2*pi))*exp(f/2)
  
   q2 = rho*u1
   q3 = rho*u2

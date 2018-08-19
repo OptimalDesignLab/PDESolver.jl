@@ -4,9 +4,11 @@ import ODLCommonTools.sview
 using SummationByParts  # SBP operators
 
 push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))  # get TestSystem
+push!(LOAD_PATH, abspath(joinpath(pwd(), "../common")))  # get TestCommon
 
 using PDESolver
 #using Base.Test
+using TestCommon
 using PdePumiInterface  # common mesh interface - pumi
 using EulerEquationMod
 using LinearSolvers
@@ -44,6 +46,7 @@ include("test_3d.jl")
 include("test_bc.jl")
 include("test_interp.jl")
 include("test_jac.jl")
+include("test_functionals.jl")
 include("test_adjoint.jl")
 include("test_reversemode.jl")
 include("test_flux.jl")
@@ -56,6 +59,7 @@ include("test_parallel_serialpart.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
+include("test_coordsfd.jl")
 
 #------------------------------------------------------------------------------
 # run tests

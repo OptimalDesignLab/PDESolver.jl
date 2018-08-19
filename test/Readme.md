@@ -105,3 +105,12 @@ to the the `(mesh, sbp, eqn,  opts)` objects by other test functions, because
 the objects may or may not be re-initialized between calls to the test
 functions.  Also, because tags can be used to selectively run tests, it
 cannot be guaranteed that a particular test will run before another one.
+
+
+# Helper functions
+
+The `test/common` directory defines the `TestCommon` module which contains code
+that helps with testing.
+In particular, tests that rely only on the interfaces defined in PDESolver
+(and not on the internal details of the physics modules) should live here and
+be called from the physics module tests.

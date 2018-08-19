@@ -104,6 +104,26 @@ function MassFlowDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   return MassFlowData{Topt}(bcnums, 1, 0.0)
 end
 
+"""
+  Type for computing the entropy flux rate over a boundary (integral S * u_i dot n_i
+  dGamma), where S is the entropy function (from the IR entropy variables).
+"""
+mutable struct EntropyFluxData{Topt} <: AbstractIntegralFunctional{Topt}
+  bcnums::Array{Int, 1}
+  ndof::Int
+  val::Topt
+end
+
+"""
+  Constructor for EntropyFlux.  This needs to have a different name from
+  the type so it can be put in a dictionary
+"""
+function EntropyFluxConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  return EntropyFluxData{Topt}(bcnums, 1, 0.0)
+end
+
+
 
 """
   Creates a functional object.
@@ -161,7 +181,8 @@ global const FunctionalDict = Dict{String, Function}(
 "lift" => LiftForceDataConstructor,
 "drag" => DragForceDataConstructor,
 "massflow" => MassFlowDataConstructor,
-"liftCoefficient" => LiftCoefficientConstructor
+"liftCoefficient" => LiftCoefficientConstructor,
+"entropyflux" => EntropyFluxConstructor,
 )
 
 

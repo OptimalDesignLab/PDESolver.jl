@@ -165,9 +165,14 @@ function eval_dJdaoa(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return dJdaoa
 end
 
+"""
+  This is the general case function,  It calls
+  [`calcBoundaryFunctionalIntegrand`](@ref) to get the functional integrand at
+  each boundary node and computes the integral.
+"""
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, functionalData::MassFlowData) where {Tmsh, Tsol, Tres, Tdim}
+     opts, functionalData::AbstractFunctional) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
 
@@ -502,6 +507,32 @@ function calcBoundaryFunctionalIntegrand(params::ParamType{2},
 
   return nothing
 end
+
+function calcBoundaryFunctionalIntegrand(params::ParamType{Tdim},
+                       q::AbstractArray{Tsol,1},
+                       aux_vars::AbstractArray{Tres, 1},
+                       nrm::AbstractArray{Tmsh},
+                       node_info::AbstractArray{Int},
+                       objective::EntropyFluxData,
+                       val::AbstractArray{Tsol,1}) where {Tsol, Tres, Tmsh, Tdim}
+
+  # compute u dot n
+  unet = zero(Tres)
+  for i=1:Tdim
+    unet += q[i+1]*nrm[i]
+  end
+  unet/q[1]
+
+  p = calcPressure(params, q)
+  s = log(p) - params.gamma*log(q[1])
+  U = -q[1]*s/params.gamma_1
+
+  val[1] = unet*U
+
+  return nothing
+end
+
+
 
 @doc """
 ### EulerEquationMod. calcBoundaryFunctionalIntegrand_revm
