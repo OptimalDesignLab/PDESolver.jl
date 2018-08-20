@@ -87,6 +87,8 @@ end
 """
 function solvePDE(opts::Union{Dict, AbstractString})
 
+
+  read_input(opts)
   mesh, sbp, eqn, opts, pmesh = createObjects(opts)
   return solvePDE(mesh, sbp, eqn, opts, pmesh)
 end

@@ -48,7 +48,7 @@ function read_input_file(fname::AbstractString)
   # http://perldoc.perl.org/perllocale.html#LOCALE-PROBLEMS
   if ! arg_dict["no_input_duplicates_check"]
     scriptpath = joinpath(Pkg.dir("PDESolver"), "src", "scripts", "check_dict_for_dupes.pl")
-    run(`bash -c "PERL_BADLANG=0 perl $scriptpath $fname"`)
+   # run(`bash -c "PERL_BADLANG=0 perl $scriptpath $fname"`)
   else
     println("Skipping input dictionary duplicates check.")
   end

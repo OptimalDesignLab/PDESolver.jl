@@ -157,6 +157,10 @@ end
   users should call SummationByParts.interiorFaceInterpolate to interpolate
   the data to the face while ensuring proper permutation.
 
+  Calling this function repeatedly without calling [`exchangeData`](@ref)
+  in between is supported.  In this case, it only waits for the MPI
+  communication to finish the first time.
+
   Inputs:
     mesh: an AbstractMesh
     sbp: an SBPOperator
@@ -187,7 +191,7 @@ function finishExchangeData(mesh, sbp, eqn, opts,
     end
 
     data_idx = shared_data[idx]
-    if opts["parallel_data"] == "face"
+    if opts["parallel_data"] == "face" && val == 0
       # permute the received nodes to be in the elementR orientation
       permuteinterface!(mesh.sbpface, data_idx.interfaces, data_idx.q_recv)
     end

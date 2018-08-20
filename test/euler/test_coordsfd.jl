@@ -17,6 +17,8 @@ function test_coordsfd()
     testResidualDerivatives(mesh, sbp, eqn, opts)
     testDJDx(mesh, sbp, eqn, opts, func)
 
+    func = createFunctional(mesh, sbp, eqn, opts, "entropydissipation", Int[])
+    testDJDx(mesh, sbp, eqn, opts, func)
   end
 
 end
