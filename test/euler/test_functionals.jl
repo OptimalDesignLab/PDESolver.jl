@@ -95,4 +95,4 @@ end
 
 
 
-add_func3!(EulerTests, test_functionals, test_functionals_inputfile, test_functionals_moddict,  [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])
+add_func3!(EulerTests, test_functionals, test_functionals_inputfile, test_functionals_moddict,  [TAG_FUNCTIONAL, TAG_SHORTTEST])
