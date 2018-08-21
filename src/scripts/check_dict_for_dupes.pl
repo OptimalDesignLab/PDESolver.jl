@@ -15,7 +15,8 @@ my %hash_for_check;   # We want to assign the dict key-value pairs from the file
 my %duplicates;       # Hash for storing duplicates
 
 while (<>) {          # while there are lines of stdin (loop over file lines)
-  if (/Dict{Any,Any}/) {    # skip the first line
+  # if (/Dict{Any,Any}/) {    # skip the first line       # newer versions of perl require the braces to be escaped
+  if (/Dict\{Any,\s*Any\}/) {    # skip the first line
     next;
   }
   if (/^\s*\)\s*/) {        # skip the last line (only a parenthesis possibly surrounded by whitespace)
