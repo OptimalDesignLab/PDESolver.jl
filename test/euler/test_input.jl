@@ -14,6 +14,7 @@ function test_input()
     @test ( haskey(Input.KNOWN_KEYS, "var1") )== false
 
     arg_dict = Input.read_input_file("input_test.jl")
+
     @test ( Input.checkKeys(arg_dict, Input.KNOWN_KEYS) )== 1
 
     arg_dict["numBC"] = 1
@@ -38,4 +39,4 @@ function test_input()
 end
 
 #test_input()
-add_func1!(EulerTests, test_input, [TAG_INPUT, TAG_SHORTTEST])
+add_func1!(EulerTests, test_input, [TAG_INPUT, TAG_SHORTTEST, TAG_TMP])
