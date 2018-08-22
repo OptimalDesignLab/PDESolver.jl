@@ -310,9 +310,9 @@ function calcLFEntropyPenaltyIntegral(
     end
 
     getIRA0(params, qL_i, A0)
-#    for j=1:size(A0, 1)
-#      A0[j, j] = 1
-#    end
+    #for j=1:size(A0, 1)
+    #  A0[j, j] = 1
+    #end
 
     # wface[i] * lambda_max * A0 * delta w
     smallmatvec!(A0, wL_i, wR_i)
