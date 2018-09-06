@@ -55,7 +55,7 @@ crank_nicolson
    "CN", with the default setting to never recalculate either.  newtonInner
    will use its recalculation policy to recalculate the PC and jacobian.
 """->
-function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+function crank_nicolson_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
 
@@ -89,7 +89,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end
 
   t = 0.0
-  t_steps = round(Int, t_max/h)
+  t_steps = round(Int, t_max/delta_t)
 
   # eqn_nextstep = deepcopy(eqn)
   eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
@@ -201,9 +201,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #-------------------------------------------------------------------------------
   # Main timestepping loop
   #   this loop is 2:(t_steps+1) when not restarting
+  @mpi_master println(BSTDOUT, "---- Ma @ CN start: ", eqn.params.Ma, " ----")
   for i = istart:(t_steps + 1)
 
-    t = (i-2)*h
+    if opts["perturb_Ma"]
+      quad_weight = calcQuadWeight(i, delta_t, finaliter)
+    end
+
+    t = (i-2)*delta_t
     @mpi_master println(BSTDOUT, "\ni = ", i, ", t = ", t)
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
@@ -243,14 +248,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
-    t_nextstep = t + h
+    t_nextstep = t + delta_t
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
     if opts["cleansheet_CN_newton"]
-      cnNewton(mesh, sbp, opts, h, f, eqn, eqn_nextstep, t_nextstep)
+      cnNewton(mesh, sbp, opts, delta_t, f, eqn, eqn_nextstep, t_nextstep)
     else
 
-      ctx_residual = (f, eqn, h, newton_data)
+      ctx_residual = (f, eqn, delta_t, newton_data)
 
       # recalculate PC and LO if needed
       doRecalculation(recalc_policy, i,
@@ -315,7 +320,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end   # end of t step loop
 
   # final time update
-  t += h
+  t += delta_t
 
   # depending on how many timesteps we do, this may or may not be necessary
   #   usage: copyForMultistage!(dest, src)
@@ -530,13 +535,13 @@ function applyLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
                        opts::Dict, ctx_residual, t, x::AbstractVector, 
                        b::AbstractVector) where Tsol
 
-  h = ctx[3]
+  delta_t = ctx[3]
   # the CN residual has the form: I - 0.5*delta_t*jac, where jac is the physics
   # Jacobian.
   # thus a matrix vector product is: v - 0.5*delta_t*jac*v
   applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
 
-  scale!(b, -0.5*h)
+  scale!(b, -0.5*delta_t)
   @simd for i=1:length(b)
     b[i] += x[i]
   end
@@ -552,10 +557,10 @@ function applyLinearOperatorTranspose(lo::CNPetscMatFreeLO,
 
   # see the non-transpose method for an explanation of the math
 
-  h = ctx[3]
+  delta_t = ctx[3]
   applyLinearOperatorTranspose(lo, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
 
-  scale!(b, -0.5*h)
+  scale!(b, -0.5*delta_t)
   @simd for i=1:length(b)
     b[i] += x[i]
   end
@@ -586,14 +591,14 @@ function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
 
   lo2 = getBaseLO(lo)
-  h = ctx_residual[3]
+  delta_t = ctx_residual[3]
 
   assembly_begin(lo2.A, MAT_FINAL_ASSEMBLY)
   assembly_end(lo2.A, MAT_FINAL_ASSEMBLY)
 
   # scale jac by -delta_t/2
 #  scale_factor = h*-0.5
-  petsc_scale_factor = PetscScalar(-h*0.5)
+  petsc_scale_factor = PetscScalar(-delta_t*0.5)
   scale!(lo2.A, petsc_scale_factor)
 
   # add the identity
@@ -615,7 +620,7 @@ function cnCalcVolumePreconditioner(pc::CNVolumePC, mesh::AbstractDGMesh,
   #TODO: is this ctx_residual?
   physics_func = ctx[1]
 #  eqn = ctx[2]
-  h = ctx[3]
+  delta_t = ctx[3]
 
   epsilon = opts["epsilon"]
   pert = Complex128(0, epsilon)
@@ -627,7 +632,7 @@ function cnCalcVolumePreconditioner(pc::CNVolumePC, mesh::AbstractDGMesh,
                            physics_func, t)
 
   volume_prec = other_pc.vol_prec
-  scale!(other_pc.volume_jac, -0.5*h)
+  scale!(other_pc.volume_jac, -0.5*delta_t)
 
   # add the identity matrix
   jac_size = mesh.numDofPerNode*mesh.numNodesPerElement
@@ -661,7 +666,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
 
   physics_func = ctx[1]
   eqn = ctx[2]
-  h = ctx[3]
+  delta_t = ctx[3]
 
   # evalute residual at t_nextstep
   # q_vec -> q
@@ -682,7 +687,7 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   if opts["parallel_type"] == 2 && mesh.npeers > 0
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
-  physics_func(mesh, sbp, eqn, opts, t - h)
+  physics_func(mesh, sbp, eqn, opts, t - delta_t)
   array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
   # compute rhs
@@ -691,8 +696,8 @@ function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolut
   #   u_(n+1) - 0.5*dt* (del dot G_(n+1)) - u_n - 0.5*dt* (del dot G_n)
   for i = 1:mesh.numDof
 
-    temp1 = eqn_nextstep.q_vec[i] - 0.5*h*eqn_nextstep.res_vec[i]
-    temp2 = eqn.q_vec[i] + 0.5*h*eqn.res_vec[i]
+    temp1 = eqn_nextstep.q_vec[i] - 0.5*delta_t*eqn_nextstep.res_vec[i]
+    temp2 = eqn.q_vec[i] + 0.5*delta_t*eqn.res_vec[i]
 
     rhs_vec[i] = temp1 - temp2 
 
