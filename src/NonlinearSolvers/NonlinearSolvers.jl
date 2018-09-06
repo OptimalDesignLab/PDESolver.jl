@@ -37,7 +37,10 @@ include("preconditioning_types.jl")
 include("newton.jl")
 export getNewtonPCandLO
 
+# exports are inside the files
 include("crank_nicolson.jl")
+include("crank_nicolson_ds.jl")
+
 include("preconditioning.jl")
 include("globalization.jl")
 include("predictor_corrector.jl")

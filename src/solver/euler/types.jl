@@ -346,6 +346,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     cv = R/gamma_1
 
     Ma = opts["Ma"]
+    println(" typeof(Ma): ", typeof(Ma))
     if opts["perturb_Ma"] == true
       Ma_pert = opts["perturb_Ma_magnitude"]
       pert = complex(0, Ma_pert)
@@ -446,7 +447,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                velocity_deriv, velocity_deriv_xy,
                flux_jac, res_jac,
                flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
-               h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
+               h, cv, R, R_ND, gamma, gamma_1, Ma, Re, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,

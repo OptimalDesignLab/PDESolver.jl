@@ -109,6 +109,7 @@ function getDataTypes(opts::Dict)
 
   if flag == 1 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 31 || flag == 90  # normal run
     if opts["perturb_Ma"]
+      println("perturb_Ma set, setting Tsol & Tres to Complex128")
       Tmsh = Float64
       Tsbp = Float64
       Tsol = Complex128
@@ -577,6 +578,12 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 20
 
       @time t = crank_nicolson(evalResidual, opts["delta_t"], opts["t_max"],
+                               mesh, sbp, eqn, opts, opts["res_abstol"],
+                               opts["real_time"])
+
+    elseif flag == 21
+
+      @time t = crank_nicolson_ds(evalResidual, opts["delta_t"], opts["t_max"],
                                mesh, sbp, eqn, opts, opts["res_abstol"],
                                opts["real_time"])
 
