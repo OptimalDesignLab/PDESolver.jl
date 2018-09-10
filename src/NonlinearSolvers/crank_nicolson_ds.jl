@@ -241,14 +241,25 @@ function crank_nicolson_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractF
     end
 =#
 
-    # TODO: Allow for some kind of stage loop: ES-Dirk
-
-    # TODO: output freq
-
     # NOTE: Must include a comma in the ctx tuple to indicate tuple
     # f is the physics function, like evalEuler
 
     t_nextstep = t + delta_t
+
+    #------------------------------------------------------------------------------
+    # stabilize q_vec: needs to be before q_vec update
+    if opts["stabilize_v"]
+      # q_vec is obtained from eqn.q_vec
+      # TODO: check treal
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)
+    end
+
+    # stabilize q_vec (this only affects the imaginary part of q_vec)
+    # TODO TODO - figure out why I did a separate time step for the imaginary part
+
+
+
+
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
     if opts["cleansheet_CN_newton"]
@@ -300,6 +311,50 @@ function crank_nicolson_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractF
       break
     end
 
+    #------------------------------------------------------------------------------
+    # write drag at end of time step
+    if opts["write_drag"]
+      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+      @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+      @mpi_master println(f_drag, i, "  ", drag)
+      @mpi_master if (i % opts["output_freq"]) == 0
+        flush(f_drag)
+      end
+    end
+
+    #------------------------------------------------------------------------------
+    # direct sensitivity of Cd wrt M : calculation each time step
+    if opts["perturb_Ma"]
+
+      # v is the direct sensitivity, du/dM
+      # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+      # TODO: check q_vec or eqn.q_vec
+      for v_ix = 1:length(v_vec)
+        v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag
+      end
+
+      # dJdu: partial deriv of functional J wrt state (dCd/du)
+      fill!(dJdu, 0.0)      # initialized before timestepping loop
+      evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, dJdu)    # dJdu is func_deriv_arr
+
+      # do the dot product of the two terms, and save
+      fill!(dJdu_vec, 0.0)
+      array3DTo1D(mesh, sbp, eqn, opts, dJdu, dJdu_vec)   # dJdu -> dJdu_vec
+
+      for v_ix = 1:length(v_vec)
+        # this accumulation occurs across all dofs and all time steps.
+        term23 += quad_weight * dJdu_vec[v_ix] * v_vec[v_ix]
+      end
+
+      # calculate 'energy' of v_vec and write to file
+      if opts["write_L2vnorm"]
+        L2_v_norm = calcNorm(eqn, v_vec)
+        @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+        if (i % opts["output_freq"]) == 0
+          @mpi_master flush(f_L2vnorm)
+        end
+      end
+    end       # end if opts["perturb_Ma"]
 
     # This allows the solution to be updated from _nextstep without a deepcopy.
     # There are two memory locations used by eqn & eqn_nextstep, 
@@ -330,7 +385,46 @@ function crank_nicolson_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractF
   #TODO: return the NewtonData?
   free(newton_data)
 
-  @debug1 println("============= end of CN: t = $t ===============")
+  @mpi_master begin
+    println("------------------------------------------")
+    println("   CN: final time step reached. t = $t")
+    println("------------------------------------------")
+  end
+
+  if opts["perturb_Ma"]
+    @mpi_master if opts["stabilize_v"]
+      close(f_stabilize_v)
+    end
+
+    @mpi_master close(f_drag)
+
+    @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+    @mpi_master println(" Ma_pert: ", Ma_pert)
+    eqn.params.Ma -= Ma_pert      # removing complex perturbation from Ma now
+    @mpi_master println(" pert removed from Ma")
+    @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+
+    finaliter = calcFinalIter(t_steps, itermax)
+    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)     # will use eqn.params.Ma
+    term23 = term23 * 1.0/t     # final step of time average: divide by total time
+    global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
+    total_dCddM = dCddM + global_term23
+
+    # Cd calculations
+    @mpi_master begin
+      f_total_dCddM = open("total_dCddM.dat", "w")
+      println(f_total_dCddM, " dCd/dM: ", dCddM)
+      println(f_total_dCddM, " global_term23: ", global_term23)
+      println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
+      flush(f_total_dCddM)
+      close(f_total_dCddM)
+      println(" dCd/dM: ", dCddM)
+      println(" global_term23: ", global_term23)
+      println(" total dCd/dM: ", total_dCddM)
+    end
+
+  end   # end if opts["perturb_Ma"]
+
   return t
 
   flush(BSTDOUT)
