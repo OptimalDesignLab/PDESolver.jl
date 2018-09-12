@@ -56,6 +56,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
   v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
   v_vals2::Array{Tsol, 1}
+  v_vals3::Array{Tsol, 1}
   Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
 
   # temporary storage for element level solution
@@ -249,6 +250,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     qg = zeros(Tsol, Tdim + 2)
     v_vals = zeros(Tsol, Tdim + 2)
     v_vals2 = zeros(Tsol, Tdim + 2)
+    v_vals3 = zeros(Tsol, Tdim + 2)
     Lambda = zeros(Tsol, Tdim + 2)
 
     q_el1 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
@@ -411,7 +413,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
     time = Timings()
 
-    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
+    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2, v_vals3,
                Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
                res_el1, res_el2,
                qs_el1, qs_el2, ress_el1, ress_el2,

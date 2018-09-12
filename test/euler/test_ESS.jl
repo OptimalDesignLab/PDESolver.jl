@@ -384,7 +384,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 # func_name: name of functor from FaceelementDict
 
   functor = EulerEquationMod.IRFlux()
-  ec_integral = EulerEquationMod.FaceElementDict[func_name]
+  ec_integral = EulerEquationMod.FaceElementDict[func_name](mesh, eqn)
   eqn.flux_func = functor
   fill!(eqn.res, 0.0)
   res_test = copy(eqn.res)
@@ -607,8 +607,8 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, z
 #    resR3 = zeros(resR)
 
 
-    penalty_func = EulerEquationMod.FaceElementDict[penalty_name]
-    lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+    penalty_func = EulerEquationMod.FaceElementDict[penalty_name](mesh, eqn)
+    lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
 
     penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
 
@@ -915,7 +915,7 @@ function test_ESS()
     mesh, sbp, eqn, opts = solvePDE(fname)
     # evaluate the residual to confirm it is zero
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
-    penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+    penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
     penalty_lf = "ELFPenaltyFaceIntegral"
     penalty_lw = "ELWPenaltyFaceIntegral"
     penalty_lw2 = "ELW2PenaltyFaceIntegral"
