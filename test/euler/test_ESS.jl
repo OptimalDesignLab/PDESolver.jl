@@ -917,7 +917,6 @@ function test_ESS()
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
     penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
     penalty_lf = "ELFPenaltyFaceIntegral"
-    penalty_lw = "ELWPenaltyFaceIntegral"
     penalty_lw2 = "ELW2PenaltyFaceIntegral"
 
     for dim =2:3
@@ -959,9 +958,6 @@ function test_ESS()
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
         println("testing LF dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true)
-        println("testing LW dissipation")
-        runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
-        println("finished testing LW dissipation")
         println("testing LW2 dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
         println("finished testing LW dissipation")
@@ -977,10 +973,6 @@ function test_ESS()
         applyPoly(mesh, sbp, eqn, opts, p)
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
         runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true, zero_penalty=true)
-
-        println("testing LW dissipation")
-        runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
-        println("finished testing LW dissipation")
         if dim == 2
           println("testing ESBC")
           test_ESSBC(mesh, sbp, eqn, opts)

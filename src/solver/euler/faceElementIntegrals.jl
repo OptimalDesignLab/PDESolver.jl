@@ -180,31 +180,6 @@ function calcESLFFaceIntegral(
   return nothing
 end
 
-"""
-  Calculate the face integral in an entropy stable manner using approximate
-  Lax-Wendroff type dissipation.  
-  This uses calcECFaceIntegral and calcLWEntropyPenaltyIntegral internally, 
-  see those functions for details.
-"""
-function calcESLWFaceIntegral(
-     params::AbstractParamType{Tdim}, 
-     sbpface::AbstractFace, 
-     iface::Interface,
-     qL::AbstractMatrix{Tsol}, 
-     qR::AbstractMatrix{Tsol}, 
-     aux_vars::AbstractMatrix{Tres}, 
-     nrm_face::AbstractMatrix{Tmsh},  # dxidx or nrm
-     functor::FluxType, 
-     resL::AbstractMatrix{Tres}, 
-     resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
-
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
-                     functor, resL, resR)
-  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
-                               nrm_face, resL, resR)
-
-  return nothing
-end
 
 """
   Calculate the face integral in an entropy stable manner using
@@ -408,172 +383,6 @@ function calcLFEntropyPenaltyIntegral(
   return nothing
 end
 
-
-"""
-  Calculate a term that provably dissipates (mathematical) entropy using a 
-  an approximation to Lax-Wendroff type of dissipation.  
-  This requires data from the left and right element volume nodes, rather than
-  face nodes for a regular face integral.
-
-  Note that nrm_face must contain the scaled normal vector in x-y space
-  at the face nodes, and qL, qR, resL, and resR are the arrays for the
-  entire element, not just the face.
-
-  The approximation to Lax-Wendroff is the computation of
-
-  for i=1:Tdim
-    abs(ni*Y_i*S2_i*Lambda_i*Y_i.')
-  end
-
-  rather than computing the flux jacobian in the normal direction.
-
-  Aliasing restrictions: from params the following fields are used:
-    Y, S2, Lambda, res_vals1, res_vals2, res_vals3,  w_vals_stencil, 
-    w_vals2_stencil, v_vals, v_vals2, q_vals, q_vals2
-"""
-function calcLWEntropyPenaltyIntegral(
-             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::DenseFace, iface::Interface, 
-             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
-
-#  println("----- entered calcEntropyLWEntropyPenaltyIntegral -----")
-
-  numDofPerNode = size(qL, 1)
-
-  # convert qL and qR to entropy variables (only the nodes that will be used)
-  wL = params.w_vals_stencil
-  wR = params.w_vals2_stencil
-
-  Y = params.A0  # eigenvectors of flux jacobian
-  S2 = params.S2  # diagonal scaling matrix squared
-                       # S is defined s.t. (YS)*(YS).' = A0
-  Lambda = params.Lambda  # diagonal matrix of eigenvalues
-  tmp1 = params.res_vals1  # work vectors
-  tmp2 = params.res_vals2
-  tmp3 = params.res_vals3  # accumulate result vector
-
-  for i=1:sbpface.stencilsize
-    # apply sbpface.perm here
-    p_iL = sbpface.perm[i, iface.faceL]
-    p_iR = sbpface.perm[i, iface.faceR]
-    # these need to have different names from qL_i etc. below to avoid type
-    # instability
-    qL_itmp = ro_sview(qL, :, p_iL)
-    qR_itmp = ro_sview(qR, :, p_iR)
-    wL_itmp = sview(wL, :, i)
-    wR_itmp = sview(wR, :, i)
-    convertToIR(params, qL_itmp, wL_itmp)
-    convertToIR(params, qR_itmp, wR_itmp)
-  end
-
-  # convert to IR entropy variables
-
-  # accumulate wL at the node
-  wL_i = params.v_vals
-  wR_i = params.v_vals2
-  qL_i = params.q_vals
-  qR_i = params.q_vals2
-
-  for i=1:sbpface.numnodes  # loop over face nodes
-    ni = sbpface.nbrperm[i, iface.orient]
-    fill!(wL_i, 0.0)
-    fill!(wR_i, 0.0)
-    fill!(tmp3, 0.0)
-    # interpolate wL and wR to this node
-    for j=1:sbpface.stencilsize
-      interpL = sbpface.interp[j, i]
-      interpR = sbpface.interp[j, ni]
-
-      for k=1:numDofPerNode
-        wL_i[k] += interpL*wL[k, j]
-        wR_i[k] += interpR*wR[k, j]
-      end
-    end
-
-    # need conservative variables for flux jacobian calculation
-    convertToConservativeFromIR_(params, wL_i, qL_i)
-    convertToConservativeFromIR_(params, wR_i, qR_i)
-
-    for j=1:numDofPerNode
-      # use flux jacobian at arithmetic average state
-      qL_i[j] = 0.5*( qL_i[j] + qR_i[j])
-      # put delta w into wL_i
-      wL_i[j] -= wR_i[j]
-    end
-
-
-    # get the normal vector (scaled)
-
-    for dim =1:Tdim
-      nrm_dim = nrm_face[dim, i]
-
-      # get the eigensystem in the current direction
-      if dim == 1
-        calcEvecsx(params, qL_i, Y)
-        calcEvalsx(params, qL_i, Lambda)
-        calcEScalingx(params, qL_i, S2)
-      elseif dim == 2
-        calcEvecsy(params, qL_i, Y)
-        calcEvalsy(params, qL_i, Lambda)
-        calcEScalingy(params, qL_i, S2)
-      elseif dim == 3
-        calcEvecsz(params, qL_i, Y)
-        calcEvalsz(params, qL_i, Lambda)
-        calcEScalingz(params, qL_i, S2)
-      end
-
-      # DEBUGGING: turn this into Lax-Friedrich
-#      lambda_max = maximum(absvalue(Lambda))
-#      fill!(Lambda, lambda_max)
-
-      # compute the Lax-Wendroff term, returned in tmp2
-      applyEntropyLWUpdate(Y, Lambda, S2, wL_i, absvalue(nrm_dim), tmp1, tmp2)
-      # accumulate result
-      for j=1:length(tmp3)
-        tmp3[j] += tmp2[j]
-      end
-    end
-
-    # scale by wface[i]
-    for j=1:length(tmp3)
-      tmp3[j] *= sbpface.wface[i]
-    end
-
-    # interpolate back to volume nodes
-    for j=1:sbpface.stencilsize
-      j_pL = sbpface.perm[j, iface.faceL]
-      j_pR = sbpface.perm[j, iface.faceR]
-
-      for p=1:numDofPerNode
-        resL[p, j_pL] -= sbpface.interp[j, i]*tmp3[p]
-        resR[p, j_pR] += sbpface.interp[j, ni]*tmp3[p]
-      end
-    end
-
-  end  # end loop i
-
-  return nothing
-end
-
-@inline function applyEntropyLWUpdate(Y::AbstractMatrix, 
-           Lambda::AbstractVector, S2::AbstractVector, delta_v::AbstractVector, 
-           ni::Number, tmp1::AbstractVector, tmp2::AbstractVector)
-# this is the computation kernel Lax-Wendroff entropy dissipation
-# the result is returned in tmp2
-
-  # multiply delta_v by Y.'
-  smallmatTvec!(Y, delta_v, tmp1)
-  # multiply by diagonal terms, normal vector component
-  for i=1:length(delta_v)
-    tmp1[i] *= ni*S2[i]*absvalue(Lambda[i])
-  end
-  # multiply by Y
-  smallmatvec!(Y, tmp1, tmp2)
-
-  return nothing
-end
 
 """
   Calculate a term that provably dissipates (mathematical) entropy using a 
@@ -1006,50 +815,6 @@ function (obj::ELFPenaltyFaceIntegral)(
 
 end
 
-"""
-  Entropy conservative integral + approximate Lax-Wendroff penalty
-"""
-mutable struct ESLWFaceIntegral <: FaceElementIntegralType
-
-  function ESLWFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new()
-  end
-end
-
-function (obj::ESLWFaceIntegral)(
-              params::AbstractParamType{Tdim}, 
-              sbpface::AbstractFace, iface::Interface,
-              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
-              functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
-
-
-  calcESLWFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
-
-end
-
-"""
-  Approximate Lax-Wendroff entropy penalty term only
-"""
-mutable struct ELWPenaltyFaceIntegral <: FaceElementIntegralType
-  function ELWPenaltyFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new()
-  end
-end
-
-function (obj::ELWPenaltyFaceIntegral)(
-              params::AbstractParamType{Tdim}, 
-              sbpface::AbstractFace, iface::Interface,
-              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
-              functor::FluxType, 
-              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
-
-
-  calcLWEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
-
-end
 
 """
   Entropy conservative integral + Lax-Wendroff penalty
@@ -1104,14 +869,10 @@ end
 
 global const FaceElementDict = Dict{String, Type{T} where T <: FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral,
-"ESLFFaceIntegral" => ESLFFaceIntegral,
 "ELFPenaltyFaceIntegral" => ELFPenaltyFaceIntegral,
-"ESLWFaceIntegral" => ESLWFaceIntegral,
-"ELWPenaltyFaceIntegral" => ELWPenaltyFaceIntegral,
-"ESLW2FaceIntegral" => ESLW2FaceIntegral,
+"ESLFFaceIntegral" => ESLFFaceIntegral,
 "ELW2PenaltyFaceIntegral" => ELW2PenaltyFaceIntegral,
-
-
+"ESLW2FaceIntegral" => ESLW2FaceIntegral,
 )
 
 """
