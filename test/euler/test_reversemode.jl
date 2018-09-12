@@ -34,7 +34,7 @@ function test_reversemode()
           q_bar_complex[k] = press_complex*press_bar
           q_vals[k] -= pert
           error = norm(q_bar_complex[k] - q_bar[k], 2)
-          @test isapprox( error, 0.0) atol=1e-10
+          @test isapprox( error, 0.0) atol=1e-13
         end
       end # End for j = 1:mesh.numNodesPerElement
     end   # End for i = 1:mesh.numEl
@@ -77,7 +77,7 @@ function test_reversemode()
               nrm[p] -= pert
               dir_bar_complex[p] = dot(F_bar, flux)
               error = norm(dir_bar_complex[p] - dir_bar[p], 2)
-              @test isapprox( error, 0.0) atol=1e-10
+              @test isapprox( error, 0.0) atol=1e-13
             end # End for p = 1:Tdim
           end # End for k=1:Tdim
         end # End for j = 1:mesh.numNodesPerElement
@@ -118,7 +118,7 @@ function test_reversemode()
               flux[:] = imag(flux[:])/imag(pert)
               q_bar_complex[p] = dot(F_bar, flux)
               error = norm(q_bar_complex[p] - q_bar[p],2)
-              @test isapprox( error, 0.0) atol=1e-10
+              @test isapprox( error, 0.0) atol=1e-13
               q_vals[p] -= pert
             end # End for p = 1:mesh.numDofPerNode
           end   # End for k = 1:Tdim
@@ -181,7 +181,7 @@ function test_reversemode()
             nxny_bar_complex[k] = dot(boundary_integrand, val_bar)
             phys_nrm[k] -= pert
             error = norm(nxny_bar_complex[k] - nxny_bar[k], 2)
-            @test isapprox( error, 0.0) atol=1e-10
+            @test isapprox( error, 0.0) atol=1e-13
           end # End for k = 1:Tdim
         end # End for j = 1:mesh.sbpface.numnodes
       end   # End for i = 1:nfaces
@@ -220,7 +220,7 @@ function test_reversemode()
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
               dlift_dm = imag(drag.lift_val)/imag(pert)
               error = norm(nrm_bar[k] - dlift_dm, 2)
-              @test isapprox( error, 0.0) atol=1e-12
+              @test isapprox( error, 0.0) atol=1e-13
               nrm[k] -= pert
             end
           end  # End for j = 1:mesh.sbpface.numnodes
@@ -262,7 +262,7 @@ function test_reversemode()
               EulerEquationMod.calcBndryFunctional(mesh, sbp, eqn, opts, drag)
               ddrag_dm = imag(drag.drag_val)/imag(pert)
               error = norm(nrm_bar[k] - ddrag_dm, 2)
-              @test isapprox( error, 0.0) atol=1e-12
+              @test isapprox( error, 0.0) atol=1e-13
               nrm[k] -= pert
             end
           end  # End for j = 1:mesh.sbpface.numnodes
@@ -290,7 +290,7 @@ function test_reversemode()
     sat = zeros(Complex128, 4)
     pert = complex(0, 1e-20) # Complex step perturbation
     EulerEquationMod.calcSAT_revm(eqn.params, nrm2, q, [u,v], H, psi,
-            nrm2_bar)
+            nrm2_bar)  # where is sat_bar?
     for k = 1:length(nrm2)
       nrm2[k] += pert
       roe_vars = eqn.params.roe_vars
@@ -302,7 +302,7 @@ function test_reversemode()
       complex_valbar_SAT = dot(psi, dSat)
       nrm2[k] -= pert
       error = norm(complex_valbar_SAT - nrm2_bar[k], 2)
-      @test isapprox( error, 0.0) atol=1e-10
+      @test isapprox( error, 0.0) atol=1e-13
     end # End for k = 1:length(nrm2)
 
   end # End testset("--- Testing SAT terms in Reverse Mode ---")
@@ -343,7 +343,7 @@ function test_reversemode()
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
           error = norm(nrm_bar[k] - complex_psi_dRoeFlux, 2)
-          @test isapprox( error, 0.0) atol= 1e-12
+          @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -= pert
         end # End for k = 1:Tdim
       end
@@ -397,7 +397,7 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @test isapprox( error, 0.0) atol= 1e-12
+            @test isapprox( error, 0.0) atol= 1e-13
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
@@ -440,7 +440,7 @@ function test_reversemode()
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
             # println("error = $error")
-            @test isapprox( error, 0.0) atol= 1e-12
+            @test isapprox( error, 0.0) atol= 1e-13
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
@@ -468,7 +468,7 @@ function test_reversemode()
         tmpflux[:] = imag(tmpflux[:])/imag(pert)
         dot_product = dot(real(bndryflux_bar), real(tmpflux))
         error = norm(nrm_bar[k] - dot_product, 2)
-        @test isapprox( error, 0.0) atol= 1e-12
+        @test isapprox( error, 0.0) atol= 1e-13
         nrm[k] -= pert
       end
 
@@ -514,7 +514,7 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @test isapprox( error, 0.0) atol= 1e-12
+          @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -= pert
         end # End for k = 1:length(dxidx)
       end
@@ -578,7 +578,7 @@ function test_reversemode()
             nrm[p] -= pert
             dir_bar_complex[p] = dot(F_bar, flux)
             error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
-            @test isapprox( error, 0.0) atol= 1e-12
+            @test isapprox( error, 0.0) atol= 1e-13
           end # End for p = 1:Tdim
         end # End for k=1:Tdim
       end # End for j = 1:mesh.numNodesPerElement
@@ -610,7 +610,7 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @test isapprox( error, 0.0) atol= 1e-12
+          @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -= pert
         end # End for k = 1:length(dxidx)
       end
@@ -645,7 +645,7 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @test isapprox( error, 0.0) atol= 1e-12
+            @test isapprox( error, 0.0) atol= 1e-13
             nrm[k] -= pert
           end # End for k = 1:Tdim
         end
@@ -690,7 +690,7 @@ function test_reversemode()
               nrm[p] -= pert
               dir_bar_complex[p] = dot(F_bar, flux)
               error = norm(dir_bar_complex[p] - dir_bar[p], 2)
-              @test isapprox( error, 0.0) atol=1e-10
+              @test isapprox( error, 0.0) atol=1e-13
             end # End for p = 1:Tdim
           end # End for k=1:Tdim
         end # End for j = 1:mesh.numNodesPerElement
@@ -731,7 +731,7 @@ function test_reversemode()
               flux[:] = imag(flux[:])/imag(pert)
               q_bar_complex[p] = dot(F_bar, flux)
               error = norm(q_bar_complex[p] - q_bar[p],2)
-              @test isapprox( error, 0.0) atol=1e-10
+              @test isapprox( error, 0.0) atol=1e-13
               q_vals[p] -= pert
             end # End for p = 1:mesh.numDofPerNode
           end   # End for k = 1:Tdim
@@ -779,7 +779,7 @@ function test_reversemode()
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
           error = norm(nrm_bar[k] - complex_psi_dRoeFlux, 2)
-          @test isapprox( error, 0.0) atol= 1e-12
+          @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -=pert
         end
       end
@@ -834,7 +834,7 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @test isapprox( error, 0.0) atol= 1e-12
+            @test isapprox( error, 0.0) atol= 1e-13
             nrm[k] -= pert
           end
         end
@@ -880,7 +880,7 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @test isapprox( error, 0.0) atol= 1e-12
+          @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -= pert
         end
       end
@@ -934,7 +934,8 @@ function test_reversemode()
             nrm[p] -= pert
             dir_bar_complex[p] = dot(F_bar, flux)
             error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
-            @test isapprox( error, 0.0) atol= 1e-12
+            println("error = ", error)
+            @test isapprox( error, 0.0) atol= 1e-13
           end # End for p = 1:Tdim
         end # End for k=1:Tdim
       end # End for j = 1:mesh.numNodesPerElement
@@ -966,7 +967,7 @@ function test_reversemode()
           tmpflux[:] = imag(tmpflux[:])/imag(pert)
           dot_product = dot(real(flux_j_bar),real(tmpflux))
           error = norm(nrm_bar[k] - dot_product, 2)
-          @test isapprox( error, 0.0) atol= 1e-12
+          @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -= pert
         end
       end
@@ -1002,7 +1003,7 @@ function test_reversemode()
             tmpflux[:] = imag(tmpflux[:])/imag(pert)
             dot_product = dot(real(bndryflux_bar_i), real(tmpflux))
             error = norm(nrm_bar[k] - dot_product, 2)
-            @test isapprox( error, 0.0) atol= 1e-12
+            @test isapprox( error, 0.0) atol= 1e-13
             nrm[k] -= pert
           end
         end
@@ -1035,7 +1036,7 @@ function test_reversemode()
           q_bar_complex[k] = press_complex*press_bar
           q_vals[k] -= pert
           error = norm(q_bar_complex[k] - q_bar[k], 2)
-          @test isapprox( error, 0.0) atol=1e-10
+          @test isapprox( error, 0.0) atol=1e-13
         end
       end # End for j = 1:mesh.numNodesPerElement
     end   # End for i = 1:mesh.numEl
