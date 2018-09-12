@@ -231,44 +231,6 @@ function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp,
 end
 
 
-"""
-  Calculate the maximum wave speed for a given state
-
-  Inputs:
-    params: a ParamType
-    qL: a vector of conservative variables at a node
-    dir: a direction vector, length 2 in 2D and 3 in 3D
-
-  Outputs:
-    lambda_max: the maximum wave speed
-
-  Aliasing restrictions: none
-"""
-function getLambdaMax(params::ParamType{Tdim}, 
-    qL::AbstractVector{Tsol}, 
-    dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
-
-  Tres = promote_type(Tsol, Tmsh)
-  gamma = params.gamma
-  Un = zero(Tres)
-  dA = zero(Tmsh)
-  rhoLinv = 1/qL[1]
-
-  pL = calcPressure(params, qL)
-  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
-
-  for i=1:Tdim
-    Un += dir[i]*qL[i+1]*rhoLinv
-    dA += dir[i]*dir[i]
-  end
-
-  dA = sqrt(dA)
-
-  lambda_max = absvalue(Un) + dA*aL
-
-  return lambda_max
-end
-
 
 
 

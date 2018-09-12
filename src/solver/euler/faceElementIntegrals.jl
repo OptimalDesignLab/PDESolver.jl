@@ -164,6 +164,7 @@ function calcESLFFaceIntegral(
      params::AbstractParamType{Tdim}, 
      sbpface::AbstractFace, 
      iface::Interface,
+     kernel::AbstractEntropyKernel,
      qL::AbstractMatrix{Tsol}, 
      qR::AbstractMatrix{Tsol}, 
      aux_vars::AbstractMatrix{Tres}, 
@@ -174,7 +175,7 @@ function calcESLFFaceIntegral(
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
-  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
+  calcLFEntropyPenaltyIntegral(params, sbpface, iface, kernel, qL, qR, aux_vars, 
                                nrm_face, resL, resR)
 
   return nothing
@@ -191,6 +192,7 @@ function calcESLW2FaceIntegral(
                              params::AbstractParamType{Tdim}, 
                              sbpface::AbstractFace, 
                              iface::Interface,
+                             kernel::AbstractEntropyKernel,
                              qL::AbstractMatrix{Tsol}, 
                              qR::AbstractMatrix{Tsol}, 
                              aux_vars::AbstractMatrix{Tres}, 
@@ -201,7 +203,7 @@ function calcESLW2FaceIntegral(
 
   calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      functor, resL, resR)
-  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, 
+  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, kernel, qL, qR, aux_vars, 
                                 nrm_face, resL, resR)
 
   return nothing
@@ -222,11 +224,12 @@ end
   entire element, not just the face.
 
 
-  Aliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil
+  Aliasing restrictions: params.nrm2, params.A0, w_vals_stencil, w_vals2_stencil, res_vals1
 """
 function calcLFEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::DenseFace, iface::Interface, 
+             sbpface::DenseFace, iface::Interface,
+             kernel::AbstractEntropyKernel,
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
@@ -258,6 +261,7 @@ function calcLFEntropyPenaltyIntegral(
   wR_i = params.v_vals2
   qL_i = params.q_vals
   qR_i = params.q_vals2
+  flux = params.res_vals1
 
   A0 = params.A0
   fastzero!(A0)
@@ -284,7 +288,6 @@ function calcLFEntropyPenaltyIntegral(
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
     # get lambda * IRA0
-    lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
     
     # compute average qL
     # also delta w (used later)
@@ -293,14 +296,11 @@ function calcLFEntropyPenaltyIntegral(
       wL_i[j] -= wR_i[j]
     end
 
-    getIRA0(params, qL_i, A0)
-    #for j=1:size(A0, 1)
-    #  A0[j, j] = 1
-    #end
-
-    # wface[i] * lambda_max * A0 * delta w
-    smallmatvec!(A0, wL_i, wR_i)
-    fastscale!(wR_i, sbpface.wface[i]*lambda_max)
+    # call kernel
+    applyEntropyKernel(kernel, params, qL_i, wL_i, dir, flux)
+    for j=1:numDofPerNode
+      flux[j] *= sbpface.wface[i]
+    end
 
     # interpolate back to volume nodes
     @simd for j=1:sbpface.stencilsize
@@ -308,8 +308,8 @@ function calcLFEntropyPenaltyIntegral(
       j_pR = sbpface.perm[j, iface.faceR]
 
       @simd for p=1:numDofPerNode
-        resL[p, j_pL] -= sbpface.interp[j, i]*wR_i[p]
-        resR[p, j_pR] += sbpface.interp[j, ni]*wR_i[p]
+        resL[p, j_pL] -= sbpface.interp[j, i]*flux[p]
+        resR[p, j_pR] += sbpface.interp[j, ni]*flux[p]
       end
     end
 
@@ -321,11 +321,12 @@ end
 """
   Method for sparse faces.  See other method for details
 
-  Aliasing restrictions: params: v_vals, v_vals2, q_vals, A0, res_vals1, res_vals2
+  Aliasing restrictions: params: v_vals, v_vals2, v_vals3, q_vals, A0, res_vals1
 """
 function calcLFEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::SparseFace, iface::Interface, 
+             sbpface::SparseFace, iface::Interface,
+             kernel::AbstractEntropyKernel,  #TODO: unused
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
@@ -337,9 +338,9 @@ function calcLFEntropyPenaltyIntegral(
 #  wR = params.w_vals2_stencil
   wL_i = params.v_vals
   wR_i = params.v_vals2
+  delta_w = params.v_vals3
   q_avg = params.q_vals
   res_vals = params.res_vals1
-  res_vals2 = params.res_vals2
   A0 = params.A0
   fastzero!(A0)
 
@@ -349,8 +350,6 @@ function calcLFEntropyPenaltyIntegral(
     p_iL = sbpface.perm[i, iface.faceL]
     pnbr = sbpface.nbrperm[i, iface.orient]
     p_iR = sbpface.perm[pnbr, iface.faceR]
-    # these need to have different names from qL_i etc. below to avoid type
-    # instability
     qL_i = ro_sview(qL, :, p_iL)
     qR_i = ro_sview(qR, :, p_iR)
     convertToIR(params, qL_i, wL_i)
@@ -358,25 +357,18 @@ function calcLFEntropyPenaltyIntegral(
 
     dir = ro_sview(nrm_face, :, i)
 
-    # get lambda * IRA0
-    lambda_max = getLambdaMaxSimple(params, qL_i, qR_i, dir)
- 
     # compute average qL
     # also delta w (used later)
     @simd for j=1:numDofPerNode
       q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
-      res_vals[j] = sbpface.wface[i]*lambda_max*(wL_i[j] - wR_i[j])
+      delta_w[j] = sbpface.wface[i]*(wL_i[j] - wR_i[j])
     end
 
-    getIRA0(params, qL_i, A0)
-
-    # wface[i] * lambda_max * A0 * delta w
-    smallmatvec!(A0, res_vals, res_vals2)
-#    fastscale!(wR_i, sbpface.wface[i]*lambda_max)
+    applyEntropyKernel(kernel, params, q_avg, delta_w, dir, res_vals)
 
     @simd for p=1:numDofPerNode
-      resL[p, p_iL] -= res_vals2[p]
-      resR[p, p_iR] += res_vals2[p]
+      resL[p, p_iL] -= res_vals[p]
+      resR[p, p_iR] += res_vals[p]
     end
   end  # end loop i
 
@@ -412,7 +404,6 @@ function calcLW2EntropyPenaltyIntegral(
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
-  println("----- entered calcLW2EntropyPenaltyIntegral -----")
   numDofPerNode = size(qL, 1)
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
@@ -504,13 +495,13 @@ end
 """
   Method for sparse faces.  See other method for details
 
-  Aliasing restrictions: params: v_vals, v_vals2, q_vals, q_vals2, A0, res_vals1, res_vals2
+  Aliasing restrictions: params: v_vals, v_vals2, v_vals3, q_vals, q_vals2, A0, res_vals1, res_vals2
                          A0, S2, Lambda, nrm2, P
 """
 function calcLW2EntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::SparseFace, iface::Interface, 
-             kernel::AbstractEntropyKernel, #TODO: not used yet
+             kernel::AbstractEntropyKernel,
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
@@ -563,7 +554,7 @@ function calcLW2EntropyPenaltyIntegral(
     end
     
     nrm_i = ro_sview(nrm_face, :, i)
-    applyEntropyKernel(kernel, q_avg, w_avg, nrm_i, res_vals)
+    applyEntropyKernel(kernel, params, q_avg, delta_w, nrm_i, res_vals)
 
     @simd for p=1:numDofPerNode
       resL[p, p_iL] -= res_vals[p]
@@ -688,6 +679,19 @@ end
   Applies a Lax-Wendroff type dissipation kernel.  The intend is to apply
 
   Y^T |Lambda| Y delta_w
+
+  **Inputs**
+
+   * obj: an [`AbstractEntropyKernel`](@ref)
+   * params: a `ParamType`
+   * q_avg: the state at which to calculate the dissipation (conservative
+            variables)
+   * delta_w: vector to multiply the dissipation matrix against
+   * nrm_in: normal vector in face-normal direction (scaled)
+
+  **Inputs/Outputs**
+
+   * flux: vector to overwrite with the result
 """
 function applyEntropyKernel(obj::LW2Kernel, params::ParamType, 
                             q_avg::AbstractVector, delta_w::AbstractVector,
@@ -741,6 +745,45 @@ function applyEntropyKernel(obj::LW2Kernel, params::ParamType,
 end
 
 
+mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
+  A0::AbstractArray{Tsol, 2}
+end
+
+function LFKernel(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+
+  A0 = zeros(Tsol, mesh.dim + 2, mesh.dim + 2)
+
+  return LFKernel{Tsol, Tmsh, Tres}(A0)
+end
+
+
+"""
+  Applies a Lax-Friedrich type entropy dissipation operation, ie.
+
+  |lambda_max| * Y * Y^T * delta_w
+
+  where Y are the eigenvalues of the flux jacobian and Y * Y^T = A0, ie.
+  du/dw, where u are the conservative variables and are the IR entropy variables
+
+"""
+function applyEntropyKernel(obj::LFKernel, params::ParamType, 
+                            q_avg::AbstractVector, delta_w::AbstractVector,
+                            nrm::AbstractVector, flux::AbstractVector)
+
+
+  A0 = obj.A0
+  getIRA0(params, q_avg, A0)
+  #for j=1:size(A0, 1)
+  #  A0[j, j] = 1
+  #end
+
+  lambda_max = getLambdaMax(params, q_avg, nrm)
+  # lambda_max * A0 * delta w
+  smallmatvec!(A0, delta_w, flux)
+  fastscale!(flux, lambda_max)
+end
+
+
 
 
 #-----------------------------------------------------------------------------
@@ -775,8 +818,9 @@ end
   Entropy conservative integral + Lax-Friedrich penalty
 """
 mutable struct ESLFFaceIntegral <: FaceElementIntegralType
+  kernel::LFKernel
   function ESLFFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new()
+    return new(LFKernel(mesh, eqn))
   end
 end
 
@@ -789,7 +833,7 @@ function (obj::ESLFFaceIntegral)(
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
-  calcESLFFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
+  calcESLFFaceIntegral(params, sbpface, iface, obj.kernel, qL, qR, aux_vars, nrm_face, functor, resL, resR)
 
 end
 
@@ -797,8 +841,9 @@ end
   Lax-Friedrich entropy penalty term only
 """
 mutable struct ELFPenaltyFaceIntegral <: FaceElementIntegralType
+  kernel::LFKernel
   function ELFPenaltyFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new()
+    return new(LFKernel(mesh, eqn))
   end
 end
 
@@ -811,7 +856,7 @@ function (obj::ELFPenaltyFaceIntegral)(
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
 
-  calcLFEntropyPenaltyIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, resL, resR)
+  calcLFEntropyPenaltyIntegral(params, sbpface, iface, obj.kernel, qL, qR, aux_vars, nrm_face, resL, resR)
 
 end
 
@@ -836,7 +881,7 @@ function (obj::ESLW2FaceIntegral)(
               functor::FluxType, 
               resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
-  calcESLW2FaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
+  calcESLW2FaceIntegral(params, sbpface, iface, obj.kernel, qL, qR, aux_vars, nrm_face, functor, resL, resR)
 
 end
 
