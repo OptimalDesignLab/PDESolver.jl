@@ -77,7 +77,7 @@ function testEntropyDissFunctional()
   # compute the functional using evalResidual
   opts["addVolumeIntegrals"] = false
   opts["addBoundaryIntegrals"] = false
-  eqn.face_element_integral_func = EulerEquationMod.ELFPenaltyFaceIntegral()
+  eqn.face_element_integral_func = EulerEquationMod.ELFPenaltyFaceIntegral(mesh, eqn)
   array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   w_vec = copy(eqn.q_vec)
   EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)

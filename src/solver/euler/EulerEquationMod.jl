@@ -174,8 +174,57 @@ abstract type EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, T
   Functor type for faceElementIntegrals.  These integrals operate on a face,
   but require data from the entirety of the elements that make up the
   face, rather than data interpolated to the face
+
+  These functors have the signature:
+
+  ```
+    func(params::AbstractParamType, sbpface::AbstractFace, iface::Interface,
+        qL::AbstractMatrix, qR::AbstractMatrix, aux_vars::AbstractMatrix,
+        nrm_face::AbstractMatrix, functor::FluxType,
+        resL::AbstractMatrix, resR::AbstractMatrix)
+  ```
+
+  where `qL` and `qR` contains the solutions at the volume nodes of the left
+  and right elements (`numDofPerNode` x `numNodesPerElement`), `aux_vars`
+  contains the auxiliary variables for `qL`, `nrm_face` contains the normal
+  vector at each face quadracture note, `functor` is the flux function used
+  for the entropy conservative integrals, and `resL` and `resR` are the
+  residual for the left and right elements, to be updated (same shape as
+  `qL`, `qR`).
+
+  Some of the `FaceElementIntegralType`s compute the entropy conservative
+  integrals, others apply an entropy dissipative penalty of one kind
+  or another.
 """
 abstract type FaceElementIntegralType end
+
+
+"""
+  Abstract type for all kernel operations used with entropy penalty functions
+  (ie. given the state at the interface, apply a symmetric semi-definite
+  operation).  Every type must extend this function with a new method:
+
+  ```
+    applyEntropyKernel(obj::AbstractEntropyKernel, params::ParamType, 
+                        q_avg::AbstractVector, delta_w::AbstractVector,
+                        nrm_in::AbstractVector, flux::AbstractVector)
+  ```
+
+  specializing the first argument.  Here `q_avg` is the state at the interface
+  in conservative variables, `delta_w` is the vector to multiply against,
+  `nrm_in` is the normal vector at the node, and `flux` is the vector to
+  overwrite with the result.
+
+  Each `AbstractEntropyKernel` should have an outer constructor with signaturea
+
+  ```
+    function MyEntropyKernel(mesh::AbstractMesh, eqn::EulerData)
+  ```
+
+"""
+abstract type AbstractEntropyKernel end
+
+
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
 # Mid level function should take in an EulerData{Tsol, Tdim}, so they

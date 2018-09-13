@@ -76,7 +76,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   fill!(eqn.res, 0.0)
 
   # local part
-  face_integral_functor = ELFPenaltyFaceIntegral()
+  face_integral_functor = ELFPenaltyFaceIntegral(mesh, eqn)
   flux_functor = ErrorFlux()  # not used, but required by the interface
   getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 
