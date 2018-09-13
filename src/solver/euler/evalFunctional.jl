@@ -3,9 +3,9 @@
 #------------------------------------------------------------------------------
 # API functions
 
+
 """
-  Evaluates [`AbstractFunctional`](@ref)s that are one of the more specific
-  types of functional.
+  Evaluates [`EntropyPenaltyFunctional`](@ref)s
 
   Note that this function may overwrite eqn.res.
 
@@ -16,7 +16,7 @@
 """
 function evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
-            functionalData::EntropyDissipationData; start_comm=true) where {Tmsh, Tsol, Tres}
+            functionalData::EntropyPenaltyFunctional; start_comm=true) where {Tmsh, Tsol, Tres}
 
   #TODO: figure out what the generalization is here
 
@@ -32,15 +32,14 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
 end
 
 """
-  Derivative for [`AbstractFunctional`](@ref)s that are not one of the more
-  specific types.
+  Derivative for [`EntropyPenaltyFunctional`](@ref)s
 
   Currently this requires that the eqn object was creates with Tsol = Complex128
 """
 function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol, Tres}, opts,
-                           functionalData::EntropyDissipationData,
+                           functionalData::EntropyPenaltyFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
 
   @assert size(func_deriv_arr, 1) == mesh.numDofPerNode
@@ -76,7 +75,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   fill!(eqn.res, 0.0)
 
   # local part
-  face_integral_functor = ELFPenaltyFaceIntegral(mesh, eqn)
+  face_integral_functor = functionalData.func
   flux_functor = ErrorFlux()  # not used, but required by the interface
   getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 

@@ -126,11 +126,11 @@ end
 """
   Functional that computes function `w^T d(u)`, where `w` are the entropy
   variables and `d(u)` is the entropy stable dissipation computed by
-  [`calcLFEntropyPenaltyIntegral`](@ref).  Note that this is an integral
+  [`ELFPenaltyFaceIntegral`](@ref).  Note that this is an integral
   over interior faces and not boundary faces
 """
-mutable struct EntropyDissipationData{Topt} <: AbstractFunctional{Topt}
-  # nothing to store here
+mutable struct EntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::ELFPenaltyFaceIntegral
 end
 
 """
@@ -142,8 +142,35 @@ end
 function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        bcnums) where Topt
 
-  return EntropyDissipationData{Topt}()
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+
+  return EntropyDissipationData{Topt}(func)
 end
+
+"""
+  Functional that computes function `w^T d(u)`, where `w` are the entropy
+  variables and `d(u)` is the entropy stable dissipation computed by
+  [`ELFPenaltyFaceIntegral`](@ref).  Note that this is an integral
+  over interior faces and not boundary faces
+"""
+mutable struct EntropyJumpData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::EntropyJumpPenaltyFaceIntegral
+end
+
+"""
+  Constructor for [`EntropyDissipationData`](@ref)
+
+  This function takes `bcnums` as an argument for consistency with 
+  the boundary functional constructors, but doesn't use it.
+"""
+function EntropyJumpConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = EntropyJumpPenaltyFaceIntegral(mesh, eqn)
+
+  return EntropyJumpData{Topt}(func)
+end
+
 
 
 """
@@ -205,6 +232,7 @@ global const FunctionalDict = Dict{String, Function}(
 "liftCoefficient" => LiftCoefficientConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
+"entropyjump" => EntropyJumpConstructor,
 )
 
 

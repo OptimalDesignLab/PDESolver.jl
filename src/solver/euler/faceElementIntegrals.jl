@@ -652,6 +652,28 @@ function applyEntropyKernel(obj::LFKernel, params::ParamType,
 end
 
 
+"""
+  Use the identity matrix, ie. flux = delta_w
+"""
+mutable struct IdentityKernel
+end
+
+function IdentityKernel(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+
+  return IdentityKernel()
+end
+
+function applyEntropyKernel(obj::IdentityKernel, params::ParamType, 
+                            q_avg::AbstractVector, delta_w::AbstractVector,
+                            nrm::AbstractVector, flux::AbstractVector)
+
+  for i=1:length(flux)
+    flux[i] = delta_w[i]
+  end
+
+  return nothing
+end
+
 
 
 #-----------------------------------------------------------------------------
@@ -779,6 +801,29 @@ function (obj::ELW2PenaltyFaceIntegral)(
 end
 
 
+mutable struct EntropyJumpPenaltyFaceIntegral <: FaceElementIntegralType
+  kernel::IdentityKernel
+
+  function EntropyJumpPenaltyFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
+    kernel = IdentityKernel(mesh, eqn)
+    return new(kernel)
+  end
+end
+
+function (obj::EntropyJumpPenaltyFaceIntegral)(
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor::FluxType, 
+              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  calcEntropyPenaltyIntegral(params, sbpface, iface, obj.kernel, qL, qR, aux_vars, nrm_face, resL, resR)
+
+end
+
+
 
 global const FaceElementDict = Dict{String, Type{T} where T <: FaceElementIntegralType}(
 "ECFaceIntegral" => ECFaceIntegral,
@@ -786,6 +831,7 @@ global const FaceElementDict = Dict{String, Type{T} where T <: FaceElementIntegr
 "ESLFFaceIntegral" => ESLFFaceIntegral,
 "ELW2PenaltyFaceIntegral" => ELW2PenaltyFaceIntegral,
 "ESLW2FaceIntegral" => ESLW2FaceIntegral,
+"EntropyJumpPenaltyFaceIntegral" => EntropyJumpPenaltyFaceIntegral,
 )
 
 """

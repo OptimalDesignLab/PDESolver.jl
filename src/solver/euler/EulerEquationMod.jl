@@ -224,6 +224,11 @@ abstract type FaceElementIntegralType end
 """
 abstract type AbstractEntropyKernel end
 
+"""
+  Functionals that use entropy penalties
+"""
+abstract type EntropyPenaltyFunctional{Topt} <: AbstractFunctional{Topt} end
+
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
@@ -235,7 +240,6 @@ abstract type AbstractEntropyKernel end
 # this allows them to have different methods for different dimension equations.
 
 include("types.jl")  # type definitions
-include("functionals.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("euler_macros.jl")
 include("common_funcs.jl")
@@ -250,6 +254,7 @@ include("flux.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
+include("functionals.jl")
 include("boundary_functional.jl")
 include("functional_deriv.jl")
 include("evalFunctional.jl")
