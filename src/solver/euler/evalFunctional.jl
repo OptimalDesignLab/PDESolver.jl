@@ -69,7 +69,7 @@ end
 
 function calcFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
-            functionalData::EntropyDissipationData) where {Tmsh, Tsol, Tres}
+            functionalData::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
 
 
   fill!(eqn.res, 0.0)

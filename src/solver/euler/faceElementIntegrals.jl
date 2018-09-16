@@ -655,7 +655,7 @@ end
 """
   Use the identity matrix, ie. flux = delta_w
 """
-mutable struct IdentityKernel
+mutable struct IdentityKernel <: AbstractEntropyKernel
 end
 
 function IdentityKernel(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
