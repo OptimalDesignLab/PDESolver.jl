@@ -166,7 +166,7 @@ function test_staggered_different(mesh, sbp, eqn, opts)
 
   fill!(eqn.res, 0.0)
   applyPoly(mesh, sbp, eqn, opts, sbp.degree)
-  penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+  penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
 
   EulerEquationMod.getFaceElementIntegral(mesh, mesh2, sbp, sbp2, eqn, penalty_functor, eqn.flux_func, mesh2.sbpface, mesh.interfaces)
   

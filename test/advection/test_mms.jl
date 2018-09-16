@@ -82,7 +82,7 @@ function test_mms()
     println("  ----- Testing 3d -----")
     opts0 = read_input_file("input_vals_3d.jl")
     operator_names = ["SBPOmega", "SBPGamma", "SBPDiagonalE"]
-    max_degree =     [         4,          4,              2]
+    max_degree =     [         4,          4,              4]
 
     for i=1:length(operator_names)
       for degree=1:max_degree[i]

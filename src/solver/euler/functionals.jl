@@ -123,6 +123,54 @@ function EntropyFluxConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   return EntropyFluxData{Topt}(bcnums, 1, 0.0)
 end
 
+"""
+  Functional that computes function `w^T d(u)`, where `w` are the entropy
+  variables and `d(u)` is the entropy stable dissipation computed by
+  [`ELFPenaltyFaceIntegral`](@ref).  Note that this is an integral
+  over interior faces and not boundary faces
+"""
+mutable struct EntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::ELFPenaltyFaceIntegral
+end
+
+"""
+  Constructor for [`EntropyDissipationData`](@ref)
+
+  This function takes `bcnums` as an argument for consistency with 
+  the boundary functional constructors, but doesn't use it.
+"""
+function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+
+  return EntropyDissipationData{Topt}(func)
+end
+
+"""
+  Functional that computes function `w^T d(u)`, where `w` are the entropy
+  variables and `d(u)` is the entropy stable dissipation computed by
+  [`ELFPenaltyFaceIntegral`](@ref).  Note that this is an integral
+  over interior faces and not boundary faces
+"""
+mutable struct EntropyJumpData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::EntropyJumpPenaltyFaceIntegral
+end
+
+"""
+  Constructor for [`EntropyDissipationData`](@ref)
+
+  This function takes `bcnums` as an argument for consistency with 
+  the boundary functional constructors, but doesn't use it.
+"""
+function EntropyJumpConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = EntropyJumpPenaltyFaceIntegral(mesh, eqn)
+
+  return EntropyJumpData{Topt}(func)
+end
+
 
 
 """
@@ -183,6 +231,8 @@ global const FunctionalDict = Dict{String, Function}(
 "massflow" => MassFlowDataConstructor,
 "liftCoefficient" => LiftCoefficientConstructor,
 "entropyflux" => EntropyFluxConstructor,
+"entropydissipation" => EntropyDissipationConstructor,
+"entropyjump" => EntropyJumpConstructor,
 )
 
 

@@ -124,7 +124,6 @@ Reverse mode of evalVolumeIntegrals with respect to the mesh metrics ∂ξ/∂x
 * opts  : options dictionary
 
 """->
-
 function evalVolumeIntegrals_revm(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
 

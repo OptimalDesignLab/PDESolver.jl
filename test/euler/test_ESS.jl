@@ -384,7 +384,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 # func_name: name of functor from FaceelementDict
 
   functor = EulerEquationMod.IRFlux()
-  ec_integral = EulerEquationMod.FaceElementDict[func_name]
+  ec_integral = EulerEquationMod.FaceElementDict[func_name](mesh, eqn)
   eqn.flux_func = functor
   fill!(eqn.res, 0.0)
   res_test = copy(eqn.res)
@@ -607,8 +607,8 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, z
 #    resR3 = zeros(resR)
 
 
-    penalty_func = EulerEquationMod.FaceElementDict[penalty_name]
-    lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+    penalty_func = EulerEquationMod.FaceElementDict[penalty_name](mesh, eqn)
+    lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
 
     penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
 
@@ -915,12 +915,11 @@ function test_ESS()
     mesh, sbp, eqn, opts = solvePDE(fname)
     # evaluate the residual to confirm it is zero
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
-    penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
     penalty_lf = "ELFPenaltyFaceIntegral"
-    penalty_lw = "ELWPenaltyFaceIntegral"
     penalty_lw2 = "ELW2PenaltyFaceIntegral"
 
     for dim =2:3
+      println("\n\n\ndim = ", dim)
       println("testing dimensions ", dim)
       if dim == 2
         meshname = "SRCMESHES/tri8l.smb"
@@ -929,6 +928,7 @@ function test_ESS()
       end
 
       for p=1:4
+        println("\n\np = ", p)
         println("test p = ", p)
         if dim == 3 && p > 2  # 3D Omega operators for p > 2 don't exists yet
           continue
@@ -959,9 +959,6 @@ function test_ESS()
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
         println("testing LF dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true)
-        println("testing LW dissipation")
-        runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
-        println("finished testing LW dissipation")
         println("testing LW2 dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
         println("finished testing LW dissipation")
@@ -977,10 +974,6 @@ function test_ESS()
         applyPoly(mesh, sbp, eqn, opts, p)
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
         runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true, zero_penalty=true)
-
-        println("testing LW dissipation")
-        runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
-        println("finished testing LW dissipation")
         if dim == 2
           println("testing ESBC")
           test_ESSBC(mesh, sbp, eqn, opts)
@@ -989,6 +982,12 @@ function test_ESS()
 
         # check full calling sequence
         fill!(eqn.res, 0.0)
+
+       penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
+        println("about to check full calling sequence")
+        println("typeof(mesh) = ", typeof(mesh))
+        println("typeof(penalty_functor) = ", typeof(penalty_functor))
+        println("size(A0) = ", size(penalty_functor.kernel.A0))
         EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
@@ -1020,6 +1019,7 @@ function test_ESS()
 
         # check full calling sequence
         fill!(eqn.res, 0.0)
+        penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
         EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
@@ -1045,6 +1045,23 @@ function test_ESS()
    
 
     runECTest(mesh, sbp, eqn, opts, test_ref=false)
+
+    # because there is no interpolation, add a small amount to the solution
+    # on one side of the interface (so delta_w will be non-zero)
+    for iface in mesh.interfaces
+      for j in mesh.sbpface.perm
+        for i=1:mesh.numDofPerNode
+          eqn.q[i, j, iface.elementL] += 0.001
+        end
+      end
+    end
+    #TODO: test entropy dissipation
+    println("testing LF dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false)
+    println("testing LW2 dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
+    println("finished testing LW dissipation")
+
 
 
   end  # end facts block

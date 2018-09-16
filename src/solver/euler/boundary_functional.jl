@@ -15,7 +15,7 @@ evaluation.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractFunctional. This is type is associated
+*  `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 
@@ -25,7 +25,7 @@ evaluation.
 """->
 function evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-            functionalData::AbstractFunctional) where {Tmsh, Tsol}
+            functionalData::AbstractIntegralFunctional) where {Tmsh, Tsol}
 #=
   if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
@@ -57,7 +57,7 @@ to the if statement to further extend this function.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractFunctional. This is type is associated
+*  `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `functionalName` : Name of the functional being evaluated.
@@ -66,7 +66,7 @@ to the if statement to further extend this function.
 
 function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractFunctional,
+                        functionalData::AbstractIntegralFunctional,
                         functionalName::String) where {Tmsh, Tsol}
 
 
@@ -124,7 +124,7 @@ Compute the complete derivative of a functional w.r.t angle of attack
 * `sbp`  : Summation-By-Parts operator
 * `eqn`  : Euler equation object
 * `opts` : Options dictionary
-* `functionalData` : Object of type AbstractFunctional. This is type is associated
+* `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
                      with the functional being computed and holds all the
                      relevant data.
 * `functionalName` : Name of the functional being evaluated
@@ -172,7 +172,7 @@ end
 """
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, functionalData::AbstractFunctional) where {Tmsh, Tsol, Tres, Tdim}
+     opts, functionalData::AbstractIntegralFunctional) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
 
@@ -336,7 +336,7 @@ lines indicate the line being reverse diffed.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractFunctional. This is type is associated
+*  `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `bndry_force_bar`: Seed for the reverse mode. This is typically the adjoint
@@ -418,7 +418,7 @@ end
 Computes the integrand for boundary functional at a surface SBP node. Every
 functional of a different type may need a corresponding method to compute the
 integrand. The type of the functional object, which is a subtype of
-`AbstractFunctional`.
+`AbstractIntegralFunctional`.
 
 **Arguments**
 
