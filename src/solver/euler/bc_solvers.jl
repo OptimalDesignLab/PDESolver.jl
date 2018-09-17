@@ -1348,19 +1348,6 @@ function calcEulerFlux_Ducros(params::ParamType{3, :conservative},
   return nothing
 end
 
-#=
-function calcEulerFlux_IR(params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_IR(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
 
 """
   This function calculates the Ismail-Roe numerical flux at a node in a
@@ -1546,49 +1533,14 @@ function calcEulerFlux_IR(params::ParamType{3, :conservative},
 end
 
 
-#TODO: move documentation to second method
-# stabilized IR flux
-#=
 """
+
   This function calculates the flux across an interface using the IR
   numerical flux function and a Lax-Friedrich type of entropy dissipation.
 
   Currently this is implemented for conservative variables only.
 
-  Methods are available that take in dxidx and a normal vector in parametric
-  space and compute and normal vector xy space and that take in a
-  normal vector directly.
-
-  Inputs:
-    qL, qR: vectors conservative variables at left and right states
-    aux_vars: aux_vars for qL
-    dxidx: scaled mapping jacobian (2x2 or 3x3 in 3d)
-    nrm: normal vector in parametric space
-
-  Inputs/Outputs:
-    F: vector to be updated with the result
-
-  Aliasing restrictions:
-    nothing may alias params.nrm2.  See also getEntropyLFStab
-"""
-=#
-#=
-function calcEulerFlux_IRSLF(params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_IRSLF(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
-
-"""
   This is the second method that takes in a normal vector directly.
-  See the first method for a description of what this function does.
 
   Inputs
     qL, qR: vectors conservative variables at left and right states
