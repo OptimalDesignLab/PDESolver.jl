@@ -1598,7 +1598,21 @@ end
 
 
 
+"""
+  Computes the logarithmic average required by the IR flux, in a numerically
+  stable manner.  Uses one extra term in the polynomial as suggested by
+  "On Discretely Entropy Conservative and Entropy Stable DG methods", Chan
+  2018.
 
+  **Inputs**
+
+   * aL: left state
+   * aR: right state
+
+  **Outputs**
+
+   * a_avg: logarithmic average of aL and aR
+"""
 function logavg(aL, aR)
 # calculate the logarithmic average needed by the IR flux
   xi = aL/aR

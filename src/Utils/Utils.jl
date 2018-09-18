@@ -40,7 +40,7 @@ export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
 export fastzero!, fastscale!, removeComplex
-export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
+export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
@@ -950,5 +950,39 @@ macro verbose5(ex)
     end
   end
 end
+
+"""
+  This macro enables easy unpacking of the members of a type to local variables
+  of the same name.  For example:
+
+  ```
+    @unpack foo a b c
+  ```
+
+  expands into
+
+  ```
+    a = foo.a; b = foo.b; c = foo.c
+  ```
+
+  **Inputs**
+
+   * obj: the name of a variable (must be a type with fields)
+   * varnames...: 1 or more names to unpack
+"""
+macro unpack(obj, varnames...)
+
+  @assert length(varnames) > 0
+
+  ex = :($(varnames[1]) = $(obj).$(varnames[1]))
+  for i=2:length(varnames)
+    ex = :($ex; $(varnames[i])= $(obj).$(varnames[i]))
+    println("ex = ", ex)
+  end
+
+  return esc(ex)
+end
+
+
 
 end  # end module

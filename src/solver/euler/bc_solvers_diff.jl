@@ -2228,4 +2228,328 @@ function calcLFFlux_diff(
   return nothing
 end
 
+"""
+  This struct holds all the temporary arrays needed to calculate the IR flux
+"""
+struct IRFluxData{Tsol}
+  pL_dot::Vector{Tsol}
+  pR_dot::Vector{Tsol}
+  z1L_dot::Vector{Tsol}
+  z2L_dot::Vector{Tsol}
+  z3L_dot::Vector{Tsol}
+  z4L_dot::Vector{Tsol}
 
+  z1R_dot::Vector{Tsol}
+  z2R_dot::Vector{Tsol}
+  z3R_dot::Vector{Tsol}
+  z4R_dot::Vector{Tsol}
+
+  z4avg_dotL::Vector{Tsol}
+  z4avg_dotR::Vector{Tsol}
+  z1avg_dotL::Vector{Tsol}
+  z1avg_dotR::Vector{Tsol}
+
+  rho_hat_dotL::Vector{Tsol}
+  rho_hat_dotR::Vector{Tsol}
+  u_hat_dotL::Vector{Tsol}
+  u_hat_dotR::Vector{Tsol}
+  v_hat_dotL::Vector{Tsol}
+  v_hat_dotR::Vector{Tsol}
+  p1_hat_dotL::Vector{Tsol}
+  p1_hat_dotR::Vector{Tsol}
+  h_hat_dotL::Vector{Tsol}
+  h_hat_dotR::Vector{Tsol}
+  logdata::LogAvgData{Tsol, Tsol}
+
+  function IRFluxData{Tsol}(nd::Integer) where {Tsol}
+
+    #TODO: consider making these views of an array to get spatial locality
+    pL_dot = zeros(Tsol, nd)
+    pR_dot = zeros(Tsol, nd)
+
+    z1L_dot = zeros(Tsol, nd)
+    z2L_dot = zeros(Tsol, nd)
+    z3L_dot = zeros(Tsol, nd)
+    z4L_dot = zeros(Tsol, nd)
+
+    z1R_dot = zeros(Tsol, nd)
+    z2R_dot = zeros(Tsol, nd)
+    z3R_dot = zeros(Tsol, nd)
+    z4R_dot = zeros(Tsol, nd)
+
+    z4avg_dotL = zeros(Tsol, nd)
+    z4avg_dotR = zeros(Tsol, nd)
+    z1avg_dotL = zeros(Tsol, nd)
+    z1avg_dotR = zeros(Tsol, nd)
+
+    rho_hat_dotL = zeros(Tsol, nd)
+    rho_hat_dotR = zeros(Tsol, nd)
+    u_hat_dotL = zeros(Tsol, nd)
+    u_hat_dotR = zeros(Tsol, nd)
+    v_hat_dotL = zeros(Tsol, nd)
+    v_hat_dotR = zeros(Tsol, nd)
+    p1_hat_dotL = zeros(Tsol, nd)
+    p1_hat_dotR = zeros(Tsol, nd)
+    h_hat_dotL = zeros(Tsol, nd)
+    h_hat_dotR = zeros(Tsol, nd)
+
+    logdata = LogAvgData{Tsol, Tsol}(nd)
+
+    return new(pL_dot, pR_dot, z1L_dot, z2L_dot, z2L_dot, z4L_dot,
+               z1R_dot, z2R_dot, z3R_dot, z4R_dot,
+               z4avg_dotL, z4avg_dotR, z1avg_dotL, z1avg_dotR,
+               rho_hat_dotL, rho_hat_dotR, u_hat_dotL, u_hat_dotR,
+               v_hat_dotL, v_hat_dotR, p1_hat_dotL, p1_hat_dotR,
+               h_hat_dotL,h_hat_dotR,
+               logdata)
+  end
+end
+
+
+"""
+  Differentiated version of the multi-dimensional version of the IR flux
+
+  **Inputs**
+
+   * Params: ParamType
+   * qL: solution at the left node (numDofPerNode)
+   * qg: solution at the right node (numDofPerNode)
+   * aux_vars
+   * nrm: mesh.dim x mesh.dim matrix of normal vectors, one per column
+   * fluxL_dot: numDofPerNode x numDofPerNode x dim, jacobian of the flux
+                with respect to q, in each direction
+   * fluxR_dot  similar to fluxR_dot, but jacobian with respect to qg
+
+"""
+function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 2},
+                   fluxL_dot::AbstractArray{Tres, 3},
+                   fluxR_dot::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres}
+
+
+  # pL_dot, pR_dot, z1L_dot - z4L_dot, same for zR
+
+  @unpack data z1L_dot z2L_dot z3L_dot z4L_dot z1R_dot z2R_dot z3R_dot z4R_dot
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  fastzero(z1L_dot); fastzero(z1R_dot)
+  fastzero(z2L_dot); fastzero(z2R_dot)
+  fastzero(z3L_dot); fastzero(z3R_dot)
+  fastzero(z4L_dot); fastzero(z4L_dot)
+
+  # differentiate with respect to q (not including chain rule terms for p)
+  z1L_dot[1] = (-0.5/z1L)*1/pL; z1R_dot[1] = (-0.5/z1R)*1/pR
+
+  z2L_dot[1] = -z2L/qL[1]; z2R_dot[1] = -z2R/qR[1]
+  z2L_dot[2] =  z1L/qL[1]; z2R_dot[2] =  z1R/qR[1]
+
+  z3L_dot[1] = -z3L/qL[1]; z3L_dot[1] = -z3R/qR[1]
+  z3L_dot[3] =  z1L/qL[1]; z3R_dot[3] =  z1R/qR[1]
+
+  z4L_dot[1] =  (-0.5/z4L)*pL; z4R_dot[1] = -(0.5/z4R)*pR
+
+  # do the pressure/z1L related terms
+  for i=1:4
+    z1L_dot[i] += (-0.5/z1L)*(-qL[1]/(pL*pL))*pL_dot[i]
+    z1R_dot[i] += (-0.5/z1R)*(-qR[1]/(pR*pR))*pR_dot[i]
+
+    z2L_dot[i] += (qL[2]/qL[1])*z1L_dot[i]
+    z2R_dot[i] += (qR[3]/qR[1])*z1R_dot[i]
+
+    z3L_dot[i] += (qL[3]/qL[1])*z1L_dot[i]
+    z3R_dot[i] += (qR[3]/qR[1])*z1R_dot[i]
+
+    z4L_dot[i] += (-0.5/z4L)*qL[1]*pL_dot[i]
+    z4R_dot[i] += (-0.5/z4R)*aR[1]*pR_dot[i]
+  end
+
+  @unpack data avgdata z4avg_dotL z4avg_dotR z1avg_dotL z1avg_dot
+  @unpack data rho_hat_dotL rho_hat_dotR u_hat_dotL u_hat_dotR
+  @unpack data v_hat_dotL v_hat_dotR p1_hat_dotL p1_hat_dotR
+  @unpack data h_hat_dotL h_hat_dotR
+
+  # z4avg_dotL/r, z1avg_dotL/r, rho_hat, u_hat, v_hat, p1_hat, p2_hat
+  z4avg = logavg(avgdata, z4L, z4L_dot, z4R, z4R_dot, z4avg_dotL, z4avg_dotR)
+  z1avg = logavg(avgdata, z1L, z1L_dot, z1R, z1R_dot, z1avg_dotL, z1avg_dotR)
+
+  rho_hat = 0.5*(z1L + z1R)*z4avg
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*z4avg/z1avg + ( gamma_1/(2*gamma) )*p1_hat
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+
+  for i=1:4
+    rho_hat_dotL[i] = 0.5*(z4avg*z1L_dot[i] + (z1L + z1R)*z4avg_dotL[i])
+    rho_hat_dotR[i] = 0.5*(z4avg*z1R_dot[i] + (z1L + z1R)*z4avg_dotR[i])
+
+    u_hat_dotL[i] = z2L_dot[i]/(z1L + z1R) - u_hat/(z1L + z1R)*z1L_dot[i]
+    u_hat_dotR[i] = z2R_dot[i]/(z1L + z1R) - u_hat/(z1L + z1R)*z1R_dot[i]
+
+    v_hat_dotL[i] = z3L_dot[i]/(z1L + z1R) - v_hat/(z1L + z1R)*z1L_dot[i]
+    v_hat_dotR[i] = z3R_dot[i]/(z1L + z1R) - v_hat/(z1L + z1R)*z1R_dot[i]
+
+    p1_hat_dotL[i] = z4L_dot[i]/(z1L + z1R) - p1_hat/(z1L + z1R)*z1L_dot[i]
+    p1_hat_dotR[i] = z4L_dot[i]/(z1L + z1R) - p1_hat/(z1L + z1R)*z1R_dot[i]
+
+    # p2_hat is an intermediate variable for h_hat below
+    p2_hat_dotL = ((gamma + 1)/(2*gamma))*(z4avg_dotL[i]/z1avg +
+                      -z4avg/(z1avg*z1avg)*z1avg_dotL[i]) + 
+                      ( gamma_1/(2*gamma))*p1_hat_dotL[i]
+    p2_hat_dotR = ((gamma + 1)/(2*gamma))*(z4avg_dotR[i]/z1avg +
+                      -z4avg/(z1avg*z1avg)*z1avg_dotR[i]) +
+                      ( gamma_1/(2*gamma))*p1_hat_dotR[i]
+
+    h_hat_dotL[i] = (gamma/gamma_1)*(p2_hat_dotL[i]/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotL[i]) +
+                     u_hat*u_hat_dotL[i] + v_hat*v_hat_dotL[i]
+    h_hat_dotR[i] = (gamma/gamma_1)*(p2_hat_dotR[i]/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotR[i]) +
+                      u_hat*u_hat_dotR[i] + v_hat*v_hat_dotR[i]
+  end
+                      
+
+  for j=1:2
+    mv_n = rho_hat*(dir[1, j]*u_hat + dir[2, j]*v_hat)  # normal momentum
+    F[1, j] = mv_n
+    F[2, j] = mv_n*u_hat + dir[1, j]*p1_hat
+    F[3, j] = mv_n*v_hat + dir[2, j]*p1_hat
+    F[4, j] = mv_n*h_hat
+
+    for i=1:4
+      mv_n_dotL = (dir[1, j]*u_hat + dir[2, j]*v_hat)*rho_hat_dotL[i] + 
+                  rho_hat*(dir[1, j]*u_hat_dotL[i] + dir[2, j]*v_hat_dotL[j])
+      mv_n_dotR = (dir[1, j]*u_hat + dir[2, j]*v_hat)*rho_hat_dor[i] +
+                  rho_hat*(dir[1, j]*u_hat_dotR[i] + v_hat_doR[i])
+
+      F_dotL[1, i, j] = mv_n_dotL
+      F_dotL[2, i, j] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+                        dir[1, j]*p1_hat_dotL[i]
+      F_dotL[3, i, j] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+                        dir[2, j]*p1_hat_dotL[i]
+      F_dotR[4, i, j] = h_hat*mv_n_dotL[i] + mv_n*h_hat_dotL[i]
+      
+      F_dotR[1, i, j] = mv_n_dotR
+      F_dotR[2, i, j] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+                        dir[1, j]*p1_hat_dotR[i]
+      F_dotR[3, i, j] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+                        dir[2, j]*p1_hat_dotR[i]
+      F_dotR[4, i, j] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
+      
+    end
+  end
+
+  return nothing
+end
+
+"""
+  Data needed by [`logavg_diff`](@ref)
+
+  **Static Parameters**
+
+   * Tl: datatype of left state
+   * Tr: datatype of right state
+"""
+struct LogAvgData{Tl, Tr}
+  xi_dotL::Vector{Tl}
+  xi_dotR::Vector{Tr}
+  f_dotL::Vector{Tl}
+  f_dotR::Vector{Tr}
+  u_dotL::Vector{Tl}
+  u_dotR::Vector{Tr}
+  F_dotL::Vector{Tl}
+  F_dotR::Vector{Tr}
+
+  function LogAvgData{Tl, Tr}(nd::Integer) where {Tl, Tr}
+    xi_dotL = zeros(Tl, nd)
+    xi_dotR = zeros(Tr, nd)
+    f_dotL = zeros(Tl, nd)
+    f_dotR = zeros(Tr, nd)
+    u_dotL = zeros(Tl, nd)
+    u_dotR = zeros(Tr, nd)
+    F_dotL = zeros(Tl, nd)
+    F_dotR = zeros(Tr, nd)
+
+    return new(xi_dotL, xi_dotR, f_dotL, f_dotR, u_dotL, u_dotR, F_dotL, F_dotR)
+  end
+end
+
+
+
+
+"""
+  Differentiated version of logarithmic average (forward vector mode)
+
+  **Inputs**
+
+   * aL: left state (scalar)
+   * aL_dot: vector of derivatives of aL (length arbitrary)
+   * aR: right state (scalar)
+   * aR_dot: vector of derivatives of aR (length same as aL_dot)
+
+  **Inputs/Outputs
+
+   * a_avg_dotL: d logavg/daL * aL_dot (forward mode propagation of aL_dot)
+   * a_avg_dotR: d logavg/daR * aR_dot (forward mode propagation of aR_dot)
+
+"""
+function logavg_diff(data::LogAvgData, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg_dotR)
+# calculate the logarithmic average needed by the IR flux
+  @assert length(aL_dot) == length(aR_dot)
+  nd = length(aL_dot)
+
+  # unpack args
+  @unpack data xi_dotL xi_dotR f_dotL f_dotR u_dotL u_dotR F_dotL F_dotR
+
+  xi = aL/aR
+  for i=1:nd
+    xi_dotL[i] = aL_dot[i]/aR
+    xi_dotR[i] = -aL/(aR*aR)*aR_dot[i]
+  end
+
+  f = (xi - 1)/(xi + 1)
+  f_dotxi = 2/((xi + 1)*(xi + 1))
+  for i=1:nd
+    f_dotL[i] = f_dotxi*xi_dotL[i]
+    f_dotR[i] = f_dotxi*xi_dotR[i]
+  end
+  u = f*f
+  for i=1:nd
+    u_dotL[i] = 2*f*f_dotL[i]
+    u_dotR[i] = 2*f*f_dotR[i]
+  end
+
+  eps = 1e-3
+  if u < eps
+    F = @evalpoly( u, 1, 1/3, 1/5, 1/7, 1/9)
+    F_dotu = @evalpoly(u, 1/3, 2/5, 3/7, 4/9)
+    for i=1:nd
+      F_dotL[i] = F_dotu*u_dotL[i]
+      F_dotR[i] = F_dotu*u_dotR[i]
+    end
+#    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 + u*u*u*u/9.0
+  else
+    F = (log(xi)/2.0)/f
+    for i=1:nd
+      F_dotL[i] = 1/(xi*2*f)*xi_dotL[i] + (-F/f)*f_dotL[i]
+      F_dotR[i] = 1/(xi*2*f)*xi_dotR[i] + (-F/f)*f_dotR[i]
+    end
+  end
+
+  a_avg = (aL + aR)/(2*F)
+  for i=1:nd
+    a_avg_dotL[i] = aL_dot[i]/(2*F) + -(aL + aR)/(2*F*F)*F_dotL[i]
+    a_avg_dotR[i] = aR_dot[i]/(2*F) + -(aL + aR)/(2*F*F)*F_dotR[i]
+  end
+
+  return a_avg
+end
