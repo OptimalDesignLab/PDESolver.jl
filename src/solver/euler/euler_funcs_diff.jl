@@ -345,3 +345,43 @@ function calcPressure_diff(params::ParamType{3, :conservative},
 end
 
 
+"""
+  Reverse mode of the pressure calculation
+
+  **Inputs**
+
+   * params: ParamType object
+   * q: vector of solution variables at the node (length numDofPerNode)
+   * p_bar: seed value for pressure
+
+  **Inputs/Outputs**
+
+   * q_bar: vector to be updated (not overwritten) with the result
+"""
+function calcPressure_revq(params::ParamType{2, :conservative},
+                           q::AbstractArray{Tsol, 1}, q_bar::AbstractArray{Tsol, 1},
+                           p_bar::Number) where {Tsol}
+
+  q_bar[1] +=  params.gamma_1*0.5*(q[2]*q[2] + q[3]*q[3])/(q[1]*q[1])*p_bar
+  q_bar[2] += -params.gamma_1*q[2]*p_bar/q[1]
+  q_bar[3] += -params.gamma_1*q[3]*p_bar/q[1]
+  q_bar[4] +=  params.gamma_1*p_bar
+
+  return nothing
+end
+
+
+function calcPressure_revq(params::ParamType{3, :conservative},
+                           q::AbstractArray{Tsol, 1}, q_bar::AbstractArray{Tsol, 1},
+                           p_bar::Number) where {Tsol}
+
+  q_bar[1] +=  params.gamma_1*0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])/(q[1]*q[1])*p_bar
+  q_bar[2] += -params.gamma_1*q[2]*p_bar/q[1]
+  q_bar[3] += -params.gamma_1*q[3]*p_bar/q[1]
+  q_bar[4] += -params.gamma_1*q[4]*p_bar/q[1]
+  q_bar[5] +=  params.gamma_1*p_bar
+
+  return nothing
+end
+
+

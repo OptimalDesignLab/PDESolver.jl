@@ -1389,17 +1389,11 @@ function calcEulerFlux_IR(params::ParamType{2, :conservative},
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
 
 
-  Un = dir[1]*u_hat + dir[2]*v_hat
-  F[1] = rho_hat*Un
-  F[2] = rho_hat*u_hat*Un + dir[1]*p1_hat
-  F[3] = rho_hat*v_hat*Un + dir[2]*p1_hat
-  F[4] = rho_hat*h_hat*Un
-  #=
-  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
-  F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
-  =#
+  mn = rho_hat*(dir[1]*u_hat + dir[2]*v_hat)
+  F[1] = mn
+  F[2] = u_hat*mn + dir[1]*p1_hat
+  F[3] = v_hat*mn + dir[2]*p1_hat
+  F[4] = h_hat*mn
   return nothing
 end
 
@@ -1452,12 +1446,7 @@ function calcEulerFlux_IR(params::ParamType{2, :conservative},
     F[3, i] = mv_n*v_hat + dir[2, i]*p1_hat
     F[4, i] = mv_n*h_hat
   end
-  #=
-  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
-  F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
-  =#
+
   return nothing
 end
 
@@ -1483,15 +1472,13 @@ function calcEulerFlux_IR(params::ParamType{3, :conservative},
   p1_hat = (z5L + z5R)/(z1L + z1R)
   p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z5L, z5R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
-
-  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat + dir[3]*rho_hat*w_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat +
-         dir[3]*rho_hat*u_hat*w_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat) +
-         dir[3]*rho_hat*v_hat*w_hat
-  F[4] = dir[1]*rho_hat*u_hat*w_hat + dir[2]*rho_hat*v_hat*w_hat +
-         dir[3]*(rho_hat*w_hat*w_hat + p1_hat)
-  F[5] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat + dir[3]*rho_hat*w_hat*h_hat
+  
+  mv_n = rho_hat*(dir[1]*u_hat + dir[2]*v_hat + dir[3]*w_hat)
+  F[1] = mv_n
+  F[2] = mv_n*u_hat + dir[1]*p1_hat
+  F[3] = mv_n*v_hat + dir[2]*p1_hat
+  F[4] = mv_n*w_hat + dir[3]*p1_hat
+  F[5] = mv_n*h_hat
 
   return nothing
 end

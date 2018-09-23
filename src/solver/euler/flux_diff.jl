@@ -274,6 +274,24 @@ function (obj::LFFlux_diff)(params::ParamType,
   return nothing
 end
 
+"""
+  Calls the [`calcEulerFlux_IR_diff`](@ref)
+"""
+mutable struct IRFlux_diff <: FluxType_diff
+end
+
+function (obj::IRFlux_diff)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray{Tmsh},
+              F_dotL::AbstractMatrix{Tres},
+              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
+
+  calcEulerFlux_IR_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
+
+  return nothing
+end
 
 
 mutable struct ErrorFlux_diff <: FluxType_diff
@@ -299,6 +317,7 @@ end
 global const FluxDict_diff = Dict{String, FluxType_diff}(
 "RoeFlux" => RoeFlux_diff(),
 "LFFlux" => LFFlux_diff(),
+"IRFlux" => IRFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),
 )
 

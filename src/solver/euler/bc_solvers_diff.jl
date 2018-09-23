@@ -16,8 +16,8 @@
 
   **Inputs/Outputs**
 
-   * fluxL_dot: flux jacobian wrt `q`, numDofPerNode x numDofPerNode
-   * fluxR_dot: flux jacobian wrt `qg`, numDofPerNode x numDofPerNode
+   * fluxL_dot: flux jacobian wrt `q`, numDofPerNode x numDofPerNode (overwritten)
+   * fluxR_dot: flux jacobian wrt `qg`, numDofPerNode x numDofPerNode (overwritten)
 
   Aliasing restrictions:
 
@@ -2228,178 +2228,129 @@ function calcLFFlux_diff(
   return nothing
 end
 
-"""
-  This struct holds all the temporary arrays needed to calculate the IR flux
-"""
-struct IRFluxData{Tsol}
-  pL_dot::Vector{Tsol}
-  pR_dot::Vector{Tsol}
-  z1L_dot::Vector{Tsol}
-  z2L_dot::Vector{Tsol}
-  z3L_dot::Vector{Tsol}
-  z4L_dot::Vector{Tsol}
+#------------------------------------------------------------------------------
+# IR flux differentiated
+# there are a total of 12 versions: (2d vs 3d) x (single direction vs multi
+# direction) x (forward vector mode vs reverse mode for q vs reverse mode for
+# reverse mode for nrm).
 
-  z1R_dot::Vector{Tsol}
-  z2R_dot::Vector{Tsol}
-  z3R_dot::Vector{Tsol}
-  z4R_dot::Vector{Tsol}
 
-  z4avg_dotL::Vector{Tsol}
-  z4avg_dotR::Vector{Tsol}
-  z1avg_dotL::Vector{Tsol}
-  z1avg_dotR::Vector{Tsol}
 
-  rho_hat_dotL::Vector{Tsol}
-  rho_hat_dotR::Vector{Tsol}
-  u_hat_dotL::Vector{Tsol}
-  u_hat_dotR::Vector{Tsol}
-  v_hat_dotL::Vector{Tsol}
-  v_hat_dotR::Vector{Tsol}
-  p1_hat_dotL::Vector{Tsol}
-  p1_hat_dotR::Vector{Tsol}
-  h_hat_dotL::Vector{Tsol}
-  h_hat_dotR::Vector{Tsol}
-  logdata::LogAvgData{Tsol, Tsol}
-
-  function IRFluxData{Tsol}(nd::Integer) where {Tsol}
-
-    #TODO: consider making these views of an array to get spatial locality
-    pL_dot = zeros(Tsol, nd)
-    pR_dot = zeros(Tsol, nd)
-
-    z1L_dot = zeros(Tsol, nd)
-    z2L_dot = zeros(Tsol, nd)
-    z3L_dot = zeros(Tsol, nd)
-    z4L_dot = zeros(Tsol, nd)
-
-    z1R_dot = zeros(Tsol, nd)
-    z2R_dot = zeros(Tsol, nd)
-    z3R_dot = zeros(Tsol, nd)
-    z4R_dot = zeros(Tsol, nd)
-
-    z4avg_dotL = zeros(Tsol, nd)
-    z4avg_dotR = zeros(Tsol, nd)
-    z1avg_dotL = zeros(Tsol, nd)
-    z1avg_dotR = zeros(Tsol, nd)
-
-    rho_hat_dotL = zeros(Tsol, nd)
-    rho_hat_dotR = zeros(Tsol, nd)
-    u_hat_dotL = zeros(Tsol, nd)
-    u_hat_dotR = zeros(Tsol, nd)
-    v_hat_dotL = zeros(Tsol, nd)
-    v_hat_dotR = zeros(Tsol, nd)
-    p1_hat_dotL = zeros(Tsol, nd)
-    p1_hat_dotR = zeros(Tsol, nd)
-    h_hat_dotL = zeros(Tsol, nd)
-    h_hat_dotR = zeros(Tsol, nd)
-
-    logdata = LogAvgData{Tsol, Tsol}(nd)
-
-    return new(pL_dot, pR_dot, z1L_dot, z2L_dot, z2L_dot, z4L_dot,
-               z1R_dot, z2R_dot, z3R_dot, z4R_dot,
-               z4avg_dotL, z4avg_dotR, z1avg_dotL, z1avg_dotR,
-               rho_hat_dotL, rho_hat_dotR, u_hat_dotL, u_hat_dotR,
-               v_hat_dotL, v_hat_dotR, p1_hat_dotL, p1_hat_dotR,
-               h_hat_dotL,h_hat_dotR,
-               logdata)
-  end
-end
-
+#------------------------------------------------------------------------------
+# 2D, single direction
 
 """
-  Differentiated version of the multi-dimensional version of the IR flux
+  Forward vector mode of [`calcIRFlux`](@ref), 2D, single direction version
 
   **Inputs**
 
-   * Params: ParamType
-   * qL: solution at the left node (numDofPerNode)
-   * qg: solution at the right node (numDofPerNode)
+   * params: ParamType
+   * qL: solution vector at left state
+   * qR: solutoin vector at right state
    * aux_vars
-   * nrm: mesh.dim x mesh.dim matrix of normal vectors, one per column
-   * fluxL_dot: numDofPerNode x numDofPerNode x dim, jacobian of the flux
-                with respect to q, in each direction
-   * fluxR_dot  similar to fluxR_dot, but jacobian with respect to qg
+   * nrm: normal vector at the current node, length `dim`
 
+  **Inputs/Outputs**
+  
+   * FL_dot: jacobian of the flux with respect to `qL`.
+   * FR_dot: jacobian of the flux with respect to `qR`.
 """
 function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
                    qL::AbstractArray{Tsol,1},
                    qR::AbstractArray{Tsol, 1},
                    aux_vars::AbstractArray{Tres, 1},
-                   nrm::AbstractArray{Tmsh, 2},
-                   fluxL_dot::AbstractArray{Tres, 3},
-                   fluxR_dot::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres}
+                   nrm::AbstractArray{Tmsh, 1},
+                   FL_dot::AbstractArray{Tres, 2},
+                   FR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(nrm, 1) == 2
+    @assert length(qL) == length(qR)
+    @assert length(qL) == size(FL_dot, 1)
+    @assert length(qL) == size(FL_dot, 2)
+    @assert size(FL_dot, 1) == size(FR_dot, 1)
+    @assert size(FL_dot, 2) == size(FR_dot, 2)
+  end
 
 
-  # pL_dot, pR_dot, z1L_dot - z4L_dot, same for zR
-
+  data = params.irfluxdata
+  @unpack data pL_dot pR_dot
   @unpack data z1L_dot z2L_dot z3L_dot z4L_dot z1R_dot z2R_dot z3R_dot z4R_dot
 
   gamma = params.gamma
   gamma_1 = params.gamma_1
+
+  pL = calcPressure_diff(params, qL, pL_dot)
+  pR = calcPressure_diff(params, qR, pR_dot)
+  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
+  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
   z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
-  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
-  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z2L = z1L*uL; z2R = z1R*uR
+  z3L = z1L*vL; z3R = z1R*vR
   z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
 
-  fastzero(z1L_dot); fastzero(z1R_dot)
-  fastzero(z2L_dot); fastzero(z2R_dot)
-  fastzero(z3L_dot); fastzero(z3R_dot)
-  fastzero(z4L_dot); fastzero(z4L_dot)
+  fastzero!(z1L_dot); fastzero!(z1R_dot)
+  fastzero!(z2L_dot); fastzero!(z2R_dot)
+  fastzero!(z3L_dot); fastzero!(z3R_dot)
+  fastzero!(z4L_dot); fastzero!(z4R_dot)
 
   # differentiate with respect to q (not including chain rule terms for p)
-  z1L_dot[1] = (-0.5/z1L)*1/pL; z1R_dot[1] = (-0.5/z1R)*1/pR
+  z1L_dot[1] = (0.5/z1L)*1/pL; z1R_dot[1] = (0.5/z1R)*1/pR
 
   z2L_dot[1] = -z2L/qL[1]; z2R_dot[1] = -z2R/qR[1]
   z2L_dot[2] =  z1L/qL[1]; z2R_dot[2] =  z1R/qR[1]
 
-  z3L_dot[1] = -z3L/qL[1]; z3L_dot[1] = -z3R/qR[1]
+  z3L_dot[1] = -z3L/qL[1]; z3R_dot[1] = -z3R/qR[1]
   z3L_dot[3] =  z1L/qL[1]; z3R_dot[3] =  z1R/qR[1]
 
-  z4L_dot[1] =  (-0.5/z4L)*pL; z4R_dot[1] = -(0.5/z4R)*pR
+  z4L_dot[1] =  (0.5/z4L)*pL; z4R_dot[1] = (0.5/z4R)*pR
 
   # do the pressure/z1L related terms
-  for i=1:4
-    z1L_dot[i] += (-0.5/z1L)*(-qL[1]/(pL*pL))*pL_dot[i]
-    z1R_dot[i] += (-0.5/z1R)*(-qR[1]/(pR*pR))*pR_dot[i]
+  @simd for i=1:4
+    z1L_dot[i] += (0.5/z1L)*(-qL[1]/(pL*pL))*pL_dot[i]
+    z1R_dot[i] += (0.5/z1R)*(-qR[1]/(pR*pR))*pR_dot[i]
 
-    z2L_dot[i] += (qL[2]/qL[1])*z1L_dot[i]
-    z2R_dot[i] += (qR[3]/qR[1])*z1R_dot[i]
+    z2L_dot[i] += uL*z1L_dot[i]
+    z2R_dot[i] += uR*z1R_dot[i]
 
-    z3L_dot[i] += (qL[3]/qL[1])*z1L_dot[i]
-    z3R_dot[i] += (qR[3]/qR[1])*z1R_dot[i]
+    z3L_dot[i] += vL*z1L_dot[i]
+    z3R_dot[i] += vR*z1R_dot[i]
 
-    z4L_dot[i] += (-0.5/z4L)*qL[1]*pL_dot[i]
-    z4R_dot[i] += (-0.5/z4R)*aR[1]*pR_dot[i]
+   
+    z4L_dot[i] += (0.5/z4L)*qL[1]*pL_dot[i]
+    z4R_dot[i] += (0.5/z4R)*qR[1]*pR_dot[i]
   end
 
-  @unpack data avgdata z4avg_dotL z4avg_dotR z1avg_dotL z1avg_dot
+  @unpack data avgdata z4avg_dotL z4avg_dotR z1avg_dotL z1avg_dotR
   @unpack data rho_hat_dotL rho_hat_dotR u_hat_dotL u_hat_dotR
   @unpack data v_hat_dotL v_hat_dotR p1_hat_dotL p1_hat_dotR
   @unpack data h_hat_dotL h_hat_dotR
 
   # z4avg_dotL/r, z1avg_dotL/r, rho_hat, u_hat, v_hat, p1_hat, p2_hat
-  z4avg = logavg(avgdata, z4L, z4L_dot, z4R, z4R_dot, z4avg_dotL, z4avg_dotR)
-  z1avg = logavg(avgdata, z1L, z1L_dot, z1R, z1R_dot, z1avg_dotL, z1avg_dotR)
+  z4avg = logavg_diff(avgdata, z4L, z4L_dot, z4R, z4R_dot, z4avg_dotL, z4avg_dotR)
+  z1avg = logavg_diff(avgdata, z1L, z1L_dot, z1R, z1R_dot, z1avg_dotL, z1avg_dotR)
 
+  z1 = z1L + z1R
+  z1inv = 1/z1
   rho_hat = 0.5*(z1L + z1R)*z4avg
-  u_hat = (z2L + z2R)/(z1L + z1R)
-  v_hat = (z3L + z3R)/(z1L + z1R)
-  p1_hat = (z4L + z4R)/(z1L + z1R)
+  u_hat = (z2L + z2R)*z1inv
+  v_hat = (z3L + z3R)*z1inv
+  p1_hat = (z4L + z4R)*z1inv
   p2_hat = ((gamma + 1)/(2*gamma) )*z4avg/z1avg + ( gamma_1/(2*gamma) )*p1_hat
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
 
-  for i=1:4
-    rho_hat_dotL[i] = 0.5*(z4avg*z1L_dot[i] + (z1L + z1R)*z4avg_dotL[i])
-    rho_hat_dotR[i] = 0.5*(z4avg*z1R_dot[i] + (z1L + z1R)*z4avg_dotR[i])
+  @simd for i=1:4
+    rho_hat_dotL[i] = 0.5*(z4avg*z1L_dot[i] + z1*z4avg_dotL[i])
+    rho_hat_dotR[i] = 0.5*(z4avg*z1R_dot[i] + z1*z4avg_dotR[i])
 
-    u_hat_dotL[i] = z2L_dot[i]/(z1L + z1R) - u_hat/(z1L + z1R)*z1L_dot[i]
-    u_hat_dotR[i] = z2R_dot[i]/(z1L + z1R) - u_hat/(z1L + z1R)*z1R_dot[i]
+    u_hat_dotL[i] = z2L_dot[i]*z1inv - u_hat*z1inv*z1L_dot[i]
+    u_hat_dotR[i] = z2R_dot[i]*z1inv - u_hat*z1inv*z1R_dot[i]
 
-    v_hat_dotL[i] = z3L_dot[i]/(z1L + z1R) - v_hat/(z1L + z1R)*z1L_dot[i]
-    v_hat_dotR[i] = z3R_dot[i]/(z1L + z1R) - v_hat/(z1L + z1R)*z1R_dot[i]
+    v_hat_dotL[i] = z3L_dot[i]*z1inv - v_hat*z1inv*z1L_dot[i]
+    v_hat_dotR[i] = z3R_dot[i]*z1inv - v_hat*z1inv*z1R_dot[i]
 
-    p1_hat_dotL[i] = z4L_dot[i]/(z1L + z1R) - p1_hat/(z1L + z1R)*z1L_dot[i]
-    p1_hat_dotR[i] = z4L_dot[i]/(z1L + z1R) - p1_hat/(z1L + z1R)*z1R_dot[i]
+    p1_hat_dotL[i] = z4L_dot[i]*z1inv - p1_hat*z1inv*z1L_dot[i]
+    p1_hat_dotR[i] = z4R_dot[i]*z1inv - p1_hat*z1inv*z1R_dot[i]
 
     # p2_hat is an intermediate variable for h_hat below
     p2_hat_dotL = ((gamma + 1)/(2*gamma))*(z4avg_dotL[i]/z1avg +
@@ -2409,41 +2360,427 @@ function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
                       -z4avg/(z1avg*z1avg)*z1avg_dotR[i]) +
                       ( gamma_1/(2*gamma))*p1_hat_dotR[i]
 
-    h_hat_dotL[i] = (gamma/gamma_1)*(p2_hat_dotL[i]/rho_hat +
+    h_hat_dotL[i] = (gamma/gamma_1)*(p2_hat_dotL/rho_hat +
                      -p2_hat/(rho_hat*rho_hat)*rho_hat_dotL[i]) +
                      u_hat*u_hat_dotL[i] + v_hat*v_hat_dotL[i]
-    h_hat_dotR[i] = (gamma/gamma_1)*(p2_hat_dotR[i]/rho_hat +
+    h_hat_dotR[i] = (gamma/gamma_1)*(p2_hat_dotR/rho_hat +
                      -p2_hat/(rho_hat*rho_hat)*rho_hat_dotR[i]) +
                       u_hat*u_hat_dotR[i] + v_hat*v_hat_dotR[i]
   end
-                      
+
+
+  mv_n = rho_hat*(nrm[1]*u_hat + nrm[2]*v_hat)  # normal momentum
+  #F[1, j] = mv_n
+  #F[2, j] = mv_n*u_hat + nrm[1, j]*p1_hat
+  #F[3, j] = mv_n*v_hat + nrm[2, j]*p1_hat
+  #F[4, j] = mv_n*h_hat
+
+  @simd for i=1:4
+    mv_n_dotL = (nrm[1]*u_hat + nrm[2]*v_hat)*rho_hat_dotL[i] + 
+                rho_hat*(nrm[1]*u_hat_dotL[i] + nrm[2]*v_hat_dotL[i])
+    mv_n_dotR = (nrm[1]*u_hat + nrm[2]*v_hat)*rho_hat_dotR[i] +
+                rho_hat*(nrm[1]*u_hat_dotR[i] + nrm[2]*v_hat_dotR[i])
+
+    FL_dot[1, i] = mv_n_dotL
+    FL_dot[2, i] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+                      nrm[1]*p1_hat_dotL[i]
+    FL_dot[3, i] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+                      nrm[2]*p1_hat_dotL[i]
+    FL_dot[4, i] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+    
+    FR_dot[1, i] = mv_n_dotR
+    FR_dot[2, i] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+                      nrm[1]*p1_hat_dotR[i]
+    FR_dot[3, i] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+                      nrm[2]*p1_hat_dotR[i]
+    FR_dot[4, i] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]    
+  end
+
+  return nothing
+end
+
+
+function calcEulerFlux_IR_revq(params::ParamType{2, :conservative},
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh, 1},  
+                      F_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+
+  @debug1 begin
+    @assert length(qL) == length(qL_bar)
+    @assert length(qR) == length(qR_bar)
+    @assert size(F_bar, 1) == length(qL_bar)
+    @assert size(dir, 1) == 2
+    @assert size(F_bar, 2) == size(dir, 2)
+  end
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  z4avg = logavg(z4L, z4R)
+  z1avg = logavg(z1L, z1R)
+  rho_hat = 0.5*(z1L + z1R)*z4avg
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*z4avg/z1avg + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+
+#=
+  mv_n = rho_hat*(dir[1]*u_hat + dir[2]*v_hat)  # normal momentum
+  F[1] = mv_n
+  F[2] = mv_n*u_hat + dir[1]*p1_hat
+  F[3] = mv_n*v_hat + dir[2]*p1_hat
+  F[4] = mv_n*h_hat
+=#
+  # reverse sweep
+  rho_hat_bar = zero(Tsol)
+  u_hat_bar = zero(Tsol); v_hat_bar = zero(Tsol); p1_hat_bar = zero(Tsol)
+  p2_hat_bar = zero(Tsol); h_hat_bar = zero(Tsol);
+  z4avg_bar = zero(Tsol); z1avg_bar = zero(Tsol)
+
+  z1L_bar = zero(Tsol); z2L_bar = zero(Tsol); z3L_bar = zero(Tsol); z4L_bar = zero(Tsol)
+  z1R_bar = zero(Tsol); z2R_bar = zero(Tsol); z3R_bar = zero(Tsol); z4R_bar = zero(Tsol)
+  pL_bar = zero(Tsol); pR_bar = zero(Tsol); z1avg_bar = zero(Tsol); z4avg_bar = zero(Tsol)
+
+  mv_n = rho_hat*(dir[1]*u_hat + dir[2]*v_hat)  # normal momentum
+  mv_n_bar = zero(Tres)
+
+  # F[1]
+  mv_n_bar += F_bar[1]
+
+  # F[2]
+  mv_n_bar  += u_hat*F_bar[2]
+  u_hat_bar += mv_n*F_bar[2]
+  p1_hat_bar += dir[1]*F_bar[2]
+
+  # F[3]
+  mv_n_bar += v_hat*F_bar[3]
+  v_hat_bar += mv_n*F_bar[3]
+  p1_hat_bar += dir[2]*F_bar[3]
+
+  # F[4]
+  mv_n_bar += h_hat*F_bar[4]
+  h_hat_bar += mv_n*F_bar[4]
+
+  # mv_n
+  rho_hat_bar += (dir[1]*u_hat + dir[2]*v_hat)*mv_n_bar
+  u_hat_bar += rho_hat*dir[1]*mv_n_bar
+  v_hat_bar += rho_hat*dir[2]*mv_n_bar
+
+  # h_hat
+  p2_hat_bar += gamma*h_hat_bar/(rho_hat*gamma_1)
+  rho_hat_bar += (-gamma*p2_hat/(rho_hat*rho_hat*gamma_1))*h_hat_bar
+  u_hat_bar += u_hat*h_hat_bar
+  v_hat_bar += v_hat*h_hat_bar
+
+  # p2_hat
+  p2tmp = (gamma_1/(2*gamma))*(z4L + z4R)/(z1L + z1R)
+  z4avg_bar +=  ((gamma + 1)/(2*gamma))*p2_hat_bar/z1avg
+  z1avg_bar += -(((gamma + 1)/(2*gamma))*z4avg/(z1avg*z1avg))*p2_hat_bar
+  z4L_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z4R_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z1L_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+  z1R_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+
+  # p1_hat 
+  z4L_bar += p1_hat_bar/(z1L + z1R)
+  z4R_bar += p1_hat_bar/(z1L + z1R)
+  z1L_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+  z1R_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+
+  # v_hat
+  z3L_bar += v_hat_bar/(z1L + z1R)
+  z3R_bar += v_hat_bar/(z1L + z1R)
+  z1L_bar += -v_hat/(z1L + z1R)*v_hat_bar
+  z1R_bar += -v_hat/(z1L + z1R)*v_hat_bar
+
+  # u_hat
+  z2L_bar += u_hat_bar/(z1L + z1R)
+  z2R_bar += u_hat_bar/(z1L + z1R)
+  z1L_bar += -u_hat/(z1L + z1R)*u_hat_bar
+  z1R_bar += -u_hat/(z1L + z1R)*u_hat_bar
+
+  # rho_hat
+  z1L_bar += 0.5*z4avg*rho_hat_bar
+  z1R_bar += 0.5*z4avg*rho_hat_bar
+  z4avg_bar += 0.5*(z1L + z1R)*rho_hat_bar
+
+  # log averages
+  z4L_bar_tmp, z4R_bar_tmp = logavg_rev(z4L, z4R, z4avg_bar)
+  z4L_bar += z4L_bar_tmp
+  z4R_bar += z4R_bar_tmp
+
+  z1L_bar_tmp, z1R_bar_tmp = logavg_rev(z1L, z1R, z1avg_bar)
+  z1L_bar += z1L_bar_tmp
+  z1R_bar += z1R_bar_tmp
+
+
+  # z4L/R
+  qL_bar[1] += 0.5*pL*z4L_bar/z4L; qR_bar[1] += 0.5*pR*z4R_bar/z4R
+  pL_bar += 0.5*qL[1]*z4L_bar/z4L; pR_bar += 0.5*qR[1]*z4R_bar/z4R
+
+  # z3L/R
+  qL_bar[3] +=  z1L*z3L_bar/qL[1]; qR_bar[3] +=  z1R*z3R_bar/qR[1]
+  qL_bar[1] += -z3L*z3L_bar/qL[1]; qR_bar[1] += -z3R*z3R_bar/qR[1]
+  z1L_bar   +=  qL[3]*z3L_bar/qL[1]; z1R_bar +=  qR[3]*z3R_bar/qR[1]
+
+  # z2L/R
+  # z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  qL_bar[2] +=  z1L*z2L_bar/qL[1]; qR_bar[2] +=  z1R*z2R_bar/qR[1]
+  qL_bar[1] += -z2L*z2L_bar/qL[1]; qR_bar[1] += -z2R*z2R_bar/qR[1]
+  z1L_bar   +=  qL[2]*z2L_bar/qL[1]; z1R_bar +=  qR[2]*z2R_bar/qR[1]
+
+  # z1L/R
+  qL_bar[1] += (0.5/z1L)*z1L_bar/pL;  qR_bar[1] += (0.5/z1R)*z1R_bar/pR
+  pL_bar += -(0.5/z1L)*(qL[1]/(pL*pL))*z1L_bar
+  pR_bar += -(0.5/z1R)*(qR[1]/(pR*pR))*z1R_bar
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+  calcPressure_revq(params, qR, qR_bar, pR_bar)
+
+  return nothing
+end
+
+
+function calcEulerFlux_IR_revm(params::ParamType{2, :conservative},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh, 1}, nrm_bar::AbstractArray{Tmsh, 1},
+                  F_bar::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(nrm, 1) == 2
+    @assert length(qL) == length(qR)
+    @assert length(qL) == size(F_bar, 1)
+    @assert size(nrm_bar, 1) == size(nrm, 1)
+    @assert size(F_bar, 1) == length(qL)
+  end
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z4L, z4R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z4L, z4R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+#=
+  for i=1:2
+    mv_n = rho_hat*(nrm[1]*u_hat + nrm[2]*v_hat)  # normal momentum
+    F[1] = mv_n
+    F[2] = mv_n*u_hat + nrm[1]*p1_hat
+    F[3] = mv_n*v_hat + nrm[2]*p1_hat
+    F[4] = mv_n*h_hat
+  end
+=#
+  # reverse sweep
+    mv_n = rho_hat*(nrm[1]*u_hat + nrm[2]*v_hat)  # normal momentum
+    mv_n_bar = zero(mv_n)
+
+    # F[4]
+    mv_n_bar += h_hat*F_bar[4]
+
+    # F[3]
+    mv_n_bar += v_hat*F_bar[3]
+    nrm_bar[2] += p1_hat*F_bar[3]
+
+    # F[2]
+    mv_n_bar += u_hat*F_bar[2]
+    nrm_bar[1] += p1_hat*F_bar[2]
+
+    # F[1]
+    mv_n_bar += F_bar[1]
+
+    # mv_n
+    nrm_bar[1] += rho_hat*u_hat*mv_n_bar
+    nrm_bar[2] += rho_hat*v_hat*mv_n_bar
+
+  return nothing
+end
+
+
+
+
+
+
+
+#------------------------------------------------------------------------------
+# 2D, multi-direction
+
+"""
+  Differentiated version of the multi-dimensional version of the IR flux,
+  vector forward mode.
+
+  The user is responsible for zeroing out the output arrays if needed!
+
+  **Inputs**
+
+   * Params: ParamType
+   * qL: solution at the left node (numDofPerNode)
+   * qg: solution at the right node (numDofPerNode)
+   * aux_vars
+   * nrm: mesh.dim x mesh.dim matrix of normal vectors, one per column
+   * FL_dot: numDofPerNode x numDofPerNode x dim, jacobian of the flux
+                with respect to qL, in each direction (overwritten)
+   * FR_dot  similar to FR_dot, but jacobian with respect to qR (overwritten)
+
+"""
+function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 2},
+                   FL_dot::AbstractArray{Tres, 3},
+                   FR_dot::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(nrm, 1) == 2
+    @assert size(nrm, 2) == 2
+    @assert length(qL) == length(qR)
+    @assert length(qL) == size(FL_dot, 1)
+    @assert length(qL) == size(FL_dot, 2)
+    @assert size(nrm, 2) == size(FL_dot, 3)
+    @assert size(FL_dot, 1) == size(FR_dot, 1)
+    @assert size(FL_dot, 2) == size(FR_dot, 2)
+    @assert size(FR_dot, 3) == size(FR_dot, 3)
+  end
+
+
+  data = params.irfluxdata
+  @unpack data pL_dot pR_dot
+  @unpack data z1L_dot z2L_dot z3L_dot z4L_dot z1R_dot z2R_dot z3R_dot z4R_dot
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pL = calcPressure_diff(params, qL, pL_dot)
+  pR = calcPressure_diff(params, qR, pR_dot)
+  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
+  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*uL; z2R = z1R*uR
+  z3L = z1L*vL; z3R = z1R*vR
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  fastzero!(z1L_dot); fastzero!(z1R_dot)
+  fastzero!(z2L_dot); fastzero!(z2R_dot)
+  fastzero!(z3L_dot); fastzero!(z3R_dot)
+  fastzero!(z4L_dot); fastzero!(z4R_dot)
+
+  # differentiate with respect to q (not including chain rule terms for p)
+  z1L_dot[1] = (0.5/z1L)*1/pL; z1R_dot[1] = (0.5/z1R)*1/pR
+
+  z2L_dot[1] = -z2L/qL[1]; z2R_dot[1] = -z2R/qR[1]
+  z2L_dot[2] =  z1L/qL[1]; z2R_dot[2] =  z1R/qR[1]
+
+  z3L_dot[1] = -z3L/qL[1]; z3R_dot[1] = -z3R/qR[1]
+  z3L_dot[3] =  z1L/qL[1]; z3R_dot[3] =  z1R/qR[1]
+
+  z4L_dot[1] =  (0.5/z4L)*pL; z4R_dot[1] = (0.5/z4R)*pR
+
+  # do the pressure/z1L related terms
+  @simd for i=1:4
+    z1L_dot[i] += (0.5/z1L)*(-qL[1]/(pL*pL))*pL_dot[i]
+    z1R_dot[i] += (0.5/z1R)*(-qR[1]/(pR*pR))*pR_dot[i]
+
+    z2L_dot[i] += uL*z1L_dot[i]
+    z2R_dot[i] += uR*z1R_dot[i]
+
+    z3L_dot[i] += vL*z1L_dot[i]
+    z3R_dot[i] += vR*z1R_dot[i]
+
+    z4L_dot[i] += (0.5/z4L)*qL[1]*pL_dot[i]
+    z4R_dot[i] += (0.5/z4R)*qR[1]*pR_dot[i]
+  end
+
+  @unpack data avgdata z4avg_dotL z4avg_dotR z1avg_dotL z1avg_dotR
+  @unpack data rho_hat_dotL rho_hat_dotR u_hat_dotL u_hat_dotR
+  @unpack data v_hat_dotL v_hat_dotR p1_hat_dotL p1_hat_dotR
+  @unpack data h_hat_dotL h_hat_dotR
+
+  # z4avg_dotL/r, z1avg_dotL/r, rho_hat, u_hat, v_hat, p1_hat, p2_hat
+  z4avg = logavg_diff(avgdata, z4L, z4L_dot, z4R, z4R_dot, z4avg_dotL, z4avg_dotR)
+  z1avg = logavg_diff(avgdata, z1L, z1L_dot, z1R, z1R_dot, z1avg_dotL, z1avg_dotR)
+
+  z1 = z1L + z1R
+  z1inv = 1/z1
+  rho_hat = 0.5*(z1L + z1R)*z4avg
+  u_hat = (z2L + z2R)*z1inv
+  v_hat = (z3L + z3R)*z1inv
+  p1_hat = (z4L + z4R)*z1inv
+  p2_hat = ((gamma + 1)/(2*gamma) )*z4avg/z1avg + ( gamma_1/(2*gamma) )*p1_hat
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+
+  @simd for i=1:4
+    rho_hat_dotL[i] = 0.5*(z4avg*z1L_dot[i] + z1*z4avg_dotL[i])
+    rho_hat_dotR[i] = 0.5*(z4avg*z1R_dot[i] + z1*z4avg_dotR[i])
+
+    u_hat_dotL[i] = z2L_dot[i]*z1inv - u_hat*z1inv*z1L_dot[i]
+    u_hat_dotR[i] = z2R_dot[i]*z1inv - u_hat*z1inv*z1R_dot[i]
+
+    v_hat_dotL[i] = z3L_dot[i]*z1inv - v_hat*z1inv*z1L_dot[i]
+    v_hat_dotR[i] = z3R_dot[i]*z1inv - v_hat*z1inv*z1R_dot[i]
+
+    p1_hat_dotL[i] = z4L_dot[i]*z1inv - p1_hat*z1inv*z1L_dot[i]
+    p1_hat_dotR[i] = z4R_dot[i]*z1inv - p1_hat*z1inv*z1R_dot[i]
+
+    # p2_hat is an intermediate variable for h_hat below
+    p2_hat_dotL = ((gamma + 1)/(2*gamma))*(z4avg_dotL[i]/z1avg +
+                      -z4avg/(z1avg*z1avg)*z1avg_dotL[i]) + 
+                      ( gamma_1/(2*gamma))*p1_hat_dotL[i]
+    p2_hat_dotR = ((gamma + 1)/(2*gamma))*(z4avg_dotR[i]/z1avg +
+                      -z4avg/(z1avg*z1avg)*z1avg_dotR[i]) +
+                      ( gamma_1/(2*gamma))*p1_hat_dotR[i]
+
+    h_hat_dotL[i] = (gamma/gamma_1)*(p2_hat_dotL/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotL[i]) +
+                     u_hat*u_hat_dotL[i] + v_hat*v_hat_dotL[i]
+    h_hat_dotR[i] = (gamma/gamma_1)*(p2_hat_dotR/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotR[i]) +
+                      u_hat*u_hat_dotR[i] + v_hat*v_hat_dotR[i]
+  end
+
 
   for j=1:2
-    mv_n = rho_hat*(dir[1, j]*u_hat + dir[2, j]*v_hat)  # normal momentum
-    F[1, j] = mv_n
-    F[2, j] = mv_n*u_hat + dir[1, j]*p1_hat
-    F[3, j] = mv_n*v_hat + dir[2, j]*p1_hat
-    F[4, j] = mv_n*h_hat
+    mv_n = rho_hat*(nrm[1, j]*u_hat + nrm[2, j]*v_hat)  # normal momentum
+    #F[1, j] = mv_n
+    #F[2, j] = mv_n*u_hat + nrm[1, j]*p1_hat
+    #F[3, j] = mv_n*v_hat + nrm[2, j]*p1_hat
+    #F[4, j] = mv_n*h_hat
 
-    for i=1:4
-      mv_n_dotL = (dir[1, j]*u_hat + dir[2, j]*v_hat)*rho_hat_dotL[i] + 
-                  rho_hat*(dir[1, j]*u_hat_dotL[i] + dir[2, j]*v_hat_dotL[j])
-      mv_n_dotR = (dir[1, j]*u_hat + dir[2, j]*v_hat)*rho_hat_dor[i] +
-                  rho_hat*(dir[1, j]*u_hat_dotR[i] + v_hat_doR[i])
+    @simd for i=1:4
+      mv_n_dotL = (nrm[1, j]*u_hat + nrm[2, j]*v_hat)*rho_hat_dotL[i] + 
+                  rho_hat*(nrm[1, j]*u_hat_dotL[i] + nrm[2, j]*v_hat_dotL[i])
+      mv_n_dotR = (nrm[1, j]*u_hat + nrm[2, j]*v_hat)*rho_hat_dotR[i] +
+                  rho_hat*(nrm[1, j]*u_hat_dotR[i] + nrm[2, j]*v_hat_dotR[i])
 
-      F_dotL[1, i, j] = mv_n_dotL
-      F_dotL[2, i, j] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
-                        dir[1, j]*p1_hat_dotL[i]
-      F_dotL[3, i, j] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
-                        dir[2, j]*p1_hat_dotL[i]
-      F_dotR[4, i, j] = h_hat*mv_n_dotL[i] + mv_n*h_hat_dotL[i]
+      FL_dot[1, i, j] = mv_n_dotL
+      FL_dot[2, i, j] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+                        nrm[1, j]*p1_hat_dotL[i]
+      FL_dot[3, i, j] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+                        nrm[2, j]*p1_hat_dotL[i]
+      FL_dot[4, i, j] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
       
-      F_dotR[1, i, j] = mv_n_dotR
-      F_dotR[2, i, j] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
-                        dir[1, j]*p1_hat_dotR[i]
-      F_dotR[3, i, j] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
-                        dir[2, j]*p1_hat_dotR[i]
-      F_dotR[4, i, j] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
+      FR_dot[1, i, j] = mv_n_dotR
+      FR_dot[2, i, j] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+                        nrm[1, j]*p1_hat_dotR[i]
+      FR_dot[3, i, j] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+                        nrm[2, j]*p1_hat_dotR[i]
+      FR_dot[4, i, j] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
       
     end
   end
@@ -2452,39 +2789,1117 @@ function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
 end
 
 """
-  Data needed by [`logavg_diff`](@ref)
+  Reverse mode of IR flux with respect to q
 
-  **Static Parameters**
+  **Inputs**
 
-   * Tl: datatype of left state
-   * Tr: datatype of right state
+   * params: ParamType
+   * qL: solution at the left state
+   * qR: solution at the right state
+   * aux_vars
+   * dir: `dim` x `dim` array of normal vectors, one per column
+   * F_bar: `numDofPerNode` x `dim` seed vector for the flux
+
+  **Inputs/Outputs**
+
+   * qL_bar: vector to sum the result for the left state into (not overwritten)
+   * qR_bar: vector to sum the result for the right state into (not overwritten)
 """
-struct LogAvgData{Tl, Tr}
-  xi_dotL::Vector{Tl}
-  xi_dotR::Vector{Tr}
-  f_dotL::Vector{Tl}
-  f_dotR::Vector{Tr}
-  u_dotL::Vector{Tl}
-  u_dotR::Vector{Tr}
-  F_dotL::Vector{Tl}
-  F_dotR::Vector{Tr}
+function calcEulerFlux_IR_revq(params::ParamType{2, :conservative},
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh, 2},  
+                      F_bar::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
 
-  function LogAvgData{Tl, Tr}(nd::Integer) where {Tl, Tr}
-    xi_dotL = zeros(Tl, nd)
-    xi_dotR = zeros(Tr, nd)
-    f_dotL = zeros(Tl, nd)
-    f_dotR = zeros(Tr, nd)
-    u_dotL = zeros(Tl, nd)
-    u_dotR = zeros(Tr, nd)
-    F_dotL = zeros(Tl, nd)
-    F_dotR = zeros(Tr, nd)
 
-    return new(xi_dotL, xi_dotR, f_dotL, f_dotR, u_dotL, u_dotR, F_dotL, F_dotR)
+  @debug1 begin
+    @assert length(qL) == length(qL_bar)
+    @assert length(qR) == length(qR_bar)
+    @assert size(F_bar, 1) == length(qL_bar)
+    @assert size(dir, 1) == 2
+    @assert size(F_bar, 2) == size(dir, 2)
   end
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  z4avg = logavg(z4L, z4R)
+  z1avg = logavg(z1L, z1R)
+  rho_hat = 0.5*(z1L + z1R)*z4avg
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*z4avg/z1avg + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+
+#=
+  for i=1:2
+    mv_n = rho_hat*(dir[1, i]*u_hat + dir[2, i]*v_hat)  # normal momentum
+    F[1, i] = mv_n
+    F[2, i] = mv_n*u_hat + dir[1, i]*p1_hat
+    F[3, i] = mv_n*v_hat + dir[2, i]*p1_hat
+    F[4, i] = mv_n*h_hat
+  end
+=#
+  # reverse sweep
+  rho_hat_bar = zero(Tsol)
+  u_hat_bar = zero(Tsol); v_hat_bar = zero(Tsol); p1_hat_bar = zero(Tsol)
+  p2_hat_bar = zero(Tsol); h_hat_bar = zero(Tsol);
+  z4avg_bar = zero(Tsol); z1avg_bar = zero(Tsol)
+
+  z1L_bar = zero(Tsol); z2L_bar = zero(Tsol); z3L_bar = zero(Tsol); z4L_bar = zero(Tsol)
+  z1R_bar = zero(Tsol); z2R_bar = zero(Tsol); z3R_bar = zero(Tsol); z4R_bar = zero(Tsol)
+  pL_bar = zero(Tsol); pR_bar = zero(Tsol); z1avg_bar = zero(Tsol); z4avg_bar = zero(Tsol)
+
+  for i=1:2
+    mv_n = rho_hat*(dir[1, i]*u_hat + dir[2, i]*v_hat)  # normal momentum
+    mv_n_bar = zero(Tres)
+
+    # F[1, i]
+    mv_n_bar += F_bar[1, i]
+
+    # F[2, i]
+    mv_n_bar  += u_hat*F_bar[2, i]
+    u_hat_bar += mv_n*F_bar[2, i]
+    p1_hat_bar += dir[1, i]*F_bar[2, i]
+
+    # F[3, i]
+    mv_n_bar += v_hat*F_bar[3, i]
+    v_hat_bar += mv_n*F_bar[3, i]
+    p1_hat_bar += dir[2, i]*F_bar[3, i]
+
+    # F[4, i]
+    mv_n_bar += h_hat*F_bar[4, i]
+    h_hat_bar += mv_n*F_bar[4, i]
+
+    # mv_n
+    rho_hat_bar += (dir[1, i]*u_hat + dir[2, i]*v_hat)*mv_n_bar
+    u_hat_bar += rho_hat*dir[1, i]*mv_n_bar
+    v_hat_bar += rho_hat*dir[2, i]*mv_n_bar
+  end
+
+  # h_hat
+  p2_hat_bar += gamma*h_hat_bar/(rho_hat*gamma_1)
+  rho_hat_bar += (-gamma*p2_hat/(rho_hat*rho_hat*gamma_1))*h_hat_bar
+  u_hat_bar += u_hat*h_hat_bar
+  v_hat_bar += v_hat*h_hat_bar
+
+  # p2_hat
+  p2tmp = (gamma_1/(2*gamma))*(z4L + z4R)/(z1L + z1R)
+  z4avg_bar +=  ((gamma + 1)/(2*gamma))*p2_hat_bar/z1avg
+  z1avg_bar += -(((gamma + 1)/(2*gamma))*z4avg/(z1avg*z1avg))*p2_hat_bar
+  z4L_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z4R_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z1L_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+  z1R_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+
+  # p1_hat 
+  z4L_bar += p1_hat_bar/(z1L + z1R)
+  z4R_bar += p1_hat_bar/(z1L + z1R)
+  z1L_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+  z1R_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+
+  # v_hat
+  z3L_bar += v_hat_bar/(z1L + z1R)
+  z3R_bar += v_hat_bar/(z1L + z1R)
+  z1L_bar += -v_hat/(z1L + z1R)*v_hat_bar
+  z1R_bar += -v_hat/(z1L + z1R)*v_hat_bar
+
+  # u_hat
+  z2L_bar += u_hat_bar/(z1L + z1R)
+  z2R_bar += u_hat_bar/(z1L + z1R)
+  z1L_bar += -u_hat/(z1L + z1R)*u_hat_bar
+  z1R_bar += -u_hat/(z1L + z1R)*u_hat_bar
+
+  # rho_hat
+  z1L_bar += 0.5*z4avg*rho_hat_bar
+  z1R_bar += 0.5*z4avg*rho_hat_bar
+  z4avg_bar += 0.5*(z1L + z1R)*rho_hat_bar
+
+  # log averages
+  z4L_bar_tmp, z4R_bar_tmp = logavg_rev(z4L, z4R, z4avg_bar)
+  z4L_bar += z4L_bar_tmp
+  z4R_bar += z4R_bar_tmp
+
+  z1L_bar_tmp, z1R_bar_tmp = logavg_rev(z1L, z1R, z1avg_bar)
+  z1L_bar += z1L_bar_tmp
+  z1R_bar += z1R_bar_tmp
+
+
+  # z4L/R
+  qL_bar[1] += 0.5*pL*z4L_bar/z4L; qR_bar[1] += 0.5*pR*z4R_bar/z4R
+  pL_bar += 0.5*qL[1]*z4L_bar/z4L; pR_bar += 0.5*qR[1]*z4R_bar/z4R
+
+  # z3L/R
+  qL_bar[3] +=  z1L*z3L_bar/qL[1]; qR_bar[3] +=  z1R*z3R_bar/qR[1]
+  qL_bar[1] += -z3L*z3L_bar/qL[1]; qR_bar[1] += -z3R*z3R_bar/qR[1]
+  z1L_bar   +=  qL[3]*z3L_bar/qL[1]; z1R_bar +=  qR[3]*z3R_bar/qR[1]
+
+  # z2L/R
+  # z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  qL_bar[2] +=  z1L*z2L_bar/qL[1]; qR_bar[2] +=  z1R*z2R_bar/qR[1]
+  qL_bar[1] += -z2L*z2L_bar/qL[1]; qR_bar[1] += -z2R*z2R_bar/qR[1]
+  z1L_bar   +=  qL[2]*z2L_bar/qL[1]; z1R_bar +=  qR[2]*z2R_bar/qR[1]
+
+  # z1L/R
+  qL_bar[1] += (0.5/z1L)*z1L_bar/pL;  qR_bar[1] += (0.5/z1R)*z1R_bar/pR
+  pL_bar += -(0.5/z1L)*(qL[1]/(pL*pL))*z1L_bar
+  pR_bar += -(0.5/z1R)*(qR[1]/(pR*pR))*z1R_bar
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+  calcPressure_revq(params, qR, qR_bar, pR_bar)
+
+  return nothing
+end
+
+
+"""
+  Reverse mode of [`calcIRFLux`](@ref) with respect to the normal vector.
+
+  **Inputs**
+
+   * params: ParamType
+   * qL: solution at the left state
+   * qR: solution at the right state
+   * aux_vars
+   * nrm: `dim` x `dim array of normal vectors, one per column
+   * F_bar: seed vector for the flux, `numDofPerNode` x `dim`
+
+  **Inputs**
+
+   * nrm_bar: array, same size as `nrm` to sum the result into (not overwritten)
+
+"""
+function calcEulerFlux_IR_revm(params::ParamType{2, :conservative},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh, 2}, nrm_bar::AbstractArray{Tmsh, 2},
+                  F_bar::AbstractArray{Tres,2}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(F_bar, 1) == length(qL)
+    @assert size(nrm, 1) == 2
+    @assert size(nrm, 2) == 2
+    @assert size(nrm_bar, 1) == size(nrm_bar, 2)
+    @assert size(nrm_bar, 2) == size(nrm_bar, 2)
+    @assert size(F_bar, 2) == size(nrm, 2)
+  end
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = sqrt(qL[1]*pL); z4R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z4L, z4R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  p1_hat = (z4L + z4R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z4L, z4R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z4L + z4R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
+#=
+  for i=1:2
+    mv_n = rho_hat*(nrm[1, i]*u_hat + nrm[2, i]*v_hat)  # normal momentum
+    F[1, i] = mv_n
+    F[2, i] = mv_n*u_hat + nrm[1, i]*p1_hat
+    F[3, i] = mv_n*v_hat + nrm[2, i]*p1_hat
+    F[4, i] = mv_n*h_hat
+  end
+=#
+  # reverse sweep
+  for i=1:2
+    mv_n = rho_hat*(nrm[1, i]*u_hat + nrm[2, i]*v_hat)  # normal momentum
+    mv_n_bar = zero(mv_n)
+
+    # F[4, i]
+    mv_n_bar += h_hat*F_bar[4, i]
+
+    # F[3, i]
+    mv_n_bar += v_hat*F_bar[3, i]
+    nrm_bar[2, i] += p1_hat*F_bar[3, i]
+
+    # F[2, i]
+    mv_n_bar += u_hat*F_bar[2, i]
+    nrm_bar[1, i] += p1_hat*F_bar[2, i]
+
+    # F[1, i]
+    mv_n_bar += F_bar[1, i]
+
+    # mv_n
+    nrm_bar[1, i] += rho_hat*u_hat*mv_n_bar
+    nrm_bar[2, i] += rho_hat*v_hat*mv_n_bar
+  end
+
+  return nothing
 end
 
 
 
+#------------------------------------------------------------------------------
+# 3D, single direction
+
+"""
+  3D, single direction version
+"""
+function calcEulerFlux_IR_diff(params::ParamType{3, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 1},
+                   FL_dot::AbstractArray{Tres, 2},
+                   FR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(nrm, 1) == 3
+    @assert length(qL) == length(qR)
+    @assert length(qL) == size(FL_dot, 1)
+    @assert length(qL) == size(FL_dot, 2)
+    @assert size(nrm, 1) == 3
+    @assert size(FL_dot, 1) == size(FR_dot, 1)
+    @assert size(FL_dot, 2) == size(FR_dot, 2)
+  end
+
+  data = params.irfluxdata
+  @unpack data pL_dot pR_dot
+  @unpack data z1L_dot z2L_dot z3L_dot z4L_dot z5L_dot
+  @unpack data z1R_dot z2R_dot z3R_dot z4R_dot z5R_dot
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pL = calcPressure_diff(params, qL, pL_dot)
+  pR = calcPressure_diff(params, qR, pR_dot)
+  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
+  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
+  wL = qL[4]/qL[1]; wR = qR[4]/qR[1]
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*uL; z2R = z1R*uR
+  z3L = z1L*vL; z3R = z1R*vR
+  z4L = z1L*wL; z4R = z1R*wR
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  fastzero!(z1L_dot); fastzero!(z1R_dot)
+  fastzero!(z2L_dot); fastzero!(z2R_dot)
+  fastzero!(z3L_dot); fastzero!(z3R_dot)
+  fastzero!(z4L_dot); fastzero!(z4R_dot)
+  fastzero!(z5L_dot); fastzero!(z5R_dot)
+
+  # differentiate with respect to q (not including chain rule terms for p)
+  z1L_dot[1] = (0.5/z1L)*1/pL; z1R_dot[1] = (0.5/z1R)*1/pR
+
+  z2L_dot[1] = -z2L/qL[1]; z2R_dot[1] = -z2R/qR[1]
+  z2L_dot[2] =  z1L/qL[1]; z2R_dot[2] =  z1R/qR[1]
+
+  z3L_dot[1] = -z3L/qL[1]; z3R_dot[1] = -z3R/qR[1]
+  z3L_dot[3] =  z1L/qL[1]; z3R_dot[3] =  z1R/qR[1]
+
+  z4L_dot[1] = -z4L/qL[1]; z4R_dot[1] = -z4R/qR[1]
+  z4L_dot[4] =  z1L/qL[1]; z4R_dot[4] =  z1R/qR[1]
+
+  z5L_dot[1] =  (0.5/z5L)*pL; z5R_dot[1] = (0.5/z5R)*pR
+
+  # do the pressure/z1L related terms
+  @simd for i=1:5
+    z1L_dot[i] += (0.5/z1L)*(-qL[1]/(pL*pL))*pL_dot[i]
+    z1R_dot[i] += (0.5/z1R)*(-qR[1]/(pR*pR))*pR_dot[i]
+
+    z2L_dot[i] += uL*z1L_dot[i]
+    z2R_dot[i] += uR*z1R_dot[i]
+
+    z3L_dot[i] += vL*z1L_dot[i]
+    z3R_dot[i] += vR*z1R_dot[i]
+
+    z4L_dot[i] += wL*z1L_dot[i]
+    z4R_dot[i] += wR*z1R_dot[i]
+
+    z5L_dot[i] += (0.5/z5L)*qL[1]*pL_dot[i]
+    z5R_dot[i] += (0.5/z5R)*qR[1]*pR_dot[i]
+  end
+
+  @unpack data avgdata z5avg_dotL z5avg_dotR z1avg_dotL z1avg_dotR
+  @unpack data rho_hat_dotL rho_hat_dotR u_hat_dotL u_hat_dotR
+  @unpack data v_hat_dotL v_hat_dotR w_hat_dotL w_hat_dotR 
+  @unpack data p1_hat_dotL p1_hat_dotR h_hat_dotL h_hat_dotR
+
+  # z4avg_dotL/r, z1avg_dotL/r, rho_hat, u_hat, v_hat, p1_hat, p2_hat
+  z5avg = logavg_diff(avgdata, z5L, z5L_dot, z5R, z5R_dot, z5avg_dotL, z5avg_dotR)
+  z1avg = logavg_diff(avgdata, z1L, z1L_dot, z1R, z1R_dot, z1avg_dotL, z1avg_dotR)
+
+  z1 = z1L + z1R
+  z1inv = 1/z1
+  rho_hat = 0.5*(z1L + z1R)*z5avg
+  u_hat = (z2L + z2R)*z1inv
+  v_hat = (z3L + z3R)*z1inv
+  w_hat = (z4L + z4R)*z1inv
+  p1_hat = (z5L + z5R)*z1inv
+  p2_hat = ((gamma + 1)/(2*gamma) )*z5avg/z1avg + ( gamma_1/(2*gamma) )*p1_hat
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+  @simd for i=1:5
+    rho_hat_dotL[i] = 0.5*(z5avg*z1L_dot[i] + z1*z5avg_dotL[i])
+    rho_hat_dotR[i] = 0.5*(z5avg*z1R_dot[i] + z1*z5avg_dotR[i])
+
+    u_hat_dotL[i] = z2L_dot[i]*z1inv - u_hat*z1inv*z1L_dot[i]
+    u_hat_dotR[i] = z2R_dot[i]*z1inv - u_hat*z1inv*z1R_dot[i]
+
+    v_hat_dotL[i] = z3L_dot[i]*z1inv - v_hat*z1inv*z1L_dot[i]
+    v_hat_dotR[i] = z3R_dot[i]*z1inv - v_hat*z1inv*z1R_dot[i]
+
+    w_hat_dotL[i] = z4L_dot[i]*z1inv - w_hat*z1inv*z1L_dot[i]
+    w_hat_dotR[i] = z4R_dot[i]*z1inv - w_hat*z1inv*z1R_dot[i]
+
+    p1_hat_dotL[i] = z5L_dot[i]*z1inv - p1_hat*z1inv*z1L_dot[i]
+    p1_hat_dotR[i] = z5R_dot[i]*z1inv - p1_hat*z1inv*z1R_dot[i]
+
+    # p2_hat is an intermediate variable for h_hat below
+    p2_hat_dotL = ((gamma + 1)/(2*gamma))*(z5avg_dotL[i]/z1avg +
+                      -z5avg/(z1avg*z1avg)*z1avg_dotL[i]) + 
+                      ( gamma_1/(2*gamma))*p1_hat_dotL[i]
+    p2_hat_dotR = ((gamma + 1)/(2*gamma))*(z5avg_dotR[i]/z1avg +
+                      -z5avg/(z1avg*z1avg)*z1avg_dotR[i]) +
+                      ( gamma_1/(2*gamma))*p1_hat_dotR[i]
+
+    h_hat_dotL[i] = (gamma/gamma_1)*(p2_hat_dotL/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotL[i]) +
+                    u_hat*u_hat_dotL[i] + v_hat*v_hat_dotL[i] +
+                    w_hat*w_hat_dotL[i]
+    h_hat_dotR[i] = (gamma/gamma_1)*(p2_hat_dotR/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotR[i]) +
+                      u_hat*u_hat_dotR[i] + v_hat*v_hat_dotR[i] + 
+                      w_hat*w_hat_dotR[i]
+  end
+
+  nx = nrm[1]; ny = nrm[2]; nz = nrm[3]
+  mv_n = rho_hat*(nx*u_hat + ny*v_hat + nz*w_hat)  # normal momentum
+  #F[1] = mv_n
+  #F[2] = mv_n*u_hat + nx*p1_hat
+  #F[3] = mv_n*v_hat + ny*p1_hat
+  #F[4] = mv_n*h_hat
+
+  @simd for i=1:5
+    mv_n_dotL = (nx*u_hat + ny*v_hat + nz*w_hat)*rho_hat_dotL[i] + 
+                rho_hat*(nx*u_hat_dotL[i] + ny*v_hat_dotL[i] +
+                         nz*w_hat_dotL[i])
+    mv_n_dotR = (nx*u_hat + ny*v_hat + nz*w_hat)*rho_hat_dotR[i] +
+                rho_hat*(nx*u_hat_dotR[i] + ny*v_hat_dotR[i] +
+                         nz*w_hat_dotR[i])
+
+    FL_dot[1, i] = mv_n_dotL
+    FL_dot[2, i] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+                       nx*p1_hat_dotL[i]
+    FL_dot[3, i] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+                       ny*p1_hat_dotL[i]
+    FL_dot[4, i] = w_hat*mv_n_dotL + mv_n*w_hat_dotL[i] +
+                       nz*p1_hat_dotL[i]
+    FL_dot[5, i] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+    
+    FR_dot[1, i] = mv_n_dotR
+    FR_dot[2, i] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+                       nx*p1_hat_dotR[i]
+    FR_dot[3, i] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+                       ny*p1_hat_dotR[i]
+    FR_dot[4, i] = w_hat*mv_n_dotR + mv_n*w_hat_dotR[i] +
+                       nz*p1_hat_dotR[i]
+    FR_dot[5, i] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]    
+  end
+
+  return nothing
+end
+
+
+"""
+  3D, single direction version
+"""
+function calcEulerFlux_IR_revq(params::ParamType{3, :conservative},
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh, 1},  
+                      F_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+
+  @debug1 begin
+    @assert length(qL) == length(qL_bar)
+    @assert length(qR) == length(qR_bar)
+    @assert size(F_bar, 1) == length(qL_bar)
+    @assert size(dir, 1) == 3
+  end
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = z1L*qL[4]/qL[1]; z4R = z1R*qR[4]/qR[1]
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  z5avg = logavg(z5L, z5R)
+  z1avg = logavg(z1L, z1R)
+  rho_hat = 0.5*(z1L + z1R)*z5avg
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  w_hat = (z4L + z4R)/(z1L + z1R)
+  p1_hat = (z5L + z5R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*z5avg/z1avg + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+#=
+    mv_n = rho_hat*(dir[1]*u_hat + dir[2]*v_hat)  # normal momentum
+    F[1] = mv_n
+    F[2] = mv_n*u_hat + dir[1]*p1_hat
+    F[3] = mv_n*v_hat + dir[2]*p1_hat
+    F[4] = mv_n*w_hat + dir[3]*p1_hat
+    F[4] = mv_n*h_hat
+=#
+  # reverse sweep
+  rho_hat_bar = zero(Tsol)
+  u_hat_bar = zero(Tsol); v_hat_bar = zero(Tsol); w_hat_bar = zero(Tsol)
+  p1_hat_bar = zero(Tsol); p2_hat_bar = zero(Tsol); h_hat_bar = zero(Tsol);
+  z5avg_bar = zero(Tsol); z1avg_bar = zero(Tsol)
+
+  z1L_bar = zero(Tsol); z2L_bar = zero(Tsol); z3L_bar = zero(Tsol);
+  z4L_bar = zero(Tsol); z5L_bar = zero(Tsol)
+  z1R_bar = zero(Tsol); z2R_bar = zero(Tsol); z3R_bar = zero(Tsol);
+  z4R_bar = zero(Tsol); z5R_bar = zero(Tsol)
+  pL_bar = zero(Tsol); pR_bar = zero(Tsol); z1avg_bar = zero(Tsol); z5avg_bar = zero(Tsol)
+
+  # normal momentum
+  mv_n = rho_hat*(dir[1]*u_hat + dir[2]*v_hat + dir[3]*w_hat)
+  mv_n_bar = zero(Tres)
+
+  # F[1]
+  mv_n_bar += F_bar[1]
+
+  # F[2]
+  mv_n_bar  += u_hat*F_bar[2]
+  u_hat_bar += mv_n*F_bar[2]
+  p1_hat_bar += dir[1]*F_bar[2]
+
+  # F[3]
+  mv_n_bar += v_hat*F_bar[3]
+  v_hat_bar += mv_n*F_bar[3]
+  p1_hat_bar += dir[2]*F_bar[3]
+
+  # F[4]
+  mv_n_bar += w_hat*F_bar[4]
+  w_hat_bar += mv_n*F_bar[4]
+  p1_hat_bar += dir[3]*F_bar[4]
+
+  # F[5]
+  mv_n_bar += h_hat*F_bar[5]
+  h_hat_bar += mv_n*F_bar[5]
+
+  # mv_n
+  rho_hat_bar += (dir[1]*u_hat + dir[2]*v_hat + dir[3]*w_hat)*mv_n_bar
+  u_hat_bar += rho_hat*dir[1]*mv_n_bar
+  v_hat_bar += rho_hat*dir[2]*mv_n_bar
+  w_hat_bar += rho_hat*dir[3]*mv_n_bar
+
+  # h_hat
+  p2_hat_bar += gamma*h_hat_bar/(rho_hat*gamma_1)
+  rho_hat_bar += (-gamma*p2_hat/(rho_hat*rho_hat*gamma_1))*h_hat_bar
+  u_hat_bar += u_hat*h_hat_bar
+  v_hat_bar += v_hat*h_hat_bar
+  w_hat_bar += w_hat*h_hat_bar
+
+  # p2_hat
+  p2tmp = (gamma_1/(2*gamma))*(z5L + z5R)/(z1L + z1R)
+  z5avg_bar +=  ((gamma + 1)/(2*gamma))*p2_hat_bar/z1avg
+  z1avg_bar += -(((gamma + 1)/(2*gamma))*z5avg/(z1avg*z1avg))*p2_hat_bar
+  z5L_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z5R_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z1L_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+  z1R_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+
+  # p1_hat 
+  z5L_bar += p1_hat_bar/(z1L + z1R)
+  z5R_bar += p1_hat_bar/(z1L + z1R)
+  z1L_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+  z1R_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+
+  # w_hat
+  z4L_bar += w_hat_bar/(z1L + z1R)
+  z4R_bar += w_hat_bar/(z1L + z1R)
+  z1L_bar += -w_hat/(z1L + z1R)*w_hat_bar
+  z1R_bar += -w_hat/(z1L + z1R)*w_hat_bar
+
+  # v_hat
+  z3L_bar += v_hat_bar/(z1L + z1R)
+  z3R_bar += v_hat_bar/(z1L + z1R)
+  z1L_bar += -v_hat/(z1L + z1R)*v_hat_bar
+  z1R_bar += -v_hat/(z1L + z1R)*v_hat_bar
+
+  # u_hat
+  z2L_bar += u_hat_bar/(z1L + z1R)
+  z2R_bar += u_hat_bar/(z1L + z1R)
+  z1L_bar += -u_hat/(z1L + z1R)*u_hat_bar
+  z1R_bar += -u_hat/(z1L + z1R)*u_hat_bar
+
+  # rho_hat
+  z1L_bar += 0.5*z5avg*rho_hat_bar
+  z1R_bar += 0.5*z5avg*rho_hat_bar
+  z5avg_bar += 0.5*(z1L + z1R)*rho_hat_bar
+
+  # log averages
+  z5L_bar_tmp, z5R_bar_tmp = logavg_rev(z5L, z5R, z5avg_bar)
+  z5L_bar += z5L_bar_tmp
+  z5R_bar += z5R_bar_tmp
+
+  z1L_bar_tmp, z1R_bar_tmp = logavg_rev(z1L, z1R, z1avg_bar)
+  z1L_bar += z1L_bar_tmp
+  z1R_bar += z1R_bar_tmp
+
+
+  # z5L/R
+  qL_bar[1] += 0.5*pL*z5L_bar/z5L; qR_bar[1] += 0.5*pR*z5R_bar/z5R
+  pL_bar += 0.5*qL[1]*z5L_bar/z5L; pR_bar += 0.5*qR[1]*z5R_bar/z5R
+
+  # z4L/R
+  qL_bar[4] +=  z1L*z4L_bar/qL[1]; qR_bar[4] +=  z1R*z4R_bar/qR[1]
+  qL_bar[1] += -z4L*z4L_bar/qL[1]; qR_bar[1] += -z4R*z4R_bar/qR[1]
+  z1L_bar   +=  qL[4]*z4L_bar/qL[1]; z1R_bar +=  qR[4]*z4R_bar/qR[1]
+
+
+  # z3L/R
+  qL_bar[3] +=  z1L*z3L_bar/qL[1]; qR_bar[3] +=  z1R*z3R_bar/qR[1]
+  qL_bar[1] += -z3L*z3L_bar/qL[1]; qR_bar[1] += -z3R*z3R_bar/qR[1]
+  z1L_bar   +=  qL[3]*z3L_bar/qL[1]; z1R_bar +=  qR[3]*z3R_bar/qR[1]
+
+  # z2L/R
+  qL_bar[2] +=  z1L*z2L_bar/qL[1]; qR_bar[2] +=  z1R*z2R_bar/qR[1]
+  qL_bar[1] += -z2L*z2L_bar/qL[1]; qR_bar[1] += -z2R*z2R_bar/qR[1]
+  z1L_bar   +=  qL[2]*z2L_bar/qL[1]; z1R_bar +=  qR[2]*z2R_bar/qR[1]
+
+  # z1L/R
+  qL_bar[1] += (0.5/z1L)*z1L_bar/pL;  qR_bar[1] += (0.5/z1R)*z1R_bar/pR
+  pL_bar += -(0.5/z1L)*(qL[1]/(pL*pL))*z1L_bar
+  pR_bar += -(0.5/z1R)*(qR[1]/(pR*pR))*z1R_bar
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+  calcPressure_revq(params, qR, qR_bar, pR_bar)
+
+  return nothing
+end
+
+
+"""
+  3D, single direction version
+"""
+function calcEulerFlux_IR_revm(params::ParamType{3, :conservative},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh, 1}, nrm_bar::AbstractArray{Tmsh, 1},
+                  F_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+  @debug1 begin
+    @assert length(qL) == length(qR)
+    @assert size(F_bar, 1) == length(qL)
+    @assert size(nrm, 1) == 3
+    @assert size(nrm_bar, 1) == size(nrm, 1)
+  end
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = z1L*qL[4]/qL[1]; z4R = z1R*qR[4]/qR[1]
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z5L, z5R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  w_hat = (z4L + z4R)/(z1L + z1R)
+  p1_hat = (z5L + z5R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z5L, z5R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+#=
+  mv_n = rho_hat*(nrm[1]*u_hat + nrm[2]*v_hat + nrm[3]*w_hat)  # normal momentum
+  F[1] = mv_n
+  F[2] = mv_n*u_hat + nrm[1]*p1_hat
+  F[3] = mv_n*v_hat + nrm[2]*p1_hat
+  F[4] = mv_n*w_hat + nrm[3]*p1_hat
+  F[5] = mv_n*h_hat
+=#
+  # reverse sweep
+    mv_n = rho_hat*(nrm[1]*u_hat + nrm[2]*v_hat + nrm[3]*w_hat)  # normal momentum
+    mv_n_bar = zero(mv_n)
+
+    # F[5]
+    mv_n_bar += h_hat*F_bar[5]
+
+    # F[4]
+    mv_n_bar += w_hat*F_bar[4]
+    nrm_bar[3] += p1_hat*F_bar[4]
+
+    # F[3]
+    mv_n_bar += v_hat*F_bar[3]
+    nrm_bar[2] += p1_hat*F_bar[3]
+
+    # F[2]
+    mv_n_bar += u_hat*F_bar[2]
+    nrm_bar[1] += p1_hat*F_bar[2]
+
+    # F[1]
+    mv_n_bar += F_bar[1]
+
+    # mv_n
+    nrm_bar[1] += rho_hat*u_hat*mv_n_bar
+    nrm_bar[2] += rho_hat*v_hat*mv_n_bar
+    nrm_bar[3] += rho_hat*w_hat*mv_n_bar
+
+  return nothing
+end
+
+
+
+#------------------------------------------------------------------------------
+# 3D, multi direction
+
+"""
+  3D, multi direction version
+"""
+function calcEulerFlux_IR_diff(params::ParamType{3, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 2},
+                   FL_dot::AbstractArray{Tres, 3},
+                   FR_dot::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(nrm, 1) == 3
+    @assert size(nrm, 2) == 3
+    @assert length(qL) == length(qR)
+    @assert length(qL) == size(FL_dot, 1)
+    @assert length(qL) == size(FL_dot, 2)
+    @assert size(nrm, 2) == size(FL_dot, 3)
+    @assert size(FL_dot, 1) == size(FR_dot, 1)
+    @assert size(FL_dot, 2) == size(FR_dot, 2)
+    @assert size(FR_dot, 3) == size(FR_dot, 3)
+  end
+
+  data = params.irfluxdata
+  @unpack data pL_dot pR_dot
+  @unpack data z1L_dot z2L_dot z3L_dot z4L_dot z5L_dot
+  @unpack data z1R_dot z2R_dot z3R_dot z4R_dot z5R_dot
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  pL = calcPressure_diff(params, qL, pL_dot)
+  pR = calcPressure_diff(params, qR, pR_dot)
+  uL = qL[2]/qL[1]; uR = qR[2]/qR[1]
+  vL = qL[3]/qL[1]; vR = qR[3]/qR[1]
+  wL = qL[4]/qL[1]; wR = qR[4]/qR[1]
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*uL; z2R = z1R*uR
+  z3L = z1L*vL; z3R = z1R*vR
+  z4L = z1L*wL; z4R = z1R*wR
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  fastzero!(z1L_dot); fastzero!(z1R_dot)
+  fastzero!(z2L_dot); fastzero!(z2R_dot)
+  fastzero!(z3L_dot); fastzero!(z3R_dot)
+  fastzero!(z4L_dot); fastzero!(z4R_dot)
+  fastzero!(z5L_dot); fastzero!(z5R_dot)
+
+  # differentiate with respect to q (not including chain rule terms for p)
+  z1L_dot[1] = (0.5/z1L)*1/pL; z1R_dot[1] = (0.5/z1R)*1/pR
+
+  z2L_dot[1] = -z2L/qL[1]; z2R_dot[1] = -z2R/qR[1]
+  z2L_dot[2] =  z1L/qL[1]; z2R_dot[2] =  z1R/qR[1]
+
+  z3L_dot[1] = -z3L/qL[1]; z3R_dot[1] = -z3R/qR[1]
+  z3L_dot[3] =  z1L/qL[1]; z3R_dot[3] =  z1R/qR[1]
+
+  z4L_dot[1] = -z4L/qL[1]; z4R_dot[1] = -z4R/qR[1]
+  z4L_dot[4] =  z1L/qL[1]; z4R_dot[4] =  z1R/qR[1]
+
+  z5L_dot[1] =  (0.5/z5L)*pL; z5R_dot[1] = (0.5/z5R)*pR
+
+  # do the pressure/z1L related terms
+  @simd for i=1:5
+    z1L_dot[i] += (0.5/z1L)*(-qL[1]/(pL*pL))*pL_dot[i]
+    z1R_dot[i] += (0.5/z1R)*(-qR[1]/(pR*pR))*pR_dot[i]
+
+    z2L_dot[i] += uL*z1L_dot[i]
+    z2R_dot[i] += uR*z1R_dot[i]
+
+    z3L_dot[i] += vL*z1L_dot[i]
+    z3R_dot[i] += vR*z1R_dot[i]
+
+    z4L_dot[i] += wL*z1L_dot[i]
+    z4R_dot[i] += wR*z1R_dot[i]
+
+    z5L_dot[i] += (0.5/z5L)*qL[1]*pL_dot[i]
+    z5R_dot[i] += (0.5/z5R)*qR[1]*pR_dot[i]
+  end
+
+  @unpack data avgdata z5avg_dotL z5avg_dotR z1avg_dotL z1avg_dotR
+  @unpack data rho_hat_dotL rho_hat_dotR u_hat_dotL u_hat_dotR
+  @unpack data v_hat_dotL v_hat_dotR w_hat_dotL w_hat_dotR 
+  @unpack data p1_hat_dotL p1_hat_dotR h_hat_dotL h_hat_dotR
+
+  # z4avg_dotL/r, z1avg_dotL/r, rho_hat, u_hat, v_hat, p1_hat, p2_hat
+  z5avg = logavg_diff(avgdata, z5L, z5L_dot, z5R, z5R_dot, z5avg_dotL, z5avg_dotR)
+  z1avg = logavg_diff(avgdata, z1L, z1L_dot, z1R, z1R_dot, z1avg_dotL, z1avg_dotR)
+
+  z1 = z1L + z1R
+  z1inv = 1/z1
+  rho_hat = 0.5*(z1L + z1R)*z5avg
+  u_hat = (z2L + z2R)*z1inv
+  v_hat = (z3L + z3R)*z1inv
+  w_hat = (z4L + z4R)*z1inv
+  p1_hat = (z5L + z5R)*z1inv
+  p2_hat = ((gamma + 1)/(2*gamma) )*z5avg/z1avg + ( gamma_1/(2*gamma) )*p1_hat
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+  @simd for i=1:5
+    rho_hat_dotL[i] = 0.5*(z5avg*z1L_dot[i] + z1*z5avg_dotL[i])
+    rho_hat_dotR[i] = 0.5*(z5avg*z1R_dot[i] + z1*z5avg_dotR[i])
+
+    u_hat_dotL[i] = z2L_dot[i]*z1inv - u_hat*z1inv*z1L_dot[i]
+    u_hat_dotR[i] = z2R_dot[i]*z1inv - u_hat*z1inv*z1R_dot[i]
+
+    v_hat_dotL[i] = z3L_dot[i]*z1inv - v_hat*z1inv*z1L_dot[i]
+    v_hat_dotR[i] = z3R_dot[i]*z1inv - v_hat*z1inv*z1R_dot[i]
+
+    w_hat_dotL[i] = z4L_dot[i]*z1inv - w_hat*z1inv*z1L_dot[i]
+    w_hat_dotR[i] = z4R_dot[i]*z1inv - w_hat*z1inv*z1R_dot[i]
+
+    p1_hat_dotL[i] = z5L_dot[i]*z1inv - p1_hat*z1inv*z1L_dot[i]
+    p1_hat_dotR[i] = z5R_dot[i]*z1inv - p1_hat*z1inv*z1R_dot[i]
+
+    # p2_hat is an intermediate variable for h_hat below
+    p2_hat_dotL = ((gamma + 1)/(2*gamma))*(z5avg_dotL[i]/z1avg +
+                      -z5avg/(z1avg*z1avg)*z1avg_dotL[i]) + 
+                      ( gamma_1/(2*gamma))*p1_hat_dotL[i]
+    p2_hat_dotR = ((gamma + 1)/(2*gamma))*(z5avg_dotR[i]/z1avg +
+                      -z5avg/(z1avg*z1avg)*z1avg_dotR[i]) +
+                      ( gamma_1/(2*gamma))*p1_hat_dotR[i]
+
+    h_hat_dotL[i] = (gamma/gamma_1)*(p2_hat_dotL/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotL[i]) +
+                    u_hat*u_hat_dotL[i] + v_hat*v_hat_dotL[i] +
+                    w_hat*w_hat_dotL[i]
+    h_hat_dotR[i] = (gamma/gamma_1)*(p2_hat_dotR/rho_hat +
+                     -p2_hat/(rho_hat*rho_hat)*rho_hat_dotR[i]) +
+                      u_hat*u_hat_dotR[i] + v_hat*v_hat_dotR[i] + 
+                      w_hat*w_hat_dotR[i]
+  end
+
+  for j=1:3
+    nx = nrm[1, j]; ny = nrm[2, j]; nz = nrm[3, j]
+    mv_n = rho_hat*(nx*u_hat + ny*v_hat + nz*w_hat)  # normal momentum
+    #F[1, j] = mv_n
+    #F[2, j] = mv_n*u_hat + nx*p1_hat
+    #F[3, j] = mv_n*v_hat + ny*p1_hat
+    #F[4, j] = mv_n*h_hat
+
+    @simd for i=1:5
+      mv_n_dotL = (nx*u_hat + ny*v_hat + nz*w_hat)*rho_hat_dotL[i] + 
+                  rho_hat*(nx*u_hat_dotL[i] + ny*v_hat_dotL[i] +
+                           nz*w_hat_dotL[i])
+      mv_n_dotR = (nx*u_hat + ny*v_hat + nz*w_hat)*rho_hat_dotR[i] +
+                  rho_hat*(nx*u_hat_dotR[i] + ny*v_hat_dotR[i] +
+                           nz*w_hat_dotR[i])
+
+      FL_dot[1, i, j] = mv_n_dotL
+      FL_dot[2, i, j] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+                         nx*p1_hat_dotL[i]
+      FL_dot[3, i, j] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+                         ny*p1_hat_dotL[i]
+      FL_dot[4, i, j] = w_hat*mv_n_dotL + mv_n*w_hat_dotL[i] +
+                         nz*p1_hat_dotL[i]
+      FL_dot[5, i, j] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+      
+      FR_dot[1, i, j] = mv_n_dotR
+      FR_dot[2, i, j] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+                         nx*p1_hat_dotR[i]
+      FR_dot[3, i, j] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+                         ny*p1_hat_dotR[i]
+      FR_dot[4, i, j] = w_hat*mv_n_dotR + mv_n*w_hat_dotR[i] +
+                         nz*p1_hat_dotR[i]
+      FR_dot[5, i, j] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
+      
+    end
+  end
+
+  return nothing
+end
+
+"""
+  3D, multi direction version
+"""
+function calcEulerFlux_IR_revq(params::ParamType{3, :conservative},
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh, 2},  
+                      F_bar::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
+
+
+  @debug1 begin
+    @assert length(qL) == length(qL_bar)
+    @assert length(qR) == length(qR_bar)
+    @assert size(F_bar, 1) == length(qL_bar)
+    @assert size(dir, 1) == 3
+    @assert size(F_bar, 2) == size(dir, 2)
+  end
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = z1L*qL[4]/qL[1]; z4R = z1R*qR[4]/qR[1]
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  z5avg = logavg(z5L, z5R)
+  z1avg = logavg(z1L, z1R)
+  rho_hat = 0.5*(z1L + z1R)*z5avg
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  w_hat = (z4L + z4R)/(z1L + z1R)
+  p1_hat = (z5L + z5R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*z5avg/z1avg + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+#=
+  for i=1:2
+    mv_n = rho_hat*(dir[1, i]*u_hat + dir[2, i]*v_hat)  # normal momentum
+    F[1, i] = mv_n
+    F[2, i] = mv_n*u_hat + dir[1, i]*p1_hat
+    F[3, i] = mv_n*v_hat + dir[2, i]*p1_hat
+    F[4, i] = mv_n*h_hat
+  end
+=#
+  # reverse sweep
+  rho_hat_bar = zero(Tsol)
+  u_hat_bar = zero(Tsol); v_hat_bar = zero(Tsol); w_hat_bar = zero(Tsol)
+  p1_hat_bar = zero(Tsol); p2_hat_bar = zero(Tsol); h_hat_bar = zero(Tsol);
+  z5avg_bar = zero(Tsol); z1avg_bar = zero(Tsol)
+
+  z1L_bar = zero(Tsol); z2L_bar = zero(Tsol); z3L_bar = zero(Tsol);
+  z4L_bar = zero(Tsol); z5L_bar = zero(Tsol)
+  z1R_bar = zero(Tsol); z2R_bar = zero(Tsol); z3R_bar = zero(Tsol);
+  z4R_bar = zero(Tsol); z5R_bar = zero(Tsol)
+  pL_bar = zero(Tsol); pR_bar = zero(Tsol); z1avg_bar = zero(Tsol); z5avg_bar = zero(Tsol)
+
+  for i=1:3
+    mv_n = rho_hat*(dir[1, i]*u_hat + dir[2, i]*v_hat + dir[3, i]*w_hat)  # normal momentum
+    mv_n_bar = zero(Tres)
+
+    # F[1, i]
+    mv_n_bar += F_bar[1, i]
+
+    # F[2, i]
+    mv_n_bar  += u_hat*F_bar[2, i]
+    u_hat_bar += mv_n*F_bar[2, i]
+    p1_hat_bar += dir[1, i]*F_bar[2, i]
+
+    # F[3, i]
+    mv_n_bar += v_hat*F_bar[3, i]
+    v_hat_bar += mv_n*F_bar[3, i]
+    p1_hat_bar += dir[2, i]*F_bar[3, i]
+
+    # F[4, i]
+    mv_n_bar += w_hat*F_bar[4, i]
+    w_hat_bar += mv_n*F_bar[4, i]
+    p1_hat_bar += dir[3, i]*F_bar[4, i]
+
+    # F[5, i]
+    mv_n_bar += h_hat*F_bar[5, i]
+    h_hat_bar += mv_n*F_bar[5, i]
+
+    # mv_n
+    rho_hat_bar += (dir[1, i]*u_hat + dir[2, i]*v_hat + dir[3, i]*w_hat)*mv_n_bar
+    u_hat_bar += rho_hat*dir[1, i]*mv_n_bar
+    v_hat_bar += rho_hat*dir[2, i]*mv_n_bar
+    w_hat_bar += rho_hat*dir[3, i]*mv_n_bar
+  end
+
+  # h_hat
+  p2_hat_bar += gamma*h_hat_bar/(rho_hat*gamma_1)
+  rho_hat_bar += (-gamma*p2_hat/(rho_hat*rho_hat*gamma_1))*h_hat_bar
+  u_hat_bar += u_hat*h_hat_bar
+  v_hat_bar += v_hat*h_hat_bar
+  w_hat_bar += w_hat*h_hat_bar
+
+  # p2_hat
+  p2tmp = (gamma_1/(2*gamma))*(z5L + z5R)/(z1L + z1R)
+  z5avg_bar +=  ((gamma + 1)/(2*gamma))*p2_hat_bar/z1avg
+  z1avg_bar += -(((gamma + 1)/(2*gamma))*z5avg/(z1avg*z1avg))*p2_hat_bar
+  z5L_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z5R_bar += (gamma_1/(2*gamma))*p2_hat_bar/(z1L + z1R)
+  z1L_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+  z1R_bar += -p2tmp/(z1L + z1R)*p2_hat_bar
+
+  # p1_hat 
+  z5L_bar += p1_hat_bar/(z1L + z1R)
+  z5R_bar += p1_hat_bar/(z1L + z1R)
+  z1L_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+  z1R_bar += -p1_hat/(z1L + z1R)*p1_hat_bar
+
+  # w_hat
+  z4L_bar += w_hat_bar/(z1L + z1R)
+  z4R_bar += w_hat_bar/(z1L + z1R)
+  z1L_bar += -w_hat/(z1L + z1R)*w_hat_bar
+  z1R_bar += -w_hat/(z1L + z1R)*w_hat_bar
+
+  # v_hat
+  z3L_bar += v_hat_bar/(z1L + z1R)
+  z3R_bar += v_hat_bar/(z1L + z1R)
+  z1L_bar += -v_hat/(z1L + z1R)*v_hat_bar
+  z1R_bar += -v_hat/(z1L + z1R)*v_hat_bar
+
+  # u_hat
+  z2L_bar += u_hat_bar/(z1L + z1R)
+  z2R_bar += u_hat_bar/(z1L + z1R)
+  z1L_bar += -u_hat/(z1L + z1R)*u_hat_bar
+  z1R_bar += -u_hat/(z1L + z1R)*u_hat_bar
+
+  # rho_hat
+  z1L_bar += 0.5*z5avg*rho_hat_bar
+  z1R_bar += 0.5*z5avg*rho_hat_bar
+  z5avg_bar += 0.5*(z1L + z1R)*rho_hat_bar
+
+  # log averages
+  z5L_bar_tmp, z5R_bar_tmp = logavg_rev(z5L, z5R, z5avg_bar)
+  z5L_bar += z5L_bar_tmp
+  z5R_bar += z5R_bar_tmp
+
+  z1L_bar_tmp, z1R_bar_tmp = logavg_rev(z1L, z1R, z1avg_bar)
+  z1L_bar += z1L_bar_tmp
+  z1R_bar += z1R_bar_tmp
+
+
+  # z5L/R
+  qL_bar[1] += 0.5*pL*z5L_bar/z5L; qR_bar[1] += 0.5*pR*z5R_bar/z5R
+  pL_bar += 0.5*qL[1]*z5L_bar/z5L; pR_bar += 0.5*qR[1]*z5R_bar/z5R
+
+  # z4L/R
+  qL_bar[4] +=  z1L*z4L_bar/qL[1]; qR_bar[4] +=  z1R*z4R_bar/qR[1]
+  qL_bar[1] += -z4L*z4L_bar/qL[1]; qR_bar[1] += -z4R*z4R_bar/qR[1]
+  z1L_bar   +=  qL[4]*z4L_bar/qL[1]; z1R_bar +=  qR[4]*z4R_bar/qR[1]
+
+
+  # z3L/R
+  qL_bar[3] +=  z1L*z3L_bar/qL[1]; qR_bar[3] +=  z1R*z3R_bar/qR[1]
+  qL_bar[1] += -z3L*z3L_bar/qL[1]; qR_bar[1] += -z3R*z3R_bar/qR[1]
+  z1L_bar   +=  qL[3]*z3L_bar/qL[1]; z1R_bar +=  qR[3]*z3R_bar/qR[1]
+
+  # z2L/R
+  qL_bar[2] +=  z1L*z2L_bar/qL[1]; qR_bar[2] +=  z1R*z2R_bar/qR[1]
+  qL_bar[1] += -z2L*z2L_bar/qL[1]; qR_bar[1] += -z2R*z2R_bar/qR[1]
+  z1L_bar   +=  qL[2]*z2L_bar/qL[1]; z1R_bar +=  qR[2]*z2R_bar/qR[1]
+
+  # z1L/R
+  qL_bar[1] += (0.5/z1L)*z1L_bar/pL;  qR_bar[1] += (0.5/z1R)*z1R_bar/pR
+  pL_bar += -(0.5/z1L)*(qL[1]/(pL*pL))*z1L_bar
+  pR_bar += -(0.5/z1R)*(qR[1]/(pR*pR))*z1R_bar
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+  calcPressure_revq(params, qR, qR_bar, pR_bar)
+
+  return nothing
+end
+
+
+"""
+  3D, multi direction version
+"""
+function calcEulerFlux_IR_revm(params::ParamType{3, :conservative},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh, 2}, nrm_bar::AbstractArray{Tmsh, 2},
+                  F_bar::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres}
+
+  @debug1 begin
+    @assert size(F_bar, 1) == length(qL)
+    @assert size(nrm, 1) == 3
+    @assert size(nrm, 2) == 3
+    @assert size(nrm_bar, 1) == size(nrm_bar, 2)
+    @assert size(nrm_bar, 2) == size(nrm_bar, 2)
+    @assert size(F_bar, 2) == size(nrm, 2)
+  end
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  z1L = sqrt(qL[1]/pL); z1R = sqrt(qR[1]/pR)
+  z2L = z1L*qL[2]/qL[1]; z2R = z1R*qR[2]/qR[1]
+  z3L = z1L*qL[3]/qL[1]; z3R = z1R*qR[3]/qR[1]
+  z4L = z1L*qL[4]/qL[1]; z4R = z1R*qR[4]/qR[1]
+  z5L = sqrt(qL[1]*pL); z5R = sqrt(qR[1]*pR)
+
+  rho_hat = 0.5*(z1L + z1R)*logavg(z5L, z5R)
+  u_hat = (z2L + z2R)/(z1L + z1R)
+  v_hat = (z3L + z3R)/(z1L + z1R)
+  w_hat = (z4L + z4R)/(z1L + z1R)
+  p1_hat = (z5L + z5R)/(z1L + z1R)
+  p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z5L, z5R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
+  h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
+
+#=
+  for i=1:3
+    mv_n = rho_hat*(nrm[1, i]*u_hat + nrm[2, i]*v_hat + nrm[3, i]*w_hat)  # normal momentum
+    F[1, i] = mv_n
+    F[2, i] = mv_n*u_hat + nrm[1, i]*p1_hat
+    F[3, i] = mv_n*v_hat + nrm[2, i]*p1_hat
+    F[4, i] = mv_n*w_hat + nrm[3, i]*p1_hat
+    F[5, i] = mv_n*h_hat
+  end
+=#
+  # reverse sweep
+  for i=1:3
+    mv_n = rho_hat*(nrm[1, i]*u_hat + nrm[2, i]*v_hat + nrm[3, i]*w_hat)  # normal momentum
+    mv_n_bar = zero(mv_n)
+
+    # F[5, i]
+    mv_n_bar += h_hat*F_bar[5, i]
+
+    # F[4, i]
+    mv_n_bar += w_hat*F_bar[4, i]
+    nrm_bar[3, i] += p1_hat*F_bar[4, i]
+
+    # F[3, i]
+    mv_n_bar += v_hat*F_bar[3, i]
+    nrm_bar[2, i] += p1_hat*F_bar[3, i]
+
+    # F[2, i]
+    mv_n_bar += u_hat*F_bar[2, i]
+    nrm_bar[1, i] += p1_hat*F_bar[2, i]
+
+    # F[1, i]
+    mv_n_bar += F_bar[1, i]
+
+    # mv_n
+    nrm_bar[1, i] += rho_hat*u_hat*mv_n_bar
+    nrm_bar[2, i] += rho_hat*v_hat*mv_n_bar
+    nrm_bar[3, i] += rho_hat*w_hat*mv_n_bar
+  end
+
+  return nothing
+end
+
+
+
+
+#------------------------------------------------------------------------------
+# log average (needed by IR flux)
 
 """
   Differentiated version of logarithmic average (forward vector mode)
@@ -2508,7 +3923,14 @@ function logavg_diff(data::LogAvgData, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg
   nd = length(aL_dot)
 
   # unpack args
-  @unpack data xi_dotL xi_dotR f_dotL f_dotR u_dotL u_dotR F_dotL F_dotR
+  xi_dotL = data.xi_dotL
+  xi_dotR = data.xi_dotR
+  f_dotL = data.f_dotL
+  f_dotR = data.f_dotR
+  u_dotL = data.u_dotL
+  u_dotR = data.u_dotR
+  F_dotL = data.F_dotL
+  F_dotR = data.F_dotR
 
   xi = aL/aR
   for i=1:nd
@@ -2553,3 +3975,60 @@ function logavg_diff(data::LogAvgData, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg
 
   return a_avg
 end
+
+
+"""
+  Reverse mode of [`logavg`](@ref)
+
+  **Inputs**
+
+   * aL: left variable (scalar)
+   * aR: right variable (scalar)
+   * a_avg_bar: seed value for the log average
+
+  **Outputs**
+
+   * aL_bar: adjoint part of aL
+   * aR_bar: adjoint part of aR
+"""
+function logavg_rev(aL, aR, a_avg_bar)
+  xi = aL/aR
+  f = (xi - 1)/(xi + 1)
+  u = f*f
+  eps = 1e-3
+  if u < eps
+    F = @evalpoly( u, 1, 1/3, 1/5, 1/7, 1/9)
+#    F = 1.0 + u/3.0 + u*u/5.0 + u*u*u/7.0 + u*u*u*u/9.0
+  else
+    F = (log(xi)/2.0)/f
+  end
+
+  a_avg = (aL + aR)/(2*F)
+
+  # reverse sweep
+  aL_bar = zero(aL); aR_bar = zero(aR)
+  F_bar = zero(F); u_bar = zero(u); f_bar = zero(F); xi_bar = zero(xi)
+
+  # a_avg
+  aL_bar += a_avg_bar/(2*F)
+  aR_bar += a_avg_bar/(2*F)
+  F_bar += -(a_avg/F)*a_avg_bar
+
+  # F
+  if u < eps
+    F_dotu = @evalpoly(u, 1/3, 2/5, 3/7, 4/9)
+    u_bar += F_dotu*F_bar
+  else
+    xi_bar += F_bar/(2*xi*f)
+    f_bar += -(F/f)*F_bar
+  end
+
+  f_bar += 2*f*u_bar
+  xi_bar += 2/( (xi + 1)*(xi + 1) )*f_bar
+  aL_bar += xi_bar/aR
+  aR_bar += -xi*xi_bar/aR
+
+  return aL_bar, aR_bar
+end
+
+

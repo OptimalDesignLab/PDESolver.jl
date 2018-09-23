@@ -867,6 +867,20 @@ function (obj::RoeFlux)(params::ParamType,
   return nothing
 end
 
+mutable struct RoeFlux_revm <: FluxType_revm
+end
+
+function (obj::RoeFlux_revm)(params::ParamType,
+              uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
+              nrm::AbstractVector{Tmsh},
+              flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1}) where {Tsol, Tres, Tmsh}
+
+  RoeSolver_revm(params, uL, uR, aux_vars, nrm, flux_bar, nrm_bar)
+
+  return nothing
+end
+
+
 """
   Calls [`calcEulerFlux_standard`](@ref)
 """
@@ -935,6 +949,40 @@ function (obj::IRFlux)(params::ParamType,
 end
 
 """
+  calls [`calcEulerFlux_IR_revm`](@ref)
+"""
+mutable struct IRFlux_revm <: FluxType_revm
+end
+
+function (obj::IRFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcEulerFlux_IR_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+  return nothing
+end
+
+mutable struct IRFlux_revq <: FluxType_revq
+end
+
+function (obj::IRFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcEulerFlux_IR_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, dir,
+                        F_bar)
+
+  return nothing
+end
+
+
+
+"""
   Calls [`calcEulerFlux_IRSLF`](@ref)
 """
 mutable struct IRSLFFlux <: FluxType
@@ -1001,21 +1049,10 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
-mutable struct RoeFlux_revm <: FluxType_revm
-end
-
-function (obj::RoeFlux_revm)(params::ParamType,
-              uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
-              nrm::AbstractVector{Tmsh},
-              flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1}) where {Tsol, Tres, Tmsh}
-
-  RoeSolver_revm(params, uL, uR, aux_vars, nrm, flux_bar, nrm_bar)
-
-  return nothing
-end
 
 global const FluxDict_revm = Dict{String, FluxType_revm}(
 "RoeFlux" => RoeFlux_revm(),
+"IRFlux" => IRFlux_revm(),
 )
 
 function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
@@ -1025,5 +1062,28 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   return nothing
 end # End function getFluxFunctors_revm
+
+
+global const FluxDict_revq = Dict{String, FluxType_revq}(
+"IRFlux" => IRFlux_revq(),
+)
+
+"""
+  Populates the fields of [`EulerData`](@ref) that take [`FluxType_revq`](@ref)s
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+"""
+function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  name = opts["Flux_name"]
+  eqn.flux_func_bar = FluxDict_revq[name]
+
+  return nothing
+end # End function getFluxFunctors_revq
 
 
