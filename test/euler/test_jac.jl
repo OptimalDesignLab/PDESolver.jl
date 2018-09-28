@@ -337,6 +337,12 @@ function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
   @test isapprox( maximum(abs.(res - res2)), 0.0) atol=1e-14
+
+  # test that res2 is summed into
+  res2_orig = copy(res2)
+  EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
+
+  @test maximum(abs.(res2 - 2*res2_orig)) < 1e-14
 end
 
 function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
@@ -413,7 +419,6 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
                        func, func_diff, output=false) where Tdim
 
   # compute jacobian with complex step and AD, compare results
-
   numDofPerNode = length(qL)
 
   aux_vars = Complex128[0.0]
@@ -469,7 +474,13 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
   @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-14
   @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-14
 
+  # test resL,R are summed into
+  resL2_orig = copy(resL2)
+  resR2_orig = copy(resR2)
+  func_diff(params, qL, qR, aux_vars, nrm, resL2, resR2)
 
+  @test maximum(abs.(resL2 - 2*resL2_orig)) < 1e-14
+  @test maximum(abs.(resR2 - 2*resR2_orig)) < 1e-14
 
   return nothing
 end
@@ -521,6 +532,14 @@ function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
 
     @test abs(val - val_c) < 1e-13
 
+    # test qL_bar is summed into
+    qL_bar_orig = copy(qL_bar)
+    qR_bar_orig = copy(qR_bar)
+    func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
+
+    @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-13
+    @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-13
+
     fill!(qL_bar, 0.0); fill!(qR_bar, 0.0)
   end
 
@@ -554,6 +573,15 @@ function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
       val = sum(qL_bar.*qL_dot) + sum(qR_bar.*qR_dot)
 
       @test abs(val_c - val) < 1e-13
+
+      # test qL_bar is summed into
+      qL_bar_orig = copy(qL_bar)
+      qR_bar_orig = copy(qR_bar)
+      func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm2, F_bar)
+
+      @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-13
+      @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-13
+
       fill!(qL_bar, 0.0); fill!(qR_bar, 0.0)
     end
   end
@@ -601,6 +629,13 @@ function test_2flux_revm(params::AbstractParamType{Tdim}, qL, qR, nrm,
     val = sum(nrm_bar.*nrm_dot)
 
     @test abs(val - val_c) < 1e-14
+
+    # test nrm_bar is summed into
+    nrm_bar_orig = copy(nrm_bar)
+    func_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+    @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
+
     fill!(nrm_bar, 0.0)
   end
 
@@ -629,6 +664,14 @@ function test_2flux_revm(params::AbstractParamType{Tdim}, qL, qR, nrm,
       val = sum(nrm2_bar.*nrm2_dot)
 
       @test abs(val - val_c) < 1e-13
+
+      # test nrm_bar is summed into
+      nrm_bar_orig = copy(nrm2_bar)
+      func_revm(params, qL, qR, aux_vars, nrm2, nrm2_bar, F_bar)
+
+      @test maximum(abs.(nrm2_bar - 2*nrm_bar_orig)) < 1e-13
+
+
       fill!(nrm2_bar, 0.0)
     end
   end
@@ -809,14 +852,12 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
 
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
-  println(STDERR, "calculating regular jacobian"); flush(STDERR)
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
   println("calculating explicit jacobian"); flush(STDOUT)
-  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
 
   evalJacobian(mesh, sbp, eqn, opts, assembler)
 
@@ -913,13 +954,11 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
-  println(STDERR, "calculating regular jacobian"); flush(STDERR)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
   println("calculating explicit jacobian"); flush(STDOUT)
-  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
 
   
   evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)

@@ -31,6 +31,7 @@ function calcVolumeIntegrals_nopre_diff(
   nrm = eqn.params.nrm  # vector in parametric direction
 
   for i=1:mesh.numEl
+    fill!(flux_jac, 0)
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
@@ -113,6 +114,7 @@ function calcVolumeIntegralsStrong_nopre_diff(
   nrm = eqn.params.nrm  # vector in parametric direction
 
   for i=1:mesh.numEl
+    fill!(flux_jac, 0)
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
@@ -164,6 +166,8 @@ end  # end function
   Computes the jacobian of [`calcEulerFlux`](@ref) with respect to `q`.
   Methods are available for 2D and 3D
 
+  The caller must zero out the output array (if required)
+
   **Inputs**
 
    * params: ParamType, conservative variables only
@@ -173,7 +177,7 @@ end  # end function
 
   **Inputs/Outputs**
 
-   * Fjac: flux jacobian, numDofPerNode x numDofPerNode
+   * Fjac: flux jacobian, numDofPerNode x numDofPerNode, summed into
 
   Aliasing restrictions: params.p_dot is overwritten
 """
@@ -205,25 +209,25 @@ function calcEulerFlux_diff(params::ParamType{2, :conservative},
   # F[2] = q[2]*U + dir[1]*press
   # F[3] = q[3]*U + dir[2]*press
   # F[4] = (q[4] + press)*U
-  Fjac[1, 1] = U + q[1]*U_dot1
-  Fjac[2, 1] =     q[2]*U_dot1 + dir[1]*p_dot[1]
-  Fjac[3, 1] =     q[3]*U_dot1 + dir[2]*p_dot[1]
-  Fjac[4, 1] =     q[4]*U_dot1 + press*U_dot1 + U*p_dot[1]
+  Fjac[1, 1] += U + q[1]*U_dot1
+  Fjac[2, 1] +=     q[2]*U_dot1 + dir[1]*p_dot[1]
+  Fjac[3, 1] +=     q[3]*U_dot1 + dir[2]*p_dot[1]
+  Fjac[4, 1] +=     q[4]*U_dot1 + press*U_dot1 + U*p_dot[1]
 
-  Fjac[1, 2] =     q[1]*U_dot2
-  Fjac[2, 2] = U + q[2]*U_dot2 + dir[1]*p_dot[2]
-  Fjac[3, 2] =     q[3]*U_dot2 + dir[2]*p_dot[2]
-  Fjac[4, 2] =     q[4]*U_dot2 + press*U_dot2 + U*p_dot[2]
+  Fjac[1, 2] +=     q[1]*U_dot2
+  Fjac[2, 2] += U + q[2]*U_dot2 + dir[1]*p_dot[2]
+  Fjac[3, 2] +=     q[3]*U_dot2 + dir[2]*p_dot[2]
+  Fjac[4, 2] +=     q[4]*U_dot2 + press*U_dot2 + U*p_dot[2]
 
-  Fjac[1, 3] =     q[1]*U_dot3
-  Fjac[2, 3] =     q[2]*U_dot3 + dir[1]*p_dot[3]
-  Fjac[3, 3] = U + q[3]*U_dot3 + dir[2]*p_dot[3]
-  Fjac[4, 3] =     q[4]*U_dot3 + press*U_dot3 + U*p_dot[3]
+  Fjac[1, 3] +=     q[1]*U_dot3
+  Fjac[2, 3] +=     q[2]*U_dot3 + dir[1]*p_dot[3]
+  Fjac[3, 3] += U + q[3]*U_dot3 + dir[2]*p_dot[3]
+  Fjac[4, 3] +=     q[4]*U_dot3 + press*U_dot3 + U*p_dot[3]
 
-  Fjac[1, 4] = 0
-  Fjac[2, 4] = dir[1]*p_dot[4]
-  Fjac[3, 4] = dir[2]*p_dot[4]
-  Fjac[4, 4] = U + U*p_dot[4]
+  Fjac[1, 4] += 0
+  Fjac[2, 4] += dir[1]*p_dot[4]
+  Fjac[3, 4] += dir[2]*p_dot[4]
+  Fjac[4, 4] += U + U*p_dot[4]
 
   return nothing
 
@@ -259,35 +263,35 @@ function calcEulerFlux_diff(params::ParamType{3},
   # F[3] = q[3]*U + dir[2]*press
   # F[4] = q[4]*U + dir[3]*press
   # F[4] = (q[5] + press)*U
-  Fjac[1, 1] = U + q[1]*U_dot1
-  Fjac[2, 1] =     q[2]*U_dot1 + dir[1]*p_dot[1]
-  Fjac[3, 1] =     q[3]*U_dot1 + dir[2]*p_dot[1]
-  Fjac[4, 1] =     q[4]*U_dot1 + dir[3]*p_dot[1]
-  Fjac[5, 1] =     q[5]*U_dot1 + press*U_dot1 + U*p_dot[1]
+  Fjac[1, 1] += U + q[1]*U_dot1
+  Fjac[2, 1] +=     q[2]*U_dot1 + dir[1]*p_dot[1]
+  Fjac[3, 1] +=     q[3]*U_dot1 + dir[2]*p_dot[1]
+  Fjac[4, 1] +=     q[4]*U_dot1 + dir[3]*p_dot[1]
+  Fjac[5, 1] +=     q[5]*U_dot1 + press*U_dot1 + U*p_dot[1]
 
-  Fjac[1, 2] =     q[1]*U_dot2
-  Fjac[2, 2] = U + q[2]*U_dot2 + dir[1]*p_dot[2]
-  Fjac[3, 2] =     q[3]*U_dot2 + dir[2]*p_dot[2]
-  Fjac[4, 2] =     q[4]*U_dot2 + dir[3]*p_dot[2]
-  Fjac[5, 2] =     q[5]*U_dot2 + press*U_dot2 + U*p_dot[2]
+  Fjac[1, 2] +=     q[1]*U_dot2
+  Fjac[2, 2] += U + q[2]*U_dot2 + dir[1]*p_dot[2]
+  Fjac[3, 2] +=     q[3]*U_dot2 + dir[2]*p_dot[2]
+  Fjac[4, 2] +=     q[4]*U_dot2 + dir[3]*p_dot[2]
+  Fjac[5, 2] +=     q[5]*U_dot2 + press*U_dot2 + U*p_dot[2]
 
-  Fjac[1, 3] =     q[1]*U_dot3
-  Fjac[2, 3] =     q[2]*U_dot3 + dir[1]*p_dot[3]
-  Fjac[3, 3] = U + q[3]*U_dot3 + dir[2]*p_dot[3]
-  Fjac[4, 3] =     q[4]*U_dot3 + dir[3]*p_dot[3]
-  Fjac[5, 3] =     q[5]*U_dot3 + press*U_dot3 + U*p_dot[3]
+  Fjac[1, 3] +=     q[1]*U_dot3
+  Fjac[2, 3] +=     q[2]*U_dot3 + dir[1]*p_dot[3]
+  Fjac[3, 3] += U + q[3]*U_dot3 + dir[2]*p_dot[3]
+  Fjac[4, 3] +=     q[4]*U_dot3 + dir[3]*p_dot[3]
+  Fjac[5, 3] +=     q[5]*U_dot3 + press*U_dot3 + U*p_dot[3]
 
-  Fjac[1, 4] =     q[1]*U_dot4
-  Fjac[2, 4] =     q[2]*U_dot4 + dir[1]*p_dot[4]
-  Fjac[3, 4] =     q[3]*U_dot4 + dir[2]*p_dot[4]
-  Fjac[4, 4] = U + q[4]*U_dot4 + dir[3]*p_dot[4]
-  Fjac[5, 4] =     q[5]*U_dot4 + press*U_dot4 + U*p_dot[4]
+  Fjac[1, 4] +=     q[1]*U_dot4
+  Fjac[2, 4] +=     q[2]*U_dot4 + dir[1]*p_dot[4]
+  Fjac[3, 4] +=     q[3]*U_dot4 + dir[2]*p_dot[4]
+  Fjac[4, 4] += U + q[4]*U_dot4 + dir[3]*p_dot[4]
+  Fjac[5, 4] +=     q[5]*U_dot4 + press*U_dot4 + U*p_dot[4]
 
-  Fjac[1, 5] = 0
-  Fjac[2, 5] = dir[1]*p_dot[5]
-  Fjac[3, 5] = dir[2]*p_dot[5]
-  Fjac[4, 5] = dir[3]*p_dot[5]
-  Fjac[5, 5] = U + U*p_dot[5]
+  Fjac[1, 5] += 0
+  Fjac[2, 5] += dir[1]*p_dot[5]
+  Fjac[3, 5] += dir[2]*p_dot[5]
+  Fjac[4, 5] += dir[3]*p_dot[5]
+  Fjac[5, 5] += U + U*p_dot[5]
 
   return nothing
 
@@ -305,7 +309,7 @@ end
   **Inputs/Outputs**
 
    * pdot: vector of length numDofPerNode, overwritten with derivative of `p` 
-           wrt `q`
+           wrt `q` (overwritten)
 """
 function calcPressure_diff(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1}, p_dot::AbstractVector{Tsol} ) where Tsol

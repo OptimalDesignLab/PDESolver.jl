@@ -4,7 +4,9 @@
 """
   Differentiated version of the [`RoeSolver`](@ref).  Computes the jacobian
   of the flux with respect to `q` and `qg`.  Methods are available for 2D
-  and 3D
+  and 3D.
+
+  The caller must zero out the output arrays (if desired) between calls
 
   **Inputs**
 
@@ -16,8 +18,8 @@
 
   **Inputs/Outputs**
 
-   * fluxL_dot: flux jacobian wrt `q`, numDofPerNode x numDofPerNode (overwritten)
-   * fluxR_dot: flux jacobian wrt `qg`, numDofPerNode x numDofPerNode (overwritten)
+   * fluxL_dot: flux jacobian wrt `q`, numDofPerNode x numDofPerNode (summed into)
+   * fluxR_dot: flux jacobian wrt `qg`, numDofPerNode x numDofPerNode (summed into)
 
   Aliasing restrictions:
 
@@ -187,8 +189,8 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
   sat = params.sat_vals
 #  sat_jacL = params.sat_jacL
 #  sat_jacR = params.sat_jacR
-  fill!(fluxL_dot, 0.0)
-  fill!(fluxR_dot, 0.0)
+#  fill!(fluxL_dot, 0.0)
+#  fill!(fluxR_dot, 0.0)
   # pass in fluxL_dot and fluxR_dot here, then add the Euler flux
   # contribution below
   calcSAT_diff(params, roe_vars, roe_vars_dot,  dq, nrm, fluxL_dot, fluxR_dot)
@@ -196,7 +198,7 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
 #  calcSAT(params, nrm, dq, sat, u, v, H, use_efix)
   
   #euler_flux = params.flux_vals1
-  euler_fluxjac = params.euler_fluxjac
+#  euler_fluxjac = params.euler_fluxjac
 
   v_vals = params.q_vals
   nrm2 = params.nrm
@@ -204,13 +206,13 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
   nrm2[2] = ny
 
 #  convertFromNaturalToWorkingVars(params, q, v_vals)
-  calcEulerFlux_diff(params, q, aux_vars, nrm2, euler_fluxjac)
+  calcEulerFlux_diff(params, q, aux_vars, nrm2, fluxL_dot)
 
-  @simd for i=1:4
-    @simd for j=1:4
-      fluxL_dot[j, i] += euler_fluxjac[j, i]
-    end
-  end
+#  @simd for i=1:4
+#    @simd for j=1:4
+#      fluxL_dot[j, i] += euler_fluxjac[j, i]
+#    end
+#  end
 
   return nothing
 
@@ -413,21 +415,21 @@ function RoeSolver_diff(params::ParamType{3, :conservative},
   sat = params.sat_vals
 #  sat_jacL = params.sat_jacL
 #  sat_jacR = params.sat_jacR
-  fill!(fluxL_dot, 0.0)
-  fill!(fluxR_dot, 0.0)
+#  fill!(fluxL_dot, 0.0)
+#  fill!(fluxR_dot, 0.0)
   # pass in fluxL_dot and fluxR_dot here, then add the Euler flux
   # contribution below
   calcSAT_diff(params, roe_vars, roe_vars_dot,  dq, nrm, fluxL_dot, fluxR_dot)
 
-  euler_fluxjac = params.euler_fluxjac
+#  euler_fluxjac = params.euler_fluxjac
 
-  calcEulerFlux_diff(params, q, aux_vars, nrm, euler_fluxjac)
+  calcEulerFlux_diff(params, q, aux_vars, nrm, fluxL_dot)
 
-  @simd for i=1:5
-    @simd for j=1:5
-      fluxL_dot[j, i] += euler_fluxjac[j, i]
-    end
-  end
+#  @simd for i=1:5
+#    @simd for j=1:5
+#      fluxL_dot[j, i] += euler_fluxjac[j, i]
+#    end
+#  end
 
   return nothing
 
@@ -733,51 +735,49 @@ function calcSAT_diff(params::ParamType{2},
   dq3 = dq[3]
   dq4 = dq[4]
 
-  #TODO: see if the sat values are needed
   # sat[1] = lambda3*dq1
-  sat_jacL[1, 1] = lambda3 + dq1*lambda3_dotL1
-  sat_jacL[1, 2] =         + dq1*lambda3_dotL2
-  sat_jacL[1, 3] =         + dq1*lambda3_dotL3
-  sat_jacL[1, 4] =         + dq1*lambda3_dotL4
-  #TODO: zero out unused entries?
+  sat_jacL[1, 1] += lambda3 + dq1*lambda3_dotL1
+  sat_jacL[1, 2] +=         + dq1*lambda3_dotL2
+  sat_jacL[1, 3] +=         + dq1*lambda3_dotL3
+  sat_jacL[1, 4] +=         + dq1*lambda3_dotL4
 
-  sat_jacR[1, 1] = -lambda3 + dq1*lambda3_dotR1
-  sat_jacR[1, 2] =          + dq1*lambda3_dotR2
-  sat_jacR[1, 3] =          + dq1*lambda3_dotR3
-  sat_jacR[1, 4] =          + dq1*lambda3_dotR4
+  sat_jacR[1, 1] += -lambda3 + dq1*lambda3_dotR1
+  sat_jacR[1, 2] +=          + dq1*lambda3_dotR2
+  sat_jacR[1, 3] +=          + dq1*lambda3_dotR3
+  sat_jacR[1, 4] +=          + dq1*lambda3_dotR4
 
   # sat[2] = lambda3*dq2
-  sat_jacL[2, 1] =         + dq2*lambda3_dotL1
-  sat_jacL[2, 2] = lambda3 + dq2*lambda3_dotL2
-  sat_jacL[2, 3] =         + dq2*lambda3_dotL3
-  sat_jacL[2, 4] =         + dq2*lambda3_dotL4
+  sat_jacL[2, 1] +=         + dq2*lambda3_dotL1
+  sat_jacL[2, 2] += lambda3 + dq2*lambda3_dotL2
+  sat_jacL[2, 3] +=         + dq2*lambda3_dotL3
+  sat_jacL[2, 4] +=         + dq2*lambda3_dotL4
 
-  sat_jacR[2, 1] =          + dq2*lambda3_dotR1
-  sat_jacR[2, 2] = -lambda3 + dq2*lambda3_dotR2
-  sat_jacR[2, 3] =          + dq2*lambda3_dotR3
-  sat_jacR[2, 4] =          + dq2*lambda3_dotR4
+  sat_jacR[2, 1] +=          + dq2*lambda3_dotR1
+  sat_jacR[2, 2] += -lambda3 + dq2*lambda3_dotR2
+  sat_jacR[2, 3] +=          + dq2*lambda3_dotR3
+  sat_jacR[2, 4] +=          + dq2*lambda3_dotR4
 
   # sat[3] = lambda3*dq3
-  sat_jacL[3, 1] =         + dq3*lambda3_dotL1
-  sat_jacL[3, 2] =         + dq3*lambda3_dotL2
-  sat_jacL[3, 3] = lambda3 + dq3*lambda3_dotL3
-  sat_jacL[3, 4] =         + dq3*lambda3_dotL4
+  sat_jacL[3, 1] +=         + dq3*lambda3_dotL1
+  sat_jacL[3, 2] +=         + dq3*lambda3_dotL2
+  sat_jacL[3, 3] += lambda3 + dq3*lambda3_dotL3
+  sat_jacL[3, 4] +=         + dq3*lambda3_dotL4
 
-  sat_jacR[3, 1] =          + dq3*lambda3_dotR1
-  sat_jacR[3, 2] =          + dq3*lambda3_dotR2
-  sat_jacR[3, 3] = -lambda3 + dq3*lambda3_dotR3
-  sat_jacR[3, 4] =          + dq3*lambda3_dotR4
+  sat_jacR[3, 1] +=          + dq3*lambda3_dotR1
+  sat_jacR[3, 2] +=          + dq3*lambda3_dotR2
+  sat_jacR[3, 3] += -lambda3 + dq3*lambda3_dotR3
+  sat_jacR[3, 4] +=          + dq3*lambda3_dotR4
 
   # sat[4] = lambda3*dq4
-  sat_jacL[4, 1] =           dq4*lambda3_dotL1
-  sat_jacL[4, 2] =           dq4*lambda3_dotL2
-  sat_jacL[4, 3] =           dq4*lambda3_dotL3
-  sat_jacL[4, 4] = lambda3 + dq4*lambda3_dotL4
+  sat_jacL[4, 1] +=           dq4*lambda3_dotL1
+  sat_jacL[4, 2] +=           dq4*lambda3_dotL2
+  sat_jacL[4, 3] +=           dq4*lambda3_dotL3
+  sat_jacL[4, 4] += lambda3 + dq4*lambda3_dotL4
 
-  sat_jacR[4, 1] =            dq4*lambda3_dotR1
-  sat_jacR[4, 2] =            dq4*lambda3_dotR2
-  sat_jacR[4, 3] =            dq4*lambda3_dotR3
-  sat_jacR[4, 4] = -lambda3 + dq4*lambda3_dotR4
+  sat_jacR[4, 1] +=            dq4*lambda3_dotR1
+  sat_jacR[4, 2] +=            dq4*lambda3_dotR2
+  sat_jacR[4, 3] +=            dq4*lambda3_dotR3
+  sat_jacR[4, 4] += -lambda3 + dq4*lambda3_dotR4
 
 #  @printit sat_jacR[2, 1]
 
@@ -1534,68 +1534,68 @@ end  # End function calcSAT
   dq5 = dq[5]
 
   # sat[1] = lambda3*dq1
-  sat_jacL[1, 1] = lambda3 + dq1*lambda3_dotL1
-  sat_jacL[1, 2] =         + dq1*lambda3_dotL2
-  sat_jacL[1, 3] =         + dq1*lambda3_dotL3
-  sat_jacL[1, 4] =         + dq1*lambda3_dotL4
-  sat_jacL[1, 5] =         + dq1*lambda3_dotL5
+  sat_jacL[1, 1] += lambda3 + dq1*lambda3_dotL1
+  sat_jacL[1, 2] +=         + dq1*lambda3_dotL2
+  sat_jacL[1, 3] +=         + dq1*lambda3_dotL3
+  sat_jacL[1, 4] +=         + dq1*lambda3_dotL4
+  sat_jacL[1, 5] +=         + dq1*lambda3_dotL5
 
-  sat_jacR[1, 1] = -lambda3 + dq1*lambda3_dotR1
-  sat_jacR[1, 2] =          + dq1*lambda3_dotR2
-  sat_jacR[1, 3] =          + dq1*lambda3_dotR3
-  sat_jacR[1, 4] =          + dq1*lambda3_dotR4
-  sat_jacR[1, 5] =          + dq1*lambda3_dotR5
+  sat_jacR[1, 1] += -lambda3 + dq1*lambda3_dotR1
+  sat_jacR[1, 2] +=          + dq1*lambda3_dotR2
+  sat_jacR[1, 3] +=          + dq1*lambda3_dotR3
+  sat_jacR[1, 4] +=          + dq1*lambda3_dotR4
+  sat_jacR[1, 5] +=          + dq1*lambda3_dotR5
 
   # sat[2] = lambda3*dq2
-  sat_jacL[2, 1] =         + dq2*lambda3_dotL1
-  sat_jacL[2, 2] = lambda3 + dq2*lambda3_dotL2
-  sat_jacL[2, 3] =         + dq2*lambda3_dotL3
-  sat_jacL[2, 4] =         + dq2*lambda3_dotL4
-  sat_jacL[2, 5] =         + dq2*lambda3_dotL5
+  sat_jacL[2, 1] +=         + dq2*lambda3_dotL1
+  sat_jacL[2, 2] += lambda3 + dq2*lambda3_dotL2
+  sat_jacL[2, 3] +=         + dq2*lambda3_dotL3
+  sat_jacL[2, 4] +=         + dq2*lambda3_dotL4
+  sat_jacL[2, 5] +=         + dq2*lambda3_dotL5
 
-  sat_jacR[2, 1] =          + dq2*lambda3_dotR1
-  sat_jacR[2, 2] = -lambda3 + dq2*lambda3_dotR2
-  sat_jacR[2, 3] =          + dq2*lambda3_dotR3
-  sat_jacR[2, 4] =          + dq2*lambda3_dotR4
-  sat_jacR[2, 5] =          + dq2*lambda3_dotR5
+  sat_jacR[2, 1] +=          + dq2*lambda3_dotR1
+  sat_jacR[2, 2] += -lambda3 + dq2*lambda3_dotR2
+  sat_jacR[2, 3] +=          + dq2*lambda3_dotR3
+  sat_jacR[2, 4] +=          + dq2*lambda3_dotR4
+  sat_jacR[2, 5] +=          + dq2*lambda3_dotR5
 
   # sat[3] = lambda3*dq3
-  sat_jacL[3, 1] =         + dq3*lambda3_dotL1
-  sat_jacL[3, 2] =         + dq3*lambda3_dotL2
-  sat_jacL[3, 3] = lambda3 + dq3*lambda3_dotL3
-  sat_jacL[3, 4] =         + dq3*lambda3_dotL4
-  sat_jacL[3, 5] =         + dq3*lambda3_dotL5
+  sat_jacL[3, 1] +=         + dq3*lambda3_dotL1
+  sat_jacL[3, 2] +=         + dq3*lambda3_dotL2
+  sat_jacL[3, 3] += lambda3 + dq3*lambda3_dotL3
+  sat_jacL[3, 4] +=         + dq3*lambda3_dotL4
+  sat_jacL[3, 5] +=         + dq3*lambda3_dotL5
 
-  sat_jacR[3, 1] =          + dq3*lambda3_dotR1
-  sat_jacR[3, 2] =          + dq3*lambda3_dotR2
-  sat_jacR[3, 3] = -lambda3 + dq3*lambda3_dotR3
-  sat_jacR[3, 4] =          + dq3*lambda3_dotR4
-  sat_jacR[3, 5] =          + dq3*lambda3_dotR5
+  sat_jacR[3, 1] +=          + dq3*lambda3_dotR1
+  sat_jacR[3, 2] +=          + dq3*lambda3_dotR2
+  sat_jacR[3, 3] += -lambda3 + dq3*lambda3_dotR3
+  sat_jacR[3, 4] +=          + dq3*lambda3_dotR4
+  sat_jacR[3, 5] +=          + dq3*lambda3_dotR5
 
-  sat_jacL[4, 1] =         + dq4*lambda3_dotL1
-  sat_jacL[4, 2] =         + dq4*lambda3_dotL2
-  sat_jacL[4, 3] =         + dq4*lambda3_dotL3
-  sat_jacL[4, 4] = lambda3 + dq4*lambda3_dotL4
-  sat_jacL[4, 5] =         + dq4*lambda3_dotL5
+  sat_jacL[4, 1] +=         + dq4*lambda3_dotL1
+  sat_jacL[4, 2] +=         + dq4*lambda3_dotL2
+  sat_jacL[4, 3] +=         + dq4*lambda3_dotL3
+  sat_jacL[4, 4] += lambda3 + dq4*lambda3_dotL4
+  sat_jacL[4, 5] +=         + dq4*lambda3_dotL5
 
-  sat_jacR[4, 1] =          + dq4*lambda3_dotR1
-  sat_jacR[4, 2] =          + dq4*lambda3_dotR2
-  sat_jacR[4, 3] =          + dq4*lambda3_dotR3
-  sat_jacR[4, 4] = -lambda3 + dq4*lambda3_dotR4
-  sat_jacR[4, 5] =          + dq4*lambda3_dotR5
+  sat_jacR[4, 1] +=          + dq4*lambda3_dotR1
+  sat_jacR[4, 2] +=          + dq4*lambda3_dotR2
+  sat_jacR[4, 3] +=          + dq4*lambda3_dotR3
+  sat_jacR[4, 4] += -lambda3 + dq4*lambda3_dotR4
+  sat_jacR[4, 5] +=          + dq4*lambda3_dotR5
 
   # sat[5] = lambda3*dq5
-  sat_jacL[5, 1] =           dq5*lambda3_dotL1
-  sat_jacL[5, 2] =           dq5*lambda3_dotL2
-  sat_jacL[5, 3] =           dq5*lambda3_dotL3
-  sat_jacL[5, 4] =           dq5*lambda3_dotL4
-  sat_jacL[5, 5] = lambda3 + dq5*lambda3_dotL5
+  sat_jacL[5, 1] +=           dq5*lambda3_dotL1
+  sat_jacL[5, 2] +=           dq5*lambda3_dotL2
+  sat_jacL[5, 3] +=           dq5*lambda3_dotL3
+  sat_jacL[5, 4] +=           dq5*lambda3_dotL4
+  sat_jacL[5, 5] += lambda3 + dq5*lambda3_dotL5
 
-  sat_jacR[5, 1] =            dq5*lambda3_dotR1
-  sat_jacR[5, 2] =            dq5*lambda3_dotR2
-  sat_jacR[5, 3] =            dq5*lambda3_dotR3
-  sat_jacR[5, 4] =            dq5*lambda3_dotR4
-  sat_jacR[5, 5] = -lambda3 + dq5*lambda3_dotR5
+  sat_jacR[5, 1] +=            dq5*lambda3_dotR1
+  sat_jacR[5, 2] +=            dq5*lambda3_dotR2
+  sat_jacR[5, 3] +=            dq5*lambda3_dotR3
+  sat_jacR[5, 4] +=            dq5*lambda3_dotR4
+  sat_jacR[5, 5] += -lambda3 + dq5*lambda3_dotR5
 
   E1dq = params.res_vals1
   E2dq = params.res_vals2
@@ -2192,14 +2192,19 @@ end  # End function calcSAT
 end  # End function calcSAT
 
 
-
-
+"""
+  Computes the Jacobian of the LF flux with respect to qL and qR
+"""
 function calcLFFlux_diff(
                       params::ParamType{Tdim, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tsol, 1},
                       dir::AbstractArray{Tmsh, 1},
-                      F_dotL::AbstractMatrix{Tres}, F_dotR::AbstractMatrix{Tres}) where {Tmsh, Tsol, Tres, Tdim}
+                      _F_dotL::AbstractMatrix{Tres}, _F_dotR::AbstractMatrix{Tres}) where {Tmsh, Tsol, Tres, Tdim}
+
+  lffluxdata = params.lffluxdata
+  F_dotL = lffluxdata.F_dotL; F_dotR = lffluxdata.F_dotR
+  fill!(F_dotL, 0); fill!(F_dotR, 0)
 
   numDofPerNode = length(qL)
 #  lambda_dotL = zeros(Tres, numDofPerNode)
@@ -2222,6 +2227,10 @@ function calcLFFlux_diff(
       F_dotR[i, j] -= -qL[i]*lambda_dotR[j] + qR[i]*lambda_dotR[j]
       F_dotL[i, j] *= 0.5
       F_dotR[i, j] *= 0.5
+
+      # update output array
+      _F_dotL[i, j] += F_dotL[i, j]
+      _F_dotR[i, j] += F_dotR[i, j]
     end
   end
 
@@ -2252,8 +2261,8 @@ end
 
   **Inputs/Outputs**
   
-   * FL_dot: jacobian of the flux with respect to `qL`.
-   * FR_dot: jacobian of the flux with respect to `qR`.
+   * FL_dot: jacobian of the flux with respect to `qL` (overwritten)
+   * FR_dot: jacobian of the flux with respect to `qR`.(overwritten)
 """
 function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
                    qL::AbstractArray{Tsol,1},
@@ -2381,19 +2390,19 @@ function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
     mv_n_dotR = (nrm[1]*u_hat + nrm[2]*v_hat)*rho_hat_dotR[i] +
                 rho_hat*(nrm[1]*u_hat_dotR[i] + nrm[2]*v_hat_dotR[i])
 
-    FL_dot[1, i] = mv_n_dotL
-    FL_dot[2, i] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+    FL_dot[1, i] += mv_n_dotL
+    FL_dot[2, i] += u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
                       nrm[1]*p1_hat_dotL[i]
-    FL_dot[3, i] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+    FL_dot[3, i] += v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
                       nrm[2]*p1_hat_dotL[i]
-    FL_dot[4, i] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+    FL_dot[4, i] += h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
     
-    FR_dot[1, i] = mv_n_dotR
-    FR_dot[2, i] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+    FR_dot[1, i] += mv_n_dotR
+    FR_dot[2, i] += u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
                       nrm[1]*p1_hat_dotR[i]
-    FR_dot[3, i] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+    FR_dot[3, i] += v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
                       nrm[2]*p1_hat_dotR[i]
-    FR_dot[4, i] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]    
+    FR_dot[4, i] += h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]    
   end
 
   return nothing
@@ -2768,19 +2777,19 @@ function calcEulerFlux_IR_diff(params::ParamType{2, :conservative},
       mv_n_dotR = (nrm[1, j]*u_hat + nrm[2, j]*v_hat)*rho_hat_dotR[i] +
                   rho_hat*(nrm[1, j]*u_hat_dotR[i] + nrm[2, j]*v_hat_dotR[i])
 
-      FL_dot[1, i, j] = mv_n_dotL
-      FL_dot[2, i, j] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+      FL_dot[1, i, j] += mv_n_dotL
+      FL_dot[2, i, j] += u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
                         nrm[1, j]*p1_hat_dotL[i]
-      FL_dot[3, i, j] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+      FL_dot[3, i, j] += v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
                         nrm[2, j]*p1_hat_dotL[i]
-      FL_dot[4, i, j] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+      FL_dot[4, i, j] += h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
       
-      FR_dot[1, i, j] = mv_n_dotR
-      FR_dot[2, i, j] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+      FR_dot[1, i, j] += mv_n_dotR
+      FR_dot[2, i, j] += u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
                         nrm[1, j]*p1_hat_dotR[i]
-      FR_dot[3, i, j] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+      FR_dot[3, i, j] += v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
                         nrm[2, j]*p1_hat_dotR[i]
-      FR_dot[4, i, j] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
+      FR_dot[4, i, j] += h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
       
     end
   end
@@ -3192,23 +3201,23 @@ function calcEulerFlux_IR_diff(params::ParamType{3, :conservative},
                 rho_hat*(nx*u_hat_dotR[i] + ny*v_hat_dotR[i] +
                          nz*w_hat_dotR[i])
 
-    FL_dot[1, i] = mv_n_dotL
-    FL_dot[2, i] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+    FL_dot[1, i] += mv_n_dotL
+    FL_dot[2, i] += u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
                        nx*p1_hat_dotL[i]
-    FL_dot[3, i] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+    FL_dot[3, i] += v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
                        ny*p1_hat_dotL[i]
-    FL_dot[4, i] = w_hat*mv_n_dotL + mv_n*w_hat_dotL[i] +
+    FL_dot[4, i] += w_hat*mv_n_dotL + mv_n*w_hat_dotL[i] +
                        nz*p1_hat_dotL[i]
-    FL_dot[5, i] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+    FL_dot[5, i] += h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
     
-    FR_dot[1, i] = mv_n_dotR
-    FR_dot[2, i] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+    FR_dot[1, i] += mv_n_dotR
+    FR_dot[2, i] += u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
                        nx*p1_hat_dotR[i]
-    FR_dot[3, i] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+    FR_dot[3, i] += v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
                        ny*p1_hat_dotR[i]
-    FR_dot[4, i] = w_hat*mv_n_dotR + mv_n*w_hat_dotR[i] +
+    FR_dot[4, i] += w_hat*mv_n_dotR + mv_n*w_hat_dotR[i] +
                        nz*p1_hat_dotR[i]
-    FR_dot[5, i] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]    
+    FR_dot[5, i] += h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]    
   end
 
   return nothing
@@ -3615,23 +3624,23 @@ function calcEulerFlux_IR_diff(params::ParamType{3, :conservative},
                   rho_hat*(nx*u_hat_dotR[i] + ny*v_hat_dotR[i] +
                            nz*w_hat_dotR[i])
 
-      FL_dot[1, i, j] = mv_n_dotL
-      FL_dot[2, i, j] = u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
+      FL_dot[1, i, j] += mv_n_dotL
+      FL_dot[2, i, j] += u_hat*mv_n_dotL + mv_n*u_hat_dotL[i] + 
                          nx*p1_hat_dotL[i]
-      FL_dot[3, i, j] = v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
+      FL_dot[3, i, j] += v_hat*mv_n_dotL + mv_n*v_hat_dotL[i] +
                          ny*p1_hat_dotL[i]
-      FL_dot[4, i, j] = w_hat*mv_n_dotL + mv_n*w_hat_dotL[i] +
+      FL_dot[4, i, j] += w_hat*mv_n_dotL + mv_n*w_hat_dotL[i] +
                          nz*p1_hat_dotL[i]
-      FL_dot[5, i, j] = h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
+      FL_dot[5, i, j] += h_hat*mv_n_dotL + mv_n*h_hat_dotL[i]
       
-      FR_dot[1, i, j] = mv_n_dotR
-      FR_dot[2, i, j] = u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
+      FR_dot[1, i, j] += mv_n_dotR
+      FR_dot[2, i, j] += u_hat*mv_n_dotR + mv_n*u_hat_dotR[i] +
                          nx*p1_hat_dotR[i]
-      FR_dot[3, i, j] = v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
+      FR_dot[3, i, j] += v_hat*mv_n_dotR + mv_n*v_hat_dotR[i] +
                          ny*p1_hat_dotR[i]
-      FR_dot[4, i, j] = w_hat*mv_n_dotR + mv_n*w_hat_dotR[i] +
+      FR_dot[4, i, j] += w_hat*mv_n_dotR + mv_n*w_hat_dotR[i] +
                          nz*p1_hat_dotR[i]
-      FR_dot[5, i, j] = h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
+      FR_dot[5, i, j] += h_hat*mv_n_dotR + mv_n*h_hat_dotR[i]
       
     end
   end

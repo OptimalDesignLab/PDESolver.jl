@@ -2,6 +2,31 @@
 # these need to be declared in a separate file from the flux functions
 # themselves because they need to be defind *before* ParamType
 
+"""
+  Data needed by [`calcLFFlux_diff`](@ref)
+
+  **Static Parameters**
+
+   * Tres
+"""
+struct LFFluxData{Tres}
+  F_dotL::Array{Tres, 2}
+  F_dotR::Array{Tres, 2}
+
+  function LFFluxData{Tres}(numDofPerNode::Integer, nd::Integer) where {Tres}
+
+    @assert numDofPerNode == nd  # not sure what happens if this is not true
+    F_dotL = zeros(Tres, numDofPerNode, nd)
+    F_dotR = zeros(Tres, numDofPerNode, nd)
+
+    obj = new(F_dotL, F_dotR)
+
+    assertArraysUnique(obj)
+    
+    return obj
+  end
+end
+
 
 """
   Data needed by [`logavg_diff`](@ref)
