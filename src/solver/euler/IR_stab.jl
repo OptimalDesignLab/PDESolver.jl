@@ -221,42 +221,7 @@ function getEntropyLFStab_inner(
   end
   dA = sqrt(dA)
   lambda_max = absvalue(Un) + dA*a
-#=
-  println("qL = \n", qL)
-  println("qR = \n", qR)
-  println("q_avg = \n", q_avg)
-  println("dir = \n", dir)
-=#
-  # the two eigenvalues are Un + dA*a and Un - dA*a, so depending on
-  # the sign of Un, the maximum is abs(Un) + dA*a
-#  lambda_max1 = absvalue(Un) + dA*a
-#  println("lambda_max1 = ", lambda_max1)
-#=
-  # use the Roe solver code
-  rhoA = absvalue(Un) + dA*a
 
-  #=
-  lambda1 = Un + dA*a
-  lambda2 = Un - dA*a
-  lambda3 = Un
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
-  tau = 1
-  lambda1 = (tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  lambda2 = (tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  lambda3 = (tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-  lambda_max1 = max(lambda1, lambda2)
-  lambda_max1 = max(lambda_max1, lambda3)
-  =#
-
-  # DEBUGGING: try definition from Carpenters paper
-
-#  println("Un = ", Un, ", a = ", a, ", dA = ", dA)
-#  lambda_max2 = getLambdaMax(params, qL, qR, dir)
-#  println("lambda_max1 = ", lambda_max1, ", lambda_max2 = ", lambda_max2)
-  lambda_max = lambda_max1
-=#
-#  println("lambda_max = ", lambda_max)
   fac = 1
   for i=1:length(vR)
     F[i] -= fac* 0.5*lambda_max*vR[i]
