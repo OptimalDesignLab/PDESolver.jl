@@ -28,6 +28,8 @@ function test_jac_terms()
     test_eulerflux(eqn.params)
     test_eulerflux(eqn3.params)
 
+    test_logavg()
+
     nrm = [0.45, 0.55]
     nrm2 = -nrm
 
@@ -36,6 +38,12 @@ function test_jac_terms()
     func_diff = EulerEquationMod.RoeSolver_diff
     func2 = EulerEquationMod.calcLFFlux
     func2_diff = EulerEquationMod.calcLFFlux_diff
+
+    func3 = EulerEquationMod.FluxDict["IRFlux"]
+    func3_diff = EulerEquationMod.FluxDict_diff["IRFlux"]
+    func3_revm = EulerEquationMod.FluxDict_revm["IRFlux"]
+    func3_revq = EulerEquationMod.FluxDict_revq["IRFlux"]
+
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
@@ -44,6 +52,9 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
     # make sure arrays are zerod out
     test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
+    test_ad_inner(eqn.params, q, qg, nrm, func3, func3_diff)
+    test_2flux_revq(eqn.params, q, qg, nrm, func3, func3_revq, test_multid=true)
+    test_2flux_revm(eqn.params, q, qg, nrm, func3, func3_revm, test_multid=true)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
@@ -71,6 +82,8 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
 
 
+    #--------------------------------------------------------------------------
+    # 3D
     nrm = [0.45, 0.55, 0.65]
     nrm2 = -nrm
 
@@ -110,7 +123,11 @@ function test_jac_terms()
     test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
     test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
 
-    
+    test_ad_inner(eqn3.params, q, qg, nrm, func3, func3_diff)
+    test_2flux_revq(eqn3.params, q, qg, nrm, func3, func3_revq, test_multid=true)
+    test_2flux_revm(eqn3.params, q, qg, nrm, func3, func3_revm, test_multid=true)
+
+
     println("\ntesting jac assembly 2d")
     test_jac_assembly(mesh, sbp, eqn, opts)
     opts_tmp = copy(opts)
@@ -228,6 +245,24 @@ end
 add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
+#------------------------------------------------------------------------------
+# functions that test individual functionality
+
+"""
+  Returns an array of the specified size with random values for the real part
+  and zeros for the imaginary part
+"""
+function rand_realpart(dims...)
+
+  a = rand(Complex128, dims...)
+  for i=1:length(a)
+    a[i] = real(a[i])
+  end
+
+  return a
+end
+
+
 function test_pressure(params::AbstractParamType{Tdim}) where Tdim
 
 
@@ -254,6 +289,14 @@ function test_pressure(params::AbstractParamType{Tdim}) where Tdim
   EulerEquationMod.calcPressure_diff(params, q, p_dot2)
 
   @test isapprox( maximum(abs.(p_dot - p_dot2)), 0.0) atol=1e-14
+
+  # test reverse mode
+  q_bar = zeros(q)
+
+  EulerEquationMod.calcPressure_revq(params, q, q_bar, 1.0)
+
+  @test maximum(abs.(q_bar - p_dot)) < 1e-14
+
 
   return nothing
 end
@@ -294,6 +337,12 @@ function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
   @test isapprox( maximum(abs.(res - res2)), 0.0) atol=1e-14
+
+  # test that res2 is summed into
+  res2_orig = copy(res2)
+  EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
+
+  @test maximum(abs.(res2 - 2*res2_orig)) < 1e-14
 end
 
 function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
@@ -370,7 +419,6 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
                        func, func_diff, output=false) where Tdim
 
   # compute jacobian with complex step and AD, compare results
-
   numDofPerNode = length(qL)
 
   aux_vars = Complex128[0.0]
@@ -426,8 +474,267 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
   @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-14
   @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-14
 
+  # test resL,R are summed into
+  resL2_orig = copy(resL2)
+  resR2_orig = copy(resR2)
+  func_diff(params, qL, qR, aux_vars, nrm, resL2, resR2)
+
+  @test maximum(abs.(resL2 - 2*resL2_orig)) < 1e-14
+  @test maximum(abs.(resR2 - 2*resR2_orig)) < 1e-14
+
   return nothing
 end
+
+"""
+  Test the reverse mode with respect to q of a 2 point flux function
+
+  **Inputs**
+  
+   * params: a ParamType
+   * qL: left state
+   * qR: right state
+   * nrm: normal vector
+   * func: flux function
+   * func_revq: reverse mode (wrt q) flux function
+"""
+function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
+                         func_revq; test_multid=false) where {Tdim}
+
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  numDofPerNode = length(qL)
+  # test the single direction version
+  qL_dot = rand_realpart(size(qL))
+  qR_dot = rand_realpart(size(qR))
+  qL_bar = zeros(qL)
+  qR_bar = zeros(qR)
+  aux_vars = Complex128[]
+  flux = zeros(Complex128, numDofPerNode)
+  F_bar = rand_realpart(numDofPerNode)
+
+
+  for i=1:2  # run test twice to make sure all intermediate arrays are zeroed out
+    # compute F_bar.'* dF/dq * q_dot using forward and reverse mode
+    qL += pert*qL_dot
+    func(params, qL, qR, aux_vars, nrm, flux)
+    qL -= pert*qL_dot
+    val_c = sum(F_bar.*imag(flux)/h)
+
+    qR += pert*qR_dot
+    func(params, qL, qR, aux_vars, nrm, flux)
+    qR -= pert*qR_dot
+    val_c += sum(F_bar.*imag(flux)/h)
+
+    func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
+    val = sum(qL_bar.*qL_dot) + sum(qR_bar.*qR_dot)
+
+    @test abs(val - val_c) < 1e-13
+
+    # test qL_bar is summed into
+    qL_bar_orig = copy(qL_bar)
+    qR_bar_orig = copy(qR_bar)
+    func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
+
+    @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-13
+    @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-13
+
+    fill!(qL_bar, 0.0); fill!(qR_bar, 0.0)
+  end
+
+  if test_multid
+    flux = zeros(Complex128, numDofPerNode, Tdim)
+    F_bar = rand_realpart(numDofPerNode, Tdim)
+    nrm2 = zeros(Complex128, Tdim, Tdim)
+    nrm2[:, 1] = nrm
+    for i=2:Tdim
+      nrm2[:, i] = nrm2[:, i-1] + 1
+    end
+
+
+    for i=1:2
+      qL += pert*qL_dot
+      func(params, qL, qR, aux_vars, nrm2, flux)
+      qL -= pert*qL_dot
+      val_c = 0.0
+      for i=1:Tdim
+        val_c += sum(F_bar[:, i].*imag(flux[:, i])/h)
+      end
+
+      qR += pert*qR_dot
+      func(params, qL, qR, aux_vars, nrm2, flux)
+      qR -= pert*qR_dot
+      for i=1:Tdim
+        val_c += sum(F_bar[:, i].*imag(flux[:, i])/h)
+      end
+
+      func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm2, F_bar)
+      val = sum(qL_bar.*qL_dot) + sum(qR_bar.*qR_dot)
+
+      @test abs(val_c - val) < 1e-13
+
+      # test qL_bar is summed into
+      qL_bar_orig = copy(qL_bar)
+      qR_bar_orig = copy(qR_bar)
+      func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm2, F_bar)
+
+      @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-13
+      @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-13
+
+      fill!(qL_bar, 0.0); fill!(qR_bar, 0.0)
+    end
+  end
+
+  return nothing
+end
+
+
+"""
+  Test the reverse mode with respect to nrm of a 2 point flux function
+
+  **Inputs**
+  
+   * params: a ParamType
+   * qL: left state
+   * qR: right state
+   * nrm: normal vector
+   * func: flux function
+   * func_revm: reverse mode (wrt nrm) flux function
+"""
+function test_2flux_revm(params::AbstractParamType{Tdim}, qL, qR, nrm,
+                         func::FluxType, func_revm::FluxType_revm;
+                         test_multid=false) where {Tdim}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  numDofPerNode = length(qL)
+  flux = zeros(Complex128, numDofPerNode)
+  F_bar = rand_realpart(numDofPerNode)
+  nrm_dot = rand_realpart(Tdim)
+  nrm_bar = zeros(Complex128, Tdim)
+  aux_vars = Complex128[]
+
+
+  # compute nrm_bar * df/dnrm * nrm_dot using forward and reverse mode
+  for i=1:2  # run test twice to make sure intermeidate arrays are zeroed out
+    nrm += pert*nrm_dot
+    func(params, qL, qR, aux_vars, nrm, flux)
+    nrm -= pert*nrm_dot
+    val_c = sum(F_bar.*imag(flux)/h)
+
+    func_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+    val = sum(nrm_bar.*nrm_dot)
+
+    @test abs(val - val_c) < 1e-14
+
+    # test nrm_bar is summed into
+    nrm_bar_orig = copy(nrm_bar)
+    func_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+    @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
+
+    fill!(nrm_bar, 0.0)
+  end
+
+  if test_multid
+    flux = zeros(Complex128, numDofPerNode, Tdim)
+    nrm2 = zeros(Complex128, Tdim, Tdim)
+    nrm2[:, 1] = nrm
+    for i=2:Tdim
+      nrm2[:, i] = nrm2[:, i-1] + 1
+    end
+    nrm2_bar = zeros(nrm2)
+
+    flux = zeros(Complex128, numDofPerNode, Tdim)
+    F_bar = rand_realpart(numDofPerNode, Tdim)
+    nrm2_dot = rand_realpart(Tdim, Tdim)
+
+
+    for i=1:2
+      nrm2 += pert*nrm2_dot
+      func(params, qL, qR, aux_vars, nrm2, flux)
+      nrm2 -= pert*nrm2_dot
+      val_c = sum(F_bar.*imag(flux)/h)
+
+      func_revm(params, qL, qR, aux_vars, nrm2, nrm2_bar, F_bar)
+
+      val = sum(nrm2_bar.*nrm2_dot)
+
+      @test abs(val - val_c) < 1e-13
+
+      # test nrm_bar is summed into
+      nrm_bar_orig = copy(nrm2_bar)
+      func_revm(params, qL, qR, aux_vars, nrm2, nrm2_bar, F_bar)
+
+      @test maximum(abs.(nrm2_bar - 2*nrm_bar_orig)) < 1e-13
+
+
+      fill!(nrm2_bar, 0.0)
+    end
+  end
+
+  return nothing
+end
+
+function test_logavg()
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  nd = 4
+  data = EulerEquationMod.LogAvgData{Float64, Float64}(nd)
+  aL_dot = zeros(nd); aR_dot = zeros(nd)
+  a_avg_dotL = zeros(nd); a_avg_dotR = zeros(nd)
+
+  aL = 1.0
+  aR = 2.0
+
+
+  a_dotL_cs = imag(EulerEquationMod.logavg(aL + pert, aR))/h
+  a_dotR_cs = imag(EulerEquationMod.logavg(aL, aR + pert))/h
+  fill!(aL_dot, 1)
+  fill!(aR_dot, 1)
+  EulerEquationMod.logavg_diff(data, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg_dotR)
+  for i=1:nd
+    @test isapprox(a_dotL_cs, a_avg_dotL[i]) atol=1e-14
+    @test isapprox(a_dotR_cs, a_avg_dotR[i]) atol=1e-14
+  end
+
+  # reverse mode
+  aL_bar, aR_bar = EulerEquationMod.logavg_rev(aL, aR, 1.0)
+  @test abs(a_dotL_cs - aL_bar) < 1e-14
+  @test abs(a_dotR_cs - aR_bar) < 1e-14
+
+  # test other branch of if statement
+  aL = 1 + 10.0^-4
+  aR = 1
+
+  a_dotL_cs = imag(EulerEquationMod.logavg(aL + pert, aR))/h
+  a_dotR_cs = imag(EulerEquationMod.logavg(aL, aR + pert))/h
+  fill!(aL_dot, 1)
+  fill!(aR_dot, 1)
+  EulerEquationMod.logavg_diff(data, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg_dotR)
+  for i=1:nd
+    @test isapprox(a_dotL_cs, a_avg_dotL[i]) atol=1e-14
+    @test isapprox(a_dotR_cs, a_avg_dotR[i]) atol=1e-14
+  end
+
+
+  # reverse mode
+  aL_bar, aR_bar = EulerEquationMod.logavg_rev(aL, aR, 1.0)
+  @test abs(a_dotL_cs - aL_bar) < 1e-14
+  @test abs(a_dotR_cs - aR_bar) < 1e-14
+
+
+  return nothing
+end
+
+
+
+
 
 function test_jac_assembly(mesh, sbp, eqn, opts)
 
@@ -545,14 +852,12 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
 
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
-  println(STDERR, "calculating regular jacobian"); flush(STDERR)
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
   println("calculating explicit jacobian"); flush(STDOUT)
-  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
 
   evalJacobian(mesh, sbp, eqn, opts, assembler)
 
@@ -649,13 +954,11 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
-  println(STDERR, "calculating regular jacobian"); flush(STDERR)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
   println("calculating explicit jacobian"); flush(STDOUT)
-  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
 
   
   evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)

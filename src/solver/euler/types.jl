@@ -1,4 +1,7 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
+
+include("flux_types.jl")
+
 @doc """
 ### EulerEquationMod.ParamType
 
@@ -150,6 +153,10 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   res_jacLR::Array{Tres, 4}
   res_jacRL::Array{Tres, 4}
   res_jacRR::Array{Tres, 4}
+
+  lffluxdata::LFFluxData{Tres}
+  irfluxdata::IRFluxData{Tsol}
+
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -329,6 +336,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     res_jacRL = zeros(res_jacLL)
     res_jacRR = zeros(res_jacLL)
 
+    lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
+    irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
+
     h = maximum(mesh.jac)
 
     gamma = opts["gamma"]
@@ -427,6 +437,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                velocity_deriv, velocity_deriv_xy,
                flux_jac, res_jac,
                flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
+               lffluxdata, irfluxdata,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,

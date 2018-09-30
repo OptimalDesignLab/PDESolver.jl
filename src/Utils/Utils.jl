@@ -40,7 +40,8 @@ export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
 export fastzero!, fastscale!, removeComplex
-export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
+export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
+       assertArraysUnique
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
@@ -950,5 +951,115 @@ macro verbose5(ex)
     end
   end
 end
+
+"""
+  This macro enables easy unpacking of the members of a type to local variables
+  of the same name.  For example:
+
+  ```
+    @unpack foo a b c
+  ```
+
+  expands into
+
+  ```
+    a = foo.a; b = foo.b; c = foo.c
+  ```
+
+  **Inputs**
+
+   * obj: the name of a variable (must be a type with fields)
+   * varnames...: 1 or more names to unpack.  An error is thrown if a name is
+                  duplicated, presuming that is not what the user intended
+"""
+macro unpack(obj, varnames...)
+
+  @assert length(varnames) > 0
+
+  # check varnames are unique
+  for i=1:length(varnames)
+    for j=1:(i-1)
+      if varnames[i] == varnames[j]
+        error("attempting to unpack duplicate variable name: $(varnames[i])")
+      end
+    end
+  end
+
+  # build the expression
+  ex = :($(varnames[1]) = $(obj).$(varnames[1]))
+  for i=2:length(varnames)
+    ex = :($ex; $(varnames[i])= $(obj).$(varnames[i]))
+  end
+
+  return esc(ex)
+end
+
+"""
+  Given a list of variables, prints them out, one per line
+
+  Ex.  The code
+
+  ```
+    a = 2
+    b = 3
+    @printit a b
+  ```
+    will print
+  ```
+    a = 2
+    b = 3
+  ```
+
+  Variables can also be more general expressions:
+
+  ```
+    a = [1 2 3]
+    @printit a[1:2]
+  ```
+
+  will print
+
+  ```
+    a[1:2] = [1, 2]
+  ```
+"""
+macro printit(v...)
+
+  ex = :()  # empty expression
+  for s in v
+    str = string(s)
+#    println("s = ", s)
+    ex = :($ex, println($str, " = ", $(esc(s))); )
+  end
+
+  return ex
+end
+
+
+"""
+  This function asserts that every array field of the given object is a
+  unique array.  Note that this is less strict than a non-aliasing check,
+  becuase views of an array are not the same as the array.
+"""
+function assertArraysUnique(obj::T) where {T}
+# verify a struct does not have any fields that alias each other
+
+  fnames = fieldnames(T)
+
+  for i=1:length(fnames)
+    f_i = getfield(obj, fnames[i])
+    if typeof(f_i) <: AbstractArray
+      for j=(i+1):length(fnames)
+        f_j = getfield(obj, fnames[j])
+        if typeof(f_j) <: AbstractArray
+          @assert !(f_i === f_j)
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
 
 end  # end module

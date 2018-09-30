@@ -1348,19 +1348,6 @@ function calcEulerFlux_Ducros(params::ParamType{3, :conservative},
   return nothing
 end
 
-#=
-function calcEulerFlux_IR(params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_IR(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
 
 """
   This function calculates the Ismail-Roe numerical flux at a node in a
@@ -1402,17 +1389,11 @@ function calcEulerFlux_IR(params::ParamType{2, :conservative},
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat)
 
 
-  Un = dir[1]*u_hat + dir[2]*v_hat
-  F[1] = rho_hat*Un
-  F[2] = rho_hat*u_hat*Un + dir[1]*p1_hat
-  F[3] = rho_hat*v_hat*Un + dir[2]*p1_hat
-  F[4] = rho_hat*h_hat*Un
-  #=
-  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
-  F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
-  =#
+  mn = rho_hat*(dir[1]*u_hat + dir[2]*v_hat)
+  F[1] = mn
+  F[2] = u_hat*mn + dir[1]*p1_hat
+  F[3] = v_hat*mn + dir[2]*p1_hat
+  F[4] = h_hat*mn
   return nothing
 end
 
@@ -1465,12 +1446,7 @@ function calcEulerFlux_IR(params::ParamType{2, :conservative},
     F[3, i] = mv_n*v_hat + dir[2, i]*p1_hat
     F[4, i] = mv_n*h_hat
   end
-  #=
-  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat)
-  F[4] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat
-  =#
+
   return nothing
 end
 
@@ -1496,15 +1472,13 @@ function calcEulerFlux_IR(params::ParamType{3, :conservative},
   p1_hat = (z5L + z5R)/(z1L + z1R)
   p2_hat = ((gamma + 1)/(2*gamma) )*logavg(z5L, z5R)/logavg(z1L, z1R) + ( gamma_1/(2*gamma) )*(z5L + z5R)/(z1L + z1R)
   h_hat = gamma*p2_hat/(rho_hat*gamma_1) + 0.5*(u_hat*u_hat + v_hat*v_hat + w_hat*w_hat)
-
-  F[1] = dir[1]*rho_hat*u_hat + dir[2]*rho_hat*v_hat + dir[3]*rho_hat*w_hat
-  F[2] = dir[1]*(rho_hat*u_hat*u_hat + p1_hat) + dir[2]*rho_hat*u_hat*v_hat +
-         dir[3]*rho_hat*u_hat*w_hat
-  F[3] = dir[1]*rho_hat*u_hat*v_hat + dir[2]*(rho_hat*v_hat*v_hat + p1_hat) +
-         dir[3]*rho_hat*v_hat*w_hat
-  F[4] = dir[1]*rho_hat*u_hat*w_hat + dir[2]*rho_hat*v_hat*w_hat +
-         dir[3]*(rho_hat*w_hat*w_hat + p1_hat)
-  F[5] = dir[1]*rho_hat*u_hat*h_hat + dir[2]*rho_hat*v_hat*h_hat + dir[3]*rho_hat*w_hat*h_hat
+  
+  mv_n = rho_hat*(dir[1]*u_hat + dir[2]*v_hat + dir[3]*w_hat)
+  F[1] = mv_n
+  F[2] = mv_n*u_hat + dir[1]*p1_hat
+  F[3] = mv_n*v_hat + dir[2]*p1_hat
+  F[4] = mv_n*w_hat + dir[3]*p1_hat
+  F[5] = mv_n*h_hat
 
   return nothing
 end
@@ -1546,49 +1520,14 @@ function calcEulerFlux_IR(params::ParamType{3, :conservative},
 end
 
 
-#TODO: move documentation to second method
-# stabilized IR flux
-#=
 """
+
   This function calculates the flux across an interface using the IR
   numerical flux function and a Lax-Friedrich type of entropy dissipation.
 
   Currently this is implemented for conservative variables only.
 
-  Methods are available that take in dxidx and a normal vector in parametric
-  space and compute and normal vector xy space and that take in a
-  normal vector directly.
-
-  Inputs:
-    qL, qR: vectors conservative variables at left and right states
-    aux_vars: aux_vars for qL
-    dxidx: scaled mapping jacobian (2x2 or 3x3 in 3d)
-    nrm: normal vector in parametric space
-
-  Inputs/Outputs:
-    F: vector to be updated with the result
-
-  Aliasing restrictions:
-    nothing may alias params.nrm2.  See also getEntropyLFStab
-"""
-=#
-#=
-function calcEulerFlux_IRSLF(params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_IRSLF(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
-
-"""
   This is the second method that takes in a normal vector directly.
-  See the first method for a description of what this function does.
 
   Inputs
     qL, qR: vectors conservative variables at left and right states
@@ -1646,7 +1585,21 @@ end
 
 
 
+"""
+  Computes the logarithmic average required by the IR flux, in a numerically
+  stable manner.  Uses one extra term in the polynomial as suggested by
+  "On Discretely Entropy Conservative and Entropy Stable DG methods", Chan
+  2018.
 
+  **Inputs**
+
+   * aL: left state
+   * aR: right state
+
+  **Outputs**
+
+   * a_avg: logarithmic average of aL and aR
+"""
 function logavg(aL, aR)
 # calculate the logarithmic average needed by the IR flux
   xi = aL/aR

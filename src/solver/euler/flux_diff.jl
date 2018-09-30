@@ -22,22 +22,12 @@ function calcFaceIntegral_nopre_diff(
   res_jacRL = params.res_jacRL
   res_jacRR = params.res_jacRR
 
-  #=
-  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = zeros(q_faceL)
-
-  flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  flux_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  
-  res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-  res_jacLR = zeros(res_jacLL)
-  res_jacRL = zeros(res_jacLL)
-  res_jacRR = zeros(res_jacLL)
-  =#
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   for i=1:nfaces
     iface_i = interfaces[i]
+    fill!(flux_dotL, 0)
+    fill!(flux_dotR, 0)
 
     qL = ro_sview(eqn.q, :, :, iface_i.elementL)
     qR = ro_sview(eqn.q, :, :, iface_i.elementR)
@@ -143,18 +133,6 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
   res_jacLR = params.res_jacLR
   res_jacRL = params.res_jacRL
   res_jacRR = params.res_jacRR
-  #=
-  # TODO: make these fields of params
-  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-  flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  flux_dotR = zeros(flux_dotL)
-
-  res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-  res_jacLR = zeros(res_jacLL)
-  res_jacRL = zeros(res_jacLL)  # TODO: create a NoOp array for these
-  res_jacRR = zeros(res_jacLL)
-  =#
 
   # get data
   idx = data.peeridx
@@ -174,6 +152,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
     bndryL_j = bndries_local[j]
     bndryR_j = bndries_remote[j]
     fL = bndryL_j.face
+
+    fill!(flux_dotL, 0); fill!(flux_dotR, 0)
 
     # interpolate to face
     qL = ro_sview(eqn.q, :, :, iface_j.elementL)
@@ -274,6 +254,24 @@ function (obj::LFFlux_diff)(params::ParamType,
   return nothing
 end
 
+"""
+  Calls the [`calcEulerFlux_IR_diff`](@ref)
+"""
+mutable struct IRFlux_diff <: FluxType_diff
+end
+
+function (obj::IRFlux_diff)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray{Tmsh},
+              F_dotL::AbstractMatrix{Tres},
+              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
+
+  calcEulerFlux_IR_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
+
+  return nothing
+end
 
 
 mutable struct ErrorFlux_diff <: FluxType_diff
@@ -299,6 +297,7 @@ end
 global const FluxDict_diff = Dict{String, FluxType_diff}(
 "RoeFlux" => RoeFlux_diff(),
 "LFFlux" => LFFlux_diff(),
+"IRFlux" => IRFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),
 )
 
