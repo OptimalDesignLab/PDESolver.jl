@@ -161,14 +161,18 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   irfluxdata::IRFluxData{Tsol}
   get_entropy_lf_stab_data::GetEntropyLFStabData{Tsol}
   get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
+  calc_vorticity_data::CalcVorticityData{Tsol, Tres, Tmsh}
 
   # temporary storage for face element integral functions
   calc_ec_face_integral_data::CalcECFaceIntegralData{Tres, Tmsh}
   calc_entropy_penalty_integral_data::CalcEntropyPenaltyIntegralData{Tsol, Tres}
+  interpolate_element_staggered_data::InterpolateElementStaggeredData{Tsol}
 
   # temporary storage for higher level functions
+  calc_volume_integrals_data::CalcVolumeIntegralsData{Tres, Tmsh}
   face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
   calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
+
 
 
   h::Float64 # temporary: mesh size metric
@@ -355,10 +359,15 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
     get_entropy_lf_stab_data = GetEntropyLFStabData{Tsol}(mesh.numDofPerNode)
     get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
+    calc_vorticity_data = CalcVorticityData{Tsol, Tres, Tmsh}(mesh.numNodesPerElement, mesh.dim)
 
     calc_ec_face_integral_data = CalcECFaceIntegralData{Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, stencilsize)
+    interpolate_element_staggered_data = InterpolateElementStaggeredData{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement, numNodesPerElement)
 
+    calc_volume_integrals_data = CalcVolumeIntegralsData{Tres, Tmsh}(
+                                mesh.numDofPerNode, mesh.dim,
+                                mesh.numNodesPerElement, numNodesPerElement, sbp)
     face_element_integral_data = FaceElementIntegralData{Tsol, Tres}(
                                  mesh.numDofPerNode, mesh.numNodesPerElement,
                                  numNodesPerElement)
@@ -466,9 +475,12 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # flux functions
                roefluxdata, calcsatdata, lffluxdata, irfluxdata,
                get_entropy_lf_stab_data, get_lambda_max_simple_data,
+               calc_vorticity_data,
                # face level functions
                calc_ec_face_integral_data, calc_entropy_penalty_integral_data,
+               interpolate_element_staggered_data,
                # entire mesh functions
+               calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,

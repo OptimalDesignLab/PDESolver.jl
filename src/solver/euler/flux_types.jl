@@ -283,6 +283,30 @@ struct GetLambdaMaxSimpleData{Tsol}
   end
 end
 
+
+struct CalcVorticityData{Tsol, Tres, Tmsh}
+  dxidx_unscaled::Array{Tmsh, 3}
+  velocities::Matrix{Tsol}
+  velocity_deriv::Array{Tmsh, 3}
+  velocity_deriv_xy::Array{Tmsh, 3}
+
+  function CalcVorticityData{Tsol, Tres, Tmsh}(numNodesPerElement::Integer, dim::Integer) where {Tsol, Tres, Tmsh}
+
+    dxidx_element = zeros(Tmsh, dim, dim, numNodesPerElement)
+    velocities = zeros(Tsol, dim, numNodesPerElement)
+    velocity_deriv = zeros(Tsol, dim, numNodesPerElement, dim)
+    velocity_deriv_xy = zeros(Tres, dim, dim, numNodesPerElement)
+
+    obj = new(dxidx_element, velocities, velocity_deriv, velocity_deriv_xy)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+
 #------------------------------------------------------------------------------
 # structs for face element integrals
 
@@ -342,6 +366,28 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
     res_vals = zeros(Tres, numDofPerNode)
 
     obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg, res_vals)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+"""
+  Temporary storage for [`interpolateElementStaggered`](@ref)
+"""
+struct InterpolateElementStaggeredData{Tsol}
+  wvars_s::Matrix{Tsol}
+  wvars_f::Matrix{Tsol}
+
+  function InterpolateElementStaggeredData{Tsol}(numDofPerNode::Integer,
+              numNodesPerElement_s::Integer, numNodesPerElement_f) where {Tsol}
+
+    wvars_s = zeros(Tsol, numDofPerNode, numNodesPerElement_s)
+    wvars_f = zeros(Tsol, numDofPerNode, numNodesPerElement_f)
+
+    obj = new(wvars_s, wvars_f)
 
     assertArraysUnique(obj)
 
@@ -427,3 +473,52 @@ struct CalcFaceIntegralsData{Tsol, Tres}
     return obj
   end
 end
+
+
+"""
+  Temporary storage for [`calcVolumeIntegrals`](@ref) and
+  [`calcVolumeIntegralsSplitForm`](@ref).
+"""
+struct CalcVolumeIntegralsData{Tres, Tmsh}
+
+  # calcVolumeIntegrals
+
+  # calcVolumeIntegralsSplitFormLinear
+  nrmD::Matrix{Tmsh}
+  F_d::Matrix{Tres}
+  S::Array{Float64, 3}  # SBP S matrix (should elementtype really be Float64?)
+
+  # calcVolumeIntegralsSplitFormCurvilinear
+  Sx::Array{Tmsh, 3}
+
+  # staggered grid methods
+  res_s::Matrix{Tres}
+  res_f::Matrix{Tres}
+
+  function CalcVolumeIntegralsData{Tres, Tmsh}(numDofPerNode::Integer,
+                  dim::Integer, numNodesPerElement_s::Integer,
+                  numNodesPerElement_f::Integer, sbp::AbstractSBP) where {Tres, Tmsh}
+
+    nrmD = zeros(Tmsh, dim, dim)
+    F_d = zeros(Tres, numDofPerNode, dim)
+    # the staggered grid calculation only uses the curvilinear method, so
+    # make S numNodesPerElement_s, to match the sbp operator on the solution
+    # grid (S is not used if they don't match>
+    S = zeros(Float64, numNodesPerElement_s, numNodesPerElement_s, dim)
+    Sx = zeros(Tmsh, numNodesPerElement_f, numNodesPerElement_f, dim)
+
+    for i=1:dim
+      S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
+    end
+
+    res_s = zeros(Tres, numDofPerNode, numNodesPerElement_s)
+    res_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
+
+    obj = new(nrmD, F_d, S, Sx, res_s, res_f)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
