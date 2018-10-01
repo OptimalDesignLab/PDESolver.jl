@@ -13,14 +13,8 @@ function calcFaceIntegral_nopre_diff(
   nfaces = length(interfaces)
   params = eqn.params
 
-  q_faceL = params.q_faceL
-  q_faceR = params.q_faceR
-  flux_dotL = params.flux_dotL
-  flux_dotR = params.flux_dotR
-  res_jacLL = params.res_jacLL
-  res_jacLR = params.res_jacLR
-  res_jacRL = params.res_jacRL
-  res_jacRR = params.res_jacRR
+  data = params.calc_face_integrals_data
+  @unpack data q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
 
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
@@ -124,15 +118,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
   params = eqn.params
-
-  q_faceL = params.q_faceL
-  q_faceR = params.q_faceR
-  flux_dotL = params.flux_dotL
-  flux_dotR = params.flux_dotR
-  res_jacLL = params.res_jacLL
-  res_jacLR = params.res_jacLR
-  res_jacRL = params.res_jacRL
-  res_jacRR = params.res_jacRR
+  data = params.calc_face_integral_data
+  @unpack data q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
 
   # get data
   idx = data.peeridx

@@ -41,6 +41,9 @@ function RoeSolver(params::ParamType{2},
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
 
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2
+
   # Declaring constants
   d1_0 = 1.0
   d0_0 = 0.0
@@ -76,23 +79,18 @@ function RoeSolver(params::ParamType{2},
   v = (sqL*vL + sqR*vR)*fac
   H = (sqL*HL + sqR*HR)*fac
 
-  dq = params.v_vals2 # zeros(Tsol, 4)
   for i=1:length(dq)
     dq[i] = q[i] - qg[i]
   end
-  sat = params.sat_vals
-  roe_vars = params.roe_vars
+
   roe_vars[1] = u
   roe_vars[2] = v
   roe_vars[3] = H
   calcSAT(params, roe_vars, dq, nrm, sat)
 
-  euler_flux = params.flux_vals1
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
-  v_vals = params.q_vals
-  nrm2 = params.nrm
   nrm2[1] = nx   # why are we assigning to nrm2?
   nrm2[2] = ny
 
@@ -139,6 +137,9 @@ function RoeSolver_revm(params::ParamType{2},
                    flux_bar::AbstractArray{Tres, 1},
                    nrm_bar::AbstractArray{Tmsh, 1}) where {Tmsh, Tsol, Tres}
 
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2 euler_flux_bar sat_bar
+
   # Forward sweep
   tau = 1.0
   gamma = params.gamma
@@ -165,10 +166,10 @@ function RoeSolver_revm(params::ParamType{2},
   u = (sqL*uL + sqR*uR)*fac
   v = (sqL*vL + sqR*vR)*fac
   H = (sqL*HL + sqR*HR)*fac
-  dq = params.v_vals2
-  dq[:] = q[:] - qg[:]
-  v_vals = params.q_vals
-  nrm2 = params.nrm
+  for i=1:length(dq)
+    dq[i] = q[i] - qg[i]
+  end
+
   nrm2[1] = nx
   nrm2[2] = ny
   convertFromNaturalToWorkingVars(params, q, v_vals)
@@ -177,8 +178,6 @@ function RoeSolver_revm(params::ParamType{2},
   # for i=1:4  # ArrayViews does not support flux[:] = .
   #   flux[i] = (sat_fac*sat[i] + euler_flux[i])
   # end
-  euler_flux_bar = params.flux_vals1 # zeros(Tsol, 4)
-  sat_bar = params.sat_vals
   fill!(euler_flux_bar, 0.0)
   fill!(sat_bar, 0.0)
   for i = 4:-1:1
@@ -220,6 +219,9 @@ function RoeSolver(params::ParamType{3},
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
 
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2
+
   # Declaring constants
   d1_0 = 1.0
   d0_0 = 0.0
@@ -258,25 +260,20 @@ function RoeSolver(params::ParamType{3},
 
   H = (sqL*HL + sqR*HR)*fac
 
-  dq = params.v_vals2 # zeros(Tsol, 4)
   for i=1:length(dq)
     dq[i] = q[i] - qg[i]
   end
 
-  roe_vars = params.roe_vars
   roe_vars[1] = u
   roe_vars[2] = v
   roe_vars[3] = w
   roe_vars[4] = H
-  sat = params.sat_vals
 
   calcSAT(params, roe_vars, dq, nrm, sat)
 
   # calculate Euler flux in wall normal directiona
   # because edge numbering is rather arbitary, any memory access is likely to
   # be a cache miss, so we recalculate the Euler flux
-  euler_flux = params.flux_vals1
-  v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
   calcEulerFlux(params, v_vals, aux_vars, nrm, euler_flux)
 
@@ -581,6 +578,9 @@ function calcSAT(params::ParamType{2},
                  sat::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 # roe_vars = [u, v, H] at Roe average 
 
+  data = params.calcsatdata
+  @unpack data E1dq E2dq
+
   # SAT parameters
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
@@ -631,9 +631,6 @@ function calcSAT(params::ParamType{2},
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
 
-
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
 
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -687,6 +684,9 @@ function calcSAT(params::ParamType{3},
                  sat::AbstractArray{Tsol,1}) where {Tsol, Tmsh}
   # roe_vars = [u, v, w, H] at Roe average 
 
+  data = params.calcsatdata
+  @unpack data E1dq E2dq
+
   # SAT parameters
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
@@ -726,11 +726,6 @@ function calcSAT(params::ParamType{3},
   dq3 = dq[3]
   dq4 = dq[4]
   dq5 = dq[5]
-
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
-
-
 
   #-- diagonal matrix multiply
 #  sat = zeros(Tres, 4)
@@ -818,6 +813,9 @@ function calcSAT_revm(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
           H::Tsol, sat_bar::AbstractArray{Tsol, 1},
           nrm_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
 
+  data = params.calcsatdata
+  @unpack data E1dq E2dq E3dq E4dq
+
   # Forward Sweep
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
@@ -851,11 +849,6 @@ function calcSAT_revm(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
   sat[2] = lambda3*dq2
   sat[3] = lambda3*dq3
   sat[4] = lambda3*dq4
-
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
-  E3dq = zeros(Tsol, 4)
-  E4dq = zeros(Tsol, 4)
 
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -1041,15 +1034,15 @@ end
 """
   Calculates the Lax-Friedrich flux function on the conservative variables
 """
-function calcLFFlux(
-params::ParamType{Tdim, :conservative},
-qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-aux_vars::AbstractArray{Tsol, 1},
-dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+function calcLFFlux(params::ParamType{Tdim, :conservative},
+                    qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                    aux_vars::AbstractArray{Tsol, 1},
+                    dir::AbstractArray{Tmsh, 1},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
   # compute Euler flux of left and right states
-  fluxL = params.flux_vals1
-  fluxR = params.flux_vals2
+  data = params.lffluxdata
+  @unpack data fluxL fluxR
+
   calcEulerFlux(params, qL, aux_vars, dir, fluxL)
   calcEulerFlux(params, qR, aux_vars, dir, fluxR)
   lambda_max = getLambdaMaxSimple(params, qL, qR, dir)
@@ -1553,6 +1546,7 @@ function calcEulerFlux_IRSLF(
   return nothing
 end
 
+#=
 """
   This function is similar to calcEulerFlux_IRSLF, but uses Lax-Wendroff
   dissipation rather than Lax-Friedrich.
@@ -1570,7 +1564,7 @@ function calcEulerFlux_IRSLW(params::ParamType,
   calcEulerFlux_IRSLW(params, qL, qR, aux_vars, nrm2, F)
   return nothing
 end
-
+=#
 function calcEulerFlux_IRSWF(
                       params::ParamType{Tdim, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},

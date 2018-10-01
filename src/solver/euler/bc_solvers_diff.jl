@@ -38,6 +38,9 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
 
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2 roe_vars_dot
+
   # Declaring constants
   d1_0 = 1.0
   d0_0 = 0.0
@@ -153,19 +156,16 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
   H_dotR4 = t5*HR_dot4
 
 
-  dq = params.v_vals2 # zeros(Tsol, 4)
   for i=1:length(dq)
     dq[i] = q[i] - qg[i]
   end
 
   # dq_dotL* = 1, dq_dotR* = -1, so omit them
 
-  roe_vars = params.roe_vars
   roe_vars[1] = u
   roe_vars[2] = v
   roe_vars[3] = H
 
-  roe_vars_dot = params.roe_vars_dot
   roe_vars_dot[1]  = u_dotL1
   roe_vars_dot[2]  = u_dotR1
   roe_vars_dot[3]  = u_dotL2
@@ -186,11 +186,6 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
   roe_vars_dot[16] = H_dotR4
   
 
-  sat = params.sat_vals
-#  sat_jacL = params.sat_jacL
-#  sat_jacR = params.sat_jacR
-#  fill!(fluxL_dot, 0.0)
-#  fill!(fluxR_dot, 0.0)
   # pass in fluxL_dot and fluxR_dot here, then add the Euler flux
   # contribution below
   calcSAT_diff(params, roe_vars, roe_vars_dot,  dq, nrm, fluxL_dot, fluxR_dot)
@@ -200,19 +195,12 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
   #euler_flux = params.flux_vals1
 #  euler_fluxjac = params.euler_fluxjac
 
-  v_vals = params.q_vals
-  nrm2 = params.nrm
   nrm2[1] = nx   # why are we assigning to nrm2?
   nrm2[2] = ny
 
 #  convertFromNaturalToWorkingVars(params, q, v_vals)
   calcEulerFlux_diff(params, q, aux_vars, nrm2, fluxL_dot)
 
-#  @simd for i=1:4
-#    @simd for j=1:4
-#      fluxL_dot[j, i] += euler_fluxjac[j, i]
-#    end
-#  end
 
   return nothing
 
@@ -230,6 +218,10 @@ function RoeSolver_diff(params::ParamType{3, :conservative},
   # similar to upwinding which adds dissipation to the problem. SATs on the
   # boundary can be thought of as having two overlapping nodes and because of
   # the discontinuous nature of SBP adds some dissipation.
+
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2 roe_vars_dot
+
 
   # Declaring constants
   tau = 1.0
@@ -370,20 +362,17 @@ function RoeSolver_diff(params::ParamType{3, :conservative},
   H_dotR5 = t5*HR_dot5
 
 
-  dq = params.v_vals2 # zeros(Tsol, 4)
   for i=1:length(dq)
     dq[i] = q[i] - qg[i]
   end
 
   # dq_dotL* = 1, dq_dotR* = -1, so omit them
 
-  roe_vars = params.roe_vars
   roe_vars[1] = u
   roe_vars[2] = v
   roe_vars[3] = w
   roe_vars[4] = H
 
-  roe_vars_dot = params.roe_vars_dot
   roe_vars_dot[1]  = u_dotL1
   roe_vars_dot[2]  = u_dotR1
   roe_vars_dot[3]  = u_dotL2
@@ -412,24 +401,11 @@ function RoeSolver_diff(params::ParamType{3, :conservative},
   roe_vars_dot[22] = H_dotR5
   
 
-  sat = params.sat_vals
-#  sat_jacL = params.sat_jacL
-#  sat_jacR = params.sat_jacR
-#  fill!(fluxL_dot, 0.0)
-#  fill!(fluxR_dot, 0.0)
   # pass in fluxL_dot and fluxR_dot here, then add the Euler flux
   # contribution below
   calcSAT_diff(params, roe_vars, roe_vars_dot,  dq, nrm, fluxL_dot, fluxR_dot)
 
-#  euler_fluxjac = params.euler_fluxjac
-
   calcEulerFlux_diff(params, q, aux_vars, nrm, fluxL_dot)
-
-#  @simd for i=1:5
-#    @simd for j=1:5
-#      fluxL_dot[j, i] += euler_fluxjac[j, i]
-#    end
-#  end
 
   return nothing
 
@@ -448,6 +424,9 @@ function calcSAT_diff(params::ParamType{2},
 # roe_vars = [u, v, H] at Roe average 
 # roe_vars_dot contains all the non-zero derivatives of the roe_vars packed
 # into a vector
+
+  data = params.calcsatdata
+  @unpack data E1dq E2dq
 
   # dq_dotL* = 1, dq_dotR* = -1, so don't pass them explicitly
 
@@ -780,9 +759,6 @@ function calcSAT_diff(params::ParamType{2},
   sat_jacR[4, 4] += -lambda3 + dq4*lambda3_dotR4
 
 #  @printit sat_jacR[2, 1]
-
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
 
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -1220,6 +1196,9 @@ end  # End function calcSAT
 
   # dq_dotL* = 1, dq_dotR* = -1, so don't pass them explicitly
 
+  data = params.calcsatdata
+  @unpack data E1dq E2dq
+
   # SAT parameters
   sat_Vn = convert(Tsol, 0.025)
   sat_Vl = convert(Tsol, 0.025)
@@ -1596,9 +1575,6 @@ end  # End function calcSAT
   sat_jacR[5, 3] +=            dq5*lambda3_dotR3
   sat_jacR[5, 4] +=            dq5*lambda3_dotR4
   sat_jacR[5, 5] += -lambda3 + dq5*lambda3_dotR5
-
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
 
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3  -w*dq4 + dq5

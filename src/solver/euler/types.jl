@@ -154,8 +154,21 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   res_jacRL::Array{Tres, 4}
   res_jacRR::Array{Tres, 4}
 
+  # temporary storage for flux functions
+  roefluxdata::RoeFluxData{Tsol, Tres, Tmsh}
+  calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
   irfluxdata::IRFluxData{Tsol}
+  get_entropy_lf_stab_data::GetEntropyLFStabData{Tsol}
+  get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
+
+  # temporary storage for face element integral functions
+  calc_ec_face_integral_data::CalcECFaceIntegralData{Tres, Tmsh}
+  calc_entropy_penalty_integral_data::CalcEntropyPenaltyIntegralData{Tsol, Tres}
+
+  # temporary storage for higher level functions
+  face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
+  calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
 
 
   h::Float64 # temporary: mesh size metric
@@ -336,9 +349,22 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     res_jacRL = zeros(res_jacLL)
     res_jacRR = zeros(res_jacLL)
 
+    roefluxdata = RoeFluxData{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
+    get_entropy_lf_stab_data = GetEntropyLFStabData{Tsol}(mesh.numDofPerNode)
+    get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
 
+    calc_ec_face_integral_data = CalcECFaceIntegralData{Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, stencilsize)
+
+    face_element_integral_data = FaceElementIntegralData{Tsol, Tres}(
+                                 mesh.numDofPerNode, mesh.numNodesPerElement,
+                                 numNodesPerElement)
+    calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
+                               mesh.numDofPerNode, mesh.numNodesPerFace,
+                               mesh.numNodesPerElement)
     h = maximum(mesh.jac)
 
     gamma = opts["gamma"]
@@ -437,7 +463,13 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                velocity_deriv, velocity_deriv_xy,
                flux_jac, res_jac,
                flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
-               lffluxdata, irfluxdata,
+               # flux functions
+               roefluxdata, calcsatdata, lffluxdata, irfluxdata,
+               get_entropy_lf_stab_data, get_lambda_max_simple_data,
+               # face level functions
+               calc_ec_face_integral_data, calc_entropy_penalty_integral_data,
+               # entire mesh functions
+               face_element_integral_data, calc_face_integrals_data,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,

@@ -343,6 +343,7 @@ function test_reversemode()
           dRoeFlux = imag(complex_flux)/imag(pert)
           complex_psi_dRoeFlux = dot(psi, dRoeFlux)
           error = norm(nrm_bar[k] - complex_psi_dRoeFlux, 2)
+          println("error = ", error)
           @test isapprox( error, 0.0) atol= 1e-13
           nrm[k] -= pert
         end # End for k = 1:Tdim
