@@ -395,6 +395,21 @@ struct InterpolateElementStaggeredData{Tsol}
   end
 end
 
+"""
+  Temporary storage for [`calcEulerFlux`](@ref) and differentiated versions
+"""
+struct CalcEulerFluxData{Tsol}
+  p_dot::Vector{Tsol}
+
+  function CalcEulerFluxData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    p_dot = zeros(Tsol, numDofPerNode)
+
+    obj = new(p_dot)
+
+    return obj
+  end
+end
 
 
 #------------------------------------------------------------------------------
@@ -482,6 +497,9 @@ end
 struct CalcVolumeIntegralsData{Tres, Tmsh}
 
   # calcVolumeIntegrals
+  flux_jac::Array{Tres, 4}
+  res_jac::Array{Tres, 4}
+  nrm::Vector{Tmsh}
 
   # calcVolumeIntegralsSplitFormLinear
   nrmD::Matrix{Tmsh}
@@ -499,6 +517,12 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
                   dim::Integer, numNodesPerElement_s::Integer,
                   numNodesPerElement_f::Integer, sbp::AbstractSBP) where {Tres, Tmsh}
 
+    # calcVolumeIntegrals
+    flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement_s, dim)
+    res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement_s, numNodesPerElement_s)
+    nrm = zeros(Tmsh, dim)
+
+    # split form stuff
     nrmD = zeros(Tmsh, dim, dim)
     F_d = zeros(Tres, numDofPerNode, dim)
     # the staggered grid calculation only uses the curvilinear method, so
@@ -514,7 +538,8 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     res_s = zeros(Tres, numDofPerNode, numNodesPerElement_s)
     res_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
 
-    obj = new(nrmD, F_d, S, Sx, res_s, res_f)
+    obj = new(flux_jac, res_jac, nrm,
+              nrmD, F_d, S, Sx, res_s, res_f)
 
     assertArraysUnique(obj)
 
