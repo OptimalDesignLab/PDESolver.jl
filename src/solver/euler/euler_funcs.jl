@@ -307,9 +307,6 @@ function calcVolumeIntegralsSplitFormCurvilinear(
 
   data = params.calc_volume_integrals_data
   @unpack data nrmD F_d Sx
-#  nrmD = params.nrmD
-#  F_d = params.flux_valsD
-#  Sx = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
 
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
   fill!(nrmD, 0.0)
@@ -376,8 +373,6 @@ function interpolateElementStaggered(
   numNodesPerElement_f = size(qf_el, 2)
 
   # temporary arrays
-#  wvars_s = params.qs_el1
-#  wvars_f = params.q_el1
   @unpack params.interpolate_element_staggered_data wvars_s wvars_f
 
   for j=1:numNodesPerElement_s
@@ -437,8 +432,6 @@ function calcVolumeIntegralsSplitFormCurvilinear(
 
   @unpack params.calc_volume_integrals_data nrmD F_d Sx res_f res_s
   aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
-#  res_f = eqn.params.res_el1
-#  res_s = eqn.params.ress_el1 #zeros(Tres, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
 
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
   fill!(nrmD, 0.0)

@@ -192,9 +192,6 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
 
 #  calcSAT(params, nrm, dq, sat, u, v, H, use_efix)
   
-  #euler_flux = params.flux_vals1
-#  euler_fluxjac = params.euler_fluxjac
-
   nrm2[1] = nx   # why are we assigning to nrm2?
   nrm2[2] = ny
 
@@ -2179,6 +2176,7 @@ function calcLFFlux_diff(
                       _F_dotL::AbstractMatrix{Tres}, _F_dotR::AbstractMatrix{Tres}) where {Tmsh, Tsol, Tres, Tdim}
 
   lffluxdata = params.lffluxdata
+  @unpack lffluxdata F_dotL F_dotR lambda_dotL lambda_dotR
   F_dotL = lffluxdata.F_dotL; F_dotR = lffluxdata.F_dotR
   fill!(F_dotL, 0); fill!(F_dotR, 0)
 
@@ -2186,8 +2184,8 @@ function calcLFFlux_diff(
 #  lambda_dotL = zeros(Tres, numDofPerNode)
 #  lambda_dotR = zeros(Tres, numDofPerNode)
 
-  lambda_dotL = params.lambda_dotL
-  lambda_dotR = params.lambda_dotR
+#  lambda_dotL = params.lambda_dotL
+#  lambda_dotR = params.lambda_dotR
 
   calcEulerFlux_diff(params, qL, aux_vars, dir, F_dotL)
   calcEulerFlux_diff(params, qR, aux_vars, dir, F_dotR)

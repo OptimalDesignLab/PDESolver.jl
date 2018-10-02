@@ -597,7 +597,7 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
   # getting qg
   qg = params.bcdata.qg
   calcIsentropicVortex(params, coords, qg) # Get the boundary value
-  v_vals = params.q_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
   # Getting SAT terms

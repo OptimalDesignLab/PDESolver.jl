@@ -90,6 +90,8 @@ struct LFFluxData{Tres}
   fluxR::Vector{Tres}
   F_dotL::Array{Tres, 2}
   F_dotR::Array{Tres, 2}
+  lambda_dotL::Vector{Tres}
+  lambda_dotR::Vector{Tres}
 
   function LFFluxData{Tres}(numDofPerNode::Integer, nd::Integer) where {Tres}
 
@@ -98,8 +100,10 @@ struct LFFluxData{Tres}
     fluxR = zeros(Tres, numDofPerNode)
     F_dotL = zeros(Tres, numDofPerNode, nd)
     F_dotR = zeros(Tres, numDofPerNode, nd)
+    lambda_dotL = zeros(Tres, numDofPerNode)
+    lambda_dotR = zeros(Tres, numDofPerNode)
 
-    obj = new(fluxL, fluxR, F_dotL, F_dotR)
+    obj = new(fluxL, fluxR, F_dotL, F_dotR, lambda_dotL, lambda_dotR)
 
     assertArraysUnique(obj)
     
@@ -267,7 +271,9 @@ struct GetEntropyLFStabData{Tsol}
   end
 end
 
-
+"""
+  Temporary storage for [`getLambdaMaxSimple`](@ref) and differentiated versions
+"""
 struct GetLambdaMaxSimpleData{Tsol}
   q_avg::Vector{Tsol}
 
@@ -280,6 +286,20 @@ struct GetLambdaMaxSimpleData{Tsol}
     assertArraysUnique(obj)
 
     return obj
+  end
+end
+
+"""
+  Temporary storage for [`getLambdaMax`](@ref) and differentiated versions.
+"""
+struct GetLambdaMaxData{Tsol}
+  p_dot::Vector{Tsol}
+
+  function GetLambdaMaxData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    p_dot = zeros(Tsol, numDofPerNode)
+
+    return new(p_dot)
   end
 end
 
@@ -304,6 +324,59 @@ struct CalcVorticityData{Tsol, Tres, Tmsh}
     return obj
   end
 end
+
+
+struct ContractResEntropyVarsData{Tsol}
+  w_vals::Vector{Tsol}
+
+  function ContractResEntropyVarsData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    w_vals = zeros(Tsol, numDofPerNode)
+
+    return new(w_vals)
+  end
+end
+
+"""
+  Temporary storage for[`getTau`](@ref)
+"""
+struct GetTauData{Tsol, Tres}
+  AjAk::Matrix{Tsol}
+  flux_term::Matrix{Tsol}
+  A0inv::Matrix{Tsol}
+  tmp_mat::Matrix{Tres}
+
+  # second method
+  B_d::Matrix{Tres}
+  B_p::Matrix{Tres}
+  A_mat_hat::Array{Tsol, 3}
+  A0::Matrix{Tsol}
+  tmp_mat2::Matrix{Tsol}
+
+  function GetTauData{Tsol, Tres}(numDofPerNode::Integer, dim::Integer) where {Tsol, Tres}
+
+    AjAk = zeros(Tsol, numDofPerNode, numDofPerNode)
+    flux_term = zeros(Tsol, numDofPerNode, numDofPerNode)
+    A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
+    tmp_mat = zeros(Tres, numDofPerNode, numDofPerNode)
+
+    B_d = zeros(Tres, numDofPerNode, numDofPerNode)
+    B_p = zeros(Tres, numDofPerNode, numDofPerNode)
+    A_mat_hat = zeros(Tsol, numDofPerNode, numDofPerNode, dim)
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+    tmp_mat2 = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+
+    obj = new(AjAk, flux_term, A0inv, tmp_mat,
+              B_d, B_p, A_mat_hat, A0, tmp_mat2)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
 
 
 

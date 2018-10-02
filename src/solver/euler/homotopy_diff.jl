@@ -339,7 +339,7 @@ function getLambdaMax_diff(params::ParamType{2},
   rhoLinv = 1/qL[1]
   rhoLinv_dotL1 = -rhoLinv*rhoLinv
 
-  p_dot = params.p_dot
+  p_dot = params.get_lambda_max_data.p_dot
   pL = calcPressure_diff(params, qL, p_dot)
   aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
   t1 = gamma*rhoLinv/(2*aL)
@@ -397,7 +397,7 @@ function getLambdaMax_diff(params::ParamType{3},
   rhoLinv = 1/qL[1]
   rhoLinv_dotL1 = -rhoLinv*rhoLinv
 
-  p_dot = params.p_dot
+  p_dot = params.get_lambda_max_data.p_dot
   pL = calcPressure_diff(params, qL, p_dot)
   aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
   t1 = gamma*rhoLinv/(2*aL)
@@ -472,7 +472,7 @@ function getLambdaMaxSimple_diff(params::ParamType{Tdim},
                       lambda_dotL::AbstractVector{Tres},
                       lambda_dotR::AbstractVector{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
-  q_avg = params.q_vals3
+  q_avg = params.get_lambda_max_simple_data.q_avg
 
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])

@@ -120,8 +120,6 @@ end
 
 """
   Method for sparse faces.  See other method for details
-
-  Aliasing restrictions: params.flux_vals1 must not be in use
 """
 function calcECFaceIntegral(
      params::AbstractParamType{Tdim}, 

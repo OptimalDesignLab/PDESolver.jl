@@ -118,8 +118,6 @@ end
 
   This function is dimension agnostic, but only works for conservative
   variables.
-
-  Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
 """
 function getEntropyLFStab(
                       params::ParamType{Tdim, :conservative}, 
@@ -283,7 +281,6 @@ end
   Outputs:
     lambda_max: eigenvalue of maximum magnitude
 
-  Aliasing restrictions: params.q_vals3 must be unused
 """
 function getLambdaMaxSimple(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 

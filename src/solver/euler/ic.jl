@@ -763,7 +763,7 @@ end
 """
 function ICExp(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
@@ -783,7 +783,7 @@ end
 """
 function ICPeriodicMMS(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
@@ -811,7 +811,7 @@ function ICTaylorGreen(mesh::AbstractMesh{Tmsh}, sbp,
   gamma_1 = eqn.params.gamma_1
   gamma = eqn.params.gamma
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
@@ -841,7 +841,7 @@ end
 """
 function ICChannelMMS(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
@@ -861,7 +861,7 @@ end
 """
 function ICSquare1D(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
@@ -881,7 +881,7 @@ end
 """
 function ICSquare2D(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)
@@ -902,7 +902,7 @@ end
 function ICSedovExplosion(mesh::AbstractMesh{Tmsh}, sbp,
              eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = eqn.params.q_vals
+  q = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
       dofs = sview(mesh.dofs, :, j, i)

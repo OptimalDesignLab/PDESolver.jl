@@ -71,7 +71,7 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
 
   nfaces = length(bndry_facenums)
   params = eqn.params_complex
-  q_face = params.q_faceL
+  q_face = params.calc_face_integrals_data.q_faceL
   Tsol = eltype(q_face)
   Tres = promote_type(Tsol, Tmsh)
 

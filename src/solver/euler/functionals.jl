@@ -20,6 +20,9 @@ mutable struct BoundaryForceData{Topt, fname} <: AbstractIntegralFunctional{Topt
   dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
   dDragdaoa::Topt # Partial derivative of drag w.r.t. angle of attack
 
+  # things needed for the calculation
+  qg::Vector{Topt}
+  euler_flux::Vector{Topt}
 end
 
 """
@@ -35,9 +38,12 @@ function LiftForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, bcnums) wh
   dLiftdaoa = 0.0
   dDragdaoa = 0.0
 
+  qg = zeros(Topt, mesh.numDofPerNode)
+  euler_flux = zeros(Topt, mesh.numDofPerNode)
+
   return BoundaryForceData{Topt, :lift}(bcnums, ndof,
                            bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
-                           dDragdaoa)
+                           dDragdaoa, qg, euler_flux)
 end
 
 """
@@ -53,10 +59,12 @@ function DragForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   drag_val = 0.0
   dLiftdaoa = 0.0
   dDragdaoa = 0.0
+  qg = zeros(Topt, mesh.numDofPerNode)
+  euler_flux = zeros(Topt, mesh.numDofPerNode)
 
   return BoundaryForceData{Topt, :drag}(bcnums, ndof,
                            bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
-                           dDragdaoa)
+                           dDragdaoa, qg, euler_flux)
 end
 
 """

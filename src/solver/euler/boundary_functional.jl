@@ -443,7 +443,7 @@ function calcBoundaryFunctionalIntegrand(params::ParamType{2},
   # momentum values. The normal vector supplied has already been converted
   # to the physical space from the parametric space.
 
-  euler_flux = params.flux_vals1 # Reuse existing memory
+  euler_flux = objective.euler_flux # Reuse existing memory
 
   fac = 1.0/(sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2]))
   # normalize normal vector
@@ -452,7 +452,7 @@ function calcBoundaryFunctionalIntegrand(params::ParamType{2},
 
   normal_momentum = nx*q[2] + ny*q[3]
 
-  qg = params.qg
+  qg = objective.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -480,7 +480,7 @@ function calcBoundaryFunctionalIntegrand(params::ParamType{3},
   nz = nrm[3]*fac
 
   normal_momentum = nx*q[2] + ny*q[3] + nz*q[4]
-  qg = params.qg
+  qg = objective.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -488,7 +488,7 @@ function calcBoundaryFunctionalIntegrand(params::ParamType{3},
   qg[3] -= ny*normal_momentum
   qg[4] -= nz*normal_momentum
 
-  euler_flux = params.flux_vals1 # Reuse existing memory
+  euler_flux = objective.euler_flux # Reuse existing memory
   calcEulerFlux(params, qg, aux_vars, nrm, euler_flux)
   val[:] = euler_flux[2:4]
 
@@ -567,7 +567,7 @@ function calcBoundaryFunctionalIntegrand_revm(params::ParamType{2},
   nx = nrm[1]*fac # Normalized unit vectors
   ny = nrm[2]*fac #
   normal_momentum = nx*q[2] + ny*q[3]
-  qg = params.qg
+  qg = objective.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -640,7 +640,7 @@ function calcBoundaryFunctionalIntegrand_revm(params::ParamType{3},
   nz = nrm[3]*fac
 
   normal_momentum = nx*q[2] + ny*q[3] + nz*q[4]
-  qg = params.qg
+  qg = objective.qg
   for i=1:length(q)
     qg[i] = q[i]
   end

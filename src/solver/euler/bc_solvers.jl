@@ -13,6 +13,7 @@
   must be in *conservative* variables.
 
   **Inputs**
+
    * params : ParamType
    * q  : conservative variables of the fluid
    * qg : conservative variables of the boundary
@@ -21,12 +22,8 @@
         lives on)
 
   **Outputs**
+
    * flux : vector to populate with solution
-
-  Aliasing restrictions:  none of the inputs can alias params.res_vals1,
-                          params.res_vals2, params.q_vals, params.flux_vals1, or
-                          params.sat
-
 
 """->
 function RoeSolver(params::ParamType{2},
@@ -293,10 +290,7 @@ function RoeSolver_revm(params::ParamType{3},
       flux_bar::AbstractArray{Tres, 1},
       nrm_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol, Tres}
 
-  E1dq = params.res_vals1
-  E2dq = params.res_vals2
-  # E1dq = zeros(Tres, 5)
-  # E2dq = zeros(Tres, 5)
+  @unpack params.calcsatdata E1dq E2dq
 
   # Declaring constants
   d1_0 = one(Tres)

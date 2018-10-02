@@ -135,7 +135,7 @@ function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp,
   # boundary dissipation
   # use q_faceL, nrm2, flux  from interface dissipation
   if opts["homotopy_addBoundaryIntegrals"]
-    qg = eqn.params.qg  # boundary state
+    qg = zeros(Tsol, mesh.numDofPerNode)  # boundary state
     for i=1:mesh.numBoundaryFaces
       bndry_i = mesh.bndryfaces[i]
       qL = sview(eqn.q, :, :, bndry_i.element)

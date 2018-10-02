@@ -23,8 +23,6 @@
 
   Outputs: none
 
-  Aliasing restrictions: params.q_vals cannot be in use
-
 """->
 function applySourceTerm(mesh, sbp, eqn, opts, src_func::SRCType)
 #TODO: check that the k loop vectorizes

@@ -188,7 +188,6 @@ end  # end function
 
    * Fjac: flux jacobian, numDofPerNode x numDofPerNode, summed into
 
-  Aliasing restrictions: params.p_dot is overwritten
 """
 function calcEulerFlux_diff(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1},
@@ -204,7 +203,6 @@ function calcEulerFlux_diff(params::ParamType{2, :conservative},
 
 
   p_dot = params.eulerfluxdata.p_dot
-#  p_dot = zeros(q)  # TODO: replace this with a pre-allocated array
   press = calcPressure_diff(params, q, p_dot)
 #  press = getPressure(aux_vars)
 #  press = @getPressure(aux_vars)
