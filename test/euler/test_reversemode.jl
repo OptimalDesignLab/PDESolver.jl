@@ -450,8 +450,8 @@ function test_reversemode()
     end # End  testset("Checking reverse mode for isentropicVortexBC")
 
     @testset "Checking reverse mode for ExpBC" begin
-      functor_rev = EulerEquationMod.ExpBC_revm()
-      functor = EulerEquationMod.ExpBC()
+      functor_rev = EulerEquationMod.ExpBC_revm(mesh, eqn)
+      functor = EulerEquationMod.ExpBC(mesh, eqn)
       q = ro_sview(eqn.q_bndry, :, 1, 1)
       aux_vars = ro_sview(eqn.aux_vars_bndry, :, 1, 1)
       coords = ro_sview(mesh.coords_bndry, :, 1, 1)

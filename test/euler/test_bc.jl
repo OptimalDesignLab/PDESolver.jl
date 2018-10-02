@@ -46,7 +46,7 @@ function test_bcs()
   nrm_xy = -Float64[0.0, 2.0]
 
   EulerEquationMod.calcEulerFlux(params, q, aux_vars, nrm_xy, F)
-  obj = EulerEquationMod.BCDict["subsonicInflowBC"]
+  obj = EulerEquationMod.BCDict["subsonicInflowBC"](mesh, eqn)
   obj(params, q, aux_vars, coords, nrm_xy, F2)
 
   @test isapprox( norm((F - F2)/norm(q)), 0.0) atol=1e-12
@@ -64,7 +64,7 @@ function test_bcs()
   nrm_xy = Float64[0.0, 2.0]
 
   EulerEquationMod.calcEulerFlux(params, q, aux_vars, nrm_xy, F)
-  obj = EulerEquationMod.BCDict["subsonicOutflowBC"]
+  obj = EulerEquationMod.BCDict["subsonicOutflowBC"](mesh, eqn)
   obj(params, q, aux_vars, coords, nrm_xy, F2)
 
   @test isapprox( norm((F - F2)/norm(q)), 0.0) atol=1e-12

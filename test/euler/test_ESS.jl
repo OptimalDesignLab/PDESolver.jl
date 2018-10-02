@@ -714,7 +714,7 @@ end
 """
 function test_ESSBC(mesh, sbp, eqn, opts)
 
-  func = EulerEquationMod.BCDict["noPenetrationESBC"]
+  func = EulerEquationMod.BCDict["noPenetrationESBC"](mesh, eqn)
 
   EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
 
