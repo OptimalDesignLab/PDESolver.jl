@@ -446,22 +446,26 @@ macro makeBC(fname::Symbol, docstring="")
 
   return esc(quote
                struct $fname{Tsol} <: $stype
+                 #=
                  """
                    Storage for boundary state
                  """
-                 qg
+                 qg::Vector{Tsol}
                  """
                    Storage for entropy variables (may be unneeded)
                  """
-                 v_vals
+                 v_vals::Vector{Tsol}
+                 =#
                end
 
 
                function $fname(mesh::AbstractMesh, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres}
+                 #=
                  qg = zeros(Tsol, mesh.numDofPerNode)
                  v_vals = zeros(Tsol, mesh.numDofPerNode)
+                 =#
 
-                 return $fname{Tsol}(qg, v_vals)
+                 return $fname{Tsol}()
                end
 
                $docex
@@ -504,11 +508,12 @@ function (obj::isentropicVortexBC)(params::ParamType,
   gamma = params.gamma
   gami = params.gamma_1
 
-  # getting qg
-  qg = params.qg
-  calcIsentropicVortex(params, coords, qg) # Get the boundary value
+  data = params.bcdata
+  @unpack data qg v_vals sat dq roe_vars euler_flux
+  fill!(euler_flux, 0)
 
-  v_vals = params.q_vals
+  # getting qg
+  calcIsentropicVortex(params, coords, qg) # Get the boundary value
   convertFromNaturalToWorkingVars(params, q, v_vals)
 
   # Getting SAT terms
@@ -518,18 +523,14 @@ function (obj::isentropicVortexBC)(params::ParamType,
   phi = 0.5*(u*u + v*v)
   H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
 
-#  dq = zeros(Tsol, 4)
-  dq = v_vals - qg  #!!! this allocates a new vector dq every time
-#  nrm2 = params.nrm2
-#  calcBCNormal(params, dxidx, nrm, nrm2)
-  sat = params.sat_vals
-  roe_vars = params.roe_vars
+  for i=1:length(q)
+    dq[i] = q[i] - qg[i]
+  end
   roe_vars[1] = u
   roe_vars[2] = v
   roe_vars[3] = H
   calcSAT(params, roe_vars, dq, nrm_xy, sat)
 
-  euler_flux = zeros(Tsol, 4) # params.flux_vals1
   calcEulerFlux(params, v_vals, aux_vars, nrm_xy, euler_flux)
 
   sat_fac = 1.0 # Multiplier for SAT term
@@ -549,7 +550,7 @@ function (obj::isentropicVortexBC)(params::ParamType,
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcIsentropicVortex(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
 
@@ -594,7 +595,7 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
   gami = params.gamma_1
 
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcIsentropicVortex(params, coords, qg) # Get the boundary value
   v_vals = params.q_vals
   convertFromNaturalToWorkingVars(params, q, v_vals)
@@ -704,7 +705,7 @@ function (obj::noPenetrationBC)(params::ParamType2,
   # Get the normal momentum
   Unrm = nx*q[2] + ny*q[3]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -714,7 +715,7 @@ function (obj::noPenetrationBC)(params::ParamType2,
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
@@ -754,7 +755,7 @@ function (obj::noPenetrationBC)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -770,7 +771,7 @@ function (obj::noPenetrationBC)(params::ParamType3,
 #  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
 #  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
@@ -816,7 +817,7 @@ function (obj::noPenetrationESBC)(params::ParamType2,
   #   1. computing the normal and tangential components
   #   2. negating the normal component
   #   3. combining the negative normal and non-negated tangent component
-  qg = params.qg
+  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
@@ -853,7 +854,7 @@ function (obj::noPenetrationESBC)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
@@ -904,7 +905,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   nx = n1*fac
   ny = n2*fac
   Unrm = nx*q[2] + ny*q[3]
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -914,7 +915,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   qg[2] = qg[2] - nx*Unrm
   qg[3] = qg[3] - ny*Unrm
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
 
   # Reverse sweep
@@ -986,7 +987,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -996,7 +997,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType3,
   qg[3] -= ny*Unrm
   qg[4] -= nz*Unrm
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
 
   # Reverse Sweep
@@ -1094,7 +1095,7 @@ function (obj::unsteadyVortexBC)(params::ParamType,
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcUnsteadyVortex(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -1117,7 +1118,7 @@ function (obj::unsteadyVortex2BC)(params::ParamType,
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcUnsteadyVortex2(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -1162,7 +1163,7 @@ function (obj::Rho1E2U1VW0BC)(params::ParamType,
 
 
   #println("in Rho1E2BCU1V0W0")
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcRho1Energy2U1VW0(params, coords, qg)
 
@@ -1206,7 +1207,7 @@ function (obj::Rho1E2BC)(params::ParamType,
 
 
   #println("in Rho1E2BC")
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcRho1Energy2(params, coords, qg)
 
@@ -1250,7 +1251,7 @@ function (obj::Rho1E2U3BC)(params::ParamType,
 
 
   #println("in Rho1E2U3Bc")
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcRho1Energy2U3(params, coords, qg)
 
@@ -1291,7 +1292,7 @@ function (obj::FreeStreamBC)(params::ParamType,
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcFreeStream(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -1330,7 +1331,7 @@ function (obj::FreeStreamBC_revm)(params::ParamType,
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
-  qg = params.qg
+  qg = params.bcdata.qg
   calcFreeStream(params, coords, qg)
 
   # Reverse sweep
@@ -1366,7 +1367,7 @@ function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcFreeStream_dAlpha(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
@@ -1436,7 +1437,7 @@ function (obj::ExpBC)(params::ParamType, q::AbstractArray{Tsol,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcExp(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -1456,7 +1457,7 @@ function (obj::ExpBC_revm)(params::ParamType,
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward Sweep
-  qg = params.qg
+  qg = params.bcdata.qg
   calcExp(params, coords, qg)
 
   # Reverse Sweep
@@ -1482,7 +1483,7 @@ function (obj::PeriodicMMSBC)(params::ParamType,
 # use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcPeriodicMMS(params, coords, qg)
   use_efix = 0
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux, use_efix)
@@ -1504,7 +1505,7 @@ function (obj::ChannelMMSBC)(params::ParamType,
 # use the exact solution as the boundary condition for the ChannelMMS
 # solutions
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcChannelMMS(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -1595,7 +1596,7 @@ function (obj::SubsonicInflowBC)(params::ParamType2,
 
 
   # convert back to conservative variables
-  qg = params.qg
+  qg = params.bcdata.qg
   rho1 = gamma*pb/(ab*ab)  # this is numerically equivalent to rho2 below,
                            # which is weuird because in this case Tb is never
                            # used
@@ -1636,7 +1637,7 @@ function(obj::SubsonicOutflowBC)(params::ParamType2,
   @assert Un >= 0  # this should be outflow, not inflow
   @assert (Un*Un)/ai2 < 1
 
-  qg = params.qg
+  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = q[2]
   qg[3] = q[3]
@@ -1664,7 +1665,7 @@ function(obj::inviscidChannelFreeStreamBC)(
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcInvChannelFreeStream(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 

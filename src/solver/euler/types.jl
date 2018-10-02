@@ -156,6 +156,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
   # temporary storage for flux functions
   eulerfluxdata::CalcEulerFluxData{Tsol}
+  bcdata::BCData{Tsol, Tres}
   roefluxdata::RoeFluxData{Tsol, Tres, Tmsh}
   calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
@@ -356,6 +357,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     res_jacRR = zeros(res_jacLL)
 
     eulerfluxdata = CalcEulerFluxData{Tsol}(mesh.numDofPerNode)
+    bcdata = BCData{Tsol, Tres}(mesh.numDofPerNode)
     roefluxdata = RoeFluxData{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
@@ -476,7 +478,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                flux_jac, res_jac,
                flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                # flux functions
-               eulerfluxdata,
+               eulerfluxdata, bcdata,
                roefluxdata, calcsatdata, lffluxdata, irfluxdata,
                get_entropy_lf_stab_data, get_lambda_max_simple_data,
                calc_vorticity_data,

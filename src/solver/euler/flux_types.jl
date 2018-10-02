@@ -411,6 +411,42 @@ struct CalcEulerFluxData{Tsol}
   end
 end
 
+"""
+  Temporary storage for all BC functors.  This one is a bit odd, because
+  we can't store these arrays in the BC functors themselves, because when
+  doing boundary conditions for explicitly computed jacobians, the
+  Tsol of the eqn object and the type of the solution the boundary condition
+  functor operates on are different.
+
+  This design needs to be rethought.
+"""
+struct BCData{Tsol, Tres}
+
+  qg::Vector{Tsol}
+  v_vals::Vector{Tsol}
+
+  sat::Vector{Tres}
+  dq::Vector{Tsol}
+  roe_vars::Vector{Tsol}
+  euler_flux::Vector{Tres}
+
+  function BCData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
+
+    qg = zeros(Tsol, numDofPerNode)
+    v_vals = zeros(Tsol, numDofPerNode)
+    sat = zeros(Tsol, numDofPerNode)
+    dq = zeros(Tsol, numDofPerNode)
+    roe_vars = zeros(Tsol, numDofPerNode)
+    euler_flux = zeros(Tres, numDofPerNode)
+
+    obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
 
 #------------------------------------------------------------------------------
 # structs for functions that loop over faces

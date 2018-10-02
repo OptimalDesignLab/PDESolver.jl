@@ -935,7 +935,6 @@ function test_reversemode()
             nrm[p] -= pert
             dir_bar_complex[p] = dot(F_bar, flux)
             error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
-            println("error = ", error)
             @test isapprox( error, 0.0) atol= 1e-13
           end # End for p = 1:Tdim
         end # End for k=1:Tdim
