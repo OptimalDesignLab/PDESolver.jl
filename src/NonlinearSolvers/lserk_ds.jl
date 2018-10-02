@@ -303,12 +303,13 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       #     imag(q) -= fac*delta_t*Bv
       #   or
       #     imag(q) -= fac*delta_t*B*imag(q)
+      # TODO: WHY MINUS
       update_tmp = 0.0
       for j = 1:length(q_vec)
         dqimag_vec[j] = delta_t*Bv[j]
         # q_vec[j] = complex(real(q_vec[j]), imag(q_vec[j]) - fac*dqimag_vec[j]) 
         update_tmp += fac*dqimag_vec[j]
-        q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j])) 
+        q_vec[j] = complex(real(q_vec[j]), real(imag(q_vec[j]) - fac*dqimag_vec[j]))
       end
       @mpi_master println(f_stabilize_v, "i: $i   stage: 1   sum of stab update:", update_tmp)
     end
@@ -604,8 +605,8 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
                          # stab_A::DiagJac,
                          # stab_assembler::AssembleDiagJacData,
   MatZeroEntries(stab_A)
-  # -> TODO modify eqn.q_vec to only be real
 
+  # Taking the imaginary component of q out -> Storing it in tmp_imag
   fill!(tmp_imag, 0.0)
   for j = 1:length(eqn.q_vec)
     tmp_imag[j] = imag(eqn.q_vec[j])
@@ -614,11 +615,21 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
   end
 
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)     # calcs Qx*Ax + Qy*Ay     # TODO: is stab_assembler.A complex or real
-  filterDiagJac(mesh, eqn.q_vec, stab_A)        # stab_A is now B in the derivation
 
+  # YOU'VE ALREADY ZEROED OUT THE IMAG COMPONENT! USE TMP_IMAG
+  #   -> still want to answer why NaN
+  filterDiagJac(mesh, real(tmp_imag), stab_A)        # stab_A is now B in the derivation
+  # filterDiagJac(mesh, imag(eqn.q_vec), stab_A)        # stab_A is now B in the derivation
+  # filterDiagJac(mesh, eqn.q_vec, stab_A)        # stab_A is now B in the derivation
+  # TODO TODO 20180911: stabilize on v_vec! not q_vec?
+
+  # Putting the imaginary component back
   for j = 1:length(eqn.q_vec)
+    # println(" j: $j, real(eqn.q_vec[j]): ", real(eqn.q_vec[j]), " tmp_imag[j]: ", tmp_imag[j])
     eqn.q_vec[j] = complex(real(eqn.q_vec[j]), tmp_imag[j])
   end
+
+  # println(" mean(eqn.q_vec): ", mean(eqn.q_vec))
 
 
 

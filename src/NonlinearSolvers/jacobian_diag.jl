@@ -377,6 +377,7 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
     for j=1:mesh.numNodesPerElement
       for i=1:mesh.numDofPerNode
         ublock[idx] = q_vec[mesh.dofs[i, j, k]]
+        # println(" dof: $i, node: $j, idx: $idx, ublock[idx]: ", ublock[idx])
         idx += 1
       end
     end
@@ -384,12 +385,19 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
     findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
 #    removeUnstableModes!(Ablock, u_k)
 
+    # println("++++++++++++")
+
     # copy back
+    #=
     for j=1:blocksize
       for i=1:blocksize
         A.A[i, j, k] = Ablock2[i, j]
+        
+        println(" Ablock2[i,j]: ", Ablock2[i,j])
+        # println(" A.A[i,j,k]: ", A.A[i,j,k])
       end
     end
+    =#
 
   end  # end loop k
 
@@ -438,12 +446,12 @@ function removeUnstableModes!(Jac::AbstractMatrix,
       A[div(i*(i-1),2)+j] = 2.0*u[i]*u[j]
     end
   end
-  scale!(A, -prod/dot(A,A))
+  scale!(A, -prod/dot(A,A))         # flattening lower triangular into vector
 #  A *= -prod/dot(A,A)
   for i = 1:n
-    Jac[i,i] += A[div(i*(i-1),2)+i]
+    Jac[i,i] += A[div(i*(i-1),2)+i]       # diagonal entries
     for j = 1:(i-1)
-      Jac[i,j] += A[div(i*(i-1),2)+j]
+      Jac[i,j] += A[div(i*(i-1),2)+j]     # off-diagonal entries
       Jac[j,i] += A[div(i*(i-1),2)+j]
     end
   end
@@ -474,16 +482,37 @@ function findStablePerturbation!(Jac::AbstractMatrix,
                                  Jacpert::AbstractMatrix) where T
   @assert( size(Jac,1) == size(Jac,2) == size(Jacpert,1) == size(Jacpert,2)
            == length(u) )
+  # println(":::::::::::: entering findStablePert")
+
+  scale_u = 1e100
+  # scale_u = 1e60
+  scale!(u, scale_u)
+  
+  # println(">> scaling u by $scale_u")
+  u_check = dot(u,u)
+  if u_check < 1e-12     # use norm instead of dot?
+    println("u sufficiently small, after scale. u_check: $u_check. u: ", u')
+
+    # println("unscaling u")
+    scale!(u, 1/scale_u)
+    return
+  end
+
+
   n = size(Jac,1)
   # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
   prod = zero(T)
   for i = 1:n
     for j = 1:n
       prod += 0.5*(Jac[i,j] + Jac[j,i])*u[i]*u[j]
+      # println(" calcing prod. i = $i, j = $j, prod = $prod")
     end
   end
   if prod > 0
     # nothing to do
+    # println("::::::::::: return hit. exiting findStablePert")
+    # println("unscaling u")
+    scale!(u, 1/scale_u)
     return
   end
   # array A stores the entries in the contraint Jacobian
@@ -494,14 +523,44 @@ function findStablePerturbation!(Jac::AbstractMatrix,
       A[div(i*(i-1),2)+j] = 2.0*u[i]*u[j]
     end
   end
+
 #  A *= -prod/dot(A,A)
-  scale!(A, -prod/dot(A, A))
+  scale!(A, -prod/dot(A, A))        # divide by zero! root of NaN.
+
+  #=
+  # DEBUG
+  # println(" size(A): ", size(A))
+  blocksize = 12
+  nwork = div(blocksize*(blocksize+1),2)
+  println(" ++++++ after scale, A:")
+  for idx = 1:nwork
+    println(A[idx]," ")
+  end
+  # Not NaN
+  =#
+
   fill!(Jacpert, 0.0)
+
+  # println("-----------------------------------------")
+  # println("adding into Jacpert")
+  # println("-----------------------------------------")
   for i = 1:n
+    # println(A[div(i*(i-1),2)+i])
     Jacpert[i,i] += A[div(i*(i-1),2)+i]
     for j = 1:(i-1)
+      # println(A[div(i*(i-1),2)+j])
       Jacpert[i,j] += A[div(i*(i-1),2)+j]
       Jacpert[j,i] += A[div(i*(i-1),2)+j]
     end
   end
+  # Jacpert is NaN
+
+  # scale!(Jacpert, (1/scale_u)^4)      # need to unscale Jacpert by the amount used to scale u, to the 4th power
+                                      # this comes from:
+                                      #   A = f(u^2)
+                                      #   prod = f(u^2), and A scaled by prod
+
+  # println("unscaling u")
+  scale!(u, 1/scale_u)
+  # println(":::::::::::: exiting findStablePert")
 end
