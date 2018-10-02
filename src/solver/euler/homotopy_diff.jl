@@ -27,8 +27,8 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
     D[:, :, d] = inv(diagm(sbp.w))*sbp.Q[:, :, d]
   end
 
-  res_jac = eqn.params.res_jacLL
-  t2_dot = eqn.params.res_jacLR  # work array
+  res_jac = eqn.params.calc_face_integrals_data.res_jacLL
+  t2_dot = eqn.params.calc_face_integrals_data.res_jacLR  # work array
   t1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
   lambda_dot = zeros(Tres, mesh.numDofPerNode)
 
@@ -116,17 +116,20 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
   #----------------------------------------------------------------------------
   # interface terms
 
+  @unpack params.calc_face_integrals_data q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
+
+  #=
   q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = zeros(q_faceL)
 #  nrm2 = eqn.params.nrm2
-  flux_jacL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  flux_jacR = zeros(flux_jacL)
+  flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_dotR = zeros(flux_dotL)
 
   res_jacLL = params.res_jacLL
   res_jacLR = params.res_jacLR
   res_jacRL = params.res_jacRL
   res_jacRR = params.res_jacRR
-
+  =#
   lambda_dotL = zeros(Tres, mesh.numDofPerNode)
   lambda_dotR = zeros(Tres, mesh.numDofPerNode)
 
@@ -155,21 +158,21 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
       for k=1:mesh.numDofPerNode
         # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
         for m=1:mesh.numDofPerNode
-          flux_jacL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
-          flux_jacR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
+          flux_dotL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
+          flux_dotR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
         end
-        flux_jacL[k, k, j] += 0.5*lambda_max
-        flux_jacR[k, k, j] -= 0.5*lambda_max
+        flux_dotL[k, k, j] += 0.5*lambda_max
+        flux_dotR[k, k, j] -= 0.5*lambda_max
       end
     end  # end loop j
 
     # multiply by lambda here and it will get carried through
     # interiorFaceIntegrate_jac
-    scale!(flux_jacL, lambda)
-    scale!(flux_jacR, lambda)
+    scale!(flux_dotL, lambda)
+    scale!(flux_dotR, lambda)
 
     # compute dR/dq
-    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_jacL, flux_jacR,
+    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
     # assemble into the Jacobian
@@ -188,8 +191,8 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
   # skipping boundary integrals
   # use nrm2, flux_jfacL from interface terms above
   if opts["homotopy_addBoundaryIntegrals"]
-    qg = eqn.params_complex.qg  # boundary state
-    q_faceLc = eqn.params_complex.q_faceL
+    qg = zeros(Complex128, mesh.numDofPerNode)
+    q_faceLc = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerFace)
     h = 1e-20
     pert = Complex128(0, h)
     for i=1:mesh.numBoundaryFaces
@@ -220,7 +223,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 
           # calculate dissipation
           for k=1:mesh.numDofPerNode
-            flux_jacL[k, m, j] = lambda*imag(0.5*lambda_max*(q_j[k] - qg[k]))/h
+            flux_dotL[k, m, j] = lambda*imag(0.5*lambda_max*(q_j[k] - qg[k]))/h
           end
 
           q_j[m] -= pert
@@ -228,7 +231,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
       end  # end loop j
 
       
-      boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_jacL, res_jac,
+      boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_dotL, res_jac,
                                SummationByParts.Subtract())
 
       assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
@@ -240,7 +243,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   #---------------------------------------------------------------------------- 
   # shared face integrals
-  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_jacL, flux_jacR
+  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_dotL, flux_dotR
   # from above
 
   workarr = zeros(q_faceR)
@@ -276,21 +279,21 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
         for k=1:mesh.numDofPerNode
           # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
           for m=1:mesh.numDofPerNode
-            flux_jacL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
-            flux_jacR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
+            flux_dotL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
+            flux_dotR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
           end
-          flux_jacL[k, k, j] += 0.5*lambda_max
-          flux_jacR[k, k, j] -= 0.5*lambda_max
+          flux_dotL[k, k, j] += 0.5*lambda_max
+          flux_dotR[k, k, j] -= 0.5*lambda_max
         end
       end  # end loop j
 
       # multiply by lambda here and it will get carried through
       # interiorFaceIntegrate_jac
-      scale!(flux_jacL, lambda)
-      scale!(flux_jacR, lambda)
+      scale!(flux_dotL, lambda)
+      scale!(flux_dotR, lambda)
 
       # compute dR/dq
-      interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_jacL, flux_jacR,
+      interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 

@@ -24,4 +24,4 @@ function test_coordsfd()
 end
 
 
-add_func1!(EulerTests, test_coordsfd, [TAG_SHORTTEST, TAG_COMPLEX, TAG_ADJOINT, TAG_TMP])
+add_func1!(EulerTests, test_coordsfd, [TAG_SHORTTEST, TAG_COMPLEX, TAG_ADJOINT])
