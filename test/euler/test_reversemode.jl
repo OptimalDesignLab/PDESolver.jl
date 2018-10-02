@@ -291,9 +291,9 @@ function test_reversemode()
     pert = complex(0, 1e-20) # Complex step perturbation
     EulerEquationMod.calcSAT_revm(eqn.params, nrm2, q, [u,v], H, psi,
             nrm2_bar)  # where is sat_bar?
+    roe_vars = zeros(eltype(q), 3)
     for k = 1:length(nrm2)
       nrm2[k] += pert
-      roe_vars = eqn.params.roe_vars
       roe_vars[1] = u
       roe_vars[2] = v
       roe_vars[3] = H
