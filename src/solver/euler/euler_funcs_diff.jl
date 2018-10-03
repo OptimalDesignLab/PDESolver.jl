@@ -25,13 +25,6 @@ function calcVolumeIntegrals_nopre_diff(
 
   data = eqn.params.calc_volume_integrals_data
   @unpack data flux_jac res_jac nrm
-  # flux jacobian at every node in each direction
-#  flux_jac = eqn.params.flux_jac
-#  res_jac = eqn.params.res_jac
-#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
-#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-#  nrm = eqn.params.nrm  # vector in parametric direction
-
   fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
@@ -112,14 +105,6 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
   data = eqn.params.calc_volume_integrals_data
   @unpack data flux_jac res_jac nrm
-
-  # flux jacobian at every node in each direction
-#  flux_jac = eqn.params.flux_jac
-#  res_jac = eqn.params.res_jac; fill!(res_jac, 0.0)
-#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
-#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-#  nrm = eqn.params.nrm  # vector in parametric direction
-
   fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl

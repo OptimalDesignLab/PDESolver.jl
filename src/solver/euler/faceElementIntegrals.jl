@@ -279,9 +279,6 @@ end
              with the result, same shape as `qL`
    * `resR`: the residual of the right element to be updated (not overwritten)
              with the result, same shape as `qR`
-
-
-  Aliasing restrictions: params.nrm2, w_vals_stencil, w_vals2_stencil, res_vals1
 """
 function calcEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
@@ -371,7 +368,6 @@ end
 """
   Method for sparse faces.  See other method for details
 
-  Aliasing restrictions: params: v_vals, v_vals2, v_vals3, q_vals, A0, res_vals1
 """
 function calcEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
