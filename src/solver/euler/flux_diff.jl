@@ -118,8 +118,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
   params = eqn.params
-  data = params.calc_face_integral_data
-  @unpack data q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
+  fdata = params.calc_face_integrals_data
+  @unpack fdata q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
 
   # get data
   idx = data.peeridx

@@ -362,8 +362,8 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
   params = eqn.params
 
   # temporary arrays needed for interpolating to the flux grid
-  data = params.face_element_integral_data
-  @unpack data qvars_f resL_f resR_f resL_s
+  fdata = params.face_element_integral_data
+  @unpack fdata qvars_f resL_f resR_f resL_s
 
   # we don't care about resR here
   aux_vars = Array{Tres}(1, mesh_f.numNodesPerElement)
