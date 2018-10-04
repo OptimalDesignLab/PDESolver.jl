@@ -291,9 +291,9 @@ function test_reversemode()
     pert = complex(0, 1e-20) # Complex step perturbation
     EulerEquationMod.calcSAT_revm(eqn.params, nrm2, q, [u,v], H, psi,
             nrm2_bar)  # where is sat_bar?
+    roe_vars = zeros(eltype(q), 3)
     for k = 1:length(nrm2)
       nrm2[k] += pert
-      roe_vars = eqn.params.roe_vars
       roe_vars[1] = u
       roe_vars[2] = v
       roe_vars[3] = H
@@ -449,8 +449,8 @@ function test_reversemode()
     end # End  testset("Checking reverse mode for isentropicVortexBC")
 
     @testset "Checking reverse mode for ExpBC" begin
-      functor_rev = EulerEquationMod.ExpBC_revm()
-      functor = EulerEquationMod.ExpBC()
+      functor_rev = EulerEquationMod.ExpBC_revm(mesh, eqn)
+      functor = EulerEquationMod.ExpBC(mesh, eqn)
       q = ro_sview(eqn.q_bndry, :, 1, 1)
       aux_vars = ro_sview(eqn.aux_vars_bndry, :, 1, 1)
       coords = ro_sview(mesh.coords_bndry, :, 1, 1)
@@ -934,7 +934,6 @@ function test_reversemode()
             nrm[p] -= pert
             dir_bar_complex[p] = dot(F_bar, flux)
             error = norm(dir_bar_complex[p] - dxidx_bar[p], 2)
-            println("error = ", error)
             @test isapprox( error, 0.0) atol= 1e-13
           end # End for p = 1:Tdim
         end # End for k=1:Tdim

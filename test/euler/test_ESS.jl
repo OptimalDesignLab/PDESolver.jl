@@ -22,18 +22,18 @@ function calcECFaceIntegralTest(params::AbstractParamType{Tdim},
 
   Rprime = params.Rprime
 
-  F_tmp = params.flux_vals1
-
-  workA = params.A
-  workB = sview(params.B, :, :, 1)
-  workC = sview(params.B, :, :, 2)
-  nrm = params.nrm
+  F_tmp = zeros(Tres, numDofPerNode)
+  workA = zeros(Tres, size(Rprime))
+  workB = zeros(Tres, numNodesPerElement, numNodesPerElement)
+  workC = zeros(Tres, numNodesPerElement, numNodesPerElement)
+  nrm = zeros(Tmsh, size(nrm_face, 1))
+  iperm = zeros(Int, size(sbpface.perm, 1))
 
   perm_nu = sview(sbpface.perm, :, iface.faceR)
   perm_gamma = sview(sbpface.perm, :, iface.faceL)
 
   # inverse (transpose) permutation vectors
-  iperm_gamma = params.iperm 
+  iperm_gamma = copy(iperm)
   inversePerm(perm_gamma, iperm_gamma)
 
   # get the face normals
@@ -714,7 +714,7 @@ end
 """
 function test_ESSBC(mesh, sbp, eqn, opts)
 
-  func = EulerEquationMod.BCDict["noPenetrationESBC"]
+  func = EulerEquationMod.BCDict["noPenetrationESBC"](mesh, eqn)
 
   EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
 
@@ -752,15 +752,10 @@ function testLW(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, op
   params = eqn.params
   sbpface = mesh.sbpface
 
-  Y = params.A0  # eigenvectors of flux jacobian
+  Y = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
   A0 = copy(Y)
-  S2 = params.S2  # diagonal scaling matrix squared
-                       # S is defined s.t. (YS)*(YS).' = A0
-  Lambda = params.Lambda  # diagonal matrix of eigenvalues
-  tmp1 = params.res_vals1  # work vectors
-  tmp2 = params.res_vals2
-  tmp3 = params.res_vals3  # accumulate result vector
-#  nrm = params.nrm2
+  S2 = zeros(Tsol, mesh.numDofPerNode)  # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = zeros(Tsol, mesh.numDofPerNode)
   nrm = sview(mesh.nrm_face, :, 1, 1)
 
   iface = mesh.interfaces[1]

@@ -193,10 +193,8 @@ function getFaceElementIntegral(
   qf = eqn.q_flux
   res = eqn.res
   nfaces = length(interfaces)
-  resL_s = params.ress_el1
-  resR_s = params.ress_el2
-  resL_f = params.res_el1
-  resR_f = params.res_el2
+  data = params.face_element_integral_data
+  @unpack data resL_s resR_s resL_f resR_f
 
   aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
 
@@ -364,10 +362,9 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
   params = eqn.params
 
   # temporary arrays needed for interpolating to the flux grid
-  qvars_f = params.q_el2
-  resL_f = params.res_el1
-  resR_f = params.res_el2
-  resL_s = params.ress_el1
+  fdata = params.face_element_integral_data
+  @unpack fdata qvars_f resL_f resR_f resL_s
+
   # we don't care about resR here
   aux_vars = Array{Tres}(1, mesh_f.numNodesPerElement)
 
@@ -596,9 +593,7 @@ function calcSharedFaceIntegrals_element_inner(
                                      mesh.peer_face_counts[i])
   end 
 
-  # TODO: make these fields of params
-  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  @unpack params.calc_face_integrals_data q_faceL q_faceR
 
   idx = data.peeridx
   interfaces = data.interfaces

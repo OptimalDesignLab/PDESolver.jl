@@ -23,12 +23,9 @@ function calcVolumeIntegrals_nopre_diff(
 
 
 
-  # flux jacobian at every node in each direction
-  flux_jac = eqn.params.flux_jac
-  res_jac = eqn.params.res_jac
-#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
-#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-  nrm = eqn.params.nrm  # vector in parametric direction
+  data = eqn.params.calc_volume_integrals_data
+  @unpack data flux_jac res_jac nrm
+  fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
     fill!(flux_jac, 0)
@@ -106,12 +103,9 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
   @assert eqn.params.use_Minv != 1  # use_Minv not supported
 
-  # flux jacobian at every node in each direction
-  flux_jac = eqn.params.flux_jac
-  res_jac = eqn.params.res_jac; fill!(res_jac, 0.0)
-#  flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
-#  res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-  nrm = eqn.params.nrm  # vector in parametric direction
+  data = eqn.params.calc_volume_integrals_data
+  @unpack data flux_jac res_jac nrm
+  fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
     fill!(flux_jac, 0)
@@ -179,7 +173,6 @@ end  # end function
 
    * Fjac: flux jacobian, numDofPerNode x numDofPerNode, summed into
 
-  Aliasing restrictions: params.p_dot is overwritten
 """
 function calcEulerFlux_diff(params::ParamType{2, :conservative},
                       q::AbstractArray{Tsol,1},
@@ -194,8 +187,7 @@ function calcEulerFlux_diff(params::ParamType{2, :conservative},
 # 2D  only
 
 
-  p_dot = params.p_dot
-#  p_dot = zeros(q)  # TODO: replace this with a pre-allocated array
+  p_dot = params.eulerfluxdata.p_dot
   press = calcPressure_diff(params, q, p_dot)
 #  press = getPressure(aux_vars)
 #  press = @getPressure(aux_vars)
@@ -247,7 +239,7 @@ function calcEulerFlux_diff(params::ParamType{3},
 # 2D  only
 
 
-  p_dot = params.p_dot
+  p_dot = params.eulerfluxdata.p_dot
   press = calcPressure_diff(params, q, p_dot)
 #  press = getPressure(aux_vars)
 #  press = @getPressure(aux_vars)

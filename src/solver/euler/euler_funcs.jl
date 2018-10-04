@@ -164,8 +164,7 @@ function calcVolumeIntegrals_nopre(
 
   # flux in the parametric directions for a given element
   flux_el = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
-
-  nrm = eqn.params.nrm  # vector in parametric direction
+  nrm = zeros(Tmsh, mesh.dim)
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
@@ -248,11 +247,10 @@ function calcVolumeIntegralsSplitFormLinear(
   dxidx = mesh.dxidx
   res = eqn.res
   q = eqn.q
-  nrm = eqn.params.nrmD
   aux_vars = eqn.aux_vars
-  F_d = eqn.params.flux_valsD
-  S = eqn.params.S
   params = eqn.params
+  data = params.calc_volume_integrals_data
+  @unpack data nrmD F_d S
 
   for i=1:mesh.numEl
     for j=1:mesh.numNodesPerElement
@@ -264,13 +262,13 @@ function calcVolumeIntegralsSplitFormLinear(
         for d=1:Tdim
           # get the normal vector
           for p=1:Tdim
-            nrm[p, d] = dxidx[d, p, j, i]
+            nrmD[p, d] = dxidx[d, p, j, i]
           end
         end
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
-        functor(params, q_j, q_k, aux_vars_j, nrm, F_d)
+        functor(params, q_j, q_k, aux_vars_j, nrmD, F_d)
 
         @simd for d=1:Tdim
           # update residual
@@ -304,23 +302,22 @@ function calcVolumeIntegralsSplitFormCurvilinear(
   dxidx = mesh.dxidx
   res = eqn.res
   q = eqn.q
-  nrm = eqn.params.nrmD
   aux_vars = eqn.aux_vars
-  F_d = eqn.params.flux_valsD
-#  S = eqn.params.S
-  S = Array{Tmsh}(mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim)
   params = eqn.params
 
+  data = params.calc_volume_integrals_data
+  @unpack data nrmD F_d Sx
+
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
-  fill!(nrm, 0.0)
+  fill!(nrmD, 0.0)
   for d=1:Tdim
-    nrm[d, d] = 1
+    nrmD[d, d] = 1
   end
 
   for i=1:mesh.numEl
     # get S for this element
     dxidx_i = ro_sview(dxidx, :, :, :, i)
-    calcSCurvilinear(sbp, dxidx_i, S)
+    calcSCurvilinear(sbp, dxidx_i, Sx)
 
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(q, :, j, i)
@@ -330,13 +327,13 @@ function calcVolumeIntegralsSplitFormCurvilinear(
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
-        functor(params, q_j, q_k, aux_vars_j, nrm, F_d)
+        functor(params, q_j, q_k, aux_vars_j, nrmD, F_d)
 
         @simd for d=1:Tdim
           # update residual
           @simd for p=1:(Tdim+2)
-            res[p, j, i] -= 2*S[j, k, d]*F_d[p, d]
-            res[p, k, i] += 2*S[j, k, d]*F_d[p, d]
+            res[p, j, i] -= 2*Sx[j, k, d]*F_d[p, d]
+            res[p, k, i] += 2*Sx[j, k, d]*F_d[p, d]
           end
 
         end  # end d loop
@@ -376,8 +373,7 @@ function interpolateElementStaggered(
   numNodesPerElement_f = size(qf_el, 2)
 
   # temporary arrays
-  wvars_s = params.qs_el1
-  wvars_f = params.q_el1
+  @unpack params.interpolate_element_staggered_data wvars_s wvars_f
 
   for j=1:numNodesPerElement_s
     q_j = ro_sview(qs_el, :, j)
@@ -432,26 +428,21 @@ function calcVolumeIntegralsSplitFormCurvilinear(
   dxidx = mesh_f.dxidx
   res = eqn.res
   qf = eqn.q_flux
-  nrm = eqn.params.nrmD
-  F_d = eqn.params.flux_valsD
-  S = Array{Tmsh}(mesh_f.numNodesPerElement, mesh_f.numNodesPerElement, Tdim)
   params = eqn.params
 
-
+  @unpack params.calc_volume_integrals_data nrmD F_d Sx res_f res_s
   aux_vars = zeros(Tres, 1, mesh_f.numNodesPerElement)
-  res_f = eqn.params.res_el1
-  res_s = eqn.params.ress_el1 #zeros(Tres, mesh_s.numDofPerNode, mesh_s.numNodesPerElement)
 
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
-  fill!(nrm, 0.0)
+  fill!(nrmD, 0.0)
   for d=1:Tdim
-    nrm[d, d] = 1
+    nrmD[d, d] = 1
   end
   
   for i=1:mesh_f.numEl
     # get S for this element
     dxidx_i = ro_sview(dxidx, :, :, :, i)
-    calcSCurvilinear(sbp_f, dxidx_i, S)
+    calcSCurvilinear(sbp_f, dxidx_i, Sx)
 
     fill!(res_f, 0.0)
     for j=1:mesh_f.numNodesPerElement
@@ -463,13 +454,13 @@ function calcVolumeIntegralsSplitFormCurvilinear(
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
-        functor(params, q_j, q_k, aux_vars_j, nrm, F_d)
+        functor(params, q_j, q_k, aux_vars_j, nrmD, F_d)
 
         @simd for d=1:Tdim
           # update residual
           @simd for p=1:(Tdim+2)
-            res_f[p, j] -= 2*S[j, k, d]*F_d[p, d]
-            res_f[p, k] += 2*S[j, k, d]*F_d[p, d]
+            res_f[p, j] -= 2*Sx[j, k, d]*F_d[p, d]
+            res_f[p, k] += 2*Sx[j, k, d]*F_d[p, d]
           end
 
         end  # end d loop
@@ -1151,15 +1142,16 @@ function calcVorticity(params::ParamType{3, :conservative}, sbp,
   Tdim = 3
   numDofPerNode = size(q, 1)
   numNodesPerElement = size(q, 2)
-  dxidx_unscaled = params.dxidx_element
-  velocities = params.velocities
+  data = params.calc_vorticity_data
+  dxidx_unscaled = data.dxidx_unscaled
+  velocities = data.velocities
   # velocity derivatives in parametric space
   # first dimension: velocity component, 3rd dimension parametric direction
-  velocity_deriv = params.velocity_deriv
+  velocity_deriv = data.velocity_deriv
   fill!(velocity_deriv, 0.0)
   # velocity derivatives in xy space
   # first dimension: velocity, second dimension derivative direction
-  velocity_deriv_xy = params.velocity_deriv_xy
+  velocity_deriv_xy = data.velocity_deriv_xy
   fill!(velocity_deriv_xy, 0.0)
   fill!(vorticity, 0.0)
 

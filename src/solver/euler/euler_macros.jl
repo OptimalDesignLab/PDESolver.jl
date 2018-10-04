@@ -44,7 +44,5 @@ end
 """->
 macro setPressure(aux_vars, node, element, val)
   pressure_index = 1
-  println("aux_vars = ", aux_vars)
-  println("typeof(aux_vars) = ", typeof(aux_vars))
   return esc(:($aux_vars[$pressure_index, $node, $element] = $val))
 end

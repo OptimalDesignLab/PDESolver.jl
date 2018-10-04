@@ -513,11 +513,11 @@ function stabscale(q::AbstractArray{Tsol,1},
    
     gamma = params.gamma
     edge_stab_gamma = params.edgestab_gamma
+    q_vals = zeros(Tsol, length(q))
 
     # u holds whatever the variable type that we are solving the equation in
     # q_vals holds the conservative variables
     # convert to conservative variables if not already using them
-    q_vals = params.q_vals
     convertToConservative(params, q, q_vals)
 
     # calc pressure using the variables u and the params object

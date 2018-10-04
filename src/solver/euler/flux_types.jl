@@ -3,23 +3,107 @@
 # themselves because they need to be defind *before* ParamType
 
 """
-  Data needed by [`calcLFFlux_diff`](@ref)
+  Data for [`RoeSolver`](@ref) and related methods
+"""
+struct RoeFluxData{Tsol, Tres, Tmsh}
+  # primal flux
+  dq::Vector{Tsol}
+  sat::Vector{Tres}
+  roe_vars::Vector{Tres}
+  euler_flux::Vector{Tres}
+  v_vals::Vector{Tsol}
+  nrm2::Vector{Tmsh}
+
+  # revm
+  euler_flux_bar::Vector{Tres}
+  sat_bar::Vector{Tres}
+
+  # diff
+  roe_vars_dot::Vector{Tres}
+
+  function RoeFluxData{Tsol, Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tsol, Tres, Tmsh}
+
+    # primal flux
+    dq = zeros(Tsol, numDofPerNode)
+    sat = zeros(Tres, numDofPerNode)
+    roe_vars = zeros(Tres, numDofPerNode)
+    euler_flux = zeros(Tres, numDofPerNode)
+    v_vals = zeros(Tsol, numDofPerNode)
+    nrm2 = zeros(Tmsh, dim)
+
+    # revm
+    euler_flux_bar = zeros(Tres, numDofPerNode)
+    sat_bar = zeros(Tres, numDofPerNode)
+
+    # diff
+    roe_vars_dot = zeros(Tres, 22)  # 22 needed in 3D
+
+    obj = new(dq, sat, roe_vars, euler_flux, v_vals, nrm2,
+              euler_flux_bar, sat_bar,
+              roe_vars_dot)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+
+end
+
+"""
+  Data for [`calcSat`](@ref) and related methods 
+"""
+struct CalcSatData{Tres}
+  E1dq::Vector{Tres}
+  E2dq::Vector{Tres}
+  E3dq::Vector{Tres}
+  E4dq::Vector{Tres}
+
+  # no arrays are used for the diff version
+
+  function CalcSatData{Tres}(numDofPerNode::Integer) where {Tres}
+
+    E1dq = zeros(Tres, numDofPerNode)
+    E2dq = zeros(Tres, numDofPerNode)
+    E3dq = zeros(Tres, numDofPerNode)
+    E4dq = zeros(Tres, numDofPerNode)
+
+
+    obj = new(E1dq, E2dq, E3dq, E4dq)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+
+"""
+  Data needed by [`calcLFFlux`](@ref) and related method
 
   **Static Parameters**
 
    * Tres
 """
 struct LFFluxData{Tres}
+  fluxL::Vector{Tres}
+  fluxR::Vector{Tres}
   F_dotL::Array{Tres, 2}
   F_dotR::Array{Tres, 2}
+  lambda_dotL::Vector{Tres}
+  lambda_dotR::Vector{Tres}
 
   function LFFluxData{Tres}(numDofPerNode::Integer, nd::Integer) where {Tres}
 
     @assert numDofPerNode == nd  # not sure what happens if this is not true
+    fluxL = zeros(Tres, numDofPerNode)
+    fluxR = zeros(Tres, numDofPerNode)
     F_dotL = zeros(Tres, numDofPerNode, nd)
     F_dotR = zeros(Tres, numDofPerNode, nd)
+    lambda_dotL = zeros(Tres, numDofPerNode)
+    lambda_dotR = zeros(Tres, numDofPerNode)
 
-    obj = new(F_dotL, F_dotR)
+    obj = new(fluxL, fluxR, F_dotL, F_dotR, lambda_dotL, lambda_dotR)
 
     assertArraysUnique(obj)
     
@@ -161,4 +245,414 @@ struct IRFluxData{Tsol}
   end
 end
 
+
+"""
+  Temporary arrays for [`getEntropyLFStab`](@ref)
+"""
+struct GetEntropyLFStabData{Tsol}
+  q_avg::Vector{Tsol}
+  
+  # for getEntropyLFStab_inner
+  vL::Vector{Tsol}
+  vR::Vector{Tsol}
+  A0::Matrix{Tsol}
+
+  function GetEntropyLFStabData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    q_avg = zeros(Tsol, numDofPerNode)
+    vL = zeros(Tsol, numDofPerNode)
+    vR = zeros(Tsol, numDofPerNode)
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+    obj = new(q_avg, vL, vR, A0)
+
+    assertArraysUnique(obj)
+    return obj
+  end
+end
+
+"""
+  Temporary storage for [`getLambdaMaxSimple`](@ref) and differentiated versions
+"""
+struct GetLambdaMaxSimpleData{Tsol}
+  q_avg::Vector{Tsol}
+
+  function GetLambdaMaxSimpleData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    q_avg = zeros(Tsol, numDofPerNode)
+
+    obj = new(q_avg)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+"""
+  Temporary storage for [`getLambdaMax`](@ref) and differentiated versions.
+"""
+struct GetLambdaMaxData{Tsol}
+  p_dot::Vector{Tsol}
+
+  function GetLambdaMaxData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    p_dot = zeros(Tsol, numDofPerNode)
+
+    return new(p_dot)
+  end
+end
+
+
+struct CalcVorticityData{Tsol, Tres, Tmsh}
+  dxidx_unscaled::Array{Tmsh, 3}
+  velocities::Matrix{Tsol}
+  velocity_deriv::Array{Tmsh, 3}
+  velocity_deriv_xy::Array{Tmsh, 3}
+
+  function CalcVorticityData{Tsol, Tres, Tmsh}(numNodesPerElement::Integer, dim::Integer) where {Tsol, Tres, Tmsh}
+
+    dxidx_element = zeros(Tmsh, dim, dim, numNodesPerElement)
+    velocities = zeros(Tsol, dim, numNodesPerElement)
+    velocity_deriv = zeros(Tsol, dim, numNodesPerElement, dim)
+    velocity_deriv_xy = zeros(Tres, dim, dim, numNodesPerElement)
+
+    obj = new(dxidx_element, velocities, velocity_deriv, velocity_deriv_xy)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+struct ContractResEntropyVarsData{Tsol}
+  w_vals::Vector{Tsol}
+
+  function ContractResEntropyVarsData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    w_vals = zeros(Tsol, numDofPerNode)
+
+    return new(w_vals)
+  end
+end
+
+"""
+  Temporary storage for[`getTau`](@ref)
+"""
+struct GetTauData{Tsol, Tres}
+  AjAk::Matrix{Tsol}
+  flux_term::Matrix{Tsol}
+  A0inv::Matrix{Tsol}
+  tmp_mat::Matrix{Tres}
+
+  # second method
+  B_d::Matrix{Tres}
+  B_p::Matrix{Tres}
+  A_mat_hat::Array{Tsol, 3}
+  A0::Matrix{Tsol}
+  tmp_mat2::Matrix{Tsol}
+
+  function GetTauData{Tsol, Tres}(numDofPerNode::Integer, dim::Integer) where {Tsol, Tres}
+
+    AjAk = zeros(Tsol, numDofPerNode, numDofPerNode)
+    flux_term = zeros(Tsol, numDofPerNode, numDofPerNode)
+    A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
+    tmp_mat = zeros(Tres, numDofPerNode, numDofPerNode)
+
+    B_d = zeros(Tres, numDofPerNode, numDofPerNode)
+    B_p = zeros(Tres, numDofPerNode, numDofPerNode)
+    A_mat_hat = zeros(Tsol, numDofPerNode, numDofPerNode, dim)
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+    tmp_mat2 = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+
+    obj = new(AjAk, flux_term, A0inv, tmp_mat,
+              B_d, B_p, A_mat_hat, A0, tmp_mat2)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+
+
+
+#------------------------------------------------------------------------------
+# structs for face element integrals
+
+"""
+  Temporary storage for [`calcECFaceIntegral`](@ref)
+"""
+struct CalcECFaceIntegralData{Tres, Tmsh}
+  fluxD::Matrix{Tres}
+  nrmD::Matrix{Tmsh}
+
+  # for SparseFace method
+  flux_tmp::Vector{Tres}
+
+  function CalcECFaceIntegralData{Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tres, Tmsh}
+    fluxD = zeros(Tres, numDofPerNode, dim)
+    nrmD = zeros(Tmsh, dim, dim)
+    flux_tmp = zeros(Tres, numDofPerNode)
+
+    obj = new(fluxD, nrmD, flux_tmp)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
+  wL::Matrix{Tsol}
+  wR::Matrix{Tsol}
+  wL_i::Vector{Tsol}
+  wR_i::Vector{Tsol}
+  qL_i::Vector{Tsol}
+  qR_i::Vector{Tsol}
+  flux::Vector{Tres}
+  A0::Matrix{Tsol}
+
+  # sparseface method
+  delta_w::Vector{Tsol}
+  q_avg::Vector{Tsol}
+  res_vals::Vector{Tres}
+
+  function CalcEntropyPenaltyIntegralData{Tsol, Tres}(numDofPerNode::Integer,
+                                    stencilsize::Integer) where {Tsol, Tres}
+
+    wL = zeros(Tsol, numDofPerNode, stencilsize)
+    wR = zeros(Tsol, numDofPerNode, stencilsize)
+    wL_i = zeros(Tsol, numDofPerNode)
+    wR_i = zeros(Tsol, numDofPerNode)
+    qL_i = zeros(Tsol, numDofPerNode)
+    qR_i = zeros(Tsol, numDofPerNode)
+    flux = zeros(Tres, numDofPerNode)
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+    delta_w = zeros(Tsol, numDofPerNode)
+    q_avg = zeros(Tsol, numDofPerNode)
+    res_vals = zeros(Tres, numDofPerNode)
+
+    obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg, res_vals)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+"""
+  Temporary storage for [`interpolateElementStaggered`](@ref)
+"""
+struct InterpolateElementStaggeredData{Tsol}
+  wvars_s::Matrix{Tsol}
+  wvars_f::Matrix{Tsol}
+
+  function InterpolateElementStaggeredData{Tsol}(numDofPerNode::Integer,
+              numNodesPerElement_s::Integer, numNodesPerElement_f) where {Tsol}
+
+    wvars_s = zeros(Tsol, numDofPerNode, numNodesPerElement_s)
+    wvars_f = zeros(Tsol, numDofPerNode, numNodesPerElement_f)
+
+    obj = new(wvars_s, wvars_f)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+"""
+  Temporary storage for [`calcEulerFlux`](@ref) and differentiated versions
+"""
+struct CalcEulerFluxData{Tsol}
+  p_dot::Vector{Tsol}
+
+  function CalcEulerFluxData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    p_dot = zeros(Tsol, numDofPerNode)
+
+    obj = new(p_dot)
+
+    return obj
+  end
+end
+
+"""
+  Temporary storage for all BC functors.  This one is a bit odd, because
+  we can't store these arrays in the BC functors themselves, because when
+  doing boundary conditions for explicitly computed jacobians, the
+  Tsol of the eqn object and the type of the solution the boundary condition
+  functor operates on are different.
+
+  This design needs to be rethought.
+"""
+struct BCData{Tsol, Tres}
+
+  qg::Vector{Tsol}
+  v_vals::Vector{Tsol}
+
+  sat::Vector{Tres}
+  dq::Vector{Tsol}
+  roe_vars::Vector{Tsol}
+  euler_flux::Vector{Tres}
+
+  function BCData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
+
+    qg = zeros(Tsol, numDofPerNode)
+    v_vals = zeros(Tsol, numDofPerNode)
+    sat = zeros(Tsol, numDofPerNode)
+    dq = zeros(Tsol, numDofPerNode)
+    roe_vars = zeros(Tsol, numDofPerNode)
+    euler_flux = zeros(Tres, numDofPerNode)
+
+    obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+#------------------------------------------------------------------------------
+# structs for functions that loop over faces
+
+"""
+  Temporary storage for [`getFaceElementIntegral`](@ref) and related functions
+"""
+struct FaceElementIntegralData{Tsol, Tres}
+  # staggered grid things
+  resL_s::Matrix{Tres}
+  resR_s::Matrix{Tres}
+  resL_f::Matrix{Tres}
+  resR_f::Matrix{Tres}
+  qvars_f::Matrix{Tsol}
+
+  function FaceElementIntegralData{Tsol, Tres}(numDofPerNode::Integer,
+                                         numNodesPerElement_s::Integer,
+                                         numNodesPerElement_f::Integer) where {Tsol, Tres}
+
+    resL_s = zeros(Tres, numDofPerNode, numNodesPerElement_s)
+    resR_s = zeros(Tres, numDofPerNode, numNodesPerElement_s)
+
+    resL_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
+    resR_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
+    qvars_f = zeros(Tsol, numDofPerNode, numNodesPerElement_f)
+
+    obj = new(resL_s, resR_s, resL_f, resR_f, qvars_f)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+"""
+  Temporary storage for [`calcFaceIntegrals`](@ref) and related functions
+  (including shared face integral functions
+"""
+struct CalcFaceIntegralsData{Tsol, Tres}
+  q_faceL::Matrix{Tsol}
+  q_faceR::Matrix{Tsol}
+
+  # diff functions
+  flux_dotL::Array{Tres, 3}
+  flux_dotR::Array{Tsol, 3}
+  res_jacLL::Array{Tres, 4}
+  res_jacLR::Array{Tres, 4}
+  res_jacRL::Array{Tres, 4}
+  res_jacRR::Array{Tres, 4}
+
+  function CalcFaceIntegralsData{Tsol, Tres}(numDofPerNode::Integer,
+                    numNodesPerFace::Integer, numNodesPerElement::Integer) where {Tsol, Tres}
+
+    q_faceL = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    q_faceR = zeros(Tsol, numDofPerNode, numNodesPerFace)
+
+    flux_dotL = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerFace)
+    flux_dotR = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerFace)
+
+    res_jacLL = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                            numNodesPerElement)
+    res_jacLR = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                            numNodesPerElement)
+    res_jacRL = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                            numNodesPerElement)
+    res_jacRR = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                            numNodesPerElement)
+
+
+    obj = new(q_faceL, q_faceR, flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+
+"""
+  Temporary storage for [`calcVolumeIntegrals`](@ref) and
+  [`calcVolumeIntegralsSplitForm`](@ref).
+"""
+struct CalcVolumeIntegralsData{Tres, Tmsh}
+
+  # calcVolumeIntegrals
+  flux_jac::Array{Tres, 4}
+  res_jac::Array{Tres, 4}
+  nrm::Vector{Tmsh}
+
+  # calcVolumeIntegralsSplitFormLinear
+  nrmD::Matrix{Tmsh}
+  F_d::Matrix{Tres}
+  S::Array{Float64, 3}  # SBP S matrix (should elementtype really be Float64?)
+
+  # calcVolumeIntegralsSplitFormCurvilinear
+  Sx::Array{Tmsh, 3}
+
+  # staggered grid methods
+  res_s::Matrix{Tres}
+  res_f::Matrix{Tres}
+
+  function CalcVolumeIntegralsData{Tres, Tmsh}(numDofPerNode::Integer,
+                  dim::Integer, numNodesPerElement_s::Integer,
+                  numNodesPerElement_f::Integer, sbp::AbstractSBP) where {Tres, Tmsh}
+
+    # calcVolumeIntegrals
+    flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement_s, dim)
+    res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement_s, numNodesPerElement_s)
+    nrm = zeros(Tmsh, dim)
+
+    # split form stuff
+    nrmD = zeros(Tmsh, dim, dim)
+    F_d = zeros(Tres, numDofPerNode, dim)
+    # the staggered grid calculation only uses the curvilinear method, so
+    # make S numNodesPerElement_s, to match the sbp operator on the solution
+    # grid (S is not used if they don't match>
+    S = zeros(Float64, numNodesPerElement_s, numNodesPerElement_s, dim)
+    Sx = zeros(Tmsh, numNodesPerElement_f, numNodesPerElement_f, dim)
+
+    for i=1:dim
+      S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
+    end
+
+    res_s = zeros(Tres, numDofPerNode, numNodesPerElement_s)
+    res_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
+
+    obj = new(flux_jac, res_jac, nrm,
+              nrmD, F_d, S, Sx, res_s, res_f)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
 

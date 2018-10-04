@@ -167,7 +167,7 @@ function contractResEntropyVars(
              res_vec::AbstractVector) where {Tsol, Tres, Tmsh, Tdim}
 
   val = zero(Tres)
-  w_vals = eqn.params.v_vals
+  w_vals = eqn.params.contract_res_entropy_vars_data.w_vals
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_vals_i = ro_sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))
     convertToEntropy(eqn.params, q_vals_i, w_vals)
@@ -193,7 +193,7 @@ function contractResEntropyVars2(
              res_vec::AbstractVector) where {Tsol, Tres, Tmsh, Tdim}
 
   vals = zeros(Tres, mesh.numNodes)
-  w_vals = eqn.params.v_vals
+  w_vals = eqn.params.contract_res_entropy_vars_data.w_vals
   idx = 1
   for i=1:mesh.numDofPerNode:mesh.numDof
     q_vals_i = ro_sview(eqn.q_vec, i:(i+mesh.numDofPerNode - 1))

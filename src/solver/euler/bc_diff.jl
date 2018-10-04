@@ -71,20 +71,15 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
 
   nfaces = length(bndry_facenums)
   params = eqn.params_complex
-  q_face = params.q_faceL
+  q_face = params.calc_face_integrals_data.q_faceL
   Tsol = eltype(q_face)
   Tres = promote_type(Tsol, Tmsh)
 
 #  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   aux_vars = Array{Tres}(1)
   flux_k = zeros(Tres, mesh.numDofPerNode)
-  flux_jac = params.flux_dotL
-  res_jac = params.res_jacLL
-
-  #=
-  flux_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  res_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-  =#
+  flux_jac = params.calc_face_integrals_data.flux_dotL
+  res_jac = params.calc_face_integrals_data.res_jacLL
 
   h = 1e-20
   pert = Tsol(0, h)

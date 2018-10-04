@@ -118,8 +118,6 @@ end
 
   This function is dimension agnostic, but only works for conservative
   variables.
-
-  Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
 """
 function getEntropyLFStab(
                       params::ParamType{Tdim, :conservative}, 
@@ -127,7 +125,7 @@ function getEntropyLFStab(
                       aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
-  q_avg = params.q_vals3
+  q_avg = params.get_entropy_lf_stab_data.q_avg
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end
@@ -186,9 +184,7 @@ function getEntropyLFStab_inner(
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 #  println("entered getEntropyLFStab_inner")
 
-  A0 = params.A0
-  vL = params.v_vals
-  vR = params.v_vals2
+  @unpack params.get_entropy_lf_stab_data vL vR A0
   gamma = params.gamma
   gamma_1inv = 1/params.gamma_1
   p = calcPressure(params, q_avg)
@@ -200,6 +196,7 @@ function getEntropyLFStab_inner(
     vL[i] = vR[i] - vL[i]
   end
 
+  #TODO: use AbstractEntropyKernel?
 #  println("delta v = \n", vL)
   # common-subexpression-elimination has a strong influence on the weak minded
   getIRA0(params, q_avg, A0)
@@ -211,6 +208,7 @@ function getEntropyLFStab_inner(
   rhoinv = 1/q_avg[1]
   a = sqrt(gamma*p*rhoinv)  # speed of sound
 
+  #TODO: use getLambdaMax
   Un = zero(Tres)
   dA = zero(Tmsh)
 #  Un = nx*q_avg[2]*rhoinv + ny*q_avg[3]*rhoinv + nz*q_avg[4]*rhoinv
@@ -283,7 +281,6 @@ end
   Outputs:
     lambda_max: eigenvalue of maximum magnitude
 
-  Aliasing restrictions: params.q_vals3 must be unused
 """
 function getLambdaMaxSimple(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
@@ -292,7 +289,8 @@ function getLambdaMaxSimple(params::ParamType{Tdim},
 
   gamma = params.gamma
   Tres = promote_type(Tsol, Tmsh)
-  q_avg = params.q_vals3
+
+  q_avg = params.get_lambda_max_simple_data.q_avg
 
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
@@ -360,77 +358,3 @@ function getLambdaMaxRoe(params::ParamType{Tdim},
 
   return lambda_max1
 end
-
-#=
-"""
-  Updates the vector F with the stabilization term from Carpenter, Fisher,
-  Nielsen, Frankel, Entrpoy stable spectral collocation schemes for the 
-  Navier-Stokes equatiosn: Discontinuous interfaces.  The term is subtracted
-  off from F.
-
-  The q_avg vector should some average of qL and qR, but the type of 
-  averaging is left up to the user.
-
-  This function is agnostic to dimension, but only works for conservative
-  variables.
-
-  Aliasing: from params the following arrays are used: A0, v_vals
-              v_vals2, Lambda, S2, res_vals1, res_vals2
-
-"""
-function getEntropyLWStab_inner(
-                      params::ParamType{Tdim, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
-#  println("entered getEntropyLFStab_inner")
-
-  Y = params.A0  # eigenvectors of flux jacobian
-  S2 = params.S2  # diagonal scaling matrix squared
-                       # S is defined s.t. (YS)*(YS).' = A0
-  Lambda = params.Lambda  # diagonal matrix of eigenvalues
-  vL = params.v_vals  # entropy variables
-  vR = params.v_vals2
-  tmp1 = params.res_vals1  # work vectors
-  tmp2 = params.res_vals2
-  gamma = params.gamma
-  gamma_1inv = 1/params.gamma_1
-  p = calcPressure(params, q_avg)  # TODO: remove this?
-
-  convertToEntropy(params, qL, vL)
-  convertToEntropy(params, qR, vR)
-
-  for i=1:length(vL)
-    vL[i] = gamma_1inv*(vR[i] - vL[i]) # scale by 1/gamma_1 to make IR entropy
-                                       # variables, now vL has vL - vR
-  end
-
-  # get quantities
-  calcEvecsx(params, q_avg, Y)
-  calcEvalsx(params, q_avg, Lambda)
-  calcEScalingx(params, q_avg, S2)
-  ni = dir[1]
-
-  # calculate term in current direction
-  applyEntropyLWUpdate(Y, Lambda, S2, vL, tmp1, tmp2, ni, F)
-
-  calcEvecsy(params, q_avg, Y)
-  calcEvalsy(params, q_avg, Lambda)
-  calcEScalingy(params, q_avg, S2)
-
-  applyEntropyLWUpdate(Y, Lambda, S2, vL, tmp1, tmp2, ni, F)
-
-
-  if Tdim == 3  # three cheers for static analysis
-    calcEvecsz(params, q_avg, Y)
-    calcEvalsz(params, q_avg, Lambda)
-    calcEScalingz(params, q_avg, S2)
-
-    applyEntropyLWUpdate(Y, Lambda, S2, vL, tmp1, tmp2, ni, F)
-  end
-
-
-  return nothing
-end
-
-=#

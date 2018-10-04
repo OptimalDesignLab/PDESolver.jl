@@ -288,14 +288,14 @@ function test_pressure(params::AbstractParamType{Tdim}) where Tdim
   p_dot2 = zeros(q)
   EulerEquationMod.calcPressure_diff(params, q, p_dot2)
 
-  @test isapprox( maximum(abs.(p_dot - p_dot2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(p_dot - p_dot2)), 0.0) atol=1e-13
 
   # test reverse mode
   q_bar = zeros(q)
 
   EulerEquationMod.calcPressure_revq(params, q, q_bar, 1.0)
 
-  @test maximum(abs.(q_bar - p_dot)) < 1e-14
+  @test maximum(abs.(q_bar - p_dot)) < 1e-13
 
 
   return nothing
@@ -336,13 +336,13 @@ function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
   res2 = zeros(res)
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
-  @test isapprox( maximum(abs.(res - res2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(res - res2)), 0.0) atol=1e-13
 
   # test that res2 is summed into
   res2_orig = copy(res2)
   EulerEquationMod.calcEulerFlux_diff(params, q, aux_vars, nrm, res2)
 
-  @test maximum(abs.(res2 - 2*res2_orig)) < 1e-14
+  @test maximum(abs.(res2 - 2*res2_orig)) < 1e-13
 end
 
 function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
@@ -471,16 +471,16 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
   end
 
 
-  @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-14
-  @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-13
+  @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-13
 
   # test resL,R are summed into
   resL2_orig = copy(resL2)
   resR2_orig = copy(resR2)
   func_diff(params, qL, qR, aux_vars, nrm, resL2, resR2)
 
-  @test maximum(abs.(resL2 - 2*resL2_orig)) < 1e-14
-  @test maximum(abs.(resR2 - 2*resR2_orig)) < 1e-14
+  @test maximum(abs.(resL2 - 2*resL2_orig)) < 1e-13
+  @test maximum(abs.(resR2 - 2*resR2_orig)) < 1e-13
 
   return nothing
 end
@@ -628,13 +628,13 @@ function test_2flux_revm(params::AbstractParamType{Tdim}, qL, qR, nrm,
 
     val = sum(nrm_bar.*nrm_dot)
 
-    @test abs(val - val_c) < 1e-14
+    @test abs(val - val_c) < 1e-13
 
     # test nrm_bar is summed into
     nrm_bar_orig = copy(nrm_bar)
     func_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
 
-    @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
+    @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-13
 
     fill!(nrm_bar, 0.0)
   end
@@ -699,14 +699,14 @@ function test_logavg()
   fill!(aR_dot, 1)
   EulerEquationMod.logavg_diff(data, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg_dotR)
   for i=1:nd
-    @test isapprox(a_dotL_cs, a_avg_dotL[i]) atol=1e-14
-    @test isapprox(a_dotR_cs, a_avg_dotR[i]) atol=1e-14
+    @test isapprox(a_dotL_cs, a_avg_dotL[i]) atol=1e-13
+    @test isapprox(a_dotR_cs, a_avg_dotR[i]) atol=1e-13
   end
 
   # reverse mode
   aL_bar, aR_bar = EulerEquationMod.logavg_rev(aL, aR, 1.0)
-  @test abs(a_dotL_cs - aL_bar) < 1e-14
-  @test abs(a_dotR_cs - aR_bar) < 1e-14
+  @test abs(a_dotL_cs - aL_bar) < 1e-13
+  @test abs(a_dotR_cs - aR_bar) < 1e-13
 
   # test other branch of if statement
   aL = 1 + 10.0^-4
@@ -718,15 +718,15 @@ function test_logavg()
   fill!(aR_dot, 1)
   EulerEquationMod.logavg_diff(data, aL, aL_dot, aR, aR_dot, a_avg_dotL, a_avg_dotR)
   for i=1:nd
-    @test isapprox(a_dotL_cs, a_avg_dotL[i]) atol=1e-14
-    @test isapprox(a_dotR_cs, a_avg_dotR[i]) atol=1e-14
+    @test isapprox(a_dotL_cs, a_avg_dotL[i]) atol=1e-13
+    @test isapprox(a_dotR_cs, a_avg_dotR[i]) atol=1e-13
   end
 
 
   # reverse mode
   aL_bar, aR_bar = EulerEquationMod.logavg_rev(aL, aR, 1.0)
-  @test abs(a_dotL_cs - aL_bar) < 1e-14
-  @test abs(a_dotR_cs - aR_bar) < 1e-14
+  @test abs(a_dotL_cs - aL_bar) < 1e-13
+  @test abs(a_dotR_cs - aR_bar) < 1e-13
 
 
   return nothing
@@ -766,7 +766,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-13
 
 
   # test face integrals
@@ -785,7 +785,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-13
 
   # test boundary integral
   # test face integrals
@@ -805,7 +805,7 @@ function test_jac_assembly(mesh, sbp, eqn, opts)
 
   jac1d = full(jac1)
 
-  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-14
+  @test isapprox( maximum(abs.(jac1d - jac2)), 0.0) atol=1e-13
 
 
   return nothing

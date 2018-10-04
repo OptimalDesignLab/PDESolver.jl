@@ -209,7 +209,7 @@ end
    * fname: the name associated with this function, used as the value for any
             key in the options dictionary that specifies a boundary condition,
             for example `BC1_name`
-   * func: the functor itself
+   * func: the functor itself, or the constructor for one
 
   **Outputs**
 
@@ -220,7 +220,7 @@ end
   This function works by utilizing `mod.BCDict`, which must be an associative
   collection mapping BC names to functors.
 """
-function registerBC(mod::Module, fname::String, func::BCType)
+function registerBC(mod::Module, fname::String, func::Union{BCType, Type{T} where T <: BCType})
 
   # check if name is already registered
   # special case for reanalysisBC because it is special

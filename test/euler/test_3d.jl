@@ -503,7 +503,7 @@ function test_3d_bc(mesh, sbp, eqn, opts)
 
     @test isapprox( F2, F) atol=1e-13
 
-    func1 = EulerEquationMod.noPenetrationESBC()
+    func1 = EulerEquationMod.noPenetrationESBC(mesh, eqn)
     # make velocity parallel to the boundary
     nrm = mesh.nrm_bndry[:, 1, 1]
     tngt = mesh.coords_bndry[:, 2, 1] - mesh.coords_bndry[:, 1, 1]
@@ -519,7 +519,7 @@ function test_3d_bc(mesh, sbp, eqn, opts)
 
     @test isapprox( F2, F) atol=1e-13
 
-    func1 = EulerEquationMod.noPenetrationBC()
+    func1 = EulerEquationMod.noPenetrationBC(mesh, eqn)
     func1(params, q, aux_vars, coords, nrm, F2)
 
     @test isapprox( F2, F) atol=1e-13

@@ -70,19 +70,16 @@ function calcECFaceIntegral(
      resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
 
-#  Flux_tmp = params.flux_vals1
-  fluxD = params.flux_valsD
+  data = params.calc_ec_face_integral_data
+  @unpack data fluxD nrmD
   numDofPerNode = size(fluxD, 1)
-#  numDofPerNode = length(Flux_tmp)
-#  nrm = params.nrm
 
-  nrmD = params.nrmD
   fill!(nrmD, 0.0)
   for d=1:Tdim
     nrmD[d, d] = 1
   end
 
-    # loop over the nodes of "left" element that are in the stencil of interp
+  # loop over the nodes of "left" element that are in the stencil of interp
   for i = 1:sbpface.stencilsize
     p_i = sbpface.perm[i, iface.faceL]
     qi = ro_sview(qL, :, p_i)
@@ -123,8 +120,6 @@ end
 
 """
   Method for sparse faces.  See other method for details
-
-  Aliasing restrictions: params.flux_vals1 must not be in use
 """
 function calcECFaceIntegral(
      params::AbstractParamType{Tdim}, 
@@ -138,7 +133,8 @@ function calcECFaceIntegral(
      resL::AbstractMatrix{Tres}, 
      resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
-  flux_tmp = params.flux_vals1
+  data = params.calc_ec_face_integral_data
+  @unpack data flux_tmp
 
   for i=1:sbpface.numnodes
     p_i = sbpface.perm[i, iface.faceL]
@@ -283,9 +279,6 @@ end
              with the result, same shape as `qL`
    * `resR`: the residual of the right element to be updated (not overwritten)
              with the result, same shape as `qR`
-
-
-  Aliasing restrictions: params.nrm2, w_vals_stencil, w_vals2_stencil, res_vals1
 """
 function calcEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
@@ -298,9 +291,10 @@ function calcEntropyPenaltyIntegral(
   numDofPerNode = size(qL, 1)
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
-  wL = params.w_vals_stencil
-  wR = params.w_vals2_stencil
+  data = params.calc_entropy_penalty_integral_data
+  @unpack data wL wR wL_i wR_i qL_i qR_i flux A0
 
+  # convert to IR entropy variables
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here
     p_iL = sbpface.perm[i, iface.faceL]
@@ -315,16 +309,8 @@ function calcEntropyPenaltyIntegral(
     convertToIR(params, qR_itmp, wR_itmp)
   end
 
-  # convert to IR entropy variables
 
   # accumulate wL at the node
-  wL_i = params.v_vals
-  wR_i = params.v_vals2
-  qL_i = params.q_vals
-  qR_i = params.q_vals2
-  flux = params.res_vals1
-
-  A0 = params.A0
   fastzero!(A0)
 
   @simd for i=1:sbpface.numnodes  # loop over face nodes
@@ -382,26 +368,19 @@ end
 """
   Method for sparse faces.  See other method for details
 
-  Aliasing restrictions: params: v_vals, v_vals2, v_vals3, q_vals, A0, res_vals1
 """
 function calcEntropyPenaltyIntegral(
              params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
              sbpface::SparseFace, iface::Interface,
-             kernel::AbstractEntropyKernel,  #TODO: unused
+             kernel::AbstractEntropyKernel,
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
              resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   numDofPerNode = size(qL, 1)
 
-  # convert qL and qR to entropy variables (only the nodes that will be used)
-#  wL = params.w_vals_stencil
-#  wR = params.w_vals2_stencil
-  wL_i = params.v_vals
-  wR_i = params.v_vals2
-  delta_w = params.v_vals3
-  q_avg = params.q_vals
-  res_vals = params.res_vals1
+  data = params.calc_entropy_penalty_integral_data
+  @unpack data wL_i wR_i delta_w q_avg res_vals
 
   @simd for i=1:sbpface.numnodes
     # convert to entropy variables at the nodes

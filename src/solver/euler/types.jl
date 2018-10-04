@@ -53,109 +53,36 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
   #TODO: consider making these vectors views of a matrix, to guarantee
   #      spatial locality
-  q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
-  q_vals2::Array{Tsol, 1}
-  q_vals3::Array{Tsol, 1}
-  qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
-  v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
-  v_vals2::Array{Tsol, 1}
-  v_vals3::Array{Tsol, 1}
-  Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
-
-  # temporary storage for element level solution
-  q_el1::Array{Tsol, 2}
-  q_el2::Array{Tsol, 2}
-  q_el3::Array{Tsol, 2}
-  q_el4::Array{Tsol, 2}
-
-  # temporary storage for solution interpolated to face
-  q_faceL::Array{Tsol, 2}
-  q_faceR::Array{Tsol, 2}
-
-  res_el1::Array{Tsol, 2}
-  res_el2::Array{Tsol, 2}
-
-  # solution grid temporaries
-  qs_el1::Array{Tsol, 2}
-  qs_el2::Array{Tsol, 2}
-
-  ress_el1::Array{Tsol, 2}
-  ress_el2::Array{Tsol, 2}
 
   # numDofPerNode x stencilsize arrays for entropy variables
-  w_vals_stencil::Array{Tsol, 2}
-  w_vals2_stencil::Array{Tsol, 2}
-
-  res_vals1::Array{Tres, 1}  # reusable residual type storage
-  res_vals2::Array{Tres, 1}  # reusable residual type storage
-  res_vals3::Array{Tres, 1}
-
-  flux_vals1::Array{Tres, 1}  # reusable storage for flux values
-  flux_vals2::Array{Tres, 1}  # reusable storage for flux values
-  flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
-
-  lambda_dotL::Array{Tres, 1}
-  lambda_dotR::Array{Tres, 1}
-
-  # Roe solver storage
-  sat_vals::Array{Tres, 1}  # reusable storage for SAT term
-  euler_fluxjac::Array{Tres, 2}  # euler flux jacobian
-  p_dot::Array{Tsol, 1}  # derivative of pressure wrt q
-  roe_vars::Array{Tres, 1}  # Roe average state
-  roe_vars_dot::Array{Tres, 1}  # derivatives of Roe vars wrt q, packed
 
 
-  A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
-  A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
-  A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
-  A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
-  S2::Array{Tsol, 1}  # diagonal matrix of eigenvector scaling
 
-  A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
-
-  Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
-  Rmat2::Array{Tres, 2}
-
-  P::Array{Tmsh, 2}  # projection matrix
-
-  nrm::Array{Tmsh, 1}  # a normal vector
-  nrm2::Array{Tmsh, 1}
-  nrm3::Array{Tmsh, 1}
-  nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors
-                        # (one per column)
-  nrm_face::Array{Tmsh, 2}  # sbpface.numnodes x Tdim array for normal vectors
-                            # of all face nodes on an element
-  nrm_face2::Array{Tmsh, 2}  # like nrm_face, but transposed
-
-  dxidx_element::Array{Tmsh, 3}  # Tdim x Tdim x numNodesPerElement array for
-                                 # dxidx of an entire element
-  velocities::Array{Tsol, 2}  # Tdim x numNodesPerElement array of velocities
-                              # at each node of an element
-  velocity_deriv::Array{Tsol, 3}  # Tdim x numNodesPerElement x Tdim for
-                                  # derivative of velocities.  First two
-                                  # dimensions are same as velocities array,
-                                  # 3rd dimensions is direction of
-                                  # differentiation
-  velocity_deriv_xy::Array{Tres, 3} # Tdim x Tdim x numNodesPerElement array
-                                    # for velocity derivatives in x-y-z
-                                    # first dim is velocity direction, second
-                                    # dim is derivative direction, 3rd is node
-
-
-  # volume term jacobian arrays
-  flux_jac::Array{Tres, 4}
-  res_jac::Array{Tres, 4}
-
-  # face term jacobian arrays
-  flux_dotL::Array{Tres, 3}
-  flux_dotR::Array{Tres, 3}
-  res_jacLL::Array{Tres, 4}
-  res_jacLR::Array{Tres, 4}
-  res_jacRL::Array{Tres, 4}
-  res_jacRR::Array{Tres, 4}
-
+  # temporary storage for flux functions
+  eulerfluxdata::CalcEulerFluxData{Tsol}
+  bcdata::BCData{Tsol, Tres}
+  roefluxdata::RoeFluxData{Tsol, Tres, Tmsh}
+  calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
   irfluxdata::IRFluxData{Tsol}
+  get_entropy_lf_stab_data::GetEntropyLFStabData{Tsol}
+  get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
+  get_lambda_max_data::GetLambdaMaxData{Tsol}
+  calc_vorticity_data::CalcVorticityData{Tsol, Tres, Tmsh}
+  contract_res_entropy_vars_data::ContractResEntropyVarsData{Tsol}
+  get_tau_data::GetTauData{Tsol, Tres}
+
+
+  # temporary storage for face element integral functions
+  calc_ec_face_integral_data::CalcECFaceIntegralData{Tres, Tmsh}
+  calc_entropy_penalty_integral_data::CalcEntropyPenaltyIntegralData{Tsol, Tres}
+  interpolate_element_staggered_data::InterpolateElementStaggeredData{Tsol}
+
+  # temporary storage for higher level functions
+  calc_volume_integrals_data::CalcVolumeIntegralsData{Tres, Tmsh}
+  face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
+  calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
+
 
 
   h::Float64 # temporary: mesh size metric
@@ -204,13 +131,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
   Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
                              # this should live in sbpface instead
-  # temporary storage for calcECFaceIntegrals
-  A::Array{Tres, 2}
-  B::Array{Tres, 3}
-  iperm::Array{Int, 1}
-
-  S::Array{Float64, 3}  # SBP S matrix
-
   x_design::Array{Tsol, 1}  # design variables
 
   #=
@@ -251,94 +171,35 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     else
       f = BufferedIO(DevNull)
     end
-    q_vals = zeros(Tsol, Tdim + 2)
-    q_vals2 = zeros(Tsol, Tdim + 2)
-    q_vals3 = zeros(Tsol, Tdim + 2)
-    qg = zeros(Tsol, Tdim + 2)
-    v_vals = zeros(Tsol, Tdim + 2)
-    v_vals2 = zeros(Tsol, Tdim + 2)
-    v_vals3 = zeros(Tsol, Tdim + 2)
-    Lambda = zeros(Tsol, Tdim + 2)
 
-    q_el1 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el2 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el4 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
 
-    q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    q_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-
-    res_el1 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
-    res_el2 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
-
-    qs_el1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
-    qs_el2 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
-
-    ress_el1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-    ress_el2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-
-    w_vals_stencil = zeros(Tsol, Tdim + 2, stencilsize)
-    w_vals2_stencil = zeros(Tsol, Tdim + 2, stencilsize)
-
-    res_vals1 = zeros(Tres, Tdim + 2)
-    res_vals2 = zeros(Tres, Tdim + 2)
-    res_vals3 = zeros(Tres, Tdim + 2)
-
-    flux_vals1 = zeros(Tres, Tdim + 2)
-    flux_vals2 = zeros(Tres, Tdim + 2)
-    flux_valsD = zeros(Tres, Tdim + 2, Tdim)
-
-    lambda_dotL = zeros(Tres, Tdim + 2)
-    lambda_dotR = zeros(Tres, Tdim + 2)
-
-    # Roe solver storage
-    sat_vals = zeros(Tres, Tdim + 2)
-    euler_fluxjac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
-    p_dot = zeros(Tsol, mesh.numDofPerNode)
-    roe_vars = zeros(Tres, Tdim + 1)
-    roe_vars_dot = zeros(Tres, 22)  # number needed in 3D
-
-    A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
-    S2 = zeros(Tsol, Tdim + 2)
-
-    Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
-    Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
-
-    P = zeros(Tmsh, Tdim + 2, Tdim + 2)
-
-    nrm = zeros(Tmsh, Tdim)
-    nrm2 = zeros(nrm)
-    nrm3 = zeros(nrm)
-    nrmD = zeros(Tmsh, Tdim, Tdim)
-    nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
-    nrm_face2 = zeros(Tmsh, Tdim, mesh.sbpface.numnodes)
-
-    dxidx_element = zeros(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
-    velocities = zeros(Tsol, Tdim, mesh.numNodesPerElement)
-    velocity_deriv = zeros(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
-    velocity_deriv_xy = zeros(Tres, Tdim, Tdim, mesh.numNodesPerElement)
-
-    # volume term jacobian storage
-    flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
-                           mesh.numNodesPerElement, Tdim)
-    res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
-                          mesh.numNodesPerElement, mesh.numNodesPerElement)
-
-    # face term jacobian storage
-    flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-    flux_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-    res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-    res_jacLR = zeros(res_jacLL)
-    res_jacRL = zeros(res_jacLL)
-    res_jacRR = zeros(res_jacLL)
-
+    eulerfluxdata = CalcEulerFluxData{Tsol}(mesh.numDofPerNode)
+    bcdata = BCData{Tsol, Tres}(mesh.numDofPerNode)
+    roefluxdata = RoeFluxData{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
+    get_entropy_lf_stab_data = GetEntropyLFStabData{Tsol}(mesh.numDofPerNode)
+    get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
+    get_lambda_max_data = GetLambdaMaxData{Tsol}(mesh.numDofPerNode)
 
+    calc_vorticity_data = CalcVorticityData{Tsol, Tres, Tmsh}(mesh.numNodesPerElement, mesh.dim)
+    contract_res_entropy_vars_data = ContractResEntropyVarsData{Tsol}(mesh.numDofPerNode)
+    get_tau_data = GetTauData{Tsol, Tres}(mesh.numDofPerNode, mesh.dim)
+
+    calc_ec_face_integral_data = CalcECFaceIntegralData{Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, stencilsize)
+    interpolate_element_staggered_data = InterpolateElementStaggeredData{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement, numNodesPerElement)
+
+    calc_volume_integrals_data = CalcVolumeIntegralsData{Tres, Tmsh}(
+                                mesh.numDofPerNode, mesh.dim,
+                                mesh.numNodesPerElement, numNodesPerElement, sbp)
+    face_element_integral_data = FaceElementIntegralData{Tsol, Tres}(
+                                 mesh.numDofPerNode, mesh.numNodesPerElement,
+                                 numNodesPerElement)
+    calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
+                               mesh.numDofPerNode, mesh.numNodesPerFace,
+                               mesh.numNodesPerElement)
     h = maximum(mesh.jac)
 
     gamma = opts["gamma"]
@@ -409,35 +270,24 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
       end
     end  # end if
 
-    A = zeros(Tres, size(Rprime))
-    B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
-    iperm = zeros(Int, size(sbpface.perm, 1))
-
-    stencil_size = size(sbp.Q, 1)
-    S = zeros(Float64, stencil_size, stencil_size, Tdim)
-    for i=1:Tdim
-      S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
-    end
-
     x_design = zeros(Tsol, 0)  # this can be resized later
 
     time = Timings()
 
-    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2, v_vals3,
-               Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
-               res_el1, res_el2,
-               qs_el1, qs_el2, ress_el1, ress_el2,
-               w_vals_stencil, w_vals2_stencil, res_vals1, 
-               res_vals2, res_vals3,  flux_vals1, 
-               flux_vals2, flux_valsD, lambda_dotL, lambda_dotR,
-               sat_vals, euler_fluxjac, p_dot, roe_vars, roe_vars_dot,
-               A0, A0inv, A1, A2, S2, 
-               A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
-               velocity_deriv, velocity_deriv_xy,
-               flux_jac, res_jac,
-               flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
-               lffluxdata, irfluxdata,
+    return new(f, t, order,
+               # flux functions
+               eulerfluxdata, bcdata,
+               roefluxdata, calcsatdata, lffluxdata, irfluxdata,
+               get_entropy_lf_stab_data, get_lambda_max_simple_data,
+               get_lambda_max_data,
+               calc_vorticity_data, contract_res_entropy_vars_data,
+               get_tau_data,
+               # face level functions
+               calc_ec_face_integral_data, calc_entropy_penalty_integral_data,
+               interpolate_element_staggered_data,
+               # entire mesh functions
+               calc_volume_integrals_data,
+               face_element_integral_data, calc_face_integrals_data,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
@@ -445,8 +295,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                use_dissipation, dissipation_const, tau_type, use_Minv, vortex_x0,
                vortex_strength,
                krylov_itr, krylov_type,
-               Rprime, A, B, iperm,
-               S, x_design, time)
+               Rprime,
+               x_design, time)
 
     end   # end of ParamType function
 

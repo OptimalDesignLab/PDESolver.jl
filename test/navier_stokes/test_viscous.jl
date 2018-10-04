@@ -22,7 +22,7 @@ function test_viscous()
 
     @testset "Checking Solution at Final Time Step" begin
 
-      viscous_qvec_final_for_comparison = readdlm("viscous_files/solution_viscous_forcomparison_0.dat")
+      viscous_qvec_final_for_comparison = readdlm("viscous_files/solution_viscous_forcomparison_0.dat_keep")
 
       for dof_ix = 1:length(eqn.q_vec)
         diff = eqn.q_vec[dof_ix] - viscous_qvec_final_for_comparison[dof_ix]
@@ -56,8 +56,8 @@ function test_viscous()
         GtL_vec = reshape(GtL, 128, )
         GtR_vec = reshape(GtR, 128, )
 
-        GtL_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtL_vec.dat")
-        GtR_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtR_vec.dat")
+        GtL_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtL_vec.dat_keep")
+        GtR_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtR_vec.dat_keep")
 
         GtL_vec_to_check_against = readdlm(GtL_file_to_check_against)
         GtR_vec_to_check_against = readdlm(GtR_file_to_check_against)
