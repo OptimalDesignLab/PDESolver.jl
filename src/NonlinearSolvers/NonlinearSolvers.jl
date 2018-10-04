@@ -19,6 +19,13 @@ import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
                       applyLinearOperator, applyLinearOperatorTranspose,
                       needParallelData
 
+global STAB_ctr_prodgt0andnotstabing
+STAB_ctr_prodgt0andnotstabing = 0
+global STAB_ctr_prodle0andstabing
+STAB_ctr_prodle0andstabing = 0
+global STAB_ctr_usmallandnotstabing
+STAB_ctr_usmallandnotstabing = 0
+
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("lserk.jl")
@@ -39,7 +46,7 @@ export getNewtonPCandLO
 
 # exports are inside the files
 include("crank_nicolson.jl")
-include("crank_nicolson_ds.jl")
+# include("crank_nicolson_ds.jl")
 
 include("preconditioning.jl")
 include("globalization.jl")
