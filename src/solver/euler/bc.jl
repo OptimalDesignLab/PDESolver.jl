@@ -414,12 +414,13 @@ end
             respect to the solution must end with `_revq`.
    * docstring: (optional) docstring for the newly created functor
 
-   Example usage:
+   **Example usage**
 
    ```
      @makeBC Foo \"\"\"
 Docstring for Foo
 \"\"\"
+  ```
 """
 macro makeBC(fname::Symbol, docstring="")
 
@@ -485,17 +486,6 @@ end
   must support.
 
   This is a low level functor.
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : sclaed face normal in physical space
-*  `bndryflux` : Computed flux value at the boundary
-
 """
 
 function (obj::isentropicVortexBC)(params::ParamType,
@@ -563,22 +553,6 @@ end # ends the function isentropicVortexBC
 ###EulerEquationMod.isentropicVortexBC_revm
 
 Reverse mode for isentropicVortexBC.
-
-**Inputs**
-
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
-          BCType_revm
-* `q`   : Solution variable
-* `aux_vars` : Auxiliary variables
-* `x`     : Node coordinates
-* `nrm`   : scaled normal vector in x-y space
-* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
-                    mode derivative.
-* `params`        : equation object parameters
-
-**Output**
-
-* `nrm_bar` : Derivative of flux w.r.t the nrm
 
 """
 
@@ -669,17 +643,6 @@ end # end function isentropicVortexBC_physical
   Works in 2D, untested in 3D.
 
   This is a low level functor
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : scaled normal vector in x-y space
-*  `bndryflux` : Computed flux value at the boundary
-
 """
 
 # low level function
@@ -873,22 +836,7 @@ end
 
 Reverse mode for noPenetrationBC.
 
-**Input**
-
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
-          BCType_revm
-* `q`   : Solution variable
-* `aux_vars` : Auxiliary variables
-* `x`     : Node coordinates
-* `dxidx` : Mapping jacobian matrix for the SBP node
-* `nrm`   : sbpface normal vector
-* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
-                    mode derivative.
-* `params`        : equation object parameters
-
 """
-
-
 function (obj::noPenetrationBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1068,21 +1016,7 @@ end # End noPenetrationBC_revm 3D
   must support.
 
   This is a low level functor.
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm_xy`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-
-
 # low level function
 function (obj::unsteadyVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
@@ -1139,20 +1073,7 @@ end # ends the function unsteadyVortex BC
 
   This is a low level functor.
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-
-# low level function
 function (obj::Rho1E2U1VW0BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
@@ -1183,20 +1104,7 @@ end
 
   This is a low level functor
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-
-# low level function
 function (obj::Rho1E2BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
@@ -1227,20 +1135,7 @@ end
 
   This is a low level functor
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-
-# low level function
 function (obj::Rho1E2U3BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
@@ -1272,19 +1167,7 @@ end
 
   This is a low level functor
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm_xy`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-
 function (obj::FreeStreamBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1305,24 +1188,7 @@ end
 
 Reverse mode for FreeStreamBC.
 
-**Inputs**
-
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
-          BCType_revm
-* `q`   : Solution variable
-* `aux_vars` : Auxiliary variables
-* `x`     : Node coordinates
-* `nrm_xy`   : scaled normal vector in x-y space
-* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
-                    mode derivative.
-* `params`        : equation object parameters
-
-**Output**
-
-* `nrm_bar` : Derivative of bndryflux_bar w.r.t the mapping jacobian
-
 """
-
 function (obj::FreeStreamBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1347,19 +1213,7 @@ end
   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
 
   This is a low level functor
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : scaled normal vector in x-y space
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-
 function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1384,7 +1238,6 @@ end
 
   This is a low level functor
 """
-
 function (obj::allOnesBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
@@ -1764,7 +1617,19 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
          bndry::BoundaryNode=NullBoundaryNode)
   ```
 
-  and have an outer constructor
+  with inputs
+
+   * q: solution vector at a node
+   * aux_vars: auxiliary variables for the node
+   * coords: x-y coordinates of the node
+   * nrm_xy: normal vector of the node
+
+  and output
+
+   * bndryflux: the flux vector, length `numDofPerNode`
+
+
+  The functor must also have have an outer constructor
 
   ```
     Foo(mesh::AbstractMesh, eqn::EulerData)
@@ -1801,6 +1666,41 @@ global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
 "isentropicVortexBC" => isentropicVortexBC_revm,
 )
 
+"""
+  This function uses the options dictionary to populate mesh.bndry_funcs_revm.
+
+  The functors must be of time [`BCType_revm`](@ref)
+
+  The function must be callable with the signature
+
+  ```
+  func(params::ParamType,
+        q::AbstractArray{Tsol,1},
+        aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+        nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+        bndryflux_bar::AbstractArray{Tres, 1},
+        bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+  ```
+
+  with inputs
+
+   * q: solution vector at a node
+   * aux_vars: auxiliary variables for the node
+   * coords: x-y coordinates of the node
+   * nrm_xy: normal vector of the node
+   * bndryflux_bar: seed vector for the flux vector, length `numDofPerNode`
+
+  and outputs
+
+   * nrm_bar: output vector, same length of `nrm_xy`
+
+
+  The functor must also have an outer constructor
+
+  ```
+    Foo(mesh::AbstractMesh, eqn::EulerData)
+  ```
+"""
 function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
 
   for i = 1:mesh.numBC

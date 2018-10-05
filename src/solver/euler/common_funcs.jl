@@ -654,6 +654,12 @@ function calcRho1Energy2U3(params::ParamType3,
 end
 
 
+"""
+  Alias for [`calcRho1Energy2U3`](@ref) used by initial conditions.
+"""
+const calcRho1E2U3 = calcRho1Energy2U3
+
+
 
 @doc """
 ### EulerEquationMod.calcVortex
