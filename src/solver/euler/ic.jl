@@ -70,18 +70,6 @@ end
 ### EulerEquationMod.ICZero
 
   Sets all components of the solution to zero
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """->
 function ICZero(mesh::AbstractMesh{Tmsh}, 
 operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
@@ -124,18 +112,6 @@ end  # end function
 ### EulerEquationMod.ICOnes
 
   Sets all components of the solution to 1.0
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """->
 
 function ICOnes(mesh::AbstractMesh{Tmsh}, 
@@ -177,21 +153,7 @@ end # end function ICOnes
 ### EulerEquationMod.ICRho1E2
 
   Sets all density values to 1.0 and energy values to 2.0
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
-"""->
-
-
+"""
 function ICRho1E2(mesh::AbstractMesh{Tmsh}, 
 operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -234,18 +196,6 @@ end  # end function
   v & w momenta to 0.0, and energy to 2.0 at a node.
 
   It should work for 2D and 3D meshes.
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """
 
 @makeIC Rho1E2U3 """
@@ -253,18 +203,6 @@ end  # end function
 
   Sets all components density values to 1.0, x and y momenta to 0.35355, and
   energy to 2.0
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """
 
 @makeIC FreeStream """
@@ -272,17 +210,6 @@ end  # end function
 
   Sets all components of the solution to the free stream condition according
   to the angle of attack and and Mach number.
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
 
 """
 
@@ -303,18 +230,6 @@ end  # end function
 
   Sets the density to the derivative of the smooth Heaviside function, all 
   other components to zero.
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """->
 function ICsmoothHeavisideder(mesh::AbstractMesh{Tmsh}, 
             operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol},
@@ -365,17 +280,6 @@ end
   Sets the density to the smooth Heaviside function, all other components to
   zero.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """->
 function ICsmoothHeaviside(mesh::AbstractMesh{Tmsh}, 
                            operator::AbstractSBP{Tsbp}, 
@@ -425,17 +329,6 @@ end
 
 Sets the solution to the steady isentropic vortex solution.
 
-Inputs:
-mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
-
 """
 
 @doc """
@@ -443,17 +336,6 @@ mesh
 
   Sets the solution to the steady isentropic vortex solution plus 
   a small random noise component.
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
 
 """->
 function ICIsentropicVortexWithNoise(mesh::AbstractMesh{Tmsh},
@@ -492,17 +374,6 @@ end  # end function
 
   Sets the solution to the unsteady vortex problem.  eqn.params.t is used to
   determine what time to use for the solution.
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
 
 """
 @makeIC UnsteadyVortex2 """
@@ -545,18 +416,6 @@ end
   In this case, the file should be the output of writedlm(eqn.q).  The degree 
   of freedom number must be the same for both simulation for this to work (the 
   file contains no degree of freedom number information).
-
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Inputs/Outputs: 
-    u0: vector to populate with the solution
-
-  Aliasing restrictions: none.
 
 """->
 function ICFile(mesh::AbstractMesh{Tmsh}, 
