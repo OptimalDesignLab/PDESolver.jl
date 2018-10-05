@@ -5,13 +5,16 @@
   values have been supplied and throws exceptions if unsupported/incompatable
   options are specified
 
-  Inputs:
-    opts: options dictionary
+  **Inputs**
 
-  Outputs:
+   * opts: options dictionary
+   * comm: MPI communicator
+
+  **Outputs**
+
     none
 """
-function checkOptions(opts)
+function checkOptions(opts, comm=MPI.COMM_WORLD)
 
   if opts["physics"] != PhysicsName
     error("physics not specified as $PhysicsName, are you lost?")

@@ -857,7 +857,6 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
-  println("calculating explicit jacobian"); flush(STDOUT)
 
   evalJacobian(mesh, sbp, eqn, opts, assembler)
 
@@ -958,8 +957,6 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
-  println("calculating explicit jacobian"); flush(STDOUT)
-
   
   evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)
 
@@ -985,7 +982,6 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   free(pc1)
   free(pc2)
 
-  println("finished testing Homotopy operators")
   return nothing
 end
 

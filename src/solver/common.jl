@@ -6,21 +6,26 @@
   If the options dictionary specifies a second SBP operator type, a second
   mesh and SBP operator will be created and stored in the `mesh2` and `sbp2`
 
-  Inputs:
-    opts: options dictonary
-    dofpernode: number of degrees of freedom on each node
+  **Inputs**
 
-  Outputs
-    sbp : an AbstractSBP
-    mesh : an AbstractMesh
-    pmesh : an AbstractMesh, used for preconditioning, may be same object as
+   * opts: options dictonary
+   * dofpernode: number of degrees of freedom on each node
+   * comm: MPI communicator
+
+  **Outputs**
+
+   * sbp : an AbstractSBP
+   * mesh : an AbstractMesh
+   * pmesh : an AbstractMesh, used for preconditioning, may be same object as
             mesh
-    Tsol : DataType that should be used for eqn.q
-    Tres : DataType that should be used for eqn.res
-    Tmsh : DataType of mesh.dxidx and friends
-    mesh_time : time in seconds for creation of mesh (Float64)
+   * Tsol : DataType that should be used for eqn.q
+   * Tres : DataType that should be used for eqn.res
+   * Tmsh : DataType of mesh.dxidx and friends
+   * mesh_time : time in seconds for creation of mesh (Float64)
 """
-function createMeshAndOperator(opts, dofpernode)
+function createMeshAndOperator(opts, dofpernode, comm=MPI.COMM_WORLD)
+
+  myrank = MPI.Comm_rank(comm)
 
   # create mesh with 1 dofpernode
   dmg_name = opts["dmg_name"]
@@ -41,7 +46,7 @@ function createMeshAndOperator(opts, dofpernode)
 
   mesh_time = 0.0
   if opts["use_staggered_grid"]
-    println("constructing flux grid")
+    @mpi_master println("constructing flux grid")
 
     sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp, 2)
 
@@ -54,7 +59,7 @@ function createMeshAndOperator(opts, dofpernode)
 
   end
 
-  println("constructing solution grid")
+  @mpi_master println("constructing solution grid")
   sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
  
   mesh_time += @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
@@ -229,6 +234,7 @@ end
    * opts: the options dictionary
    * Tsbp: the DataType specifying the Tsbp passed to the SBP operator
           constructor
+   * comm: MPI communicator (needed to control output)
    * suffix: this suffix is added to all keys accessed in the options dictionary.
             Usually the suffix is either the empty string or an integer.  This
             provides a convenient way for the input file to specify several
@@ -264,12 +270,15 @@ end
    * SBPGamma: see above, this operator can be used to CG as well
 
 """
-function createSBPOperator(opts::Dict, Tsbp::DataType, suffix="")
+function createSBPOperator(opts::Dict, Tsbp::DataType, comm=MPI.COMM_WORLD, suffix="")
+
+  myrank = MPI.Comm_rank(comm)
+
   # construct SBP operator and figure out shape_type needed by Pumi
   order = opts["order$suffix"]  # order of accuracy
   dim = opts["dimensions"]
 
-  println("\nConstructing SBP Operator $suffix")
+  @mpi_master println("\nConstructing SBP Operator $suffix")
   topo = 0  # generally not needed, so return a default value
   if opts["use_DG"]
     if opts["operator_type$suffix"] == "SBPOmega"
@@ -369,24 +378,30 @@ end
 
 """
   This function creates the mesh object and, optionally, a second mesh
-  used for preconditioning
+  used for preconditioning.
 
-  Inputs:
-    opts: the options dictionary
-    sbp: an SBP operator
-    sbpface: an SBP face operator
-    topo: an ElementTopology describing the SBP reference element.  Only
-          needed for 3D DG, otherwise can be any value
-    Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)
-    dofpernode: number of degrees of freedom on every node
-    suffix: suffix added to options dictionary keys that describe the SBP
-            operator.  See [`createSBPOperator`](@ref)
+  **Inputs**
+
+   * opts: the options dictionary
+   * sbp: an SBP operator
+   * sbpface: an SBP face operator
+   * topo: an ElementTopology describing the SBP reference element.  Only
+           needed for 3D DG, otherwise can be any value
+   * Tmsh: the DataType of the elements of the mesh arrays (dxidx, jac, etc.)
+   * dofpernode: number of degrees of freedom on every node
+   * comm: MPI communicator
+   * suffix: suffix added to options dictionary keys that describe the SBP
+             operator.  See [`createSBPOperator`](@ref)
 
   All arguments except opts are typically provided by 
   [`createSBPOperator`](@ref) and [`getDataTypes`](@ref)
+
+  Note: comm is currently not passed to the mesh constructors.
 """
 function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
-                    Tmsh, dofpernode, suffix="")
+                    Tmsh, dofpernode, comm=MPI.COMM_WORLD, suffix="")
+
+  myrank = MPI.Comm_rank(comm)
 
   dmg_name = opts["dmg_name"]
   smb_name = opts["smb_name"]
@@ -399,7 +414,7 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
 
 
   if opts["use_DG"]
-    println("constructing DG mesh")
+    @mpi_master println("constructing DG mesh")
     if dim == 2
       mesh = PumiMeshDG2(Tmsh, sbp, opts, sbpface, dofpernode=dofpernode,
                                                    shape_type=shape_type)
@@ -428,7 +443,7 @@ function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
   else  # continuous Galerkin
     if dim == 2
 
-      println("constructing CG mesh")
+      @mpi_master println("constructing CG mesh")
       mesh = PumiMesh2{Tmsh, typeof(sbpface)}(dmg_name, smb_name, order, sbp, opts, sbpface;
                              dofpernode=dofpernode,
                              coloring_distance=opts["coloring_distance"],

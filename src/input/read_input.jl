@@ -11,6 +11,9 @@
             start with a . or .. or /, then fname is treated as relative to
             the pwd, otherwise fname is interpreted as an absolute path
 
+   * comm: MPI communicator on which will be used for the solver to be
+           constructed from the input file
+
   **Outputs**
 
    * arg_dict: the dictionary containing all the options.
@@ -22,9 +25,10 @@
          processed using eval().  This is likely to change to change in the
          future to support static compilation.
 """
-function read_input_file(fname::AbstractString)
+function read_input_file(fname::AbstractString, comm=MPI.COMM_WORLD)
 
-  if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+  myrank = MPI.Comm_rank(comm)
+  @mpi_master begin
     println("pwd = ", pwd())
     println("fname = ", fname)
   end
@@ -46,7 +50,7 @@ function read_input_file(fname::AbstractString)
   # The BADLANG var is to suppress a locale warning on scorec machines. See
   # http://www-01.ibm.com/support/docview.wss?uid=swg21241025 or 
   # http://perldoc.perl.org/perllocale.html#LOCALE-PROBLEMS
-  if ! arg_dict["no_input_duplicates_check"]
+  @mpi_master if ! arg_dict["no_input_duplicates_check"]
     scriptpath = joinpath(Pkg.dir("PDESolver"), "src", "scripts", "check_dict_for_dupes.pl")
     run(`bash -c "PERL_BADLANG=0 perl $scriptpath $fname"`)
   else
@@ -76,17 +80,22 @@ end
   This function is idempotent; this is essential for using arg_dict_output.jl
   to rerun a simulation.
 
-  Inputs:
-    * fname : name of file to read, can be relative or absolute path.
+  **Inputs**
 
-  Outputs:
+    * fname : name of file to read, can be relative or absolute path.
+    * comm: MPI communicator on which will be used for the solver to be
+           constructed from the input file
+
+
+  **Outputs**
+
     arg_dict: a Dict{Any, Any} containing the option keywords and values
 
 """->
-function read_input(fname::AbstractString)
+function read_input(fname::AbstractString, comm=MPI.COMM_WORLD)
 
-  arg_dict = read_input_file(fname)
-  arg_dict = read_input(arg_dict)
+  arg_dict = read_input_file(fname, comm)
+  arg_dict = read_input(arg_dict, comm)
 
   return arg_dict
 end
@@ -99,12 +108,17 @@ end
 
    * arg_dict: a dictionary
 
+   * comm: MPI communicator on which will be used for the solver to be
+           constructed from the input file
+
+
   **Outputs**
 
    * arg_dict: the same dictionary, with default values supplied
 """
-function read_input(arg_dict::Dict)
+function read_input(arg_dict::Dict, comm=MPI.COMM_WORLD)
 
+myrank = MPI.Comm_rank(comm)
 
 #include(joinpath(pwd(), fname))  # include file in the users pwd()
 #include(joinpath(Pkg.dir("PDESolver"), "src/Input/known_keys.jl"))  # include the dictonary of known keys
@@ -113,12 +127,9 @@ function read_input(arg_dict::Dict)
 #arg_dict = evalfile(fpath)  # include file in the users pwd()a
 
 #arg_dict = read_input_file(fname)
-# TODO: make this a global const
-#known_keys = evalfile(joinpath(Pkg.dir("PDESolver"), "src/input/known_keys.jl"))  # include the dictonary of known keys
-
 
 # new (201612) options checking function
-checkForIllegalOptions_pre(arg_dict)
+@mpi_master checkForIllegalOptions_pre(arg_dict)
 
 # type of variables, defaults to conservative
 get!(arg_dict, "variable_type", :conservative)
@@ -243,7 +254,7 @@ end
 get!(arg_dict, "use_Minv", false)       # apply inverse mass matrix to residual calc in physics module. needed for CN
 
 if arg_dict["use_Minv"] == false && arg_dict["run_type"] == 20
-  println("INPUT: User did not specify use_Minv but selected run_type is CN. Setting use_Minv = true.")
+  @mpi_master println("INPUT: User did not specify use_Minv but selected run_type is CN. Setting use_Minv = true.")
   arg_dict["use_Minv"] = true
 end
 
@@ -448,8 +459,6 @@ get!(arg_dict, "do_postproc", false)
 get!(arg_dict, "exact_soln_func", "nothing")
 get!(arg_dict, "write_timing", false)
 
-myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-
 # Functional computational options
 get!(arg_dict, "calc_functional", false)
 get!(arg_dict, "objective_function", "none")
@@ -528,21 +537,19 @@ end
 get!(arg_dict, "advection_velocity", [1.0, 1.0, 1.0])
 
 # get physics-specific options
-PhysicsOptionsFuncs[arg_dict["physics"]](arg_dict)
+PhysicsOptionsFuncs[arg_dict["physics"]](arg_dict, comm)
 
 checkForIllegalOptions_post(arg_dict)
 
 # write complete dictionary to file
-myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-commsize = MPI.Comm_size(MPI.COMM_WORLD)
-if myrank == 0
+@mpi_master begin
   fname = "arg_dict_output"
   make_input(arg_dict, fname)
 end
 # do some sanity checks here
 
 
-checkKeys(arg_dict, KNOWN_KEYS)
+@mpi_master checkKeys(arg_dict, KNOWN_KEYS)
 
 return arg_dict
 

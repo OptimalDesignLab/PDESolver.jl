@@ -2,6 +2,7 @@ module Input
 
   import MPI
   using PETSc2
+  using Utils
   export read_input, make_input, read_input_file, registerOptionsChecker
 
   include("physics_specific.jl")

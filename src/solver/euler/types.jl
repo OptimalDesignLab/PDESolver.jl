@@ -463,11 +463,15 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
  # inner constructor
   function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
 
-    println("\nConstruction EulerData object")
-    println("  Tsol = ", Tsol)
-    println("  Tres = ", Tres)
-    println("  Tdim = ", Tdim)
-    println("  Tmsh = ", Tmsh)
+    myrank = mesh.myrank
+    @mpi_master begin
+      println("\nConstruction EulerData object")
+      println("  Tsol = ", Tsol)
+      println("  Tres = ", Tres)
+      println("  Tdim = ", Tdim)
+      println("  Tmsh = ", Tmsh)
+    end
+
     eqn = new()  # incomplete initialization
 
     eqn.comm = mesh.comm

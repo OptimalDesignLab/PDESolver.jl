@@ -208,14 +208,10 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   println("\nevaluating jacobians")
 
   opts["calc_jac_explicit"] = false
-  println("calculating regular jacobian"); flush(STDOUT)
-  println(STDERR, "calculating regular jacobian"); flush(STDERR)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
-  println("calculating explicit jacobian"); flush(STDOUT)
-  println(STDERR, "calculating explicit jacobian"); flush(STDERR)
 
   
   evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)
@@ -242,7 +238,6 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   free(pc1)
   free(pc2)
 
-  println("finished testing Homotopy operators")
   return nothing
 end
 
