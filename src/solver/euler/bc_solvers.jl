@@ -1048,20 +1048,6 @@ function calcLFFlux(params::ParamType{Tdim, :conservative},
   return nothing
 end
 
-#=
-function calcEulerFlux_standard(params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_standard(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
-
 
 function calcEulerFlux_standard(
                       params::ParamType{2, :conservative},
@@ -1238,22 +1224,6 @@ function calcEulerFlux_standard(
   return nothing
 end
 
-
-
-#=
-function calcEulerFlux_Ducros(
-                      params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_Ducros(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
 
 """
   Calculates the numerical flux function associated with the Ducros flux
@@ -1541,25 +1511,7 @@ function calcEulerFlux_IRSLF(
   return nothing
 end
 
-#=
-"""
-  This function is similar to calcEulerFlux_IRSLF, but uses Lax-Wendroff
-  dissipation rather than Lax-Friedrich.
 
-  Aliasing restrictions: see getEntropyLWStab
-"""
-function calcEulerFlux_IRSLW(params::ParamType,
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dxidx::AbstractMatrix{Tmsh},
-                      nrm::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres}
-  #TODO: remove this method
-  nrm2 = params.nrm2
-  calcBCNormal(params, dxidx, nrm, nrm2)
-  calcEulerFlux_IRSLW(params, qL, qR, aux_vars, nrm2, F)
-  return nothing
-end
-=#
 function calcEulerFlux_IRSWF(
                       params::ParamType{Tdim, :conservative},
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},

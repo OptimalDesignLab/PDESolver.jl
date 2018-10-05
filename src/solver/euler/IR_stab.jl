@@ -147,46 +147,24 @@ function applyEntropyKernel_diagE(
 
   return nothing
 end
-#=
-"""
-  This function computes the entropy dissipation term using Lax-Wendroff
-  type dissipation.  The term is evaluated using simple averaging of
-  qL and qR.  The term is subtracted off of F.
-
-  This function is dimension agnostic, but only works for conservative
-  variables.
-
-  Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
-"""
-function getEntropyLWStab(
-                      params::ParamType{Tdim, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
-
-  q_avg = params.q_vals3
-  for i=1:length(q_avg)
-    q_avg[i] = 0.5*(qL[i] + qR[i])
-  end
-  getEntropyLWStab_inner(params, qL, qR, q_avg, aux_vars, dir, F)
-
-  return nothing
-end
-=#
 
 
 """
-  Updates the vector F with the stabilization term from Carpenter, Fisher,
-  Nielsen, Frankel, Entrpoy stable spectral collocation schemes for the 
-  Navier-Stokes equatiosn: Discontinuous interfaces.  The term is subtracted
-  off from F.
+  Applies the specified [`AbstractEntropyKernel`](@ref)
 
-  The q_avg vector should some average of qL and qR, but the type of 
-  averaging is left up to the user.
+  **Inputs**
 
-  This function is agnostic to dimension, but only works for conservative
-  variables.
+   * params
+   * kernel: the kernel to apply
+   * qL: left state
+   * qR: right state
+   * q_avg: the state at which to evaluate the kernel
+   * aux_vars
+   * dir: normal vector
+ 
+  **Inputs/Outputs**
 
+   * F: flux vector to update with contribtion
 """
 #function getEntropyLFStab_inner(
 function applyEntropyKernel_diagE_inner(
