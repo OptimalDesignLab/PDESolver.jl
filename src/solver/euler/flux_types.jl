@@ -247,24 +247,24 @@ end
 
 
 """
-  Temporary arrays for [`getEntropyLFStab`](@ref)
+  Temporary arrays for [`applyEntropyKernel_diagE`](@ref)
 """
-struct GetEntropyLFStabData{Tsol}
+struct ApplyEntropyKernel_diagEData{Tsol, Tres}
   q_avg::Vector{Tsol}
   
   # for getEntropyLFStab_inner
   vL::Vector{Tsol}
   vR::Vector{Tsol}
-  A0::Matrix{Tsol}
+  F_tmp::Vector{Tres}
 
-  function GetEntropyLFStabData{Tsol}(numDofPerNode::Integer) where {Tsol}
+  function ApplyEntropyKernel_diagEData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
 
     q_avg = zeros(Tsol, numDofPerNode)
     vL = zeros(Tsol, numDofPerNode)
     vR = zeros(Tsol, numDofPerNode)
-    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+    F_tmp = zeros(Tres, numDofPerNode)
 
-    obj = new(q_avg, vL, vR, A0)
+    obj = new(q_avg, vL, vR, F_tmp)
 
     assertArraysUnique(obj)
     return obj
@@ -484,6 +484,7 @@ struct CalcEulerFluxData{Tsol}
   end
 end
 
+
 """
   Temporary storage for all BC functors.  This one is a bit odd, because
   we can't store these arrays in the BC functors themselves, because when
@@ -517,6 +518,58 @@ struct BCData{Tsol, Tres}
     assertArraysUnique(obj)
 
     return obj
+  end
+end
+
+
+#------------------------------------------------------------------------------
+# entropy kernel functions for entropy-stable scheme
+
+struct LW2Kernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
+  nrm::Array{Tmsh, 1}
+  P::Array{Tmsh, 2}
+  Y::Array{Tsol, 2}  # eigenvectors
+  Lambda::Array{Tsol, 1}  # eigenvalues
+  S2::Array{Tsol, 1}  # scaling for the eigensystem
+  q_tmp::Array{Tsol, 1}
+  tmp1::Array{Tres, 1}
+  tmp2::Array{Tres, 1}
+
+  function LW2Kernel{Tsol, Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tsol, Tres, Tmsh}
+    nrm = zeros(Tmsh, dim)
+    P = zeros(Tmsh, numDofPerNode, numDofPerNode)
+    Y = zeros(Tsol, numDofPerNode, numDofPerNode)
+    Lambda = zeros(Tsol, numDofPerNode)
+    S2 = zeros(Tsol, numDofPerNode)
+    q_tmp = zeros(Tsol, numDofPerNode)
+    tmp1 = zeros(Tres, numDofPerNode)
+    tmp2 = zeros(Tres, numDofPerNode)
+
+    obj =  new(nrm, P, Y, Lambda, S2, q_tmp, tmp1, tmp2)
+
+    assertArraysUnique(obj)
+
+    return obj
+  end
+end
+
+mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
+  A0::AbstractArray{Tsol, 2}
+
+  function LFKernel{Tsol, Tmsh, Tres}(numDofPerNode::Integer) where {Tsol, Tmsh, Tres}
+
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+    return new(A0)
+  end
+end
+
+
+mutable struct IdentityKernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
+
+  function IdentityKernel{Tsol, Tres, Tmsh}() where {Tsol, Tres, Tmsh}
+
+    return new()
   end
 end
 

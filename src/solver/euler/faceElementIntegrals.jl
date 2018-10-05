@@ -496,32 +496,6 @@ end
 # Create separate kernel functions for each entropy penatly (LF, LW, etc)
 
 
-struct LW2Kernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
-  nrm::Array{Tmsh, 1}
-  P::Array{Tmsh, 2}
-  Y::Array{Tsol, 2}  # eigenvectors
-  Lambda::Array{Tsol, 1}  # eigenvalues
-  S2::Array{Tsol, 1}  # scaling for the eigensystem
-  q_tmp::Array{Tsol, 1}
-  tmp1::Array{Tres, 1}
-  tmp2::Array{Tres, 1}
-end
-
-function LW2Kernel(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-
-  ncomp = mesh.dim + 2  # = mesh.numDofPerNode?
-  nrm = zeros(Tmsh, mesh.dim)
-  P = zeros(Tmsh, ncomp, ncomp)
-  Y = zeros(Tsol, ncomp, ncomp)
-  Lambda = zeros(Tsol, ncomp)
-  S2 = zeros(Tsol, ncomp)
-  q_tmp = zeros(Tsol, ncomp)
-  tmp1 = zeros(Tres, ncomp)
-  tmp2 = zeros(Tres, ncomp)
-
-  return LW2Kernel{Tsol, Tres, Tmsh}(nrm, P, Y, Lambda, S2, q_tmp, tmp1, tmp2)
-end
-
 """
   Applies a Lax-Wendroff type dissipation kernel.  The intend is to apply
 
@@ -634,14 +608,6 @@ end
 """
   Use the identity matrix, ie. flux = delta_w
 """
-mutable struct IdentityKernel <: AbstractEntropyKernel
-end
-
-function IdentityKernel(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-
-  return IdentityKernel()
-end
-
 function applyEntropyKernel(obj::IdentityKernel, params::ParamType, 
                             q_avg::AbstractVector, delta_w::AbstractVector,
                             nrm::AbstractVector, flux::AbstractVector)
@@ -688,8 +654,8 @@ end
 """
 mutable struct ESLFFaceIntegral <: FaceElementIntegralType
   kernel::LFKernel
-  function ESLFFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new(LFKernel(mesh, eqn))
+  function ESLFFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode))
   end
 end
 
@@ -711,8 +677,8 @@ end
 """
 mutable struct ELFPenaltyFaceIntegral <: FaceElementIntegralType
   kernel::LFKernel
-  function ELFPenaltyFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new(LFKernel(mesh, eqn))
+  function ELFPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode))
   end
 end
 
@@ -736,8 +702,8 @@ end
 mutable struct ESLW2FaceIntegral <: FaceElementIntegralType
   kernel::LW2Kernel
 
-  function ESLW2FaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    kernel = LW2Kernel(mesh, eqn)
+  function ESLW2FaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+    kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     return new(kernel)
   end
 end
@@ -760,8 +726,9 @@ end
 mutable struct ELW2PenaltyFaceIntegral <: FaceElementIntegralType
   kernel::LW2Kernel
 
-  function ELW2PenaltyFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    kernel = LW2Kernel(mesh, eqn)
+  function ELW2PenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+
+    kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     return new(kernel)
   end
 end
@@ -783,8 +750,8 @@ end
 mutable struct EntropyJumpPenaltyFaceIntegral <: FaceElementIntegralType
   kernel::IdentityKernel
 
-  function EntropyJumpPenaltyFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    kernel = IdentityKernel(mesh, eqn)
+  function EntropyJumpPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+    kernel = IdentityKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
     return new(kernel)
   end
 end

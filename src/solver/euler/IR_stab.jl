@@ -112,24 +112,38 @@ end
 
 
 """
-  This function computes the entropy dissipation term using Lax-Friedrich
-  type dissipation.  The term is evaluated using simple averaging of
-  qL and qR.  The term is subtracted off of F.
+  This function applies any [`AbstractEntropyKernel`](@ref) when defining
+  a type 1 face integral (the normal type) for an entropy-stable scheme
+  using a diagonal E operator.
 
-  This function is dimension agnostic, but only works for conservative
-  variables.
+  **Inputs**
+
+   * params: ParamType
+   * kernel: the `AbstractEntropyKernel` to apply
+   * qL: solution at left state
+   * qR: solution at right state
+   * aux_vars: auxiliary varialbes
+   * dir: normal vector
+
+  **Inputs/Outputs**
+
+   * F: flux vector to have the entropy kernel contribution added to (well,
+        subtracted because the contribution is negative).
 """
-function getEntropyLFStab(
-                      params::ParamType{Tdim, :conservative}, 
+#function getEntropyLFStab(
+function applyEntropyKernel_diagE(
+                      params::ParamType{Tdim, :conservative},
+                      kernel::AbstractEntropyKernel,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
-  q_avg = params.get_entropy_lf_stab_data.q_avg
+  q_avg = params.apply_entropy_kernel_diagE_data.q_avg
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end
-  getEntropyLFStab_inner(params, qL, qR, q_avg, aux_vars, dir, F)
+
+  getEntropyLFStab_inner(params, kernel, qL, qR, q_avg, aux_vars, dir, F)
 
   return nothing
 end
@@ -173,18 +187,17 @@ end
   This function is agnostic to dimension, but only works for conservative
   variables.
 
-  Aliasing: from params the following arrays are used: A0, v_vals
-              v_vals2.
-
 """
-function getEntropyLFStab_inner(
+#function getEntropyLFStab_inner(
+function applyEntropyKernel_diagE_inner(
                       params::ParamType{Tdim, :conservative}, 
+                      kernel::AbstractEntropyKernel,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 #  println("entered getEntropyLFStab_inner")
 
-  @unpack params.get_entropy_lf_stab_data vL vR A0
+  @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp
   gamma = params.gamma
   gamma_1inv = 1/params.gamma_1
   p = calcPressure(params, q_avg)
@@ -196,33 +209,11 @@ function getEntropyLFStab_inner(
     vL[i] = vR[i] - vL[i]
   end
 
-  #TODO: use AbstractEntropyKernel?
-#  println("delta v = \n", vL)
-  # common-subexpression-elimination has a strong influence on the weak minded
-  getIRA0(params, q_avg, A0)
+#  F_tmp = zeros(Tres, length(F))
+  applyEntropyKernel(kernel, params, q_avg, vL, dir, F_tmp)
 
-  # multiply into vR
-  smallmatvec!(A0, vL, vR)
-
-  # calculate lambda_max at average state
-  rhoinv = 1/q_avg[1]
-  a = sqrt(gamma*p*rhoinv)  # speed of sound
-
-  #TODO: use getLambdaMax
-  Un = zero(Tres)
-  dA = zero(Tmsh)
-#  Un = nx*q_avg[2]*rhoinv + ny*q_avg[3]*rhoinv + nz*q_avg[4]*rhoinv
-#  dA = sqrt(nx*nx + ny*ny + nz*nz)
-  for i=1:Tdim
-    Un += dir[i]*q_avg[i+1]*rhoinv
-    dA += dir[i]*dir[i]
-  end
-  dA = sqrt(dA)
-  lambda_max = absvalue(Un) + dA*a
-
-  fac = 1
-  for i=1:length(vR)
-    F[i] -= fac* 0.5*lambda_max*vR[i]
+  for i=1:length(F_tmp)
+    F[i]-= F_tmp[i]
   end
 
   return nothing

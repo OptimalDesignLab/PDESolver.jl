@@ -1534,8 +1534,9 @@ function calcEulerFlux_IRSLF(
                       aux_vars::AbstractVector{Tres},
                       dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
+  kernel = params.entropy_lf_kernel
   calcEulerFlux_IR(params, qL, qR, aux_vars, dir, F)
-  getEntropyLFStab(params, qL, qR, aux_vars, dir, F)
+  applyEntropyKernel_diagE(params, kernel, qL, qR, aux_vars, dir, F)
 
   return nothing
 end
@@ -1565,8 +1566,9 @@ function calcEulerFlux_IRSWF(
                       aux_vars::AbstractVector{Tres},
                       dir::AbstractVector{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
+  kernel = params.entropy_lw2_kernel
   calcEulerFlux_IR(params, qL, qR, aux_vars, dir, F)
-  getEntropyLWStab(params, qL, qR, aux_vars, dir, F)
+  applyEntropyKernel_diagE(params, kernel, qL, qR, aux_vars, dir, F)
 
   return nothing
 end

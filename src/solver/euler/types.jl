@@ -65,7 +65,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
   irfluxdata::IRFluxData{Tsol}
-  get_entropy_lf_stab_data::GetEntropyLFStabData{Tsol}
+  apply_entropy_kernel_diagE_data::ApplyEntropyKernel_diagEData{Tsol, Tres}
   get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
   get_lambda_max_data::GetLambdaMaxData{Tsol}
   calc_vorticity_data::CalcVorticityData{Tsol, Tres, Tmsh}
@@ -84,6 +84,10 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
 
 
+  # entropy kernels
+  entropy_lf_kernel::LFKernel{Tsol, Tres, Tmsh}
+  entropy_lw2_kernel::LW2Kernel{Tsol, Tres, Tmsh}
+  entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -179,7 +183,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
-    get_entropy_lf_stab_data = GetEntropyLFStabData{Tsol}(mesh.numDofPerNode)
+    apply_entropy_kernel_diagE_data = ApplyEntropyKernel_diagEData{Tsol, Tres}(mesh.numDofPerNode)
     get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
     get_lambda_max_data = GetLambdaMaxData{Tsol}(mesh.numDofPerNode)
 
@@ -200,6 +204,12 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
                                mesh.numDofPerNode, mesh.numNodesPerFace,
                                mesh.numNodesPerElement)
+
+    entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
+    entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
+
+
     h = maximum(mesh.jac)
 
     gamma = opts["gamma"]
@@ -278,7 +288,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # flux functions
                eulerfluxdata, bcdata,
                roefluxdata, calcsatdata, lffluxdata, irfluxdata,
-               get_entropy_lf_stab_data, get_lambda_max_simple_data,
+               apply_entropy_kernel_diagE_data, get_lambda_max_simple_data,
                get_lambda_max_data,
                calc_vorticity_data, contract_res_entropy_vars_data,
                get_tau_data,
@@ -288,6 +298,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # entire mesh functions
                calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
+               entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
