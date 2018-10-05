@@ -1,6 +1,70 @@
 # functions that populate the initial conditions
 # List of functions:
 
+"""
+  This macro facilitates make initial condition functions.  Specifically,
+  IC functions that use a function in common_funcs.jl to populate the initial
+  condition can be created with this macro
+
+  **Inputs**
+
+   * namestub: the name stub.  If the function from common_funcs.jl is named
+               `calcFoo`, then `namestub` should be `Foo` and the new initial
+               condition function will be `ICFoo`.
+   * docstring: docstring for the newly created function `ICFoo`.  This argument
+                is optional, but good programming practices dictate that it
+                should be provided in all cases.
+
+  **Example Usage**
+
+   ```
+     @makeIC Foo \"\"\"
+Docstring for ICFoo
+\"\"\"
+  ```
+"""
+macro makeIC(namestub, docstring="""""")
+
+  # names of IC function, common_funcs.jl function
+  fname = Symbol(string("IC", namestub))
+  calcname = Symbol(string("calc", namestub))
+
+
+  # introducing an empty docstring is not the same as not supplying a docstring
+  # figure out which to do
+  if docstring != ""
+    docex = quote
+              @doc $docstring $fname
+            end
+  else
+    docex = :()
+  end
+
+  return esc(
+    quote
+
+
+      function $fname(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
+
+        q = zeros(Tsol, mesh.numDofPerNode)
+        for i=1:mesh.numEl
+          for j=1:mesh.numNodesPerElement
+            dofs = sview(mesh.dofs, :, j, i)
+            coords = sview(mesh.coords, :, j, i)
+            $calcname(eqn.params, coords, q)
+            for k=1:mesh.numDofPerNode
+              u0[dofs[k]] = q[k]
+            end
+          end
+        end
+
+        return nothing
+      end
+
+    end  # end quote
+  )
+
+end
 
 @doc """
 ### EulerEquationMod.ICZero
@@ -163,7 +227,7 @@ return nothing
 
 end  # end function
 
-@doc """
+@makeIC Rho1E2U1VW0 """
 ### EulerEquationMod.ICRho1E2U1VW0
 
   Sets the density values 1.0, x momentum to 1.0, 
@@ -182,39 +246,9 @@ end  # end function
 
   Aliasing restrictions: none.
 
-"""->
-function ICRho1E2U1VW0(mesh::AbstractMesh{Tmsh}, 
-                    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-                    opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
-# populate u0 with initial values
-# this is a template for all other initial conditions
+"""
 
-
-numEl = mesh.numEl
-nnodes = mesh.numNodesPerElement
-dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, mesh.numDofPerNode)
-for i=1:numEl
-  for j=1:nnodes
-
-      coords_j = sview(mesh.coords, :, j, i)
-      dofnums_j = sview(mesh.dofs, :, j, i)
-      # get dof numbers for each variable
-
-      calcRho1Energy2U1VW0(eqn.params, coords_j, sol)
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-  end
-end
-
-return nothing
-
-end  # end function
-
-
-@doc """
+@makeIC Rho1E2U3 """
 ### EulerEquationMod.ICRho1E2U3
 
   Sets all components density values to 1.0, x and y momenta to 0.35355, and
@@ -231,38 +265,9 @@ end  # end function
 
   Aliasing restrictions: none.
 
-"""->
-function ICRho1E2U3(mesh::AbstractMesh{Tmsh}, 
-  operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-  opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
-# populate u0 with initial values
-# this is a template for all other initial conditions
+"""
 
-
-numEl = mesh.numEl
-nnodes = mesh.numNodesPerElement
-dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, mesh.numDofPerNode)
-for i=1:numEl
-  for j=1:nnodes
-
-      coords_j = sview(mesh.coords, :, j, i)
-      dofnums_j = sview(mesh.dofs, :, j, i)
-      # get dof numbers for each variable
-
-      calcRho1Energy2U3(eqn.params, coords_j, sol)
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-  end
-end
-
-return nothing
-
-end  # end function
-
-@doc """
+@makeIC FreeStream """
 ### EulerEquationMod.ICFreeStream
 
   Sets all components of the solution to the free stream condition according
@@ -279,110 +284,19 @@ end  # end function
 
   Aliasing restrictions: none.
 
-"""->
-function ICFreeStream(mesh::AbstractMesh{Tmsh}, 
-    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
-# populate u0 with initial values
-# this is a template for all other initial conditions
-
-
-numEl = mesh.numEl
-nnodes = mesh.numNodesPerElement
-dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, dofpernode)
-for i=1:numEl
-  for j=1:nnodes
-      coords_j = sview(mesh.coords, :, j, i)
-      dofnums_j = sview(mesh.dofs, :, j, i)
- 
-      calcFreeStream(eqn.params, coords_j, sol)
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-
-  end
-end
-
-return nothing
-
-end  # end function
-
 """
+
+@makeIC FreeStream0 """
   Like [`calcFreeStream`](@ref), but uses [`calcFreeStream0`](@ref) instead of
   [`calcFreeStream`](@ref).
 """
-function ICFreeStream0(mesh::AbstractMesh{Tmsh}, 
-    operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
-# populate u0 with initial values
-# this is a template for all other initial conditions
-
-
-numEl = mesh.numEl
-nnodes = mesh.numNodesPerElement
-dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, dofpernode)
-for i=1:numEl
-  for j=1:nnodes
-      coords_j = sview(mesh.coords, :, j, i)
-      dofnums_j = sview(mesh.dofs, :, j, i)
- 
-      calcFreeStream0(eqn.params, coords_j, sol)
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-
-  end
-end
-
-return nothing
-
-end  # end function
 
 
 
 
-# what is this? how is it different than ICIsentropic Vortex?
-function ICVortex(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
-u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
-# populate u0 with initial values
-# this is a template for all other initial conditions
-
-numEl = mesh.numEl
-nnodes = operator.numnodes
-dofpernode = mesh.numDofPerNode
-sol = zeros(Tsol, 4)
-for i=1:numEl
-  for j=1:nnodes
-      coords_j = sview(mesh.coords, :, j, i)
-      dofnums_j = sview(mesh.dofs, :, j, i)
- 
-      # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
-
-      x = coords_j[1]
-      y = coords_j[2]
-
-      calcVortex(eqn.params, coords_j, sol)
-
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-
-  end
-end
-
-return nothing
-
-end  # end function
+@makeIC Vortex """
+ what is this? how is it different than ICIsentropic Vortex?
+"""
 
 @doc """
 ### EulerEquationMod.ICsmoothHeavisideder
@@ -413,45 +327,40 @@ function ICsmoothHeavisideder(mesh::AbstractMesh{Tmsh},
   L = 5
   k = 5
 
+  numEl = mesh.numEl
+  nnodes = operator.numnodes
+  dofpernode = mesh.numDofPerNode
+  for i=1:numEl
+  #  dofnums_i = sview(mesh, i)  # get dof nums for this element
+  #  coords = sview(mesh, [i])
 
+    for j=1:nnodes
+        coords_j = sview(mesh.coords, :, j, i)
+        dofnums_j = sview(mesh.dofs, :, j, i)
+   
+        # get dof numbers for each variable
+        dofnum_rho = dofnums_j[1]
+        dofnum_rhou = dofnums_j[2]
+        dofnum_rhov = dofnums_j[3]
+        dofnum_e = dofnums_j[4]
 
-numEl = mesh.numEl
-nnodes = operator.numnodes
-dofpernode = mesh.numDofPerNode
-for i=1:numEl
-#  dofnums_i = sview(mesh, i)  # get dof nums for this element
-#  coords = sview(mesh, [i])
+        x = coords_j[1]
+        y = coords_j[2]
 
-  for j=1:nnodes
-      coords_j = sview(mesh.coords, :, j, i)
-      dofnums_j = sview(mesh.dofs, :, j, i)
- 
-      # get dof numbers for each variable
-      dofnum_rho = dofnums_j[1]
-      dofnum_rhou = dofnums_j[2]
-      dofnum_rhov = dofnums_j[3]
-      dofnum_e = dofnums_j[4]
-
-      x = coords_j[1]
-      y = coords_j[2]
-
-      # apply initial conditions here
-      u0[dofnum_rho] = L*(2*k*e^(-2*k*x))/(e^(-2*k*x) +1 )^2
-      u0[dofnum_rhou] = 0.0
-      u0[dofnum_rhov] = 0.0
-      u0[dofnum_e] = 0.0
+        # apply initial conditions here
+        u0[dofnum_rho] = L*(2*k*e^(-2*k*x))/(e^(-2*k*x) +1 )^2
+        u0[dofnum_rhou] = 0.0
+        u0[dofnum_rhov] = 0.0
+        u0[dofnum_e] = 0.0
+    end
   end
-end
 
-return nothing
-
-
-
+  return nothing
 end
 
 
 @doc """
-### EulerEquationMod.ICZero
+### EulerEquationMod.ICsmoothHeaviside
 
   Sets the density to the smooth Heaviside function, all other components to
   zero.
@@ -510,7 +419,8 @@ function ICsmoothHeaviside(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-@doc """
+@makeIC IsentropicVortex """
+
 ### EulerEquationMod.ICIsentropicVortex
 
 Sets the solution to the steady isentropic vortex solution.
@@ -526,41 +436,7 @@ mesh
 
   Aliasing restrictions: none.
 
-"""->
-function ICIsentropicVortex(mesh::AbstractMesh{Tmsh}, 
-                            operator::AbstractSBP{Tsbp}, 
-                            eqn::EulerData{Tsol}, 
-                            opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
-  # populate u0 with initial values
-  # this is a template for all other initial conditions
-
-  println("entered ICIsentropicVortex")
-
-  numEl = mesh.numEl
-  nnodes = operator.numnodes
-  dofpernode = mesh.numDofPerNode
-  sol = zeros(Tsol, dofpernode)
-  for i=1:numEl
-    #  println("i = ", i)
-    #  coords = sview(mesh, [i])
-
-    for j=1:nnodes
-      dofnums_j = sview(mesh.dofs, :, j, i)
-      coords_j = sview(mesh.coords, :, j, i)
-      calcIsentropicVortex(eqn.params, coords_j, sol)
-
-      # apply initial conditions here
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-
-    end
-  end
-
-  return nothing
-
-end  # end function
-
+"""
 
 @doc """
 ### EulerEquationMod.ICIsentropicVortexWithNoise
@@ -609,7 +485,9 @@ function ICIsentropicVortexWithNoise(mesh::AbstractMesh{Tmsh},
 
 end  # end function
 
-@doc """
+
+
+@makeIC UnsteadyVortex """
 ### EulerEquationMod.ICUnsteadyVortex
 
   Sets the solution to the unsteady vortex problem.  eqn.params.t is used to
@@ -626,71 +504,12 @@ end  # end function
 
   Aliasing restrictions: none.
 
-"""->
-function ICUnsteadyVortex(mesh::AbstractMesh{Tmsh}, 
-        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-        opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
-  # populate u0 with initial values
-  # this is a template for all other initial conditions
-
-  numEl = mesh.numEl
-  nnodes = operator.numnodes
-  dofpernode = mesh.numDofPerNode
-  sol = zeros(Tsol, mesh.numDofPerNode)
-
-
-  for i=1:numEl
-    for j=1:nnodes
-      dofnums_j = sview(mesh.dofs, :, j, i)
-
-      coords_j = sview(mesh.coords, :, j, i)
-      calcUnsteadyVortex(eqn.params, coords_j, sol)
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-
-    end
-  end
-
-  return nothing
-
-end  # end function
-
 """
+@makeIC UnsteadyVortex2 """
   Vortex travelling at an angle
 """
-function ICUnsteadyVortex2(mesh::AbstractMesh{Tmsh}, 
-        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
-        opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
-  # populate u0 with initial values
-  # this is a template for all other initial conditions
 
-  numEl = mesh.numEl
-  nnodes = operator.numnodes
-  dofpernode = mesh.numDofPerNode
-  sol = zeros(Tsol, mesh.numDofPerNode)
-
-
-  for i=1:numEl
-    for j=1:nnodes
-      dofnums_j = sview(mesh.dofs, :, j, i)
-
-      coords_j = sview(mesh.coords, :, j, i)
-      calcUnsteadyVortex2(eqn.params, coords_j, sol)
-
-      for k=1:dofpernode
-        u0[dofnums_j[k]] = sol[k]
-      end
-
-    end
-  end
-
-  return nothing
-
-end  # end function
-
-"""
+@makeIC InvChannelIC """
   Initial condition for SU2 bump in inviscid channel case.  See also
   The subsonic inflow and subsonic outflow boundary conditions.
 """
@@ -757,46 +576,14 @@ u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 
 end
 
-"""
+@makeIC Exp """
   Assigns exp(k*x*y*z) as the initial condition, of each node, where k is 
   the index of the degree of freedom of the node
 """
-function ICExp(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      dofs = sview(mesh.dofs, :, j, i)
-      coords = sview(mesh.coords, :, j, i)
-      calcExp(eqn.params, coords, q)
-      for k=1:mesh.numDofPerNode
-        u0[dofs[k]] = q[k]
-      end
-    end
-  end
-
-  return nothing
-end
-
-"""
+@makeIC PeriodicMMS """
   Writes calcPeriodicMMS to the initial condition vector u0
 """
-function ICPeriodicMMS(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
-
-  q = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      dofs = sview(mesh.dofs, :, j, i)
-      coords = sview(mesh.coords, :, j, i)
-      calcPeriodicMMS(eqn.params, coords, q)
-      for k=1:mesh.numDofPerNode
-        u0[dofs[k]] = q[k]
-      end
-    end
-  end
-
-  return nothing
-end
 
 """
   This function applies the initial condition for the Taylor Green vortex,
@@ -836,93 +623,45 @@ function ICTaylorGreen(mesh::AbstractMesh{Tmsh}, sbp,
   return nothing
 end
 
-"""
+@makeIC ChannelMMS """
   Initial condition of channel MMS
 """
-function ICChannelMMS(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      dofs = sview(mesh.dofs, :, j, i)
-      coords = sview(mesh.coords, :, j, i)
-      calcChannelMMS(eqn.params, coords, q)
-      for k=1:mesh.numDofPerNode
-        u0[dofs[k]] = q[k]
-      end
-    end
-  end
-
-  return nothing
-end
-
-"""
+@makeIC Square1D """
   Initial for square wave in 1D
 """
-function ICSquare1D(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      dofs = sview(mesh.dofs, :, j, i)
-      coords = sview(mesh.coords, :, j, i)
-      calcSquare1D(eqn.params, coords, q)
-      for k=1:mesh.numDofPerNode
-        u0[dofs[k]] = q[k]
-      end
-    end
-  end
-
-  return nothing
-end
-
- """
+@makeIC Square2D """
   Initial for square wave in 2D
 """
-function ICSquare2D(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
 
-  q = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      dofs = sview(mesh.dofs, :, j, i)
-      coords = sview(mesh.coords, :, j, i)
-      calcSquare2D(eqn.params, coords, q)
-      for k=1:mesh.numDofPerNode
-        u0[dofs[k]] = q[k]
-      end
-    end
-  end
-
-  return nothing
-end
-
- """
-  Initial for square wave in 2D
+@makeIC SedovExplosion """
+  Initial for Sedov Explosion
 """
-function ICSedovExplosion(mesh::AbstractMesh{Tmsh}, sbp,
-             eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
-
-  q = zeros(Tsol, mesh.numDofPerNode)
-  for i=1:mesh.numEl
-    for j=1:mesh.numNodesPerElement
-      dofs = sview(mesh.dofs, :, j, i)
-      coords = sview(mesh.coords, :, j, i)
-      calcSedovExplosion(eqn.params, coords, q)
-      for k=1:mesh.numDofPerNode
-        u0[dofs[k]] = q[k]
-      end
-    end
-  end
-
-  return nothing
-end
-
  
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 """
   Map IC names to functions.  Generally the name is the same as the function
   name
+
+  Every function in this dictionary must have the signature:
+
+  ```
+    Foo(mesh::AbstractMesh{Tmsh}, sbp, 
+          eqn::EulerData{Tsol}, opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsol,}
+  ```
+
+  where `u0` is the vector to be overwritten with the initial condition, 
+  `mesh` is the mesh object`, `sbp` is the SBP operator, `eqn` is the equation
+  object, and `opts` is the optios dictionary.
+
+  Many of the initial condition functions call a function in common_funcs.jl
+  to compute the state.  See the macro [`makeIC`](@ref) for an easy way
+  to make such functions.  If these functions depend on time, they use
+  `eqn.params.t` to get the current time value.  This means IC functions can
+  be used to get analytical solutions at times other than `t = 0`.
+
 """
 global const ICDict = Dict{Any, Function}(
 "ICZero" => ICZero,
@@ -940,7 +679,7 @@ global const ICDict = Dict{Any, Function}(
 "ICUnsteadyVortex" => ICUnsteadyVortex,
 "ICUnsteadyVortex2" => ICUnsteadyVortex2,
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
-"ICInvChannel" => ICInvChannel,
+"ICInvChannel" => ICInvChannelIC,
 "ICFile" => ICFile,
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,

@@ -414,12 +414,13 @@ end
             respect to the solution must end with `_revq`.
    * docstring: (optional) docstring for the newly created functor
 
-   Example usage:
+   **Example usage**
 
    ```
      @makeBC Foo \"\"\"
 Docstring for Foo
 \"\"\"
+  ```
 """
 macro makeBC(fname::Symbol, docstring="")
 
