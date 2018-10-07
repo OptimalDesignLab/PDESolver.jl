@@ -338,7 +338,7 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, comm=MPI.COMM_WORLD, suff
     shape_type = 1
   end
  
-  println("\nConstructing SBP Face Operator")
+  @mpi_master println("\nConstructing SBP Face Operator")
   if opts["use_DG"]
     if dim == 2
       # TODO: use sbp.vtx instead
