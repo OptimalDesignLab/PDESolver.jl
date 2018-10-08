@@ -48,11 +48,11 @@ function createMeshAndOperator(opts, dofpernode, comm=MPI.COMM_WORLD)
   if opts["use_staggered_grid"]
     @mpi_master println("constructing flux grid")
 
-    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp, 2)
+    sbp2, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp, comm, 2)
 
     mesh_time = @elapsed mesh2, pmesh2 = createMesh(opts, sbp2, sbpface, 
                                                   shape_type, topo, Tmsh,
-                                                  dofpernode, 2)
+                                                  dofpernode, comm, 2)
     if !(mesh2 === pmesh2)
       throw(ErrorException("preconditioning mesh not supported with staggered grids"))
     end
@@ -60,10 +60,10 @@ function createMeshAndOperator(opts, dofpernode, comm=MPI.COMM_WORLD)
   end
 
   @mpi_master println("constructing solution grid")
-  sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp)
+  sbp, sbpface, shape_type, topo = createSBPOperator(opts, Tsbp, comm)
  
   mesh_time += @elapsed mesh, pmesh = createMesh(opts, sbp, sbpface, shape_type,
-                                                topo, Tmsh, dofpernode)
+                                                topo, Tmsh, dofpernode, comm)
 
   # store the second mesh and SBP operator inside the first mesh
   if opts["use_staggered_grid"]
@@ -270,7 +270,7 @@ end
    * SBPGamma: see above, this operator can be used to CG as well
 
 """
-function createSBPOperator(opts::Dict, Tsbp::DataType, comm=MPI.COMM_WORLD, suffix="")
+function createSBPOperator(opts::Dict, Tsbp::DataType, comm::MPI.Comm=MPI.COMM_WORLD, suffix="")
 
   myrank = MPI.Comm_rank(comm)
 
@@ -399,7 +399,7 @@ end
   Note: comm is currently not passed to the mesh constructors.
 """
 function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
-                    Tmsh, dofpernode, comm=MPI.COMM_WORLD, suffix="")
+                    Tmsh, dofpernode, comm::MPI.Comm=MPI.COMM_WORLD, suffix="")
 
   myrank = MPI.Comm_rank(comm)
 
