@@ -275,7 +275,8 @@ end  # end function
 function postproc(mesh, sbp, eqn, opts)
 
   ##### Do postprocessing ######
-  println("\nDoing postprocessing")
+  myrank = mesh.myrank
+  @mpi_master println("\nDoing postprocessing")
 
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
@@ -296,7 +297,6 @@ function postproc(mesh, sbp, eqn, opts)
 #      end
 #    end
 
-      myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
       saveSolutionToMesh(mesh, abs.(real(q_diff)))
       writeVisFiles(mesh, "solution_error")

@@ -1033,9 +1033,7 @@ function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractSBP,
                         eqn::NSData, opts)
 
   # currently we only allow 1 source functor
-  println("getting NS source named ", opts["SRCname"])
   eqn.src_func = SRCDict[opts["SRCname"]]
-  println("using source term functor ", eqn.src_func)
   return nothing
 end
 

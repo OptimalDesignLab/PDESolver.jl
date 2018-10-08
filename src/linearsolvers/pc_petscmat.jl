@@ -43,7 +43,6 @@ function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
 
   pc = createPetscPC(mesh, sbp, eqn, opts)
   A = createPetscMat(mesh, sbp, eqn, opts)
-  println("Petsc type of Ap = ", MatGetType(A))
   xtmp = createPetscVec(mesh, sbp, eqn, opts)
   btmp = createPetscVec(mesh, sbp, eqn, opts)
   is_assembled = Bool[false]
