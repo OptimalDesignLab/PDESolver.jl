@@ -554,7 +554,7 @@ struct LW2Kernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
 end
 
 mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
-  A0::AbstractArray{Tsol, 2}
+  A0::Array{Tsol, 2}
 
   function LFKernel{Tsol, Tmsh, Tres}(numDofPerNode::Integer) where {Tsol, Tmsh, Tres}
 

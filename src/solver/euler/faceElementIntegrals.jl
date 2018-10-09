@@ -566,17 +566,6 @@ function applyEntropyKernel(obj::LW2Kernel, params::ParamType,
 end
 
 
-mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
-  A0::AbstractArray{Tsol, 2}
-end
-
-function LFKernel(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-
-  A0 = zeros(Tsol, mesh.dim + 2, mesh.dim + 2)
-
-  return LFKernel{Tsol, Tmsh, Tres}(A0)
-end
-
 
 """
   Applies a Lax-Friedrich type entropy dissipation operation, ie.

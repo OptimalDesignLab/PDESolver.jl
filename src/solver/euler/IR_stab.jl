@@ -1,9 +1,7 @@
 #  IRStab.jl: functions for stabilizing the IR flux
 #             These functions are called from bc_solvers.jl to produce
 #             fluxes that include dissipation terms.
-# It turns out for simplex elements modifying the flux with a dissipation
-# term does not produce an entropy stable discretization, so these functions
-# are not very useful
+
 """
   Computes dq/dv, where q are the conservative variables and v are the
   IR entropy variables.  This is equiavlent to calcA0 scaled by gamma_1,
