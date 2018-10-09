@@ -30,6 +30,9 @@ function test_jac_terms()
 
     test_logavg()
 
+    test_IRA0(eqn.params)
+    test_IRA0(eqn3.params)
+
     nrm = [0.45, 0.55]
     nrm2 = -nrm
 
@@ -400,6 +403,50 @@ function test_lambdasimple(params::AbstractParamType{Tdim}, qL::AbstractVector,
   return nothing
 end
 
+
+"""
+  Test the differentiated versions of IRA0
+"""
+function test_IRA0(params::AbstractParamType{Tdim}) where {Tdim}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+  end
+
+  numDofPerNode = length(q)
+  nd = numDofPerNode*2
+  pert_vec = rand_realpart((numDofPerNode, nd))
+
+
+  A0c = zeros(Complex128, numDofPerNode, numDofPerNode)
+  A0_dotc = zeros(Float64, numDofPerNode, numDofPerNode, nd)
+
+  A0 = zeros(Complex128, numDofPerNode, numDofPerNode)
+  A0_dot = zeros(Complex128, numDofPerNode, numDofPerNode, nd)
+  q_dot = zeros(Complex128, numDofPerNode, nd)
+
+  for i=1:2  # run test twice to make sure internal arrays are zeroed out
+    for i=1:nd
+      q .+= pert*pert_vec[:, i]
+      EulerEquationMod.getIRA0(params, q, A0c)
+      q .-= pert*pert_vec[:, i]
+
+      A0_dotc[:, :, i] = imag(A0c)/h
+    end
+
+    EulerEquationMod.getIRA0_diff(params, q, pert_vec, A0, A0_dot)
+
+    #println("maxdiff = ", maximum(abs.(A0_dot - A0_dotc)) )
+    @test maximum(abs.(A0_dot - A0_dotc)) < 1e-12
+  end
+
+  return nothing
+end
 
 
 """

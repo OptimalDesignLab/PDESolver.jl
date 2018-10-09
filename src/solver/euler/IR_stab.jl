@@ -2,6 +2,8 @@
 #             These functions are called from bc_solvers.jl to produce
 #             fluxes that include dissipation terms.
 
+include("IR_stab_diff.jl")
+
 """
   Computes dq/dv, where q are the conservative variables and v are the
   IR entropy variables.  This is equiavlent to calcA0 scaled by gamma_1,

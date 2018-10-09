@@ -89,6 +89,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   entropy_lw2_kernel::LW2Kernel{Tsol, Tres, Tmsh}
   entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
 
+  get_ira0data::GetIRA0Data{Tsol}
+
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
   R::Float64  # specific gas constant used in ideal gas law (J/(Kg * K))
@@ -208,6 +210,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
     entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
+    get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
 
     h = maximum(mesh.jac)
@@ -299,6 +302,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
+               get_ira0data,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,

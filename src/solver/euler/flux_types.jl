@@ -573,6 +573,17 @@ mutable struct IdentityKernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
   end
 end
 
+struct GetIRA0Data{Tsol}
+  p_dot::Array{Tsol, 1}
+
+  function GetIRA0Data{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    p_dot = zeros(Tsol, numDofPerNode)
+
+    return new(p_dot)
+  end
+end
+
 
 #------------------------------------------------------------------------------
 # structs for functions that loop over faces

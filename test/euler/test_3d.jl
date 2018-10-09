@@ -472,6 +472,7 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
       @test isapprox( A04_code[i], A03[i]) atol=1e-10
     end
 
+
   end  # end facts block
 
   return nothing
