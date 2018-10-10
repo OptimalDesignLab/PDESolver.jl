@@ -179,6 +179,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     end
 
 
+    nd = 2*mesh.numDofPerNode
     eulerfluxdata = CalcEulerFluxData{Tsol}(mesh.numDofPerNode)
     bcdata = BCData{Tsol, Tres}(mesh.numDofPerNode)
     roefluxdata = RoeFluxData{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
@@ -207,7 +208,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                                mesh.numDofPerNode, mesh.numNodesPerFace,
                                mesh.numNodesPerElement)
 
-    entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
+    entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, nd)
     entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
     get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)

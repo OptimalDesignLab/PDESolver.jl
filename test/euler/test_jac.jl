@@ -19,6 +19,9 @@ function test_jac_terms()
   mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 =#
 
+  Tsol = eltype(eqn.q)
+  Tres = eltype(eqn.res)
+  Tmsh = eltype(mesh.jac)
 
 
   @testset "----- Testing jacobian -----" begin
@@ -37,6 +40,8 @@ function test_jac_terms()
     nrm2 = -nrm
 
     println("testing all positive eigenvalues")
+
+    # 2 point flux functions
     func = EulerEquationMod.RoeSolver
     func_diff = EulerEquationMod.RoeSolver_diff
     func2 = EulerEquationMod.calcLFFlux
@@ -46,6 +51,10 @@ function test_jac_terms()
     func3_diff = EulerEquationMod.FluxDict_diff["IRFlux"]
     func3_revm = EulerEquationMod.FluxDict_revm["IRFlux"]
     func3_revq = EulerEquationMod.FluxDict_revq["IRFlux"]
+
+    # Abstract Entropy Kernels
+    lf_kernel = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
+    lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh3.numDofPerNode, 2*mesh3.numDofPerNode)
 
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
@@ -58,6 +67,8 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func3, func3_diff)
     test_2flux_revq(eqn.params, q, qg, nrm, func3, func3_revq, test_multid=true)
     test_2flux_revm(eqn.params, q, qg, nrm, func3, func3_revm, test_multid=true)
+
+    test_EntropyKernel(eqn.params, lf_kernel)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
@@ -96,6 +107,11 @@ function test_jac_terms()
     test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
     test_lambda(eqn3.params, q, nrm)
     test_lambdasimple(eqn3.params, q, qg, nrm)
+
+    test_EntropyKernel(eqn3.params, lf_kernel3)
+    # test with nd > required nd
+    lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh3.numDofPerNode, 2*mesh.numDofPerNode + 2)
+    test_EntropyKernel(eqn3.params, lf_kernel3)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
@@ -447,6 +463,57 @@ function test_IRA0(params::AbstractParamType{Tdim}) where {Tdim}
 
   return nothing
 end
+
+
+"""
+  Test the differentiated version of an `AbstractEntropyKernel`
+"""
+function test_EntropyKernel(params::AbstractParamType{Tdim},
+                  kernel::EulerEquationMod.AbstractEntropyKernel) where {Tdim}
+
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+    delta_w = Complex128[0.1, 0.2, 0.3, 0.4]
+    nrm = [1.0, 2.0]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+    delta_w = Complex128[0.1, 0.2, 0.3, 0.4, 0.5]
+    nrm = [1.0, 2.0, 3.0]
+  end
+
+  numDofPerNode = length(q)
+  nd = 2*numDofPerNode
+  pert_vec_q = rand_realpart((numDofPerNode, nd))
+  pert_vec_w = rand_realpart((numDofPerNode, nd))
+  flux = zeros(Complex128, numDofPerNode)
+  flux_dotc = zeros(Complex128, numDofPerNode, nd)
+  flux_dot = zeros(Complex128, numDofPerNode, nd)
+
+  for i=1:2  # run test twice to make sure intermediate arrays are zeroed out
+    fill!(flux_dot, 0.0)
+    fill!(flux_dotc, 0.0)
+    for i=1:nd
+      q .+= pert*pert_vec_q[:, i]
+      delta_w .+= pert*pert_vec_w[:, i]
+      EulerEquationMod.applyEntropyKernel(kernel, params, q, delta_w, nrm, flux)
+      q .-= pert*pert_vec_q[:, i]
+      delta_w .-= pert*pert_vec_w[:, i]
+
+      flux_dotc[:, i] = imag(flux)/h
+    end
+
+    EulerEquationMod.applyEntropyKernel_diff(kernel, params, q, pert_vec_q, delta_w, pert_vec_w, nrm, flux, flux_dot)
+
+    @test maximum(abs.(flux_dot - flux_dotc)) < 3e-12
+  end
+
+  return nothing
+end
+
 
 
 """

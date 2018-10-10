@@ -3,6 +3,7 @@
 
 
 include("IR_stab.jl")  # stabilization for the IR flux
+include("faceElementIntegrals_diff.jl")
 
 # naming convention
 # EC -> entropy conservative
@@ -594,6 +595,7 @@ function applyEntropyKernel(obj::LFKernel, params::ParamType,
 end
 
 
+
 """
   Use the identity matrix, ie. flux = delta_w
 """
@@ -644,7 +646,7 @@ end
 mutable struct ESLFFaceIntegral <: FaceElementIntegralType
   kernel::LFKernel
   function ESLFFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode))
+    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode))
   end
 end
 
@@ -667,7 +669,7 @@ end
 mutable struct ELFPenaltyFaceIntegral <: FaceElementIntegralType
   kernel::LFKernel
   function ELFPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode))
+    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode))
   end
 end
 

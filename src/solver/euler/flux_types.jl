@@ -553,14 +553,33 @@ struct LW2Kernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
   end
 end
 
+"""
+  Data for Lax-Friedrich entropy dissipation
+"""
 mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
   A0::Array{Tsol, 2}
 
-  function LFKernel{Tsol, Tmsh, Tres}(numDofPerNode::Integer) where {Tsol, Tmsh, Tres}
+  # diff method
+  A0_dot::Array{Tsol, 3}
+  t1::Array{Tsol, 1}
+  t1_dot::Array{Tsol, 2}
+  lambda_max_dot::Array{Tres, 1}
+
+  function LFKernel{Tsol, Tmsh, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tmsh, Tres}
 
     A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
 
-    return new(A0)
+    # diff method
+    A0_dot = zeros(Tsol, numDofPerNode, numDofPerNode, nd)
+    t1 = zeros(Tsol, numDofPerNode)
+    t1_dot = zeros(Tsol, numDofPerNode, nd)
+    lambda_max_dot = zeros(Tres, numDofPerNode)
+
+    obj = new(A0, A0_dot, t1, t1_dot, lambda_max_dot)
+
+    assertArraysUnique(obj)
+
+    return obj
   end
 end
 

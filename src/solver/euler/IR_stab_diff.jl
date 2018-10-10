@@ -11,7 +11,7 @@ function getIRA0_diff(params::ParamType{2},
   
   @debug1 begin
     @assert size(q, 1) == size(q_dot, 1)
-    @assert size(A0_dot, 3) == nd
+    @assert size(A0_dot, 3) >= nd
     @assert size(A0, 1) == size(A0_dot, 1)
     @assert size(A0, 2) == size(A0_dot, 2)
   end

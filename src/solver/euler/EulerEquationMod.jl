@@ -221,6 +221,36 @@ abstract type FaceElementIntegralType end
     function MyEntropyKernel(mesh::AbstractMesh, eqn::EulerData)
   ```
 
+  For use in computing the Jacobian, a second function should be extended with
+  a new method
+
+  ```
+    function applyEntropyKernel_diff(obj::AbstractEntropyKernel, params::ParamType, 
+                          q_avg::AbstractVector, q_avg_dot::AbstractMatrix,
+                          delta_w::AbstractVector, delta_w_dot::AbstractMatrix,
+                          nrm::AbstractVector,
+                          flux::AbstractVector, flux_dot::AbstractMatrix)
+
+  ```
+
+  **Inputs**
+
+   * obj: LFKernel
+   * params: ParamType
+   * q_avg: same as regular method
+   * q_avg_dot: `numDofPerNode` x `nd` matrix containing `nd` dual vectors for
+                `q_avg`
+   * delta_w: same as regular method
+   * delta_w_dot: `numDofPerNode` x `nd` matrix containing `nd` dual vectors for
+                  `delta_w`
+   * nrm: same as regular method
+   * flux: vector to be overwritten with the flux
+   * flux_dot: `numDofPerNode` x `nd` array the derivative values will be added
+               to.
+
+  Note that `nd` must be less than or equal to the `nd` argument of the
+  `AbstractEntropyKernel` constructor.
+
 """
 abstract type AbstractEntropyKernel end
 
