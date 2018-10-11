@@ -392,7 +392,7 @@ end
 
   **Inputs/Outputs**
 
-   * qL_dot: derivative of lambda max wrt qL
+  * qL_dot: derivative of lambda max wrt qL (overwritten)
 
   **Outputs**
 
@@ -520,4 +520,133 @@ function getLambdaMax_diff(params::ParamType{3},
 
   return lambda_max
 end
+
+
+"""
+  Reverse mode of [`getLambdaMax`](@ref) with respect to the metrics
+
+  **Inputs**
+
+   * params
+   * qL
+   * dir
+   * lambda_bar: seed value for reverse mode
+
+  **Inputs/Outputs**
+
+   * nrm_bar: vector to be updated (not overwritten) with the result
+"""
+function getLambdaMax_revm(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh},
+                      dir_bar::AbstractVector{Tmsh}, lambda_bar::Number) where {Tsol, Tmsh, Tdim}
+
+  Tres = promote_type(Tsol, Tmsh)
+  gamma = params.gamma
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+
+  
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    Un += dir[i]*qL[i+1]*rhoLinv
+    dA += dir[i]*dir[i]
+  end
+
+  dA2 = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA2*aL
+
+  # reverse sweep
+  fac = Un > 0 ? 1 : -1
+  Un_bar = fac*lambda_bar
+  dA2_bar = aL*lambda_bar
+#  aL_bar = dA2*lambda_bar
+
+  dA_bar = dA2_bar/(2*dA2)
+
+  for i=1:Tdim
+    # Un
+    dir_bar[i] += qL[i+1]*rhoLinv*Un_bar
+    # dA
+    dir_bar[i] += 2*dir[i]*dA_bar
+  end
+
+
+  return lambda_max
+end
+
+
+"""
+  Reverse mode wrt q of [`getLambdaMax`](@ref)
+
+  **Inputs**
+
+   * params
+   * qL
+   * dir
+   * lambda_bar: reverse mode seed value
+
+  **Inputs/Outputs**
+
+   * qL_bar: adjoint part of qL, will be updated (not overwritten)
+"""
+function getLambdaMax_revq(params::ParamType{Tdim}, 
+                           qL::AbstractVector{Tsol}, 
+                           qL_bar::AbstractVector{Tsol},
+                           dir::AbstractVector{Tmsh},
+                           lambda_bar::Number) where {Tsol, Tmsh, Tdim}
+
+  Tres = promote_type(Tsol, Tmsh)
+  gamma = params.gamma
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    Un += dir[i]*qL[i+1]*rhoLinv
+    dA += dir[i]*dir[i]
+  end
+
+  dA2 = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA2*aL
+  rhoLinv_bar = zero(Tsol)
+ 
+
+  # reverse sweep
+  fac = Un > 0 ? 1 : -1
+  Un_bar = fac*lambda_bar
+#  dA2_bar = aL*lambda_bar
+  aL_bar = dA2*lambda_bar
+
+  
+  # dA2 = sqrt(dA)
+#  dA_bar = dA2_bar/(2*dA2)
+
+  rhoLinv_bar = zero(Tsol)
+  for i=1:Tdim
+    qL_bar[i+1] += dir[i]*rhoLinv*Un_bar
+    rhoLinv_bar += dir[i]*qL[i+1]*Un_bar
+    # dir is not being differentated here
+  end
+
+  # aL
+  pL_bar = gamma*rhoLinv*aL_bar/(2*aL)
+  rhoLinv_bar += gamma*pL*aL_bar/(2*aL)
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+
+  qL_bar[1] += -rhoLinv*rhoLinv*rhoLinv_bar
+  
+  return lambda_max
+end
+
+
 

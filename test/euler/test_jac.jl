@@ -157,6 +157,7 @@ function test_jac_terms()
     
 
   end
+
   return nothing
 end
 
@@ -364,6 +365,10 @@ function test_eulerflux(params::AbstractParamType{Tdim}) where Tdim
   @test maximum(abs.(res2 - 2*res2_orig)) < 1e-13
 end
 
+
+"""
+  Test getLambdaMax differentiated versions
+"""
 function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
                      nrm::AbstractVector) where Tdim
 
@@ -381,6 +386,50 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
   end
 
   @test isapprox( norm(lambda_dot - lambda_dot2), 0.0) atol=1e-13
+
+  # test accumulation behavior
+  lambda_dot_orig = copy(lambda_dot)
+  EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+  @test isapprox( norm(lambda_dot - lambda_dot_orig), 0.0) atol=1e-13
+
+  # revq
+  qL_bar = zeros(qL)
+  qL_barc = zeros(qL)
+
+  for i=1:length(qL)
+    qL[i] += pert
+    qL_barc[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    qL[i] -= pert
+  end
+
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
+
+  @test maximum(abs.(qL_bar - qL_barc)) < 1e-14
+
+  # test accumulation behavior
+  qL_bar_orig = copy(qL_bar)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
+  @assert maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-14
+
+
+  # revm
+  nrmc = zeros(Complex128, length(nrm)); copy!(nrmc, nrm)
+  nrm_bar = zeros(nrmc)
+  nrm_barc = zeros(nrmc)
+
+  for i=1:length(nrm)
+    nrmc[i] += pert
+    nrm_barc[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrmc))/h
+    nrmc[i] -= pert
+  end
+
+  EulerEquationMod.getLambdaMax_revm(params, qL, nrmc, nrm_bar, 1)
+
+  @assert maximum(abs.(nrm_bar - nrm_barc)) < 1e-14
+
+  nrm_bar_orig = copy(nrm_bar)
+  EulerEquationMod.getLambdaMax_revm(params, qL, nrmc, nrm_bar, 1)
+  @assert maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
 
 
   return nothing
