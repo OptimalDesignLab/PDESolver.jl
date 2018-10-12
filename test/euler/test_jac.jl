@@ -69,6 +69,8 @@ function test_jac_terms()
     test_2flux_revm(eqn.params, q, qg, nrm, func3, func3_revm, test_multid=true)
 
     test_EntropyKernel(eqn.params, lf_kernel)
+    test_EntropyKernel_revq(eqn.params, lf_kernel)
+    test_EntropyKernel_revm(eqn.params, lf_kernel)
 
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
@@ -109,6 +111,9 @@ function test_jac_terms()
     test_lambdasimple(eqn3.params, q, qg, nrm)
 
     test_EntropyKernel(eqn3.params, lf_kernel3)
+    test_EntropyKernel_revq(eqn3.params, lf_kernel3)
+    test_EntropyKernel_revm(eqn3.params, lf_kernel3)
+
     # test with nd > required nd
     lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh3.numDofPerNode, 2*mesh.numDofPerNode + 2)
     test_EntropyKernel(eqn3.params, lf_kernel3)
@@ -409,7 +414,7 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
   # test accumulation behavior
   qL_bar_orig = copy(qL_bar)
   EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
-  @assert maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-14
+  @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-14
 
 
   # revm
@@ -425,11 +430,11 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
 
   EulerEquationMod.getLambdaMax_revm(params, qL, nrmc, nrm_bar, 1)
 
-  @assert maximum(abs.(nrm_bar - nrm_barc)) < 1e-14
+  @test maximum(abs.(nrm_bar - nrm_barc)) < 1e-14
 
   nrm_bar_orig = copy(nrm_bar)
   EulerEquationMod.getLambdaMax_revm(params, qL, nrmc, nrm_bar, 1)
-  @assert maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
+  @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
 
 
   return nothing
@@ -488,14 +493,15 @@ function test_IRA0(params::AbstractParamType{Tdim}) where {Tdim}
   pert_vec = rand_realpart((numDofPerNode, nd))
 
 
-  A0c = zeros(Complex128, numDofPerNode, numDofPerNode)
-  A0_dotc = zeros(Float64, numDofPerNode, numDofPerNode, nd)
-
-  A0 = zeros(Complex128, numDofPerNode, numDofPerNode)
-  A0_dot = zeros(Complex128, numDofPerNode, numDofPerNode, nd)
-  q_dot = zeros(Complex128, numDofPerNode, nd)
-
   for i=1:2  # run test twice to make sure internal arrays are zeroed out
+    A0c = zeros(Complex128, numDofPerNode, numDofPerNode)
+    A0_dotc = zeros(Float64, numDofPerNode, numDofPerNode, nd)
+
+    A0 = zeros(Complex128, numDofPerNode, numDofPerNode)
+    A0_dot = zeros(Complex128, numDofPerNode, numDofPerNode, nd)
+    q_dot = zeros(Complex128, numDofPerNode, nd)
+
+
     for i=1:nd
       q .+= pert*pert_vec[:, i]
       EulerEquationMod.getIRA0(params, q, A0c)
@@ -508,6 +514,56 @@ function test_IRA0(params::AbstractParamType{Tdim}) where {Tdim}
 
     #println("maxdiff = ", maximum(abs.(A0_dot - A0_dotc)) )
     @test maximum(abs.(A0_dot - A0_dotc)) < 1e-12
+
+    # revq
+    # The jacobian is 3d, so the test is val = A0_ijk * v_i * w_j * c_k
+    # For complex step, use c_k as perturbation seed, sum v_i w_j afterward
+    # For reverse mode, use v_i w_j as A0_bar, sum with c_k afterwards
+    vi = rand(numDofPerNode)
+    wj = rand(numDofPerNode)
+    ck = rand(numDofPerNode)
+    A0 = zeros(Complex128, numDofPerNode, numDofPerNode)
+    A02 = zeros(Complex128, numDofPerNode, numDofPerNode)
+    A0_bar = zeros(Complex128, numDofPerNode, numDofPerNode)
+    q_bar = zeros(Complex128, numDofPerNode)
+
+    # complex step
+    for i=1:numDofPerNode
+      q[i] += pert*ck[i]
+    end
+
+    EulerEquationMod.getIRA0(params, q, A0)
+    A0_dot = imag(A0)/h
+
+    for i=1:numDofPerNode
+      q[i] -= pert*ck[i]
+    end
+
+    val = 0.0
+    for i=1:numDofPerNode
+      for j=1:numDofPerNode
+        val += A0_dot[i, j]*vi[i]*wj[j]
+      end
+    end
+
+    # reverse mode
+    for i=1:numDofPerNode
+      for j=1:numDofPerNode
+        A0_bar[i, j] = vi[i]*wj[j]
+      end
+    end
+    EulerEquationMod.getIRA0_revq(params, q, q_bar, A02, A0_bar)
+
+    val2 = sum(q_bar.*ck)
+
+    @test abs(val - val2) < 1e-12
+    @test maximum(abs.(A0 - A02)) < 1e-13
+
+    # test accumulation
+    q_bar_orig = copy(q_bar)
+    EulerEquationMod.getIRA0_revq(params, q, q_bar, A02, A0_bar)
+    @test maximum(abs.(q_bar - 2*q_bar_orig)) < 1e-13
+
   end
 
   return nothing
@@ -558,6 +614,115 @@ function test_EntropyKernel(params::AbstractParamType{Tdim},
     EulerEquationMod.applyEntropyKernel_diff(kernel, params, q, pert_vec_q, delta_w, pert_vec_w, nrm, flux, flux_dot)
 
     @test maximum(abs.(flux_dot - flux_dotc)) < 3e-12
+
+
+
+  end
+
+  return nothing
+end
+
+
+function test_EntropyKernel_revq(params::AbstractParamType{Tdim},
+                  kernel::EulerEquationMod.AbstractEntropyKernel) where {Tdim}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+    delta_w = Complex128[0.1, 0.2, 0.3, 0.4]
+    nrm = [1.0, 2.0]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+    delta_w = Complex128[0.1, 0.2, 0.3, 0.4, 0.5]
+    nrm = [1.0, 2.0, 3.0]
+  end
+
+  numDofPerNode = length(q)
+
+  for i=1:2  # make sure intermeidate arrays are zeroed out
+    q_dot = rand_realpart(numDofPerNode)
+    delta_w_dot = rand_realpart(numDofPerNode)
+    q_bar = zeros(Complex128, numDofPerNode)
+    delta_w_bar = zeros(Complex128, numDofPerNode)
+    F_bar = rand_realpart(numDofPerNode)
+    flux = zeros(Complex128, numDofPerNode)
+    fluxc = zeros(Complex128, numDofPerNode)
+
+    q .+= pert*q_dot
+    delta_w .+= pert*delta_w_dot
+    EulerEquationMod.applyEntropyKernel(kernel, params, q, delta_w, nrm, fluxc)
+    q .-= pert*q_dot
+    delta_w .-= pert*delta_w_dot
+    val = sum(F_bar.*imag(fluxc)/h)
+
+    EulerEquationMod.applyEntropyKernel_revq(kernel, params, q, q_bar, delta_w, delta_w_bar, nrm, flux, F_bar)
+
+    val2 = sum(delta_w_bar.*delta_w_dot +  q_bar.*q_dot)
+
+    @test abs(val - val2) < 3e-12
+    @test maximum(abs.(flux - fluxc)) < 1e-13
+
+    # test accumulation
+    q_bar_orig = copy(q_bar)
+    delta_w_bar_orig = copy(delta_w_bar)
+
+    EulerEquationMod.applyEntropyKernel_revq(kernel, params, q, q_bar, delta_w, delta_w_bar, nrm, flux, F_bar)
+
+    @test maximum(abs.(flux - fluxc)) < 1e-12
+    @test maximum(abs.(q_bar - 2*q_bar_orig)) < 1e-12
+    @test maximum(abs.(delta_w_bar - 2*delta_w_bar_orig)) < 1e-12
+  end
+
+  return nothing
+end
+
+
+function test_EntropyKernel_revm(params::AbstractParamType{Tdim},
+                  kernel::EulerEquationMod.AbstractEntropyKernel) where {Tdim}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+    delta_w = Complex128[0.1, 0.2, 0.3, 0.4]
+    nrm = [1.0, 2.0]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+    delta_w = Complex128[0.1, 0.2, 0.3, 0.4, 0.5]
+    nrm = [1.0, 2.0, 3.0]
+  end
+
+  numDofPerNode = length(q)
+
+  for i=1:2
+
+    nrmc = zeros(Complex128, length(nrm)); copy!(nrmc, nrm)
+    F_bar = rand_realpart(numDofPerNode)
+    flux = zeros(Complex128, numDofPerNode)
+    nrm_dot = rand_realpart(length(nrm))
+    nrm_bar = zeros(Complex128, length(nrm))
+
+    nrmc .+= pert*nrm_dot
+    EulerEquationMod.applyEntropyKernel(kernel, params, q, delta_w, nrmc, flux)
+    nrmc .-= pert*nrm_dot
+    val = sum(F_bar.*imag(flux)/h)
+
+    EulerEquationMod.applyEntropyKernel_revm(kernel, params, q, delta_w, nrmc, nrm_bar, flux, F_bar)
+    val2 = sum(nrm_bar .* nrm_dot)
+
+    @test abs(val - val2) < 1e-12
+
+    # test accumulation
+    nrm_bar_orig = copy(nrm_bar)
+    flux_orig = copy(flux)
+    EulerEquationMod.applyEntropyKernel_revm(kernel, params, q, delta_w, nrmc, nrm_bar, flux, F_bar)
+
+    @test maximum(abs.(flux - flux_orig)) < 1e-13
+    @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-12
+
   end
 
   return nothing

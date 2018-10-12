@@ -229,4 +229,316 @@ function getIRA0_diff(params::ParamType{3},
 end
 
 
+"""
+  Reverse mode wrt q of [`getIRA0`](@ref).
+
+  **Inputs**
+
+   * params
+   * q: solution vector
+   * A0_bar: seed matrix for reverse mode
+
+  **Inputs/Outputs**
+
+   * q_bar: dual part of `q`, to be updated (not overwritten), length `numDofPerNode`
+   * A0: matrix, `numDofPerNode` to be overwritten
+"""
+function getIRA0_revq(params::ParamType{2}, 
+                     q::AbstractArray{Tsol,1}, 
+                     q_bar::AbstractArray{Tsol, 1},
+                     A0::AbstractMatrix{Tsol}, 
+                     A0_bar::AbstractMatrix{Tsol}) where Tsol
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  p = calcPressure(params, q)
+
+  rho = q[1]
+  rhou = q[2]
+  rhov = q[3]
+  rhoe = q[4]
+
+  rhoinv = 1/rho
+
+  h = (rhoe + p)*rhoinv  # this isn't really h, but including the factor of
+                         # 1/rho is convenient
+  a2 = gamma*p*rhoinv  # speed of sound
+
+  A0[1,1] = rho
+  A0[2,1] = rhou
+  A0[3,1] = rhov
+  A0[4,1] = rhoe
+
+  A0[1,2] = rhou
+  A0[2,2] = rhou*rhou*rhoinv + p
+  A0[3,2] = rhou*rhov*rhoinv
+  A0[4,2] = rhou*h
+
+  A0[1,3] = rhov
+  A0[2,3] = rhou*rhov*rhoinv
+  A0[3,3] = rhov*rhov*rhoinv + p
+  A0[4,3] = rhov*h
+
+  A0[1,4] = rhoe
+  A0[2,4] = h*rhou
+  A0[3,4] = h*rhov
+  A0[4,4] = rho*h*h - a2*p/gamma_1
+
+  # reverse sweep
+  rho_bar = zero(Tsol)
+  rhou_bar = zero(Tsol)
+  rhov_bar = zero(Tsol)
+  rhoe_bar = zero(Tsol)
+  h_bar = zero(Tsol)
+  rhoinv_bar = zero(Tsol)
+  p_bar = zero(Tsol)
+  a2_bar = zero(Tsol)
+
+  # first column
+  rho_bar  += A0_bar[1,1]
+  rhou_bar += A0_bar[2,1]
+  rhov_bar += A0_bar[3,1]
+  rhoe_bar += A0_bar[4,1]
+
+  # second column
+  rhou_bar += A0_bar[1,2]
+
+  rhou_bar   += 2*rhou*rhoinv*A0_bar[2,2]
+  rhoinv_bar += rhou*rhou*A0_bar[2,2]
+  p_bar      += A0_bar[2,2]
+
+  rhou_bar   += rhov*rhoinv*A0_bar[3,2]
+  rhov_bar   += rhou*rhoinv*A0_bar[3,2]
+  rhoinv_bar += rhou*rhov*A0_bar[3,2]
+
+  rhou_bar += h*A0_bar[4,2]
+  h_bar    += rhou*A0_bar[4,2]
+
+  # 3rd column
+  rhov_bar += A0_bar[1,3]
+
+  rhou_bar   += rhov*rhoinv*A0_bar[2,3]
+  rhov_bar   += rhou*rhoinv*A0_bar[2,3]
+  rhoinv_bar += rhou*rhov*A0_bar[2,3]
+
+  rhov_bar   += 2*rhov*rhoinv*A0_bar[3,3]
+  rhoinv_bar += rhov*rhov*A0_bar[3,3]
+  p_bar      += A0_bar[3,3]
+
+  rhov_bar += h*A0_bar[4,3]
+  h_bar    += rhov*A0_bar[4,3]
+
+  # 4th column
+  rhoe_bar += A0_bar[1,4]
+
+  h_bar     += rhou*A0_bar[2,4]
+  rhou_bar  +=  h*A0_bar[2,4]
+  
+  h_bar    += rhov*A0_bar[3,4]
+  rhov_bar += h*A0_bar[3,4]
+
+  rho_bar += h*h*A0_bar[4,4]
+  h_bar   += 2*rho*h*A0_bar[4,4]
+  a2_bar  += -p*A0_bar[4,4]/gamma_1
+  p_bar   += -a2*A0_bar[4,4]/gamma_1
+  
+
+  # a2
+  p_bar      += gamma*rhoinv*a2_bar
+  rhoinv_bar += gamma*p*a2_bar
+
+  # h
+  rhoe_bar   += rhoinv*h_bar
+  p_bar      += rhoinv*h_bar
+  rhoinv_bar += (rhoe + p)*h_bar
+
+  # rhoinv
+  rho_bar += -rhoinv*rhoinv*rhoinv_bar
+
+  calcPressure_revq(params, q, q_bar, p_bar)
+
+  q_bar[1] += rho_bar
+  q_bar[2] += rhou_bar
+  q_bar[3] += rhov_bar
+  q_bar[4] += rhoe_bar
+
+
+
+  return nothing
+end
+
+
+function getIRA0_revq(params::ParamType{3}, 
+                     q::AbstractArray{Tsol,1}, 
+                     q_bar::AbstractArray{Tsol, 1},
+                     A0::AbstractMatrix{Tsol}, 
+                     A0_bar::AbstractMatrix{Tsol}) where Tsol
+
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  p = calcPressure(params, q)
+
+  rho = q[1]
+  rhou = q[2]
+  rhov = q[3]
+  rhow = q[4]
+  rhoe = q[5]
+
+  rhoinv = 1/rho
+
+  h = (rhoe + p)*rhoinv  # this isn't really h, but including the factor of
+                         # 1/rho is convenient
+  a2 = gamma*p*rhoinv  # speed of sound
+
+
+  A0[1,1] = rho
+  A0[2,1] = rhou
+  A0[3,1] = rhov
+  A0[4,1] = rhow
+  A0[5,1] = rhoe
+
+  A0[1,2] = rhou
+  A0[2,2] = rhou*rhou*rhoinv + p
+  A0[3,2] = rhou*rhov*rhoinv
+  A0[4,2] = rhou*rhow*rhoinv
+  A0[5,2] = rhou*h
+
+  A0[1,3] = rhov
+  A0[2,3] = rhou*rhov*rhoinv
+  A0[3,3] = rhov*rhov*rhoinv + p
+  A0[4,3] = rhov*rhow*rhoinv
+  A0[5,3] = rhov*h
+
+
+  A0[1,4] = rhow
+  A0[2,4] = rhow*rhou*rhoinv
+  A0[3,4] = rhow*rhov*rhoinv
+  A0[4,4] = rhow*rhow*rhoinv + p
+  A0[5,4] = rhow*h
+
+  A0[1,5] = rhoe
+  A0[2,5] = h*rhou
+  A0[3,5] = h*rhov
+  A0[4,5] = h*rhow
+  A0[5,5] = rho*h*h - a2*p/gamma_1
+
+
+  # reverse sweep
+  rho_bar = zero(Tsol)
+  rhou_bar = zero(Tsol)
+  rhov_bar = zero(Tsol)
+  rhow_bar = zero(Tsol)
+  rhoe_bar = zero(Tsol)
+  h_bar = zero(Tsol)
+  rhoinv_bar = zero(Tsol)
+  p_bar = zero(Tsol)
+  a2_bar = zero(Tsol)
+
+  # first column
+  rho_bar  += A0_bar[1,1]
+  rhou_bar += A0_bar[2,1]
+  rhov_bar += A0_bar[3,1]
+  rhow_bar += A0_bar[4,1]
+  rhoe_bar += A0_bar[5,1]
+
+  # second column
+  rhou_bar += A0_bar[1,2]
+
+  rhou_bar   += 2*rhou*rhoinv*A0_bar[2,2]
+  rhoinv_bar += rhou*rhou*A0_bar[2,2]
+  p_bar      += A0_bar[2,2]
+
+  rhou_bar   += rhov*rhoinv*A0_bar[3,2]
+  rhov_bar   += rhou*rhoinv*A0_bar[3,2]
+  rhoinv_bar += rhou*rhov*A0_bar[3,2]
+
+  rhou_bar   += rhow*rhoinv*A0_bar[4,2]
+  rhow_bar   += rhou*rhoinv*A0_bar[4,2]
+  rhoinv_bar += rhou*rhow*A0_bar[4,2]
+
+  rhou_bar += h*A0_bar[5,2]
+  h_bar    += rhou*A0_bar[5,2]
+
+  # 3rd column
+  rhov_bar += A0_bar[1,3]
+
+  rhou_bar   += rhov*rhoinv*A0_bar[2,3]
+  rhov_bar   += rhou*rhoinv*A0_bar[2,3]
+  rhoinv_bar += rhou*rhov*A0_bar[2,3]
+
+  rhov_bar   += 2*rhov*rhoinv*A0_bar[3,3]
+  rhoinv_bar += rhov*rhov*A0_bar[3,3]
+  p_bar      += A0_bar[3,3]
+
+  rhov_bar   += rhow*rhoinv*A0_bar[4,3]
+  rhow_bar   += rhov*rhoinv*A0_bar[4,3]
+  rhoinv_bar += rhov*rhow*A0_bar[4,3]
+
+  rhov_bar += h*A0_bar[5,3]
+  h_bar    += rhov*A0_bar[5,3]
+
+  # 4th column
+  rhow_bar += A0_bar[1,4]
+
+  rhow_bar   += rhou*rhoinv*A0_bar[2,4]
+  rhou_bar   += rhow*rhoinv*A0_bar[2,4]
+  rhoinv_bar += rhow*rhou*A0_bar[2,4]
+
+  rhow_bar   += rhov*rhoinv*A0_bar[3,4]
+  rhov_bar   += rhow*rhoinv*A0_bar[3,4]
+  rhoinv_bar += rhow*rhov*A0_bar[3,4]
+
+  rhow_bar   += 2*rhow*rhoinv*A0_bar[4,4]
+  rhoinv_bar += rhow*rhow*A0_bar[4,4]
+  p_bar      += A0_bar[4,4]
+
+  rhow_bar += h*A0_bar[5,4]
+  h_bar    += rhow*A0_bar[5,4]
+
+
+  # 5th column
+  rhoe_bar += A0_bar[1,5]
+
+  h_bar     += rhou*A0_bar[2,5]
+  rhou_bar  +=  h*A0_bar[2,5]
+  
+  h_bar    += rhov*A0_bar[3,5]
+  rhov_bar += h*A0_bar[3,5]
+
+  h_bar    += rhow*A0_bar[4,5]
+  rhow_bar += h*A0_bar[4,5]
+
+  rho_bar += h*h*A0_bar[5,5]
+  h_bar   += 2*rho*h*A0_bar[5,5]
+  a2_bar  += -p*A0_bar[5,5]/gamma_1
+  p_bar   += -a2*A0_bar[5,5]/gamma_1
+  
+
+  # a2
+  p_bar      += gamma*rhoinv*a2_bar
+  rhoinv_bar += gamma*p*a2_bar
+
+  # h
+  rhoe_bar   += rhoinv*h_bar
+  p_bar      += rhoinv*h_bar
+  rhoinv_bar += (rhoe + p)*h_bar
+
+  # rhoinv
+  rho_bar += -rhoinv*rhoinv*rhoinv_bar
+
+  calcPressure_revq(params, q, q_bar, p_bar)
+
+  q_bar[1] += rho_bar
+  q_bar[2] += rhou_bar
+  q_bar[3] += rhov_bar
+  q_bar[4] += rhow_bar
+  q_bar[5] += rhoe_bar
+
+
+
+  return nothing
+end
+
 

@@ -565,6 +565,10 @@ mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
   t1_dot::Array{Tsol, 2}
   lambda_max_dot::Array{Tres, 1}
 
+  # revm method
+  t1_bar::Array{Tres, 1}
+  A0_bar::Array{Tres, 2}
+
   function LFKernel{Tsol, Tmsh, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tmsh, Tres}
 
     A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
@@ -575,7 +579,12 @@ mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
     t1_dot = zeros(Tsol, numDofPerNode, nd)
     lambda_max_dot = zeros(Tres, numDofPerNode)
 
-    obj = new(A0, A0_dot, t1, t1_dot, lambda_max_dot)
+    # revq method
+    t1_bar = zeros(Tres, numDofPerNode)
+    A0_bar = zeros(Tres, numDofPerNode, numDofPerNode)
+   
+
+    obj = new(A0, A0_dot, t1, t1_dot, lambda_max_dot, t1_bar, A0_bar)
 
     assertArraysUnique(obj)
 

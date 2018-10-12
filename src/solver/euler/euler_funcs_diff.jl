@@ -392,7 +392,7 @@ end
 
   **Inputs/Outputs**
 
-  * qL_dot: derivative of lambda max wrt qL (overwritten)
+   * qL_dot: derivative of lambda max wrt qL (overwritten)
 
   **Outputs**
 
