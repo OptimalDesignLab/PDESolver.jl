@@ -51,6 +51,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
+  numDofPerNode::Int
+  numNodesPerElement::Int
+  numNodesPerFace::Int
   #TODO: consider making these vectors views of a matrix, to guarantee
   #      spatial locality
 
@@ -288,7 +291,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
     time = Timings()
 
-    return new(f, t, order,
+    return new(f, t, order, mesh.numDofPerNode, mesh.numNodesPerElement,
+               mesh.numNodesPerFace,
                # flux functions
                eulerfluxdata, bcdata,
                roefluxdata, calcsatdata, lffluxdata, irfluxdata,

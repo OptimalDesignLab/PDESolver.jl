@@ -97,6 +97,7 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
 
+    test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
 
     #--------------------------------------------------------------------------
     # 3D
@@ -167,7 +168,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -1059,6 +1060,102 @@ function test_logavg()
 
   return nothing
 end
+
+
+function test_faceElementIntegral(params::AbstractParamType{Tdim},
+                   sbpface::AbstractFace, func::FluxType,
+                   func_diff::FluxType_diff) where {Tdim}
+
+
+  println("\n\ntesting faceElementIntegral")
+  h = 1e-20
+  pert = Complex128(0, h)
+
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+    nrm = [1.0, 2.0]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+    nrm = [1.0, 2.0, 3.0]
+  end
+
+  qL = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+  qR = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+  nrm_face = zeros(Tdim, params.numNodesPerFace)
+  for i=1:params.numNodesPerElement
+    qL[:, i] = q + (i-1)*0.1
+    qR[:, i] = q + i*0.1
+  end
+
+  for i=1:params.numNodesPerFace
+    nrm_face[:, i] = nrm + (i-1)*0.1
+  end
+  aux_vars = zeros(Complex128, 0, 0)
+  resL = zeros(qL)
+  resR = zeros(qR)
+  jacLL = zeros(Complex128, params.numDofPerNode, params.numDofPerNode,
+                params.numNodesPerElement, params.numNodesPerElement)
+  jacLR = copy(jacLL)
+  jacRL = copy(jacLL)
+  jacRR = copy(jacLL)
+
+  #TODO: test all configurations
+  iface = Interface(1, 2, 1, 1, 1)
+
+  qL_dot = rand_realpart(size(qL))
+  qR_dot = rand_realpart(size(qR))
+#  qL_dot = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+#  qR_dot = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+
+  qL_dot[1, 1] = 1
+
+  # complex step
+  qL .+= pert*qL_dot
+  qR .+= pert*qR_dot
+
+  EulerEquationMod.calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars,
+                                      nrm_face, func, resL, resR)
+  valLc = imag(resL)/h
+  valRc = imag(resR)/h
+
+  EulerEquationMod.calcECFaceIntegral_diff(params, sbpface, iface, qL, qR,
+                       aux_vars, nrm_face, func_diff, jacLL, jacLR, jacRL, jacRR)
+
+
+  valL = zeros(qL)
+  valR = zeros(qR)
+
+  for q=1:params.numNodesPerElement
+    for p=1:params.numNodesPerElement
+      for i=1:params.numDofPerNode
+        for j=1:params.numDofPerNode
+          valL[i, p] += jacLL[i, j, p, q]*qL_dot[j, q]
+          valL[i, p] += jacLR[i, j, p, q]*qR_dot[j, q]
+          valR[i, p] += jacRL[i, j, p, q]*qL_dot[j, q]
+          valR[i, p] += jacRR[i, j, p, q]*qR_dot[j, q]
+        end
+      end
+    end
+  end
+
+  println("valL = \n", real(valL))
+  println("valLc = \n", valLc)
+  println("valL_extract = \n", real(jacLL[:, 1, :, 1]))
+  println("maxdiff = ", maximum(abs.(valL - valLc)))
+
+  @test maximum(abs.(valL - valLc)) < 1e-13
+
+  println("valR = \n", real(valR))
+  println("valRc = \n", valRc)
+  println("valR_extract = \n", real(valR[:, 1, :, 1]))
+  println("valRc_extract = \n", real(valRc[:, 1, :, 1]))
+  println("maxdiff = ", maximum(abs.(valR - valRc)))
+
+  @test maximum(abs.(valR - valRc)) < 1e-13
+  return nothing
+end
+
 
 
 

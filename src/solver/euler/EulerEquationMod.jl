@@ -235,7 +235,7 @@ abstract type FaceElementIntegralType end
 
   **Inputs**
 
-   * obj: LFKernel
+   * obj: `AbstractEntropyKernel` implementation
    * params: ParamType
    * q_avg: same as regular method
    * q_avg_dot: `numDofPerNode` x `nd` matrix containing `nd` dual vectors for
@@ -250,6 +250,57 @@ abstract type FaceElementIntegralType end
 
   Note that `nd` must be less than or equal to the `nd` argument of the
   `AbstractEntropyKernel` constructor.
+
+
+  For reverse mode with respect to the solution, a function should be defined:
+
+  ```
+    function applyEntropyKernel_revq(obj::LFKernel, params::ParamType, 
+                            q_avg::AbstractVector, q_bar::AbstractVector,
+                            delta_w::AbstractVector, delta_w_bar::AbstractVector,
+                            nrm::AbstractVector, flux::AbstractVector,
+                            flux_bar::AbstractVector)
+  ```
+
+  **Inputs**
+
+   * obj: `AbstractEntropyKernel` implementation
+   * params: ParamType
+   * q_avg: same as regular method
+   * delta_w: same as regular method
+   * nrm: same as regular method
+   * flux_bar: seed vector for dual part of `flux`
+
+  **Inputs/Outputs**
+
+   * q_bar: vector to accumulate the result for `q_avg` into (not overwritten)
+   * delta_w_bar: vector to accumulate result for `delta_w` into (not overwritten)
+   * flux: vector, length `numDofPerNode` to overwrite with flux
+
+
+  Similarly for reverse mode with respect to the metrics:
+
+  ```
+    function applyEntropyKernel_revm(obj::AbstractEntropyKernel, params::ParamType, 
+                            q_avg::AbstractVector, delta_w::AbstractVector,
+                            nrm::AbstractVector, nrm_bar::AbstractVector,
+                            flux::AbstractVector,
+                            flux_bar::AbstractVector)
+  ```
+
+  **Inputs**
+
+   * obj: `AbstractEntropyKernel` implementation
+   * params: ParamType
+   * q_avg: same as regular method
+   * delta_w: same as regular method
+   * nrm: same as regular method
+   * flux_bar: seed vector for dual part of `flux`
+
+  **Inputs/Outputs**
+
+   * nrm_bar: vector to accumulate result into (not overwritten)
+   * flux: vector, length `numDofPerNode` to overwrite with flux
 
 """
 abstract type AbstractEntropyKernel end

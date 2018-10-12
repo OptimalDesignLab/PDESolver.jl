@@ -217,8 +217,8 @@ function (obj::RoeFlux_diff)(params::ParamType,
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractVector{Tmsh},
-              F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
 
   RoeSolver_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
   return nothing
@@ -233,8 +233,8 @@ function (obj::LFFlux_diff)(params::ParamType,
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractVector{Tmsh},
-              F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
 
   calcLFFlux_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
 
@@ -252,8 +252,8 @@ function (obj::IRFlux_diff)(params::ParamType,
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractArray{Tmsh},
-              F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
 
   calcEulerFlux_IR_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
 
@@ -269,8 +269,8 @@ function (obj::ErrorFlux_diff)(params::ParamType,
               uR::AbstractArray{Tsol,1},
               aux_vars::AbstractVector{Tres},
               nrm::AbstractVector{Tmsh},
-              F_dotL::AbstractMatrix{Tres},
-              F_dotR::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh}
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
 
 
   error("ErrorFlux() called, something unexpected has occured")

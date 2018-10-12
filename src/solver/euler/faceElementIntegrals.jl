@@ -598,8 +598,8 @@ end
 function applyEntropyKernel_revq(obj::LFKernel, params::ParamType, 
                         q_avg::AbstractVector, q_bar::AbstractVector,
                         delta_w::AbstractVector, delta_w_bar::AbstractVector,
-                        nrm::AbstractVector, flux::AbstractVector{Tres},
-                        flux_bar::AbstractVector) where {Tres}
+                        nrm::AbstractVector, flux::AbstractVector,
+                        flux_bar::AbstractVector)
 
 
   @unpack obj t1 A0 t1_bar A0_bar
@@ -647,8 +647,8 @@ end
 function applyEntropyKernel_revm(obj::LFKernel, params::ParamType, 
                         q_avg::AbstractVector, delta_w::AbstractVector,
                         nrm::AbstractVector, nrm_bar::AbstractVector,
-                        flux::AbstractVector{Tres},
-                        flux_bar::AbstractVector) where {Tres}
+                        flux::AbstractVector,
+                        flux_bar::AbstractVector)
 
 
   @unpack obj t1 A0 A0_bar
