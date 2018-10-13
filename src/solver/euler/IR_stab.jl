@@ -143,7 +143,7 @@ function applyEntropyKernel_diagE(
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end
 
-  getEntropyLFStab_inner(params, kernel, qL, qR, q_avg, aux_vars, dir, F)
+  applyEntropyKernel_diagE_inner(params, kernel, qL, qR, q_avg, aux_vars, dir, F)
 
   return nothing
 end
@@ -191,7 +191,7 @@ function applyEntropyKernel_diagE_inner(
   applyEntropyKernel(kernel, params, q_avg, vL, dir, F_tmp)
 
   for i=1:length(F_tmp)
-    F[i]-= F_tmp[i]
+    F[i] -= F_tmp[i]
   end
 
   return nothing

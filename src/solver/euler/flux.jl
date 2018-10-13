@@ -994,6 +994,27 @@ function (obj::IRSLFFlux)(params::ParamType,
   return nothing
 end
 
+"""
+  Computes only the penalty term from the [`IRSLFFlux`](@ref)
+"""
+mutable struct LFPenalty <: FluxType
+end
+
+function (obj::LFPenalty)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE(params, kernel, uL, uR, aux_vars, nrm, F)
+
+  return nothing
+end
+
+
+
 @doc """
 ### EulerEquationMod.FluxDict
 
@@ -1020,6 +1041,7 @@ global const FluxDict = Dict{String, FluxType}(
 "DucrosFlux" => DucrosFlux(),
 "IRFlux" => IRFlux(),
 "IRSLFFlux" => IRSLFFlux(),
+"LFPenalty" => LFPenalty(),
 )
 
 @doc """
