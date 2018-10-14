@@ -393,12 +393,24 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
   # for SparseFace method
   flux_tmp::Vector{Tres}
 
+  # diff method
+  fL_dotD::Array{Tres, 3}
+  fR_dotD::Array{Tres, 3}
+  fL_dot::Array{Tres, 2}
+  fR_dot::Array{Tres, 2}
+
   function CalcECFaceIntegralData{Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tres, Tmsh}
     fluxD = zeros(Tres, numDofPerNode, dim)
     nrmD = zeros(Tmsh, dim, dim)
     flux_tmp = zeros(Tres, numDofPerNode)
 
-    obj = new(fluxD, nrmD, flux_tmp)
+    fL_dotD = zeros(Tres, numDofPerNode, numDofPerNode, dim)
+    fR_dotD = zeros(Tres, numDofPerNode, numDofPerNode, dim)
+
+    fL_dot = zeros(Tres, numDofPerNode, numDofPerNode)
+    fR_dot = zeros(Tres, numDofPerNode, numDofPerNode)
+
+    obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot)
 
     assertArraysUnique(obj)
 

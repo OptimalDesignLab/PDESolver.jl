@@ -109,6 +109,145 @@ end
   return nothing
 end
 
+"""
+  Gets inverse matrix of [`getIRA0`](@ref)
+"""
+function getIRA0inv(params::ParamType{2}, q::AbstractArray{Tsol, 1},
+                    A0inv::AbstractMatrix{Tsol}) where {Tsol}
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  gamma_1i = 1/gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[1]
+  k1_dot1 = -k1/q[1]
+  k1_dot2 = q[2]/q[1]
+  k1_dot3 = q[3]/q[1]
+#  k1_dot4 = 0
+
+  rho_int = q[4] - k1
+  rho_int_dot1 = -k1_dot1
+  rho_int_dot2 = -k1_dot2
+  rho_int_dot3 = -k1_dot3
+  rho_int_dot4 =  1
+
+  s = log(gamma_1*rho_int/(q[1]^gamma))
+  s_dot1 = rho_int_dot1/rho_int - gamma/q[1]
+  s_dot2 = rho_int_dot2/rho_int
+  s_dot3 = rho_int_dot3/rho_int
+  s_dot4 = rho_int_dot4/rho_int
+
+  fac = 1.0/rho_int
+  t1 = -fac*fac
+  fac_dot1 = t1*rho_int_dot1
+  fac_dot2 = t1*rho_int_dot2
+  fac_dot3 = t1*rho_int_dot3
+  fac_dot4 = t1*rho_int_dot4
+
+  t2 = (rho_int*(gamma + 1 - s) - q[4])
+
+  A0inv[1, 1] = (rho_int_dot1*(gamma + 1) - (rho_int*s_dot1 + s*rho_int_dot1))*fac*gamma_1i + t2*fac_dot1*gamma_1i
+  A0inv[2, 1] = q[2]*fac_dot1*gamma_1i
+  A0inv[3, 1] = q[3]*fac_dot1*gamma_1i
+  A0inv[4, 1] = -(fac + q[1]*fac_dot1)*gamma_1i
+
+  A0inv[1, 2] = ( (rho_int_dot2*(gamma + 1) - (rho_int*s_dot2 +
+                   s*rho_int_dot2))*fac + fac_dot2*t2)*gamma_1i
+  A0inv[2, 2] = (fac + q[2]*fac_dot2)*gamma_1i
+  A0inv[3, 2] = q[3]*fac_dot2*gamma_1i
+  A0inv[4, 2] = -(q[1]*fac_dot2)*gamma_1i
+
+  A0inv[1, 3] = ( (rho_int_dot3*(gamma + 1) - (rho_int*s_dot3 +
+                   s*rho_int_dot3))*fac + fac_dot3*t2)*gamma_1i
+  A0inv[2, 3] = q[2]*fac_dot3*gamma_1i
+  A0inv[3, 3] = (fac + q[3]*fac_dot3)*gamma_1i
+  A0inv[4, 3] = -(q[1]*fac_dot3)*gamma_1i
+
+  A0inv[1, 4] = ( (rho_int_dot4*(gamma + 1) - (rho_int*s_dot4 +
+                   s*rho_int_dot4) - 1)*fac + fac_dot4*t2)*gamma_1i
+  A0inv[2, 4] = q[2]*fac_dot4*gamma_1i
+  A0inv[3, 4] = q[3]*fac_dot4*gamma_1i
+  A0inv[4, 4] = -(q[1]*fac_dot4)*gamma_1i
+
+  return nothing
+end
+
+function getIRA0inv(params::ParamType{3}, q::AbstractArray{Tsol, 1},
+                    A0inv::AbstractMatrix{Tsol}) where {Tsol}
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  gamma_1i = 1/gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1]
+  k1_dot1 = -k1/q[1]
+  k1_dot2 = q[2]/q[1]
+  k1_dot3 = q[3]/q[1]
+  k1_dot4 = q[4]/q[1]
+#  k1_dot4 = 0
+
+  rho_int = q[5] - k1
+  rho_int_dot1 = -k1_dot1
+  rho_int_dot2 = -k1_dot2
+  rho_int_dot3 = -k1_dot3
+  rho_int_dot4 = -k1_dot4
+  rho_int_dot5 =  1
+
+  s = log(gamma_1*rho_int/(q[1]^gamma))
+  s_dot1 = rho_int_dot1/rho_int - gamma/q[1]
+  s_dot2 = rho_int_dot2/rho_int
+  s_dot3 = rho_int_dot3/rho_int
+  s_dot4 = rho_int_dot4/rho_int
+  s_dot5 = rho_int_dot5/rho_int
+
+  fac = 1.0/rho_int
+  t1 = -fac*fac
+  fac_dot1 = t1*rho_int_dot1
+  fac_dot2 = t1*rho_int_dot2
+  fac_dot3 = t1*rho_int_dot3
+  fac_dot4 = t1*rho_int_dot4
+  fac_dot5 = t1*rho_int_dot5
+
+  t2 = (rho_int*(gamma + 1 - s) - q[5])
+
+  A0inv[1, 1] = (rho_int_dot1*(gamma + 1) - (rho_int*s_dot1 + s*rho_int_dot1))*fac*gamma_1i + t2*fac_dot1*gamma_1i
+  A0inv[2, 1] = q[2]*fac_dot1*gamma_1i
+  A0inv[3, 1] = q[3]*fac_dot1*gamma_1i
+  A0inv[4, 1] = q[4]*fac_dot1*gamma_1i
+  A0inv[5, 1] = -(fac + q[1]*fac_dot1)*gamma_1i
+
+  A0inv[1, 2] = ( (rho_int_dot2*(gamma + 1) - (rho_int*s_dot2 +
+                   s*rho_int_dot2))*fac + fac_dot2*t2)*gamma_1i
+  A0inv[2, 2] = (fac + q[2]*fac_dot2)*gamma_1i
+  A0inv[3, 2] = q[3]*fac_dot2*gamma_1i
+  A0inv[4, 2] = q[4]*fac_dot2*gamma_1i
+  A0inv[5, 2] = -(q[1]*fac_dot2)*gamma_1i
+
+  A0inv[1, 3] = ( (rho_int_dot3*(gamma + 1) - (rho_int*s_dot3 +
+                   s*rho_int_dot3))*fac + fac_dot3*t2)*gamma_1i
+  A0inv[2, 3] = q[2]*fac_dot3*gamma_1i
+  A0inv[3, 3] = (fac + q[3]*fac_dot3)*gamma_1i
+  A0inv[4, 3] = q[4]*fac_dot3*gamma_1i
+  A0inv[5, 3] = -(q[1]*fac_dot3)*gamma_1i
+
+  A0inv[1, 4] = (rho_int_dot4*(gamma + 1) - (rho_int*s_dot4 + s*rho_int_dot4))*fac*gamma_1i + t2*fac_dot4*gamma_1i
+  A0inv[2, 4] = q[2]*fac_dot4*gamma_1i
+  A0inv[3, 4] = q[3]*fac_dot4*gamma_1i
+  A0inv[4, 4] = (fac + q[4]*fac_dot4)*gamma_1i
+  A0inv[5, 4] = -(q[1]*fac_dot4)*gamma_1i
+
+
+  A0inv[1, 5] = ( (rho_int_dot5*(gamma + 1) - (rho_int*s_dot5 +
+                   s*rho_int_dot5) - 1)*fac + fac_dot5*t2)*gamma_1i
+  A0inv[2, 5] = q[2]*fac_dot5*gamma_1i
+  A0inv[3, 5] = q[3]*fac_dot5*gamma_1i
+  A0inv[4, 5] = q[4]*fac_dot5*gamma_1i
+  A0inv[5, 5] = -(q[1]*fac_dot5)*gamma_1i
+
+  return nothing
+end
+
+
 
 
 """

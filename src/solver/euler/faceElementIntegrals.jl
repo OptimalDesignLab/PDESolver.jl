@@ -293,7 +293,7 @@ function calcEntropyPenaltyIntegral(
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
   data = params.calc_entropy_penalty_integral_data
-  @unpack data wL wR wL_i wR_i qL_i qR_i flux A0
+  @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux
 
   # convert to IR entropy variables
   for i=1:sbpface.stencilsize
@@ -312,8 +312,6 @@ function calcEntropyPenaltyIntegral(
 
 
   # accumulate wL at the node
-  fastzero!(A0)
-
   @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
     dir = ro_sview(nrm_face, :, i)
@@ -335,17 +333,16 @@ function calcEntropyPenaltyIntegral(
     #      variables to avoid the conversion
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
-    # get lambda * IRA0
     
     # compute average qL
     # also delta w (used later)
     @simd for j=1:numDofPerNode
-      qL_i[j] = 0.5*(qL_i[j] + qR_i[j])
-      wL_i[j] -= wR_i[j]
+      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
+      delta_w[j] = wL_i[j] - wR_i[j]
     end
 
     # call kernel (apply symmetric semi-definite matrix)
-    applyEntropyKernel(kernel, params, qL_i, wL_i, dir, flux)
+    applyEntropyKernel(kernel, params, q_avg, delta_w, dir, flux)
     for j=1:numDofPerNode
       flux[j] *= sbpface.wface[i]
     end

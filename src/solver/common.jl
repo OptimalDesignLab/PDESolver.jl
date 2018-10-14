@@ -279,6 +279,7 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, comm::MPI.Comm=MPI.COMM_W
   dim = opts["dimensions"]
 
   @mpi_master println("\nConstructing SBP Operator $suffix")
+  println("SBP operator name = ", opts["operator_type$suffix"])
   topo = 0  # generally not needed, so return a default value
   if opts["use_DG"]
     if opts["operator_type$suffix"] == "SBPOmega"

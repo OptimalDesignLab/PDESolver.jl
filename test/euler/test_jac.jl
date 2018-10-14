@@ -6,9 +6,15 @@
 """
 function test_jac_terms()
 
+  fname = "input_vals_jac2d.jl"
   fname3 = "input_vals_jac3d.jl"
-  mesh, sbp, eqn, opts = run_solver("input_vals_jac2d.jl")
+  mesh, sbp, eqn, opts = run_solver(fname)
   mesh3, sbp3, eqn3, opts3 = run_solver(fname3)
+
+  # make a diagonalE version
+  opts_tmp = read_input_file(fname)
+  opts_tmp["operator_type"] = "SBPDiagonalE"
+  mesh2, sbp2, eqn2, opts2 = solvePDE(opts_tmp)
 #=
   # SBPOmega, Petsc Mat
   fname4 = "input_vals_jac_tmp.jl"
@@ -98,6 +104,7 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
+    test_faceElementIntegral(eqn2.params, mesh2.sbpface, func3, func3_diff)
 
     #--------------------------------------------------------------------------
     # 3D
@@ -168,7 +175,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
 
 
 """
@@ -1067,7 +1074,6 @@ function test_faceElementIntegral(params::AbstractParamType{Tdim},
                    func_diff::FluxType_diff) where {Tdim}
 
 
-  println("\n\ntesting faceElementIntegral")
   h = 1e-20
   pert = Complex128(0, h)
 
@@ -1139,20 +1145,9 @@ function test_faceElementIntegral(params::AbstractParamType{Tdim},
     end
   end
 
-  println("valL = \n", real(valL))
-  println("valLc = \n", valLc)
-  println("valL_extract = \n", real(jacLL[:, 1, :, 1]))
-  println("maxdiff = ", maximum(abs.(valL - valLc)))
-
   @test maximum(abs.(valL - valLc)) < 1e-13
-
-  println("valR = \n", real(valR))
-  println("valRc = \n", valRc)
-  println("valR_extract = \n", real(valR[:, 1, :, 1]))
-  println("valRc_extract = \n", real(valRc[:, 1, :, 1]))
-  println("maxdiff = ", maximum(abs.(valR - valRc)))
-
   @test maximum(abs.(valR - valRc)) < 1e-13
+
   return nothing
 end
 
