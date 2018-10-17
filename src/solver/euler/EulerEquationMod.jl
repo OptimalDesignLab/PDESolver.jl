@@ -178,7 +178,8 @@ abstract type EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, T
   These functors have the signature:
 
   ```
-    func(params::AbstractParamType, sbpface::AbstractFace, iface::Interface,
+    calcFaceElementIntegral(obj::FaceElementIntegralType, 
+        params::AbstractParamType, sbpface::AbstractFace, iface::Interface,
         qL::AbstractMatrix, qR::AbstractMatrix, aux_vars::AbstractMatrix,
         nrm_face::AbstractMatrix, functor::FluxType,
         resL::AbstractMatrix, resR::AbstractMatrix)
@@ -195,6 +196,30 @@ abstract type EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, T
   Some of the `FaceElementIntegralType`s compute the entropy conservative
   integrals, others apply an entropy dissipative penalty of one kind
   or another.
+
+  For use with explicit jacobian calculation, functors should also define
+  a method for:
+
+  ```
+    calcFaceElementIntegral_diff(obj::FaceElementIntegralType, 
+        params::AbstractParamType, sbpface::AbstractFace, iface::Interface,
+        qL::AbstractMatrix, qR::AbstractMatrix, aux_vars::AbstractMatrix,
+        nrm_face::AbstractMatrix, functor::FluxType_diff,
+        jacLL::AbstractArray{T,4}, resLR::AbstractArray{T,4},
+        jacRL::AbstractArray{T,4}, resRR::AbstractArray{T,4})
+  ```
+
+  Most of the arguments are the same as the regular version, the output
+  arguments are
+
+   **Inputs/Outputs**
+
+    * jacLL: jacobian of `resL` wrt `qL`
+    * jacLR: jacobian of `resL` wrt `qR`
+    * jacRL: jacobian of `resR` wrt `qL`
+    * jacRR: jacobian of `resR` wrt `qR`
+
+ 
 """
 abstract type FaceElementIntegralType end
 

@@ -152,6 +152,58 @@ function calcECFaceIntegral_diff(
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# calcESFaceIntegral
+
+"""
+  Differentiated version of [`calcESFaceIntegral`](@ref)
+
+  **Inputs**
+
+   * `params`: `AbstractParamType`
+   * `sbpface`: an `AbstractFace`.  Methods are available for both sparse
+              and dense faces
+   * `iface`: the [`Interface`](@ref) object for the given face
+   * `kernel`: an [`AbstractEntropyKernel`](@ref) specifying what kind of
+               dissipation to apply.
+   * `qL`: the solution at the volume nodes of the left element (`numDofPerNode`
+     x `numNodesPerElement)
+   * `qR`: the solution at the volume nodes of the right element
+   * `aux_vars`: the auxiliary variables for `qL`
+   * `nrm_xy`: the normal vector at each face node, `dim` x `numNodesPerFace`
+   * `functor: the differentiated flux function, of type [`FluxType_diff`](@ref)
+
+   **Inputs/Outputs**
+
+    * jacLL: jacobian of `resL` wrt `qL`
+    * jacLR: jacobian of `resL` wrt `qR`
+    * jacRL: jacobian of `resR` wrt `qL`
+    * jacRR: jacobian of `resR` wrt `qR`
+"""
+function calcESFaceIntegral_diff(
+     params::AbstractParamType{Tdim}, 
+     sbpface::AbstractFace, 
+     iface::Interface,
+     kernel::AbstractEntropyKernel,
+     qL::AbstractMatrix{Tsol}, 
+     qR::AbstractMatrix{Tsol}, 
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_face::AbstractMatrix{Tmsh},
+     functor::FluxType_diff,
+     jacLL::AbstractArray{Tres, 4}, jacLR::AbstractArray{Tres, 4},
+     jacRL::AbstractArray{Tres, 4}, jacRR::AbstractArray{Tres, 4}) where {Tdim, Tsol, Tres, Tmsh}
+
+  calcECFaceIntegral_diff(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
+                     functor, jacLL, jacLR, jacRL, jacRR)
+  calcEntropyPenaltyIntegral_diff(params, sbpface, iface, kernel, qL, qR,
+                                  aux_vars, nrm_face, jacLL, jacLR, jacRL, jacRR)
+
+  return nothing
+end
+
+
+
 #------------------------------------------------------------------------------
 # calcEntropyPenaltyIntegral
 
@@ -391,3 +443,63 @@ function applyEntropyKernel_diff(obj::LFKernel, params::ParamType,
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# extend functors with differentiated method
+
+"""
+  Differentiated method for `ECFaceIntegral`
+"""
+function calcFaceElementIntegral_diff(obj::ECFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor::FluxType_diff, 
+              jacLL::AbstractArray{Tres, 4}, jacLR::AbstractArray{Tres, 4},
+              jacRL::AbstractArray{Tres, 4}, jacRR::AbstractArray{Tres, 4}) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  calcECFaceIntegral_diff(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
+                      functor, jacLL, jacLR, jacRL, jacRR)
+
+end
+
+"""
+  Differentiated method for `ESLFFaceIntegral`
+"""
+function calcFaceElementIntegral_diff(obj::ESLFFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor::FluxType_diff, 
+              jacLL::AbstractArray{Tres, 4}, jacLR::AbstractArray{Tres, 4},
+              jacRL::AbstractArray{Tres, 4}, jacRR::AbstractArray{Tres, 4}) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  calcESFaceIntegral_diff(params, sbpface, iface, obj.kernel, qL, qR, aux_vars,
+                          nrm_face, functor, jacLL, jacLR, jacRL, jacRR)
+
+end
+
+"""
+  Differentiated method for `ELFPenaltyIntegral`
+"""
+function calcFaceElementIntegral_diff(obj::ELFPenaltyFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor::FluxType_diff, 
+              jacLL::AbstractArray{Tres, 4}, jacLR::AbstractArray{Tres, 4},
+              jacRL::AbstractArray{Tres, 4}, jacRR::AbstractArray{Tres, 4}) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  calcEntropyPenaltyIntegral_diff(params, sbpface, iface, obj.kernel, qL, qR,
+                        aux_vars, nrm_face, functor, jacLL, jacLR, jacRL, jacRR)
+
+end
+
+

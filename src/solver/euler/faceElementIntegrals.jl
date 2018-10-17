@@ -2,9 +2,6 @@
 # the entire element
 
 
-include("IR_stab.jl")  # stabilization for the IR flux
-include("faceElementIntegrals_diff.jl")
-
 # naming convention
 # EC -> entropy conservative
 # ES -> entropy stable (ie. dissipative)
@@ -711,7 +708,7 @@ mutable struct ECFaceIntegral <: FaceElementIntegralType
   end
 end
 
-function (obj::ECFaceIntegral)(
+function calcFaceElementIntegral(obj::ECFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -736,7 +733,7 @@ mutable struct ESLFFaceIntegral <: FaceElementIntegralType
   end
 end
 
-function (obj::ESLFFaceIntegral)(
+function calcFaceElementIntegral(obj::ESLFFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -759,7 +756,7 @@ mutable struct ELFPenaltyFaceIntegral <: FaceElementIntegralType
   end
 end
 
-function (obj::ELFPenaltyFaceIntegral)(
+function calcFaceElementIntegral(obj::ELFPenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -785,7 +782,7 @@ mutable struct ESLW2FaceIntegral <: FaceElementIntegralType
   end
 end
 
-function (obj::ESLW2FaceIntegral)(
+function calcFaceElementIntegral(obj::ESLW2FaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -810,7 +807,7 @@ mutable struct ELW2PenaltyFaceIntegral <: FaceElementIntegralType
   end
 end
 
-function (obj::ELW2PenaltyFaceIntegral)(
+function calcFaceElementIntegral(obj::ELW2PenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -833,7 +830,7 @@ mutable struct EntropyJumpPenaltyFaceIntegral <: FaceElementIntegralType
   end
 end
 
-function (obj::EntropyJumpPenaltyFaceIntegral)(
+function calcFaceElementIntegral(obj::EntropyJumpPenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
@@ -880,3 +877,9 @@ function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)
 
   return nothing
 end
+
+
+include("IR_stab.jl")  # stabilization for the IR flux
+include("faceElementIntegrals_diff.jl")
+
+

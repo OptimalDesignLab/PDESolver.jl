@@ -71,8 +71,8 @@ function calcFaceIntegral_nopre_diff(
 
 
     # assemble into the Jacobian
-    assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL, res_jacLR,
-                                                res_jacRL, res_jacRR)
+    assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL,
+                      res_jacLR, res_jacRL, res_jacRR)
 
     #TODO: for sparse faces, only zero out the needed entries, to avoid loading
     #      the entire array into cache
@@ -85,6 +85,55 @@ function calcFaceIntegral_nopre_diff(
 
   return nothing
 end
+
+
+function getFaceElementIntegral_diff(
+                           mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1},
+                           assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
+
+  params = eqn.params
+#  sbpface = mesh.sbpface
+  nfaces = length(interfaces)
+#  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+#  resR2 = zeros(resL2)
+
+  data = params.calc_face_integrals_data
+  @unpack data res_jacLL res_jacLR res_jacRL res_jacRR
+
+
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = ro_sview(eqn.q, :, :, elL)
+    qR = ro_sview(eqn.q, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    resL = sview(eqn.res, :, :, elL)
+    resR = sview(eqn.res, :, :, elR)
+
+    fill!(resLL, 0); fill!(resLR, 0)
+    fill!(resRL, 0); fill!(resRR, 0)
+    calcFaceElementIntegral_diff(params, sbpface, iface, qL, qR, aux_vars,
+                       nrm_face, flux_functor, resLL, resLR, resRL, resRR)
+
+    assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL,
+                      res_jacLR, res_jacRL, res_jacRR)
+
+
+  end
+
+  fill!(resLL, 0); fill!(resLR, 0)
+  fill!(resRL, 0); fill!(resRR, 0)
+
+  return nothing
+end
+
 
 
 #------------------------------------------------------------------------------
@@ -260,6 +309,24 @@ function (obj::IRFlux_diff)(params::ParamType,
   return nothing
 end
 
+mutable struct StandardFlux_diff <: FluxType_diff
+end
+
+function (obj::StandardFlux_diff)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
+
+  # this should be implemented eventually, but for now this method needs to
+  # exist as a stub
+  error("StandardFlux() called, something unexpected has occured")
+
+end
+
+
 
 mutable struct ErrorFlux_diff <: FluxType_diff
 end
@@ -277,6 +344,8 @@ function (obj::ErrorFlux_diff)(params::ParamType,
 
 end
 
+
+
 """
   Container for all differentiated flux functors.  Maps name to object.
   The names are exactly the same as the non-differentiated functor.
@@ -285,6 +354,7 @@ global const FluxDict_diff = Dict{String, FluxType_diff}(
 "RoeFlux" => RoeFlux_diff(),
 "LFFlux" => LFFlux_diff(),
 "IRFlux" => IRFlux_diff(),
+"StandardFlux" => StandardFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),
 )
 

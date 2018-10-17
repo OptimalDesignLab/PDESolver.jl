@@ -179,7 +179,7 @@ end
 
 # volume integral options
 get!(arg_dict, "volume_integral_type", 1)
-get!(arg_dict, "Volume_flux_name", "StandardFlux")
+get!(arg_dict, "Volume_flux_name", "ErrorFlux")
 get!(arg_dict, "Viscous_flux_name", "ErrorFlux")
 get!(arg_dict, "face_integral_type", 1)
 get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")

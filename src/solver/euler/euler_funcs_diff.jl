@@ -23,7 +23,7 @@ function applyMinvElement(jac_el::AbstractVector, weights::AbstractVector,
   # multiply by Minv if needed
   for q=1:size(res_jac, 4)
     for p=1:size(res_jac, 3)
-      val = mesh.jac[p]/sbp.w[p]  # entry in Minv
+      val = jac_el[p]/weights[p]  # entry in Minv
       @simd for m=1:size(res_jac, 2)
         @simd for n=1:size(res_jac, 1)
           res_jac[n, m, p, q] *= val

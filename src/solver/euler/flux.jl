@@ -152,8 +152,8 @@ function getFaceElementIntegral(
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
-                       nrm_face, flux_functor, resL, resR)
+    calcFaceElementIntegral(face_integral_functor, params, sbpface, iface, qL,
+                            qR, aux_vars, nrm_face, flux_functor, resL, resR)
   end
 
   return nothing
@@ -214,8 +214,9 @@ function getFaceElementIntegral(
     fill!(resL_f, 0.0)
     fill!(resR_f, 0.0)
 
-    face_integral_functor(params, sbpface, iface, qf_L, qf_R, aux_vars,
-                       nrm_face, flux_functor, resL_f, resR_f)
+    calcFaceElementIntegral(face_integral_functor, params, sbpface, iface,
+                            qf_L, qf_R, aux_vars, nrm_face, flux_functor,
+                            resL_f, resR_f)
 
     # interpolate back
     smallmatmat!(resL_f, mesh_s.I_S2F, resL_s)
@@ -314,8 +315,9 @@ function calcSharedFaceElementIntegrals_element_inner(
     nrm_face = ro_sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
 
-    face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
-                          nrm_face, flux_functor, resL, resR)
+    calcFaceElementIntegral(face_integral_functor, eqn.params, mesh.sbpface,
+                            iface_j, qL, qR, aux_vars,
+                            nrm_face, flux_functor, resL, resR)
   end  # end loop j
 
   return nothing
@@ -390,8 +392,9 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
 
     fill!(resL_f, 0.0)
     # we dont carea bout resR, so dont waste time zeroing it out
-    face_integral_functor(eqn.params, mesh_f.sbpface, iface_j, qL, qvars_f,
-                          aux_vars, nrm_face, flux_functor, resL_f, resR_f)
+    calcFaceElementIntegral(face_integral_functor, eqn.params, mesh_f.sbpface,
+                            iface_j, qL, qvars_f, aux_vars, nrm_face,
+                            flux_functor, resL_f, resR_f)
 
 
     # interpolate residual back to solution grid

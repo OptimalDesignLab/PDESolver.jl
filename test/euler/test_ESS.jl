@@ -1,5 +1,7 @@
 # test the entropy stable interface calculation
 
+import EulerEquationMod.calcFaceElementIntegral
+
 """
   A way of calculating the entropy stable face integral, used for comparison
   and debugging.
@@ -406,7 +408,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     resR_test2 = sview(res_test2, :, :, elR)
 
 
-    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_code, resR_code)
+    calcFaceElementIntegral(ec_integral, eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_code, resR_code)
 
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
@@ -461,7 +463,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
+    calcFaceElementIntegral(ec_integral, eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)
@@ -610,7 +612,7 @@ function runESTest(mesh, sbp, eqn, opts, penalty_func::EulerEquationMod.FaceElem
     #penalty_func = EulerEquationMod.FaceElementDict[penalty_name](mesh, eqn)
     #lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
 
-    penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
+    calcFaceElementIntegral(penalty_func, eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
 
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, resL2, resR2)
