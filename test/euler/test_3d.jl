@@ -481,7 +481,7 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_matrices(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST, TAG_TMP, TAG_ENTROPYVARS])
+add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST, TAG_ENTROPYVARS])
 
 """
   Test Roe solver in 3D

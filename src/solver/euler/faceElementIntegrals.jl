@@ -295,6 +295,7 @@ function calcEntropyPenaltyIntegral(
   data = params.calc_entropy_penalty_integral_data
   @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux
 
+#  qL[COMP, NODE] += Complex128(0, 1e-20)
   # convert to IR entropy variables
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here
@@ -309,6 +310,7 @@ function calcEntropyPenaltyIntegral(
     convertToIR(params, qL_itmp, wL_itmp)
     convertToIR(params, qR_itmp, wR_itmp)
   end
+
 
 
   # accumulate wL at the node

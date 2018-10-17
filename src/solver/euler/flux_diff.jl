@@ -312,11 +312,14 @@ function getFluxFunctors_diff(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   if opts["calc_jac_explicit"]
     name = opts["Flux_name"]
+    name2 = opts["Volume_flux_name"]
   else
     name = "ErrorFlux"
+    name2 = "ErrorFlux"
   end
 
   eqn.flux_func_diff = FluxDict_diff[name]
+  eqn.volume_flux_func_diff = FluxDict_diff[name2]
 
   return nothing
 end

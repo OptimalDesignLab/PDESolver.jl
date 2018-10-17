@@ -434,8 +434,29 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
   q_avg::Vector{Tsol}
   res_vals::Vector{Tres}
 
+  #------------------
+  # diff method
+  q_avg_dot::Matrix{Tsol}
+  delta_w_dot::Matrix{Tsol}
+  flux_dot_i::Matrix{Tres}  # used to compute the flux
+
+  # arrays in the format required by SBP
+  flux_dotL::Array{Tres, 3}
+  flux_dotR::Array{Tres, 3}
+
+  jacLL_tmp::Array{Tres, 4}
+  jacLR_tmp::Array{Tres, 4}
+  jacRL_tmp::Array{Tres, 4}
+  jacRR_tmp::Array{Tres, 4}
+
+  A0invL::Matrix{Tsol}
+  A0invR::Matrix{Tsol}
+
+
   function CalcEntropyPenaltyIntegralData{Tsol, Tres}(numDofPerNode::Integer,
-                                    stencilsize::Integer) where {Tsol, Tres}
+                              numNodesPerFace::Integer,
+                              stencilsize::Integer, numNodesPerElement::Integer,
+                              nd::Integer) where {Tsol, Tres}
 
     wL = zeros(Tsol, numDofPerNode, stencilsize)
     wR = zeros(Tsol, numDofPerNode, stencilsize)
@@ -450,7 +471,29 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
     q_avg = zeros(Tsol, numDofPerNode)
     res_vals = zeros(Tres, numDofPerNode)
 
-    obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg, res_vals)
+
+    # diff method
+    q_avg_dot = zeros(Tsol, numDofPerNode, nd)
+    delta_w_dot = zeros(Tsol, numDofPerNode, nd)
+    flux_dot_i = zeros(Tres, numDofPerNode, nd)
+
+    # arrays needed by SBP function
+    flux_dotL = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerFace)
+    flux_dotR = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerFace)
+
+    jacLL_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    jacLR_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    jacRL_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    jacRR_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+
+    A0invL = zeros(Tsol, numDofPerNode, numDofPerNode)
+    A0invR = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+
+    obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg,
+              res_vals,
+             q_avg_dot, delta_w_dot, flux_dot_i, flux_dotL, flux_dotR,
+             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR)
 
     assertArraysUnique(obj)
 

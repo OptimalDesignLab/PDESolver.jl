@@ -31,6 +31,7 @@ function test_jac_terms()
 
 
   @testset "----- Testing jacobian -----" begin
+    
     test_pressure(eqn.params)
     test_pressure(eqn3.params)
 
@@ -57,11 +58,11 @@ function test_jac_terms()
     func3_diff = EulerEquationMod.FluxDict_diff["IRFlux"]
     func3_revm = EulerEquationMod.FluxDict_revm["IRFlux"]
     func3_revq = EulerEquationMod.FluxDict_revq["IRFlux"]
-
+    
     # Abstract Entropy Kernels
     lf_kernel = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
     lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh3.numDofPerNode, 2*mesh3.numDofPerNode)
-
+    
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
@@ -73,11 +74,12 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func3, func3_diff)
     test_2flux_revq(eqn.params, q, qg, nrm, func3, func3_revq, test_multid=true)
     test_2flux_revm(eqn.params, q, qg, nrm, func3, func3_revm, test_multid=true)
-
+    
     test_EntropyKernel(eqn.params, lf_kernel)
     test_EntropyKernel_revq(eqn.params, lf_kernel)
     test_EntropyKernel_revm(eqn.params, lf_kernel)
 
+    
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
@@ -105,6 +107,8 @@ function test_jac_terms()
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
     test_faceElementIntegral(eqn2.params, mesh2.sbpface, func3, func3_diff)
+    
+    test_entropyPenalty(eqn.params, mesh.sbpface, lf_kernel)
 
     #--------------------------------------------------------------------------
     # 3D
@@ -167,7 +171,17 @@ function test_jac_terms()
 
     println("\ntesting jac assembly 3d")
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
-    
+
+    #TEMPORARY
+    println("\ntesting split form volume integrals")
+    opts["volume_integral_type"] = 2
+    eqn.volume_flux_func_diff = EulerEquationMod.FluxDict_diff["IRFlux"]
+    eqn.volume_flux_func = EulerEquationMod.FluxDict["IRFlux"]
+    test_jac_assembly(mesh, sbp, eqn, opts)
+
+
+#    opts3["volume_integral_type"] = 2
+#    test_jac_assembly(mesh3, sbp3, eqn3, opts3)
 
   end
 
@@ -175,7 +189,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -603,6 +617,7 @@ function test_EntropyKernel(params::AbstractParamType{Tdim},
   pert_vec_q = rand_realpart((numDofPerNode, nd))
   pert_vec_w = rand_realpart((numDofPerNode, nd))
   flux = zeros(Complex128, numDofPerNode)
+  fluxc = zeros(Complex128, numDofPerNode)
   flux_dotc = zeros(Complex128, numDofPerNode, nd)
   flux_dot = zeros(Complex128, numDofPerNode, nd)
 
@@ -612,15 +627,16 @@ function test_EntropyKernel(params::AbstractParamType{Tdim},
     for i=1:nd
       q .+= pert*pert_vec_q[:, i]
       delta_w .+= pert*pert_vec_w[:, i]
-      EulerEquationMod.applyEntropyKernel(kernel, params, q, delta_w, nrm, flux)
+      EulerEquationMod.applyEntropyKernel(kernel, params, q, delta_w, nrm, fluxc)
       q .-= pert*pert_vec_q[:, i]
       delta_w .-= pert*pert_vec_w[:, i]
 
-      flux_dotc[:, i] = imag(flux)/h
+      flux_dotc[:, i] = imag(fluxc)/h
     end
 
     EulerEquationMod.applyEntropyKernel_diff(kernel, params, q, pert_vec_q, delta_w, pert_vec_w, nrm, flux, flux_dot)
 
+    @test maximum(abs.(flux - real(fluxc))) < 1e-14
     @test maximum(abs.(flux_dot - flux_dotc)) < 3e-12
 
 
@@ -1152,11 +1168,119 @@ function test_faceElementIntegral(params::AbstractParamType{Tdim},
 end
 
 
+function test_entropyPenalty(params::AbstractParamType{Tdim},
+                   sbpface::AbstractFace,
+                   kernel::EulerEquationMod.AbstractEntropyKernel) where {Tdim}
+
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+    nrm = [1.0, 2.0]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+    nrm = [1.0, 2.0, 3.0]
+  end
+
+  qL = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+  qR = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+  nrm_face = zeros(Tdim, params.numNodesPerFace)
+  for i=1:params.numNodesPerElement
+    qL[:, i] = q + (i-1)*0.1
+    qR[:, i] = q + i*0.1
+  end
+
+  for i=1:params.numNodesPerFace
+    nrm_face[:, i] = nrm + (i-1)*0.1
+  end
+  aux_vars = zeros(Complex128, 0, 0)
+
+  for i=1:2  # run tests twice to make sure intermediate arrays are zeroed out
+    resL = zeros(qL)
+    resR = zeros(qR)
+    jacLL = zeros(Complex128, params.numDofPerNode, params.numDofPerNode,
+                  params.numNodesPerElement, params.numNodesPerElement)
+    jacLR = copy(jacLL)
+    jacRL = copy(jacLL)
+    jacRR = copy(jacLL)
+
+    #TODO: test all configurations
+    iface = Interface(1, 2, 1, 1, 1)
+
+    qL_dot = rand_realpart(size(qL))
+    qR_dot = rand_realpart(size(qR))
+  #  qL_dot = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+  #  qR_dot = zeros(Complex128, params.numDofPerNode, params.numNodesPerElement)
+
+  #  qL_dot[1, 1] = 1
+
+    # complex step
+    qL .+= pert*qL_dot
+    qR .+= pert*qR_dot
+
+    EulerEquationMod.calcEntropyPenaltyIntegral(params, sbpface, iface, kernel,
+                                        qL, qR, aux_vars, nrm_face, resL, resR)
+    valLc = imag(resL)/h
+    valRc = imag(resR)/h
+
+    qL .-= pert*qL_dot
+    qR .-= pert*qR_dot
+
+
+    EulerEquationMod.calcEntropyPenaltyIntegral_diff(params, sbpface, iface,
+                  kernel, qL, qR, aux_vars, nrm_face, jacLL, jacLR, jacRL, jacRR)
+
+    valL = zeros(qL)
+    valR = zeros(qR)
+
+    for q=1:params.numNodesPerElement
+      for p=1:params.numNodesPerElement
+        for i=1:params.numDofPerNode
+          for j=1:params.numDofPerNode
+            valL[i, p] += jacLL[i, j, p, q]*qL_dot[j, q]
+            valL[i, p] += jacLR[i, j, p, q]*qR_dot[j, q]
+            valR[i, p] += jacRL[i, j, p, q]*qL_dot[j, q]
+            valR[i, p] += jacRR[i, j, p, q]*qR_dot[j, q]
+          end
+        end
+      end
+    end
+
+
+    @test maximum(abs.(valL - valLc)) < 1e-12
+    @test maximum(abs.(valR - valRc)) < 1e-12
+
+    # test accumulation
+    jacLL_orig = copy(jacLL)
+    jacLR_orig = copy(jacLR)
+    jacRL_orig = copy(jacRL)
+    jacRR_orig = copy(jacRR)
+    EulerEquationMod.calcEntropyPenaltyIntegral_diff(params, sbpface, iface,
+                  kernel, qL, qR, aux_vars, nrm_face, jacLL, jacLR, jacRL, jacRR)
+
+
+    @test maximum(abs.(jacLL - 2*jacLL_orig)) < 1e-13
+    @test maximum(abs.(jacLR - 2*jacLR_orig)) < 1e-13
+    @test maximum(abs.(jacRL - 2*jacRL_orig)) < 1e-13
+    @test maximum(abs.(jacRR - 2*jacRR_orig)) < 1e-13
+  end
+
+  return nothing
+end
 
 
 
 
-function test_jac_assembly(mesh, sbp, eqn, opts)
+"""
+  Test the volume, face, and boundary terms of the explicitly computed Jacobian
+  individually.  Small meshes only!
+"""
+function test_jac_assembly(mesh, sbp, eqn, _opts)
+
+  opts = copy(_opts)  # don't modify the original
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
@@ -1254,9 +1378,11 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
 
   startSolutionExchange(mesh, sbp, eqn, opts)
 
+  # get coloring linear operator
   opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
 
+  # get explicitly computed linear operator
   opts["calc_jac_explicit"] = true
   val_orig = opts["preallocate_jacobian_coloring"]
   if set_prealloc
@@ -1270,6 +1396,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
 
   assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
+  # computing coloring jacobian
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
   ctx_residual = (evalResidual,)

@@ -112,7 +112,6 @@ function calcECFaceIntegral_diff(
      jacRL::AbstractArray{Tres, 4}, jacRR::AbstractArray{Tres, 4}
      ) where {Tdim, Tsol, Tres, Tmsh}
 
-  println("\n\n\nTesting calcECFaceIntegral_diff, SparseFace method")
   data = params.calc_ec_face_integral_data
   @unpack data fL_dot fR_dot
 
@@ -189,6 +188,36 @@ function calcEntropyPenaltyIntegral_diff(
   end
 
 
+  @unpack data q_avg_dot delta_w_dot flux_dot_i flux_dotL flux_dotR
+  @unpack data jacLL_tmp jacLR_tmp jacRL_tmp jacRR_tmp A0invL A0invR
+  # flux_doti is passed into applyEntropyKernel_diff, flux_dotL, flux_dotR
+  # are then used to reformat the data the way SBP wants it
+#  q_avg_dot = zeros(Tsol, numDofPerNode, nd)
+#  delta_w_dot = zeros(Tsol, numDofPerNode, nd)
+#  flux_dot_i = zeros(Tres, numDofPerNode, nd)
+  flux_dot_iL = sview(flux_dot_i, :, 1:numDofPerNode)  # wL part
+  flux_dot_iR = sview(flux_dot_i, :, (numDofPerNode + 1):nd)  # wR part
+
+  fill!(delta_w_dot, 0.0)
+  fill!(jacLL_tmp, 0.0); fill!(jacLR_tmp, 0.0);
+  fill!(jacRL_tmp, 0.0); fill!(jacRR_tmp, 0.0);
+
+  # arrays needed by SBP function
+#  flux_dotL = zeros(Tres, numDofPerNode, numDofPerNode, sbpface.numnodes)
+#  flux_dotR = zeros(Tres, numDofPerNode, numDofPerNode, sbpface.numnodes)
+
+ # jacLL_tmp = zeros(jacLL)
+ # jacLR_tmp = zeros(jacLR)
+ # jacRL_tmp = zeros(jacRL)
+ # jacRR_tmp = zeros(jacRR)
+
+ # A0invL = zeros(Tsol, numDofPerNode, numDofPerNode)
+ # A0invR = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+ # flux_dot_iL = sview(flux_dot_i, :, 1:numDofPerNode)  # wL part
+ # flux_dot_iR = sview(flux_dot_i, :, (numDofPerNode + 1):nd)  # wR part
+
+
   # accumulate wL at the node
   @simd for i=1:sbpface.numnodes  # loop over face nodes
     ni = sbpface.nbrperm[i, iface.orient]
@@ -207,36 +236,92 @@ function calcEntropyPenaltyIntegral_diff(
       end
     end
 
-    #TODO: write getLambdaMaxSimple and getIRA0 in terms of the entropy
-    #      variables to avoid the conversion
     convertToConservativeFromIR_(params, wL_i, qL_i)
     convertToConservativeFromIR_(params, wR_i, qR_i)
     
     # compute average qL
     # also delta w (used later)
+    # Approach for differentiating: compute d flux/d wL_i, d flux_d wR_i first
+    # then compute flux jacobian at volume nodes
     @simd for j=1:numDofPerNode
       q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
       delta_w[j] = wL_i[j] - wR_i[j]
+
+      # set derivative part of wL_i, wR_i = I
+      delta_w_dot[j, j] = 1; delta_w_dot[j, j + numDofPerNode] = -1
     end
+
+    # get the derivative part of qL_i, qR_i, and q_avg all at the same time
+    q_avg_dotL = sview(q_avg_dot, :, 1:numDofPerNode)
+    q_avg_dotR = sview(q_avg_dot, :, (numDofPerNode + 1):nd)
+    getIRA0(params, qL_i, q_avg_dotL)
+    getIRA0(params, qR_i, q_avg_dotR)
+    scale!(q_avg_dot, 0.5)
+
+
 
     # call kernel (apply symmetric semi-definite matrix)
-    applyEntropyKernel(kernel, params, q_avg, delta_w, dir, flux)
-    for j=1:numDofPerNode
-      flux[j] *= sbpface.wface[i]
-    end
+    fill!(flux_dot_i, 0.0)
+    applyEntropyKernel_diff(kernel, params, q_avg, q_avg_dot, delta_w, delta_w_dot, dir, flux, flux_dot_i)
 
-    # interpolate back to volume nodes
-    @simd for j=1:sbpface.stencilsize
+    # put the data in the format required by SBP later
+    # the copy could be avoided if we had a decent strided view implementation
+    flux_dotL_i = sview(flux_dotL, :, :, i)
+    flux_dotR_i = sview(flux_dotR, :, :, i)
+    copy!(flux_dotL_i, flux_dot_iL); copy!(flux_dotR_i, flux_dot_iR)
+  end  # end loop i
+
+  # given flux jacobians wrt entropy variables at the face, compute jacobian
+  # of residual contribution wrt entropy variables at solution nodes
+  interiorFaceIntegrate_jac!(sbpface, iface, flux_dotL, flux_dotR,
+                             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp,
+                             SummationByParts.Subtract())
+                             
+
+
+  # now jacLL_tmp and others contain dR/dw, where R and w live on the volume
+  # nodes.  Now multiply by A0inv = dw/dq to transform them to dR/dq
+  for i=1:sbpface.stencilsize
+    i_pL = sbpface.perm[i, iface.faceL]
+    i_pR = sbpface.perm[i, iface.faceR]
+
+    # get A0inv for qL and qR
+    qL_i = sview(qL, :, i_pL)
+    qR_i = sview(qR, :, i_pR)
+
+    getIRA0inv(params, qL_i, A0invL)
+    getIRA0inv(params, qR_i, A0invR)
+
+    # multiply all node level jacobians that depend on qL_i and qR_i by
+    # A0inv computed using qL_i and qR_i
+    # dRL/qL = A0InvL * dRL/wL  for i=1: number of residual nodes affected
+    for j=1:sbpface.stencilsize
       j_pL = sbpface.perm[j, iface.faceL]
       j_pR = sbpface.perm[j, iface.faceR]
 
-      @simd for p=1:numDofPerNode
-        resL[p, j_pL] -= sbpface.interp[j, i]*flux[p]
-        resR[p, j_pR] += sbpface.interp[j, ni]*flux[p]
-      end
-    end
+      # matrices to multiply against
+      nodejacLL = sview(jacLL_tmp, :, :, j_pL, i_pL)
+      nodejacLR = sview(jacLR_tmp, :, :, j_pL, i_pR)
+      nodejacRL = sview(jacRL_tmp, :, :, j_pR, i_pL)
+      nodejacRR = sview(jacRR_tmp, :, :, j_pR, i_pR)
 
-  end  # end loop i
+      # output matrices (accumulated into)
+      nodejac2LL = sview(jacLL, :, :, j_pL, i_pL)
+      nodejac2LR = sview(jacLR, :, :, j_pL, i_pR)
+      nodejac2RL = sview(jacRL, :, :, j_pR, i_pL)
+      nodejac2RR = sview(jacRR, :, :, j_pR, i_pR)
+
+      # transposed mat-mat is faster than regular mat-mat for column major
+      # arrays, and A0inv is symmetric.
+      # If  jacLL and others were in a compressed representation based on
+      # the sparsity of sbpface.perm, the loop j could be replaced with a
+      # single large mat-mat
+      smallmatmat_kernel!(nodejacLL, A0invL, nodejac2LL, 1, 1)
+      smallmatmat_kernel!(nodejacRL, A0invL, nodejac2RL, 1, 1)
+      smallmatmat_kernel!(nodejacLR, A0invR, nodejac2LR, 1, 1)
+      smallmatmat_kernel!(nodejacRR, A0invR, nodejac2RR, 1, 1)
+    end
+  end
 
   return nothing
 end

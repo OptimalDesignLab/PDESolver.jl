@@ -298,7 +298,7 @@ function calcVolumeIntegralsSplitFormCurvilinear(
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType) where {Tmsh, Tsol, Tres, Tdim}
 
-#  println("----- entered calcVolumeIntegralsSplitForm -----")
+  println("----- entered calcVolumeIntegralsSplitForm -----")
   dxidx = mesh.dxidx
   res = eqn.res
   q = eqn.q
@@ -315,19 +315,31 @@ function calcVolumeIntegralsSplitFormCurvilinear(
   end
 
   for i=1:mesh.numEl
+    println("i = ", i)
     # get S for this element
     dxidx_i = ro_sview(dxidx, :, :, :, i)
     calcSCurvilinear(sbp, dxidx_i, Sx)
 
     for j=1:mesh.numNodesPerElement
+      println("j = ", j)
       q_j = ro_sview(q, :, j, i)
       aux_vars_j = ro_sview(aux_vars, :, j, i)
+      println("q_j = ", q_j)
+      if maximum(abs.(imag(q_j))) > 0
+        println("found complex perturbation")
+      end
       for k=1:(j-1)  # loop over lower triangle of S
+        println("k = ", k)
         q_k = ro_sview(q, :, k, i)
+        println("q_k = ", q_k)
+        if maximum(abs.(imag(q_k))) > 0
+          println("found complex perturbation")
+        end
 
         # calculate the numerical flux functions in all Tdim
         # directions at once
         functor(params, q_j, q_k, aux_vars_j, nrmD, F_d)
+        println("F_d = ", F_d)
 
         @simd for d=1:Tdim
           # update residual

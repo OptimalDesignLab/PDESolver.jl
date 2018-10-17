@@ -1,4 +1,41 @@
 # differentiated version of functions in euler_funcs.jl
+
+"""
+  Applies the element level inverse mass matrix to an element-level jacobian
+  contribution
+
+  **Inputs**
+
+   * jac_el: vector, length `numNodesPerElement`, containing the determinant
+              of the mapping jacobian at each node of the element
+   * weights: the SBP integration weights for each node of the element,
+               length `numNodesPerElement
+
+  **Inputs/Outputs**
+
+   * res_jac: array containing element level Jacobian, to be multiplied by
+              the inverse mass matrix, size `numDofPerNode` x `numDofPerNode`
+              x `numNodesPerElement` x `numNodesPerElement`
+"""
+function applyMinvElement(jac_el::AbstractVector, weights::AbstractVector,
+                          res_jac::AbstractArray{T, 4}) where {T}
+
+  # multiply by Minv if needed
+  for q=1:size(res_jac, 4)
+    for p=1:size(res_jac, 3)
+      val = mesh.jac[p]/sbp.w[p]  # entry in Minv
+      @simd for m=1:size(res_jac, 2)
+        @simd for n=1:size(res_jac, 1)
+          res_jac[n, m, p, q] *= val
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+
 """
   Computes the derivataive of the volume term of the Roe scheme with respect
   to `q`, ie
@@ -25,10 +62,10 @@ function calcVolumeIntegrals_nopre_diff(
 
   data = eqn.params.calc_volume_integrals_data
   @unpack data flux_jac res_jac nrm
-  fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
     fill!(flux_jac, 0)
+    fill!(res_jac, 0)
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
@@ -52,22 +89,13 @@ function calcVolumeIntegrals_nopre_diff(
 
     
     if eqn.params.use_Minv == 1
-      # multiply by Minv if needed
-      for q=1:mesh.numNodesPerElement
-        for p=1:mesh.numNodesPerElement
-          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
-          @simd for m=1:mesh.numDofPerNode
-            @simd for n=1:mesh.numDofPerNode
-              res_jac[n, m, p, q] *= val
-            end
-          end
-        end
-      end
+      jac_el = sview(mesh.jac, :, i)
+      applyMinvElement(jac_el, sbp.w, res_jac)
     end
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
-    fill!(res_jac, 0.0)
+#    fill!(res_jac, 0.0)
     # flux_jac gets overwritten, so no need to zero it 
 
   end  # end loop i
@@ -101,14 +129,14 @@ function calcVolumeIntegralsStrong_nopre_diff(
                                    assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
-  @assert eqn.params.use_Minv != 1  # use_Minv not supported
+  @assert eqn.params.use_Minv != 1  # use_Minv not supported (TODO: why?)
 
   data = eqn.params.calc_volume_integrals_data
   @unpack data flux_jac res_jac nrm
-  fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
     fill!(flux_jac, 0)
+    fill!(res_jac, 0)
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
@@ -132,28 +160,132 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
     
     if eqn.params.use_Minv == 1
-      # multiply by Minv if needed
-      for q=1:mesh.numNodesPerElement
-        for p=1:mesh.numNodesPerElement
-          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
-          @simd for m=1:mesh.numDofPerNode
-            @simd for n=1:mesh.numDofPerNode
-              res_jac[n, m, p, q] *= val
-            end
-          end
-        end
-      end
+      jac_el = sview(mesh.jac, :, i)
+      applyMinvElement(jac_el, sbp.w, res_jac)
     end
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
-    fill!(res_jac, 0.0)
-    # flux_jac gets overwritten, so no need to zero it 
 
   end  # end loop i
 
   return nothing
 end  # end function
+
+"""
+  Differentiated version of [`calcVolumeIntegralsSplitForm`](@ref)
+
+  **Inputs**
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: the numerical flux function F, of type FluxType_diff
+"""
+function calcVolumeIntegralsSplitForm_diff(
+                mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                functor::FluxType_diff,
+                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
+
+  if opts["use_staggered_grid"]
+    error("Jacobian of staggered grid volume integrals not supported")
+  else
+    # do the curvilinear version even if msh is linear
+    calcVolumeIntegralsSplitFormCurvilinear_diff(mesh, sbp, eqn, opts, functor,
+                                                 assembler)
+  end
+
+  return nothing
+end
+
+
+
+"""
+  Computes the Jacobian contribution from [`calcVolumeIntegralsSplitFormCurvilinear`](@ref).
+  
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: [`FluxType_diff`](@ref). 
+   * assembler: used to assemble the contribution of each element into the
+                Jacobian
+ 
+"""
+function calcVolumeIntegralsSplitFormCurvilinear_diff(
+                mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                functor::FluxType_diff,
+                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
+
+  dxidx = mesh.dxidx
+  res = eqn.res
+  aux_vars = eqn.aux_vars
+  params = eqn.params
+
+  data = params.calc_volume_integrals_data
+  @unpack data nrmD F_d Sx res_jac
+
+  flux_jacL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, Tdim)
+  flux_jacR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, Tdim)
+
+  # S is calculated in x-y-z, so the normal vectors should be the unit normals
+  fill!(nrmD, 0.0)
+  for d=1:Tdim
+    nrmD[d, d] = 1
+  end
+
+  for i=1:mesh.numEl
+    # get S for this element
+    dxidx_i = ro_sview(dxidx, :, :, :, i)
+    calcSCurvilinear(sbp, dxidx_i, Sx)
+
+    fill!(res_jac, 0.0)
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(aux_vars, :, j, i)
+      for k=1:(j-1)  # loop over lower triangle of S
+        q_k = ro_sview(eqn.q, :, k, i)
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+        fill!(flux_jacL, 0.0)
+        fill!(flux_jacR, 0.0)
+        functor(params, q_j, q_k, aux_vars_j, nrmD, flux_jacL, flux_jacR)
+
+        @simd for d=1:Tdim
+          @simd for p=1:mesh.numDofPerNode
+            @simd for q=1:mesh.numDofPerNode
+              res_jac[q, p, j, j] -= 2*Sx[j, k, d]*flux_jacL[q, p, d]
+              res_jac[q, p, j, k] -= 2*Sx[j, k, d]*flux_jacR[q, p, d]
+
+              res_jac[q, p, k, j] += 2*Sx[j, k, d]*flux_jacL[q, p, d]
+              res_jac[q, p, k, k] += 2*Sx[j, k, d]*flux_jacR[q, p, d]
+            end
+          end
+        end
+
+      end  # end k loop
+    end  # end j loop
+
+    if eqn.params.use_Minv == 1
+      jac_el = sview(mesh.jac, :, i)
+      applyMinvElement(jac_el, sbp.w, res_jac)
+    end
+
+    # assemble element level jacobian into the residual
+    assembleElement(assembler, mesh, i, res_jac)
+  end  # end i loop
+
+  return nothing
+end
+
+
+
 
 
 """

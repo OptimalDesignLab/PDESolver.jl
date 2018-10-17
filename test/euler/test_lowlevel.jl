@@ -303,7 +303,7 @@ end
 
 
 #test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST, TAG_TMP])
+add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 """
   This function tests functions that are used to convert entire vectors/arrays

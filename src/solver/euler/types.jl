@@ -167,9 +167,11 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     if opts["use_staggered_grid"]
       numNodesPerElement = mesh.mesh2.numNodesPerElement
       stencilsize = size(mesh.mesh2.sbpface.perm, 1)
+      numNodesPerFace = mesh.mesh2.numNodesPerFace
     else
       numNodesPerElement = mesh.numNodesPerElement
       stencilsize = size(mesh.sbpface.perm, 1)
+      numNodesPerFace = mesh.numNodesPerFace
     end
 
     t = 0.0
@@ -198,7 +200,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     get_tau_data = GetTauData{Tsol, Tres}(mesh.numDofPerNode, mesh.dim)
 
     calc_ec_face_integral_data = CalcECFaceIntegralData{Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
-    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, stencilsize)
+    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, numNodesPerFace, stencilsize, numNodesPerElement, 2*mesh.numDofPerNode)
     interpolate_element_staggered_data = InterpolateElementStaggeredData{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement, numNodesPerElement)
 
     calc_volume_integrals_data = CalcVolumeIntegralsData{Tres, Tmsh}(
@@ -470,6 +472,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
+  volume_flux_func_diff::FluxType_diff
   viscous_flux_func::FluxType  # functor for the viscous flux numerical flux function
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use

@@ -177,7 +177,9 @@ function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
 
+  println("entered evalVolumeIntegrals_diff")
   integral_type = opts["volume_integral_type"]
+  println("volume_integral_type = ", integral_type)
 
   if opts["Q_transpose"] == false
     error("Q_transpose == false not supported by evalJacobian")
@@ -187,7 +189,8 @@ function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
   if integral_type == 1  # regular volume integrals
     calcVolumeIntegrals_nopre_diff(mesh, sbp, eqn, opts, assembler)
   elseif integral_type == 2  # entropy stable formulation
-    error("volume_integral_type == 2 not supported by evalJacobian()")
+    calcVolumeIntegralsSplitForm_diff(mesh, sbp, eqn, opts,
+                                      eqn.volume_flux_func_diff, assembler)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
