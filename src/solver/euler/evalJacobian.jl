@@ -177,9 +177,7 @@ function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
 
-  println("entered evalVolumeIntegrals_diff")
   integral_type = opts["volume_integral_type"]
-  println("volume_integral_type = ", integral_type)
 
   if opts["Q_transpose"] == false
     error("Q_transpose == false not supported by evalJacobian")

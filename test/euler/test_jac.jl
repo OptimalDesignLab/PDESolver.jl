@@ -189,7 +189,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
 
 
 """
@@ -253,6 +253,31 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
+    # SBPOmega, SparseMatrixCSC, ES
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 2
+    opts_tmp["operator_type"] = "SBPOmega"
+    opts_tmp["volume_integral_type"] = 2
+    opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["Flux_name"] = "IRFlux"
+    opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
+    make_input(opts_tmp, fname4)
+    mesh10, sbp10, eqn10, opts10 = run_solver(fname4)
+
+    # SBPOmega, Petsc Mat, ES
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 3
+    opts_tmp["operator_type"] = "SBPOmega"
+    opts_tmp["volume_integral_type"] = 2
+    opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["Flux_name"] = "IRFlux"
+    opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
+    make_input(opts_tmp, fname4)
+    mesh11, sbp11, eqn11, opts11 = run_solver(fname4)
+
+
 
     # test various matrix and operator combinations
     println("testing mode 4")
@@ -284,12 +309,18 @@ function test_jac_terms_long()
     test_diagjac(mesh9, sbp9, eqn9, opts9)
     test_strongdiagjac(mesh9, sbp9, eqn9, opts9)
 
+    println("testing mode 10")
+    test_jac_general(mesh10, sbp10, eqn10, opts10)
+ 
+    println("testing mode 11")
+    test_jac_general(mesh11, sbp11, eqn11, opts11)
+ 
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -1373,7 +1404,10 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
 
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false
+  println("getting flux function named ", opts["Flux_name"])
   eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+  eqn.volume_flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Volume_flux_name"]]
+
 
 
   startSolutionExchange(mesh, sbp, eqn, opts)
