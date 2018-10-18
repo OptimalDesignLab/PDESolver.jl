@@ -21,7 +21,7 @@
           eqn.q_vec should have the final solution in it
    * opts: the options dictionary
 """
-function run_solver(input_file::AbstractString)
+function run_solver(input_file::Union{AbstractString, Dict})
 
   return solvePDE(input_file)
 

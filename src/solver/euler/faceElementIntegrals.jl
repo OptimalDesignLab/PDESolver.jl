@@ -597,9 +597,8 @@ function applyEntropyKernel_revq(obj::LFKernel, params::ParamType,
                         nrm::AbstractVector, flux::AbstractVector,
                         flux_bar::AbstractVector)
 
-
   @unpack obj t1 A0 t1_bar A0_bar
-  
+
   numDofPerNode = length(q_avg)
   
   getIRA0(params, q_avg, A0)
@@ -703,9 +702,10 @@ end
   Entropy conservative term only
 """
 mutable struct ECFaceIntegral <: FaceElementIntegralType
-  function ECFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
-    return new()
-  end
+end
+
+function ECFaceIntegral(mesh::AbstractMesh, eqn::EulerData)
+  return ECFaceIntegral()
 end
 
 function calcFaceElementIntegral(obj::ECFaceIntegral,
@@ -726,11 +726,12 @@ end
 """
   Entropy conservative integral + Lax-Friedrich penalty
 """
-mutable struct ESLFFaceIntegral <: FaceElementIntegralType
-  kernel::LFKernel
-  function ESLFFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode))
-  end
+mutable struct ESLFFaceIntegral{Tsol, Tres, Tmsh} <: FaceElementIntegralType
+  kernel::LFKernel{Tsol, Tres, Tmsh}
+end
+
+function ESLFFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+  return ESLFFaceIntegral{Tsol, Tres, Tmsh}(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode))
 end
 
 function calcFaceElementIntegral(obj::ESLFFaceIntegral,
@@ -749,11 +750,12 @@ end
 """
   Lax-Friedrich entropy penalty term only
 """
-mutable struct ELFPenaltyFaceIntegral <: FaceElementIntegralType
-  kernel::LFKernel
-  function ELFPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-    return new(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode))
-  end
+mutable struct ELFPenaltyFaceIntegral{Tsol, Tres, Tmsh} <: FaceElementIntegralType
+  kernel::LFKernel{Tsol, Tres, Tmsh}
+end
+
+function ELFPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+  return ELFPenaltyFaceIntegral{Tsol, Tres, Tmsh}(LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode))
 end
 
 function calcFaceElementIntegral(obj::ELFPenaltyFaceIntegral,
@@ -773,13 +775,14 @@ end
 """
   Entropy conservative integral + Lax-Wendroff penalty
 """
-mutable struct ESLW2FaceIntegral <: FaceElementIntegralType
-  kernel::LW2Kernel
+mutable struct ESLW2FaceIntegral{Tsol, Tres, Tmsh} <: FaceElementIntegralType
+  kernel::LW2Kernel{Tsol, Tres, Tmsh}
 
-  function ESLW2FaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-    kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
-    return new(kernel)
-  end
+end
+
+function ESLW2FaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+  kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+  return ESLW2FaceIntegral{Tsol, Tres, Tmsh}(kernel)
 end
 
 function calcFaceElementIntegral(obj::ESLW2FaceIntegral,
@@ -797,14 +800,15 @@ end
 """
   Lax-Wendroff entropy penalty term only
 """
-mutable struct ELW2PenaltyFaceIntegral <: FaceElementIntegralType
-  kernel::LW2Kernel
+mutable struct ELW2PenaltyFaceIntegral{Tsol, Tres, Tmsh} <: FaceElementIntegralType
+  kernel::LW2Kernel{Tsol, Tres, Tmsh}
 
-  function ELW2PenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+end
 
-    kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
-    return new(kernel)
-  end
+function ELW2PenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+
+  kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+  return ELW2PenaltyFaceIntegral{Tsol, Tres, Tmsh}(kernel)
 end
 
 function calcFaceElementIntegral(obj::ELW2PenaltyFaceIntegral,
@@ -821,13 +825,14 @@ function calcFaceElementIntegral(obj::ELW2PenaltyFaceIntegral,
 end
 
 
-mutable struct EntropyJumpPenaltyFaceIntegral <: FaceElementIntegralType
-  kernel::IdentityKernel
+mutable struct EntropyJumpPenaltyFaceIntegral{Tsol, Tres, Tmsh} <: FaceElementIntegralType
+  kernel::IdentityKernel{Tsol, Tres, Tmsh}
 
-  function EntropyJumpPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-    kernel = IdentityKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
-    return new(kernel)
-  end
+end
+
+function EntropyJumpPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
+  kernel = IdentityKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
+  return EntropyJumpPenaltyFaceIntegral{Tsol, Tres, Tmsh}(kernel)
 end
 
 function calcFaceElementIntegral(obj::EntropyJumpPenaltyFaceIntegral,
@@ -869,11 +874,13 @@ global const FaceElementDict = Dict{String, Type{T} where T <: FaceElementIntegr
 
    * eqn: the EulerData object
 """
-function getFaceElementFunctors(mesh, sbp, eqn::AbstractEulerData, opts)
+function getFaceElementFunctors(mesh::AbstractMesh{Tmsh}, sbp, eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tsol, Tres, Tmsh}
 
   objname = opts["FaceElementIntegral_name"]
   Tobj = FaceElementDict[objname]
   eqn.face_element_integral_func = Tobj(mesh, eqn)
+
+  assertFieldsConcrete(eqn.face_element_integral_func)
 
   return nothing
 end

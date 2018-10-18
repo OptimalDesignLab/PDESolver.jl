@@ -154,6 +154,7 @@ function getFaceElementIntegral(
 
     calcFaceElementIntegral(face_integral_functor, params, sbpface, iface, qL,
                             qR, aux_vars, nrm_face, flux_functor, resL, resR)
+
   end
 
   return nothing
@@ -1068,6 +1069,8 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   name = opts["Volume_flux_name"]
   eqn.volume_flux_func = FluxDict[name]
 
+  assertFieldsConcrete(eqn.flux_func)
+  assertFieldsConcrete(eqn.volume_flux_func)
   return nothing
 end
 
@@ -1081,6 +1084,8 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   name = opts["Flux_name"]
   eqn.flux_func_bar = FluxDict_revm[name]
+
+  assertFieldsConcrete(eqn.flux_func_bar)
 
   return nothing
 end # End function getFluxFunctors_revm
@@ -1103,7 +1108,7 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   name = opts["Flux_name"]
-  eqn.flux_func_bar = FluxDict_revq[name]
+  eqn.flux_func_barq = FluxDict_revq[name]
 
   return nothing
 end # End function getFluxFunctors_revq

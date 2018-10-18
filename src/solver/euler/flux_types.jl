@@ -42,7 +42,7 @@ struct RoeFluxData{Tsol, Tres, Tmsh}
               euler_flux_bar, sat_bar,
               roe_vars_dot)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -70,7 +70,7 @@ struct CalcSatData{Tres}
 
     obj = new(E1dq, E2dq, E3dq, E4dq)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -105,7 +105,7 @@ struct LFFluxData{Tres}
 
     obj = new(fluxL, fluxR, F_dotL, F_dotR, lambda_dotL, lambda_dotR)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
     
     return obj
   end
@@ -239,7 +239,7 @@ struct IRFluxData{Tsol}
                p1_hat_dotL, p1_hat_dotR, h_hat_dotL,h_hat_dotR,
                logdata)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -266,7 +266,7 @@ struct ApplyEntropyKernel_diagEData{Tsol, Tres}
 
     obj = new(q_avg, vL, vR, F_tmp)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
     return obj
   end
 end
@@ -283,7 +283,7 @@ struct GetLambdaMaxSimpleData{Tsol}
 
     obj = new(q_avg)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -319,7 +319,7 @@ struct CalcVorticityData{Tsol, Tres, Tmsh}
 
     obj = new(dxidx_element, velocities, velocity_deriv, velocity_deriv_xy)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -370,7 +370,7 @@ struct GetTauData{Tsol, Tres}
     obj = new(AjAk, flux_term, A0inv, tmp_mat,
               B_d, B_p, A_mat_hat, A0, tmp_mat2)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -412,7 +412,7 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
 
     obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -495,7 +495,7 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
              q_avg_dot, delta_w_dot, flux_dot_i, flux_dotL, flux_dotR,
              jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -517,7 +517,7 @@ struct InterpolateElementStaggeredData{Tsol}
 
     obj = new(wvars_s, wvars_f)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -570,7 +570,7 @@ struct BCData{Tsol, Tres}
 
     obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -602,7 +602,7 @@ struct LW2Kernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
 
     obj =  new(nrm, P, Y, Lambda, S2, q_tmp, tmp1, tmp2)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -611,7 +611,7 @@ end
 """
   Data for Lax-Friedrich entropy dissipation
 """
-mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
+mutable struct LFKernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
   A0::Array{Tsol, 2}
 
   # diff method
@@ -624,7 +624,7 @@ mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
   t1_bar::Array{Tres, 1}
   A0_bar::Array{Tres, 2}
 
-  function LFKernel{Tsol, Tmsh, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tmsh, Tres}
+  function LFKernel{Tsol, Tres, Tmsh}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tres, Tmsh}
 
     A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
 
@@ -641,7 +641,7 @@ mutable struct LFKernel{Tsol, Tmsh, Tres} <: AbstractEntropyKernel
 
     obj = new(A0, A0_dot, t1, t1_dot, lambda_max_dot, t1_bar, A0_bar)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -695,7 +695,7 @@ struct FaceElementIntegralData{Tsol, Tres}
 
     obj = new(resL_s, resR_s, resL_f, resR_f, qvars_f)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -739,7 +739,7 @@ struct CalcFaceIntegralsData{Tsol, Tres}
 
     obj = new(q_faceL, q_faceR, flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -797,7 +797,7 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     obj = new(flux_jac, res_jac, nrm,
               nrmD, F_d, S, Sx, res_s, res_f)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end

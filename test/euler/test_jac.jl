@@ -60,8 +60,8 @@ function test_jac_terms()
     func3_revq = EulerEquationMod.FluxDict_revq["IRFlux"]
     
     # Abstract Entropy Kernels
-    lf_kernel = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
-    lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tmsh, Tres}(mesh3.numDofPerNode, 2*mesh3.numDofPerNode)
+    lf_kernel = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
+    lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh3.numDofPerNode, 2*mesh3.numDofPerNode)
     
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
@@ -189,7 +189,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -321,7 +321,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------

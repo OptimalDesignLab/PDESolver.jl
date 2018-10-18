@@ -18,8 +18,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
-  time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  @time time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
+  println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
@@ -32,7 +32,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry_diff += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#   println("boundary integral @time printed above")
+#    println("boundary integral @time printed above")
   end
 
 
