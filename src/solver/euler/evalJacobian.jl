@@ -293,7 +293,15 @@ function evalFaceIntegrals_diff(mesh::AbstractDGMesh{Tmsh},
       calcFaceIntegral_nopre_diff(mesh, sbp, eqn, opts, eqn.flux_func_diff, mesh.interfaces, assembler)
 
   elseif face_integral_type == 2
-    error("face_integral_type == 2 not supported by evalJacobian")
+
+    if opts["use_staggered_grid"]
+      error("explicit jacobian calculation does not support staggered grids")
+    else
+      getFaceElementIntegral_diff(mesh, sbp, eqn,
+                  eqn.face_element_integral_func,  
+                  eqn.flux_func_diff, mesh.sbpface, mesh.interfaces, assembler)
+    end
+
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))
   end
@@ -325,7 +333,7 @@ function evalSharedFaceIntegrals_diff(mesh::AbstractDGMesh, sbp, eqn, opts,
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element_diff)
 
   elseif face_integral_type == 2
-    error("face_integral_type == 2 not supported")
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element_diff)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end

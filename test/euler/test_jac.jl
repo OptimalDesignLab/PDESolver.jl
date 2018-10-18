@@ -272,6 +272,7 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPOmega"
     opts_tmp["volume_integral_type"] = 2
     opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["face_integral_type"] = 2
     opts_tmp["Flux_name"] = "IRFlux"
     opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
     make_input(opts_tmp, fname4)

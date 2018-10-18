@@ -41,9 +41,6 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
 
 
   run_type = opts["run_type"]
-  println("run_type = ", run_type)
-  println("Flux_name = ", opts["Flux_name"])
-  println("jac_type = ", opts["jac_type"])
   #TODO: what to do for jac_type 4?
   if opts["use_DG"] && 
      opts["Flux_name"] in keys(FluxDict_diff) && 
@@ -62,8 +59,6 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
   else
     get!(opts, "preallocate_jacobian_coloring", true)
   end
-
-  println("calc_jac_explicit = ", opts["calc_jac_explicit"])
 
   return nothing
 end

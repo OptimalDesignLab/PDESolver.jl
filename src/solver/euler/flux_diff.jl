@@ -91,7 +91,7 @@ function getFaceElementIntegral_diff(
                            mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
-                           flux_functor::FluxType,
+                           flux_functor::FluxType_diff,
                            sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1},
                            assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
@@ -117,19 +117,37 @@ function getFaceElementIntegral_diff(
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    fill!(resLL, 0); fill!(resLR, 0)
-    fill!(resRL, 0); fill!(resRR, 0)
-    calcFaceElementIntegral_diff(params, sbpface, iface, qL, qR, aux_vars,
-                       nrm_face, flux_functor, resLL, resLR, resRL, resRR)
+    fill!(res_jacLL, 0); fill!(res_jacLR, 0)
+    fill!(res_jacRL, 0); fill!(res_jacRR, 0)
+    calcFaceElementIntegral_diff(face_integral_functor, params, sbpface, iface,
+                       qL, qR, aux_vars,
+                       nrm_face, flux_functor, res_jacLL, res_jacLR, res_jacRL, res_jacRR)
 
-    assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL,
+    assembleInterface(assembler, sbpface, mesh, iface, res_jacLL,
                       res_jacLR, res_jacRL, res_jacRR)
 
-
+    # multiply by Minv if needed
+    if params.use_Minv == 1
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          valL = mesh.jac[p, iface.elementL]/sbp.w[p]  # entry in Minv
+          valR = mesh.jac[p, iface.elementR]/sbp.w[p]
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jacLL[n, m, p, q] *= valL
+              res_jacLR[n, m, p, q] *= valL
+              res_jacRL[n, m, p, q] *= valR
+              res_jacRR[n, m, p, q] *= valR
+            end
+          end
+        end
+      end
+    end
+ 
   end
 
-  fill!(resLL, 0); fill!(resLR, 0)
-  fill!(resRL, 0); fill!(resRR, 0)
+  fill!(res_jacLL, 0); fill!(res_jacLR, 0)
+  fill!(res_jacRL, 0); fill!(res_jacRR, 0)
 
   return nothing
 end
@@ -249,6 +267,115 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
   return nothing
 end
 
+"""
+  Differentiated version of [`calcSharedFaceElementIntegrals_element`](@ref)
+"""
+function calcSharedFaceElementIntegrals_element_diff(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
+
+  if opts["use_staggered_grid"]
+    error("explicit computaton of jacobian not supported for staggered grids")
+
+  else
+    calcSharedFaceElementIntegrals_element_inner_diff(mesh, sbp, eqn, opts,
+                            data, eqn.face_element_integral_func,  eqn.flux_func_diff, eqn.assembler)
+  end
+
+  return nothing
+end
+
+"""
+  This function loops over given set of shared faces and computes a face
+  integral that
+  uses data from all volume nodes.  See [`FaceElementIntegralType`](@ref)
+  for details on the integral performed.
+
+  **Inputs**:
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data: a SharedFaceData specifying which shared faces to compute
+   * face_integral_functor
+   * flux_functor
+
+"""
+function calcSharedFaceElementIntegrals_element_inner_diff(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            face_integral_functor::FaceElementIntegralType,
+                            flux_functor::FluxType_diff,
+                            assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
+
+  if opts["parallel_data"] != "element"
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element_diff without parallel element data"))
+  end
+
+  #TODO: consider writing specialized 1-sided flux functions that only do
+  #      the local half.
+  fdata = eqn.params.calc_face_integrals_data
+  @unpack fdata res_jacLL res_jacLR res_jacRL res_jacRR
+
+
+  q = eqn.q
+  params = eqn.params
+  # we don't care about elementR here, so use this throwaway array
+  resR = Array{Tres}(mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  # get the data for the parallel interface
+  idx = data.peeridx
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  bndries_remote = data.bndries_remote
+#    qL_arr = eqn.q_face_send[i]
+  qR_arr = data.q_recv
+  nrm_face_arr = mesh.nrm_sharedface[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  # compute the integrals
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1  # is this always equal to j?
+    qL = ro_sview(q, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
+
+    fill!(res_jacLL, 0); fill!(res_jacLR, 0)
+    fill!(res_jacRL, 0); fill!(res_jacRR, 0)
+    calcFaceElementIntegral_diff(face_integral_functor, eqn.params, mesh.sbpface,
+                            iface_j, qL, qR, aux_vars,
+                            nrm_face, flux_functor, res_jacLL, res_jacLR, res_jacRL, res_jacRR)
+
+    assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
+    # multiply by Minv if needed
+    if params.use_Minv == 1
+      for q=1:mesh.numNodesPerElement
+        for p=1:mesh.numNodesPerElement
+          valL = mesh.jac[p, iface_j.elementL]/sbp.w[p]  # entry in Minv
+          @simd for m=1:mesh.numDofPerNode
+            @simd for n=1:mesh.numDofPerNode
+              res_jacLL[n, m, p, q] *= valL
+              res_jacLR[n, m, p, q] *= valL
+            end
+          end
+        end
+      end
+    end
+ 
+  end  # end loop j
+
+  fill!(res_jacLL, 0); fill!(res_jacLR, 0)
+  fill!(res_jacRL, 0); fill!(res_jacRR, 0)
+
+  return nothing
+end
 
 
 

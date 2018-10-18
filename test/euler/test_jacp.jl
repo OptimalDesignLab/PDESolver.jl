@@ -33,7 +33,6 @@ function test_jac_parallel_long()
 
     # SBPGamma
     if myrank == 0
-      fname4 = "input_vals_jac_tmp.jl"
       opts_tmp = read_input_file(fname)
       opts_tmp["operator_type"] = "SBPGamma"
       make_input(opts_tmp, fname2)
@@ -59,6 +58,21 @@ function test_jac_parallel_long()
     MPI.Barrier(MPI.COMM_WORLD)
     mesh6, sbp6, eqn6, opts6 = run_solver(fname2)
 
+    # SBPGamma ES
+    if myrank == 0
+      opts_tmp = read_input_file(fname)
+      opts_tmp["operator_type"] = "SBPGamma"
+      opts_tmp["volume_integral_type"] = 2
+      opts_tmp["Volume_flux_name"] = "IRFlux"
+      opts_tmp["Flux_name"] = "IRFlux"
+      opts_tmp["face_integral_type"] = 2
+      opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
+      make_input(opts_tmp, fname2)
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    mesh7, sbp7, eqn7, opts7 = run_solver(fname2)
+
+
     opts4_tmp = copy(opts4)
     test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
     test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
@@ -71,12 +85,14 @@ function test_jac_parallel_long()
 
     test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
 
+    test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
+    test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
 
 
 
@@ -90,7 +106,7 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false
   eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
-
+  eqn.volume_flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Volume_flux_name"]]
 
   startSolutionExchange(mesh, sbp, eqn, opts)
 

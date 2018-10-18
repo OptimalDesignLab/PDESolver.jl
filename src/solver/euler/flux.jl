@@ -566,10 +566,12 @@ end
 
 # element parallel version
 """
-  This function calculates the shared face integrals for a given set of faces.
-  It uses the MPI send and receive buffers that contain the solution for the
-  elements on the boundary (rather than the data on the faces).  This
-  enables calculating a sparse jacobian with minimal parallel communication.
+  This function calculates the shared face integrals for a given set of faces,
+  using the MPI receive buffer to get the data for the right element.
+  This function expects the receive buffer to contain the solution for the
+  entire element, not just the face.
+  This enables calculating a sparse jacobian with minimal parallel
+  communication.
 
   **Inputs**:
 
@@ -769,7 +771,7 @@ function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_data"] == 1
+  if opts["parallel_data"] == "face"
     for peer=1:mesh.npeers
       q_vals_p = eqn.q_face_send[peer]
       aux_vars = eqn.aux_vars_sharedface[peer]
