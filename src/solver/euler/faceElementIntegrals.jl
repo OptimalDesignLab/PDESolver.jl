@@ -116,52 +116,6 @@ function calcECFaceIntegral(
   return nothing
 end
 
-#=
-"""
-  Method for sparse faces.  See other method for details
-"""
-function calcECFaceIntegral(
-     params::AbstractParamType{Tdim}, 
-     sbpface::SparseFace, 
-     iface::Interface,
-     qL::AbstractMatrix{Tsol}, 
-     qR::AbstractMatrix{Tsol}, 
-     aux_vars::AbstractMatrix{Tres}, 
-     nrm_xy::AbstractMatrix{Tmsh},
-     functor::FluxType, 
-     resL::AbstractMatrix{Tres}, 
-     resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
-
-  data = params.calc_ec_face_integral_data
-  @unpack data flux_tmp
-
-  for i=1:sbpface.numnodes
-    p_i = sbpface.perm[i, iface.faceL]
-    q_i = ro_sview(qL, :, p_i)
-    aux_vars_i = ro_sview(aux_vars, :, p_i)
-
-    # get the corresponding node on faceR
-    pnbr = sbpface.nbrperm[i, iface.orient]
-    p_j = sbpface.perm[pnbr, iface.faceR]
-#    p_j = sbpface.nbrperm[sbpface.perm[i, iface.faceR], iface.orient]
-    q_j = ro_sview(qR, :, p_j)
-
-    # compute flux in face normal direction
-    nrm_i = ro_sview(nrm_xy, :, i)
-    functor(params, q_i, q_j, aux_vars_i, nrm_i, flux_tmp)
-
-    w_i = sbpface.wface[i]
-    for p=1:size(resL, 1)
-      resL[p, p_i] -= w_i*flux_tmp[p]
-      resR[p, p_j] += w_i*flux_tmp[p]
-    end
-
-  end  # end loop i
-
-  return nothing
-end
-=#
-
 
 """
   Calculate the face integal in an entropy conservative manner and also
@@ -215,34 +169,7 @@ function calcESFaceIntegral(
   return nothing
 end
 
-#=
-"""
-  Calculate the face integral in an entropy stable manner using
-  Lax-Wendroff type dissipation.  
-  This uses calcECFaceIntegral and calcLW2EntropyPenaltyIntegral internally, 
-  see those functions for details.
-"""
-function calcESLW2FaceIntegral(
-                             params::AbstractParamType{Tdim}, 
-                             sbpface::AbstractFace, 
-                             iface::Interface,
-                             kernel::AbstractEntropyKernel,
-                             qL::AbstractMatrix{Tsol}, 
-                             qR::AbstractMatrix{Tsol}, 
-                             aux_vars::AbstractMatrix{Tres}, 
-                             nrm_face::AbstractMatrix{Tmsh}, # dxidx or nrm
-                             functor::FluxType, 
-                             resL::AbstractMatrix{Tres}, 
-                             resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
-  calcECFaceIntegral(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
-                     functor, resL, resR)
-  calcLW2EntropyPenaltyIntegral(params, sbpface, iface, kernel, qL, qR, aux_vars, 
-                                nrm_face, resL, resR)
-
-  return nothing
-end
-=#
 #-----------------------------------------------------------------------------
 # Internal functions that calculate the penalties
 
@@ -363,55 +290,6 @@ function calcEntropyPenaltyIntegral(
   return nothing
 end
 
-#=
-"""
-  Method for sparse faces.  See other method for details
-
-"""
-function calcEntropyPenaltyIntegral(
-             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
-             sbpface::SparseFace, iface::Interface,
-             kernel::AbstractEntropyKernel,
-             qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-             aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractArray{Tmsh, 2},
-             resL::AbstractMatrix{Tres}, resR::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
-
-  numDofPerNode = size(qL, 1)
-
-  data = params.calc_entropy_penalty_integral_data
-  @unpack data wL_i wR_i delta_w q_avg res_vals
-
-  @simd for i=1:sbpface.numnodes
-    # convert to entropy variables at the nodes
-    p_iL = sbpface.perm[i, iface.faceL]
-    pnbr = sbpface.nbrperm[i, iface.orient]
-    p_iR = sbpface.perm[pnbr, iface.faceR]
-    qL_i = ro_sview(qL, :, p_iL)
-    qR_i = ro_sview(qR, :, p_iR)
-    convertToIR(params, qL_i, wL_i)
-    convertToIR(params, qR_i, wR_i)
-
-    dir = ro_sview(nrm_face, :, i)
-
-    # compute average qL
-    # also delta w (used later)
-    @simd for j=1:numDofPerNode
-      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
-      delta_w[j] = sbpface.wface[i]*(wL_i[j] - wR_i[j])
-    end
-
-    # apply kernel (symmetric semi-definite matrix)
-    applyEntropyKernel(kernel, params, q_avg, delta_w, dir, res_vals)
-
-    @simd for p=1:numDofPerNode
-      resL[p, p_iL] -= res_vals[p]
-      resR[p, p_iR] += res_vals[p]
-    end
-  end  # end loop i
-
-  return nothing
-end
-=#
 
 """
   This function modifies the eigenvalues of the euler flux jacobian such
@@ -689,6 +567,98 @@ function applyEntropyKernel(obj::IdentityKernel, params::ParamType,
 
   for i=1:length(flux)
     flux[i] = delta_w[i]
+  end
+
+  return nothing
+end
+
+
+
+#------------------------------------------------------------------------------
+# Functions to apply entropy kernels for diagonal E operators (ie. as part of
+# a regular flux function
+
+"""
+  This function applies any [`AbstractEntropyKernel`](@ref) when defining
+  a type 1 face integral (the normal type) for an entropy-stable scheme
+  using a diagonal E operator.
+
+  **Inputs**
+
+   * params: ParamType
+   * kernel: the `AbstractEntropyKernel` to apply
+   * qL: solution at left state
+   * qR: solution at right state
+   * aux_vars: auxiliary varialbes
+   * dir: normal vector
+
+  **Inputs/Outputs**
+
+   * F: flux vector to have the entropy kernel contribution added to (well,
+        subtracted because the contribution is negative).
+"""
+function applyEntropyKernel_diagE(
+                      params::ParamType{Tdim, :conservative},
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  q_avg = params.apply_entropy_kernel_diagE_data.q_avg
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  applyEntropyKernel_diagE_inner(params, kernel, qL, qR, q_avg, aux_vars, dir, F)
+
+  return nothing
+end
+
+
+
+"""
+  Applies the specified [`AbstractEntropyKernel`](@ref)
+
+  **Inputs**
+
+   * params
+   * kernel: the kernel to apply
+   * qL: left state
+   * qR: right state
+   * q_avg: the state at which to evaluate the kernel
+   * aux_vars
+   * dir: normal vector
+ 
+  **Inputs/Outputs**
+
+   * F: flux vector to update with contribtion
+"""
+function applyEntropyKernel_diagE_inner(
+                      params::ParamType{Tdim, :conservative}, 
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},
+                      F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+#  println("entered getEntropyLFStab_inner")
+
+  @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp
+  gamma = params.gamma
+  gamma_1inv = 1/params.gamma_1
+#  p = calcPressure(params, q_avg)
+
+  convertToIR(params, qL, vL)
+  convertToIR(params, qR, vR)
+
+  for i=1:length(vL)
+    vL[i] = vL[i] - vR[i]
+  end
+
+#  F_tmp = zeros(Tres, length(F))
+  applyEntropyKernel(kernel, params, q_avg, vL, dir, F_tmp)
+
+  for i=1:length(F_tmp)
+    F[i] += F_tmp[i]
   end
 
   return nothing

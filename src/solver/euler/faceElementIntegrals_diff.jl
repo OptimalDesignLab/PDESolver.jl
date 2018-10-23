@@ -99,60 +99,6 @@ function calcECFaceIntegral_diff(
   return nothing
 end
 
-#=
-# SparseFace method
-function calcECFaceIntegral_diff(
-     params::AbstractParamType{Tdim}, 
-     sbpface::SparseFace, 
-     iface::Interface,
-     qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
-     aux_vars::AbstractMatrix{Tres}, 
-     nrm_xy::AbstractMatrix{Tmsh},
-     functor::FluxType_diff, 
-     jacLL::AbstractArray{Tres, 4}, jacLR::AbstractArray{Tres, 4},
-     jacRL::AbstractArray{Tres, 4}, jacRR::AbstractArray{Tres, 4}
-     ) where {Tdim, Tsol, Tres, Tmsh}
-
-  data = params.calc_ec_face_integral_data
-  @unpack data fL_dot fR_dot
-
-  numDofPerNode = size(qL, 1)
-
-  for i=1:sbpface.numnodes
-    p_i = sbpface.perm[i, iface.faceL]
-    q_i = ro_sview(qL, :, p_i)
-    aux_vars_i = ro_sview(aux_vars, :, p_i)
-
-    # get the corresponding node on faceR
-    pnbr = sbpface.nbrperm[i, iface.orient]
-    p_j = sbpface.perm[pnbr, iface.faceR]
-#    p_j = sbpface.nbrperm[sbpface.perm[i, iface.faceR], iface.orient]
-    q_j = ro_sview(qR, :, p_j)
-
-    # compute flux in face normal direction
-    nrm_i = ro_sview(nrm_xy, :, i)
-    fill!(fL_dot, 0.0); fill!(fR_dot, 0.0)
-    functor(params, q_i, q_j, aux_vars_i, nrm_i, fL_dot, fR_dot)
-
-    w_i = sbpface.wface[i]
-    @simd for q=1:numDofPerNode
-      @simd for p=1:numDofPerNode
-        valL = w_i*fL_dot[p, q]
-        valR = w_i*fR_dot[p, q]
-
-        jacLL[p, q, p_i, p_i] -= valL
-        jacLR[p, q, p_i, p_j] -= valR
-        jacRL[p, q, p_j, p_i] += valL
-        jacRR[p, q, p_j, p_j] += valR
-      end
-    end
-
-
-  end  # end loop i
-
-  return nothing
-end
-=#
 
 #------------------------------------------------------------------------------
 # calcESFaceIntegral
@@ -444,6 +390,94 @@ function applyEntropyKernel_diff(obj::LFKernel, params::ParamType,
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# apply entropy kernels to diagonal E operators
+
+"""
+  Differentiated version of [`applyEntropyKernel_diagE`](@ref)
+"""
+function applyEntropyKernel_diagE_diff(
+                      params::ParamType{Tdim, :conservative},
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},
+                      FL_dot::AbstractMatrix{Tres}, FR_dot::AbstractMatrix{Tres},
+                      ) where {Tmsh, Tsol, Tres, Tdim}
+
+#  nd = 2*params.numDofPerNode
+  data = params.apply_entropy_kernel_diagE_data
+  @unpack data q_avg q_avg_dot F F_dot
+
+  fill!(q_avg_dot, 0.0); fill!(F_dot, 0.0)
+  @debug1 begin
+    @assert size(FL_dot, 2) <= params.numDofPerNode
+    @assert size(FR_dot, 2) <= params.numDofPerNode
+  end
+
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+    q_avg_dot[i, i] = 0.5
+    q_avg_dot[i, i + params.numDofPerNode] = 0.5
+  end
+
+  applyEntropyKernel_diagE_inner_diff(params, kernel, qL, qR, q_avg, q_avg_dot, aux_vars, dir, F, F_dot)
+
+  # copy derivative into arrays in the format the caller provided
+  @simd for i=1:params.numDofPerNode
+    @simd for j=1:params.numDofPerNode
+      FL_dot[j, i] += F_dot[j, i                       ]
+      FR_dot[j, i] += F_dot[j, i + params.numDofPerNode]
+    end
+  end
+
+  return nothing
+end
+
+
+function applyEntropyKernel_diagE_inner_diff(
+                      params::ParamType{Tdim, :conservative}, 
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      q_avg::AbstractArray{Tsol}, q_avg_dot::AbstractMatrix{Tsol},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},
+                      F::AbstractArray{Tres,1}, F_dot::AbstractMatrix{Tres}
+                      ) where {Tmsh, Tsol, Tres, Tdim}
+#  println("entered getEntropyLFStab_inner")
+
+  @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp delta_w_dot
+  gamma = params.gamma
+  gamma_1inv = 1/params.gamma_1
+#  p = calcPressure(params, q_avg)
+
+  nd = 2*params.numDofPerNode
+  delta_w_dotL = sview(delta_w_dot, :, 1:params.numDofPerNode)
+  delta_w_dotR = sview(delta_w_dot, :, (params.numDofPerNode+1):nd)
+   
+  convertToIR(params, qL, vL)
+  convertToIR(params, qR, vR)
+
+  for i=1:length(vL)
+    vL[i] = vL[i] - vR[i]
+  end
+  # A0inv = inv(dq/dw) = dw/dq = the derivative of convertToIR
+  getIRA0inv(params, qL, delta_w_dotL)
+  getIRA0inv(params, qR, delta_w_dotR)
+  scale!(delta_w_dotR, -1)
+
+
+  applyEntropyKernel_diff(kernel, params, q_avg, q_avg_dot, vL, delta_w_dot, dir, F_tmp, F_dot)
+
+  for i=1:length(F_tmp)
+    F[i] += F_tmp[i]
+  end
+
+  return nothing
+end
+
 
 
 #------------------------------------------------------------------------------
