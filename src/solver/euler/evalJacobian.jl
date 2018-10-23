@@ -18,8 +18,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
-  @time time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
-  println("dataPrep @time printed above")
+  time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
+#  println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)

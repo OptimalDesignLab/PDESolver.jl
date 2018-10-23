@@ -106,7 +106,7 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
-    test_faceElementIntegral(eqn2.params, mesh2.sbpface, func3, func3_diff)
+#    test_faceElementIntegral(eqn2.params, mesh2.sbpface, func3, func3_diff)
     
     test_entropyPenalty(eqn.params, mesh.sbpface, lf_kernel)
 

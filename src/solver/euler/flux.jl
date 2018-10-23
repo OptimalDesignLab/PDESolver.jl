@@ -774,7 +774,7 @@ function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts,
 
   if opts["parallel_data"] == "face"
     for peer=1:mesh.npeers
-      q_vals_p = eqn.q_face_send[peer]
+      q_vals_p = eqn.shared_data[peer].q_send
       aux_vars = eqn.aux_vars_sharedface[peer]
       for i=1:mesh.peer_face_counts[peer]
         for j=1:mesh.numNodesPerFace

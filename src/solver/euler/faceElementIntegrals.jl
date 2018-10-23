@@ -116,6 +116,7 @@ function calcECFaceIntegral(
   return nothing
 end
 
+#=
 """
   Method for sparse faces.  See other method for details
 """
@@ -159,7 +160,7 @@ function calcECFaceIntegral(
 
   return nothing
 end
-
+=#
 
 
 """
@@ -362,6 +363,7 @@ function calcEntropyPenaltyIntegral(
   return nothing
 end
 
+#=
 """
   Method for sparse faces.  See other method for details
 
@@ -409,7 +411,7 @@ function calcEntropyPenaltyIntegral(
 
   return nothing
 end
-
+=#
 
 """
   This function modifies the eigenvalues of the euler flux jacobian such
