@@ -252,19 +252,34 @@ end
 struct ApplyEntropyKernel_diagEData{Tsol, Tres}
   q_avg::Vector{Tsol}
   
-  # for getEntropyLFStab_inner
+  # diff method
+  q_avg_dot::Matrix{Tres}
+  F::Vector{Tres}
+  F_dot::Matrix{Tres}
+
+  # for applyEntropyKernel_inner
   vL::Vector{Tsol}
   vR::Vector{Tsol}
   F_tmp::Vector{Tres}
 
-  function ApplyEntropyKernel_diagEData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
+  # diff method
+  delta_w_dot::Matrix{Tsol}
+
+  function ApplyEntropyKernel_diagEData{Tsol, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tres}
 
     q_avg = zeros(Tsol, numDofPerNode)
     vL = zeros(Tsol, numDofPerNode)
     vR = zeros(Tsol, numDofPerNode)
     F_tmp = zeros(Tres, numDofPerNode)
 
-    obj = new(q_avg, vL, vR, F_tmp)
+    # diff  method
+    q_avg_dot = zeros(Tsol, numDofPerNode, nd)
+    F = zeros(Tres, numDofPerNode)
+    F_dot = zeros(Tres, numDofPerNode, nd)
+
+    delta_w_dot = zeros(Tsol, numDofPerNode, nd)
+
+    obj = new(q_avg, q_avg_dot, F, F_dot, vL, vR, F_tmp, delta_w_dot)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
     return obj

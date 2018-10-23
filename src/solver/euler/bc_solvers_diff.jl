@@ -4015,3 +4015,24 @@ function logavg_rev(aL, aR, a_avg_bar)
 end
 
 
+
+#------------------------------------------------------------------------------
+# calcEulerFlux_* methods
+
+function calcEulerFlux_IRSLF_diff(params::ParamType{Tdim, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 1},
+                   FL_dot::AbstractArray{Tres, 2},
+                   FR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  kernel = params.entropy_lf_kernel
+
+  calcEulerFlux_IR_diff(params, qL, qR, aux_vars, nrm, FL_dot, FR_dot)
+  applyEntropyKernel_diagE_diff(params, kernel, qL, qR, aux_vars, nrm, FL_dot, FR_dot)
+
+  return nothing
+end
+

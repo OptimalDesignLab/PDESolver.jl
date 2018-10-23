@@ -99,6 +99,7 @@ function calcECFaceIntegral_diff(
   return nothing
 end
 
+#=
 # SparseFace method
 function calcECFaceIntegral_diff(
      params::AbstractParamType{Tdim}, 
@@ -151,7 +152,7 @@ function calcECFaceIntegral_diff(
 
   return nothing
 end
-
+=#
 
 #------------------------------------------------------------------------------
 # calcESFaceIntegral

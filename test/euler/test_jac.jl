@@ -11,10 +11,6 @@ function test_jac_terms()
   mesh, sbp, eqn, opts = run_solver(fname)
   mesh3, sbp3, eqn3, opts3 = run_solver(fname3)
 
-  # make a diagonalE version
-  opts_tmp = read_input_file(fname)
-  opts_tmp["operator_type"] = "SBPDiagonalE"
-  mesh2, sbp2, eqn2, opts2 = solvePDE(opts_tmp)
 #=
   # SBPOmega, Petsc Mat
   fname4 = "input_vals_jac_tmp.jl"
@@ -59,12 +55,17 @@ function test_jac_terms()
     func3_revm = EulerEquationMod.FluxDict_revm["IRFlux"]
     func3_revq = EulerEquationMod.FluxDict_revq["IRFlux"]
     
+    func4 = EulerEquationMod.FluxDict["IRSLFFlux"]
+    func4_diff = EulerEquationMod.FluxDict_diff["IRSLFFlux"]
+
+
     # Abstract Entropy Kernels
     lf_kernel = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
     lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh3.numDofPerNode, 2*mesh3.numDofPerNode)
     
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 1
+
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_lambda(eqn.params, q, nrm)
     test_lambdasimple(eqn.params, q, qg, nrm)
@@ -74,7 +75,10 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func3, func3_diff)
     test_2flux_revq(eqn.params, q, qg, nrm, func3, func3_revq, test_multid=true)
     test_2flux_revm(eqn.params, q, qg, nrm, func3, func3_revm, test_multid=true)
-    
+   
+    println("testing applyEntropyKernel_diagE")
+    test_ad_inner(eqn.params, q, qg, nrm, func4, func4_diff)
+
     test_EntropyKernel(eqn.params, lf_kernel)
     test_EntropyKernel_revq(eqn.params, lf_kernel)
     test_EntropyKernel_revm(eqn.params, lf_kernel)
@@ -106,7 +110,6 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
-#    test_faceElementIntegral(eqn2.params, mesh2.sbpface, func3, func3_diff)
     
     test_entropyPenalty(eqn.params, mesh.sbpface, lf_kernel)
 
@@ -278,6 +281,18 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh11, sbp11, eqn11, opts11 = run_solver(fname4)
 
+    # SBPDiagonalE, Petsc Mat, ES
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 3
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["volume_integral_type"] = 2
+    opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["face_integral_type"] = 1
+    opts_tmp["Flux_name"] = "IRSLFFlux"
+    make_input(opts_tmp, fname4)
+    mesh12, sbp12, eqn12, opts12 = run_solver(fname4)
+
 
 
     # test various matrix and operator combinations
@@ -315,6 +330,9 @@ function test_jac_terms_long()
  
     println("testing mode 11")
     test_jac_general(mesh11, sbp11, eqn11, opts11)
+ 
+    println("testing mode 12")
+    test_jac_general(mesh12, sbp12, eqn12, opts12)
  
   end
 
@@ -845,26 +863,26 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
     println("resL = \n", resL)
     println("resL2 = \n", resL2)
     println("diff = \n", resL - resL2)
-    println("diffnorm = \n", vecnorm(resL - resL2))
+    println("max diff = \n", maximum(abs.(resL - resL2)))
 
     println("\n----- Comparing right results -----")
     println("resR = \n", resR)
     println("resR2 = \n", resR2)
     println("diff = \n", resR - resR2)
-    println("diffnorm = \n", vecnorm(resR - resR2))
+    println("max diff = \n", maximum(abs.(resR - resR2)))
   end
 
 
-  @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-13
-  @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-13
+  @test isapprox( maximum(abs.(resL - resL2)), 0.0) atol=1e-12
+  @test isapprox( maximum(abs.(resR - resR2)), 0.0) atol=1e-12
 
   # test resL,R are summed into
   resL2_orig = copy(resL2)
   resR2_orig = copy(resR2)
   func_diff(params, qL, qR, aux_vars, nrm, resL2, resR2)
 
-  @test maximum(abs.(resL2 - 2*resL2_orig)) < 1e-13
-  @test maximum(abs.(resR2 - 2*resR2_orig)) < 1e-13
+  @test maximum(abs.(resL2 - 2*resL2_orig)) < 1e-12
+  @test maximum(abs.(resR2 - 2*resR2_orig)) < 1e-12
 
   return nothing
 end

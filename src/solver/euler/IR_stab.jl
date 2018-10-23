@@ -288,6 +288,7 @@ function applyEntropyKernel_diagE(
 end
 
 
+
 """
   Applies the specified [`AbstractEntropyKernel`](@ref)
 
@@ -305,36 +306,39 @@ end
 
    * F: flux vector to update with contribtion
 """
-#function getEntropyLFStab_inner(
 function applyEntropyKernel_diagE_inner(
                       params::ParamType{Tdim, :conservative}, 
                       kernel::AbstractEntropyKernel,
                       qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
                       q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+                      dir::AbstractArray{Tmsh},
+                      F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 #  println("entered getEntropyLFStab_inner")
 
   @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp
   gamma = params.gamma
   gamma_1inv = 1/params.gamma_1
-  p = calcPressure(params, q_avg)
+#  p = calcPressure(params, q_avg)
 
   convertToIR(params, qL, vL)
   convertToIR(params, qR, vR)
 
   for i=1:length(vL)
-    vL[i] = vR[i] - vL[i]
+    vL[i] = vL[i] - vR[i]
   end
 
 #  F_tmp = zeros(Tres, length(F))
   applyEntropyKernel(kernel, params, q_avg, vL, dir, F_tmp)
 
   for i=1:length(F_tmp)
-    F[i] -= F_tmp[i]
+    F[i] += F_tmp[i]
   end
 
   return nothing
 end
+
+
+
 
 function getLambdaMax(params::ParamType{Tdim}, 
     qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 

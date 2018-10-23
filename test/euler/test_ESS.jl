@@ -728,8 +728,10 @@ function runESTest_diagE(mesh, sbp, eqn, opts, flux_func::EulerEquationMod.FluxT
   val = EulerEquationMod.contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
 
   if isEC
+    println("entropy conservative val = ", val)
     @test abs(val) < 1e-13
   else
+    println("entropy stable val = ", val)
     @test val < eps()
   end
 
