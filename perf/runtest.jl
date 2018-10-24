@@ -17,6 +17,7 @@ tests = [ "input_vals_2d_rk4.jl"    "perf_history_2d_rk4.txt";
           "input_vals_3d_rk4.jl"    "perf_history_3d_rk4.txt";
 
           "input_vals_2d_newton.jl" "perf_history_2d_newton.txt";
+          "input_vals_2d_newton_ess.jl" "perf_history_2d_newton_ess.txt";
           "input_vals_3d_newton.jl" "perf_history_3d_newton.txt";
           "input_vals_2d_newton_coloring.jl" "perf_history_2d_newton_coloring.txt"
           "input_vals_2d_newton_diagE.jl" "perf_history_2d_newton_diagE.txt"

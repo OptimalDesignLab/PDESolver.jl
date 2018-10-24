@@ -1,8 +1,7 @@
 import PDESolver: evalJacobian, evalJacobianStrong
 
 """
-  Euler implementation of `evalJacobian`.  Currently only supports the
-  Roe scheme.
+  Euler implementation of `evalJacobian`.
 """
 function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
@@ -18,12 +17,12 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
 
-  time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  @time time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
+  println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
-    evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("volume integral @time printed above")
+    @time evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+    println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]
@@ -31,8 +30,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   end
 
   time.t_bndry_diff += @elapsed if opts["addBoundaryIntegrals"]
-    evalBoundaryIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("boundary integral @time printed above")
+    @time evalBoundaryIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+    println("boundary integral @time printed above")
   end
 
 
@@ -44,8 +43,8 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
 
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("face integral @time printed above")
+    @time evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
+    println("face integral @time printed above")
   end
 
 
