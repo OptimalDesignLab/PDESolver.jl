@@ -803,7 +803,7 @@ mutable struct EntropyJumpPenaltyFaceIntegral{Tsol, Tres, Tmsh} <: FaceElementIn
 end
 
 function EntropyJumpPenaltyFaceIntegral(mesh::AbstractMesh{Tmsh}, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres, Tmsh}
-  kernel = IdentityKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode)
+  kernel = IdentityKernel{Tsol, Tres, Tmsh}()
   return EntropyJumpPenaltyFaceIntegral{Tsol, Tres, Tmsh}(kernel)
 end
 

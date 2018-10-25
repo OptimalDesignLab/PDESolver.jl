@@ -144,11 +144,12 @@ Reverse mode of `calcFaceFlux`.
 """
 
 function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
- sbp::AbstractSBP,
- eqn::EulerData{Tsol, Tres, Tdim, :conservative},
- functor_bar::FluxType_revm,
- interfaces::AbstractArray{Interface,1},
- flux_face_bar::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres, Tdim}
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+                           functor_bar::FluxType_revm,
+                           interfaces::AbstractArray{Interface,1},
+                           flux_face_bar::AbstractArray{Tres, 3}
+                           ) where {Tmsh,  Tsol, Tres, Tdim}
 
   fill!(mesh.nrm_face_bar, 0.0)  # should this be zeroed out here?
   nfaces = length(interfaces)

@@ -13,7 +13,7 @@ function test_reversemode()
   mesh, sbp, eqn, opts = solvePDE(fname)
   Tmsh, Tsol, Tres = EulerEquationMod.getTypeParameters(mesh, eqn)
 
-
+#=
   @testset "--- Testing Pressure derivative in reverse mode in 2D ---" begin
 
     press_bar = complex(rand(Float64),0)
@@ -40,7 +40,7 @@ function test_reversemode()
     end   # End for i = 1:mesh.numEl
 
   end # testset("--- Testing Pressure derivative in reverse mode in 2D---")
-
+=#
   @testset "--- Testing Euler Flux derivative in Reverse mode ---" begin
 
     Tdim = mesh.dim
@@ -1010,7 +1010,7 @@ function test_reversemode()
     end
 
   end # End testset("--- Testing evalrevm_transposeproduct ---")
-
+#=
   fname = "input_vals_3d_reversemode.jl"
   solvePDE(fname)
   EulerEquationMod.dataPrep(mesh, sbp, eqn, opts)
@@ -1041,7 +1041,7 @@ function test_reversemode()
     end   # End for i = 1:mesh.numEl
 
   end # testset("--- Testing Pressure derivative in reverse mode ---")
-
+=#
   return nothing
 end # End function test_reversemode
 

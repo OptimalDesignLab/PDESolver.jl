@@ -54,7 +54,7 @@ function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
   pert = Complex128(0, h)
   for i=1:length(eqn.q)
     eqn.q[i] += pert
-    J_i = evalFunctional(mesh, sbp, eqn, opts, functionalData)
+    J_i = calcFunctional(mesh, sbp, eqn, opts, functionalData)
     func_deriv_arr[i] = imag(J_i)/h
     eqn.q[i] -= pert
   end
@@ -104,6 +104,8 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
       end
     end
   end
+
+  #TODO: allreduce on val???
 
   return val
 end
