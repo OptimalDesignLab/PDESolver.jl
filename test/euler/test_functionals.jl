@@ -143,4 +143,4 @@ end
   
 
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])

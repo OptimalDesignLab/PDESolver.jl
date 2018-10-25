@@ -741,6 +741,7 @@ function (obj::noPenetrationBC)(params::ParamType3,
   calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 #  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
 
+println("bndryflux = ", bndryflux)
   return nothing
 end
 
@@ -1201,7 +1202,7 @@ function (obj::FreeStreamBC_revm)(params::ParamType,
   calcFreeStream(params, coords, qg)
 
   # Reverse sweep
-  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
 
   return nothing
 end
@@ -1316,7 +1317,7 @@ function (obj::ExpBC_revm)(params::ParamType,
   # Reverse Sweep
 
   # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
-  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
 
   return nothing
 end

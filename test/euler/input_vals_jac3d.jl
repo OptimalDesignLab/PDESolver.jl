@@ -30,4 +30,5 @@ arg_dict = Dict{String, Any}(
 "p_free" => 2.0, #2.0,
 "T_free" => 50.0, #50,
 "calc_jac_explicit" => false,
+"force_mesh_complex" => true,
 )

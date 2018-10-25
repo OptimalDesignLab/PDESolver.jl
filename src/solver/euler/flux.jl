@@ -873,10 +873,10 @@ end
 
 function (obj::RoeFlux_revm)(params::ParamType,
               uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
-              nrm::AbstractVector{Tmsh},
-              flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1}) where {Tsol, Tres, Tmsh}
+              nrm::AbstractVector{Tmsh}, nrm_bar::AbstractArray{Tmsh, 1},
+              flux_bar::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
 
-  RoeSolver_revm(params, uL, uR, aux_vars, nrm, flux_bar, nrm_bar)
+  RoeSolver_revm(params, uL, uR, aux_vars, nrm, nrm_bar, flux_bar)
 
   return nothing
 end

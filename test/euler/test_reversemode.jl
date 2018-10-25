@@ -41,6 +41,7 @@ function test_reversemode()
 
   end # testset("--- Testing Pressure derivative in reverse mode in 2D---")
 =#
+#=
   @testset "--- Testing Euler Flux derivative in Reverse mode ---" begin
 
     Tdim = mesh.dim
@@ -84,7 +85,8 @@ function test_reversemode()
       end   # End for i = 1:mesh.numEl
 
     end # End  testset("Checking reversemode derivative w.r.t mesh metrics")
-
+=#
+#=
     @testset "Checking reverse mode derivative w.r.t solution q" begin
 
       # Create a random vector
@@ -128,7 +130,8 @@ function test_reversemode()
     end # End  testset("Cehcking reverse mode derivative w.r.t solution q") do
 
   end # End testset("--- Testing Euler Flux computation in Reverse mode ---")
-
+=#
+#=
   @testset "--- Testing Boundary Functional In Reverse Mode ---" begin
 
     # Create functional object
@@ -186,7 +189,8 @@ function test_reversemode()
         end # End for j = 1:mesh.sbpface.numnodes
       end   # End for i = 1:nfaces
     end # End  testset("Checking Boundary Functional Integrand w.r.t nrm")
-
+=#
+#=
     @testset "Checking Complete boundary functional lift in reverse" begin
 
       fill!(mesh.nrm_bndry_bar, 0.0)
@@ -229,7 +233,8 @@ function test_reversemode()
 
 
     end # End  testset("Checking Complete boundary functional lift in reverse")
-
+=#
+#=
     @testset "Checking Complete boundary functional drag in reverse" begin
       fill!(mesh.nrm_bndry_bar, 0.0)
       EulerEquationMod.evalFunctional_revm(mesh, sbp, eqn, opts, drag, "drag")
@@ -273,8 +278,8 @@ function test_reversemode()
     end # End  testset("Checking Complete boundary functional drag in reverse")
 
   end # End testset("--- Testing Boundary Functional In Reverse Mode ---")
-
-
+=#
+#=
   @testset "--- Testing SAT terms in Reverse Mode ---" begin
 
     q = Complex128[2.0043681897362733,0.040161434857338515,-1.3465473815098652,2.241635694978014]
@@ -350,7 +355,8 @@ function test_reversemode()
     end
 
   end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
-
+=#
+#=
   @testset "--- Testing reverse mode for BC functors ---" begin
 
     # Populate eqn.bndryflux_bar
@@ -475,7 +481,7 @@ function test_reversemode()
     end # End  testset("Checking reverse mode for ExpBC")
 
   end # Endtestset("--- Testing reverse mode for BC functors ---")
-
+=#
   @testset "--- Testing reverse mode for face fluxes w.r.t mesh metrics ---" begin
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     fill!(mesh.nrm_face_bar, 0.0)
@@ -487,6 +493,10 @@ function test_reversemode()
     EulerEquationMod.calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func_bar,
                                        mesh.interfaces, eqn.flux_face_bar)
 
+    h = 1e-20
+    pert = Complex128(0, h)
+    nrm_dot = rand(size(mesh.nrm_face))
+    mesh.nrm_face .+= nrm_dot
     # Check against complex step
     pert = complex(0, 1e-20) # Complex step perturbation
     tmpflux = zeros(Complex128, 4)
@@ -653,7 +663,7 @@ function test_reversemode()
     end
 
   end # End testset("--- Testing evalrevm_transposeproduct ---")
-
+#=
   @testset "--- Testing 3D Euler Flux derivative in Reverse mode ---" begin
 
     Tdim = mesh.dim
@@ -741,6 +751,8 @@ function test_reversemode()
     end # End  testset("Checking reverse mode derivative w.r.t solution q") do
 
   end # End testset("--- Testing Euler Flux computation in Reverse mode ---")
+=#
+
 
   @testset "--- Testing Roe Solver in Reverse Mode ---" begin
 
@@ -786,7 +798,7 @@ function test_reversemode()
     end
 
   end # End facts ("--- Testing Roe Solver in Reverse Mode ---")
-
+#=
   @testset "--- Testing reverse mode for BC functors ---" begin
 
     # Populate eqn.bndryflux_bar
@@ -843,7 +855,7 @@ function test_reversemode()
     end # End  testset("Checking noPenetrationBC_revm")
 
   end # Endtestset("--- Testing reverse mode for BC functors ---")
-
+=#
   @testset "--- Testing reverse mode for face fluxes w.r.t mesh metrics ---" begin
     EulerEquationMod.init_revm(mesh, sbp, eqn, opts)
     for i = 1:length(eqn.flux_face_bar)

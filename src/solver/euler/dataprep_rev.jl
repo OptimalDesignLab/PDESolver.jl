@@ -171,7 +171,7 @@ function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
       #functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
 
       flux_j_bar = sview(flux_face_bar, :, j, i)
-      functor_bar(eqn.params, qL, qR, aux_vars, nrm, flux_j_bar, nrm_bar)
+      functor_bar(eqn.params, qL, qR, aux_vars, nrm, nrm_bar, flux_j_bar)
     end
   end
 

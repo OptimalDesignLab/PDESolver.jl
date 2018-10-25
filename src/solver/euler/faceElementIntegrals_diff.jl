@@ -155,7 +155,7 @@ end
 # calcEntropyPenaltyIntegral
 
 function calcEntropyPenaltyIntegral_diff(
-             params::ParamType{Tdim, :conservative, Tsol, Tres, Tmsh},
+             params::ParamType{Tdim, :conservative},
              sbpface::DenseFace, iface::Interface,
              kernel::AbstractEntropyKernel,
              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 

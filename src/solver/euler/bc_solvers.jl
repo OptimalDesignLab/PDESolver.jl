@@ -131,8 +131,9 @@ function RoeSolver_revm(params::ParamType{2},
                    qg::AbstractArray{Tsol, 1},
                    aux_vars::AbstractArray{Tres, 1},
                    nrm::AbstractArray{Tmsh,1},
+                   nrm_bar::AbstractArray{Tmsh, 1},
                    flux_bar::AbstractArray{Tres, 1},
-                   nrm_bar::AbstractArray{Tmsh, 1}) where {Tmsh, Tsol, Tres}
+                   ) where {Tmsh, Tsol, Tres}
 
   data = params.roefluxdata
   @unpack data dq sat roe_vars euler_flux v_vals nrm2 euler_flux_bar sat_bar
@@ -287,8 +288,9 @@ function RoeSolver_revm(params::ParamType{3},
       q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1},
       aux_vars::AbstractArray{Tres, 1},
       nrm::AbstractArray{Tmsh,1},
+      nrm_bar::AbstractArray{Tmsh, 1},
       flux_bar::AbstractArray{Tres, 1},
-      nrm_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol, Tres}
+      ) where {Tmsh, Tsol, Tres}
 
   @unpack params.calcsatdata E1dq E2dq
 
