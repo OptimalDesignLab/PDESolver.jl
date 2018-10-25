@@ -584,7 +584,7 @@ function calcBoundaryFunctionalIntegrand_revm(params::ParamType{2},
 
   # Reverse diff calcEulerFlux
   calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, nrm_bar)
-  calcEulerFlux_revq(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar)
+  calcEulerFlux_revq(params, qg, qg_bar, aux_vars, nrm, euler_flux_bar)
   ny_bar = zero(Tsol)               # Initialize
   nx_bar = zero(Tsol)               #
   normal_momentum_bar = zero(Tsol)  #
@@ -658,7 +658,7 @@ function calcBoundaryFunctionalIntegrand_revm(params::ParamType{3},
 
   # Reverse diff calcEulerFlux
   calcEulerFlux_revm(params, qg, aux_vars, nrm, euler_flux_bar, nrm_bar)
-  calcEulerFlux_revq(params, qg, aux_vars, nrm, euler_flux_bar, qg_bar)
+  calcEulerFlux_revq(params, qg, qg_bar, aux_vars, nrm, euler_flux_bar)
   nz_bar = zero(Tsol)               #
   ny_bar = zero(Tsol)               # Initialize
   nx_bar = zero(Tsol)               #

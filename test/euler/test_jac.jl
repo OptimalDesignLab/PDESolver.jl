@@ -560,14 +560,14 @@ function test_eulerflux_revq(params::AbstractParamType{Tdim}) where Tdim
   q .-= pert*q_dot
 
 
-  EulerEquationMod.calcEulerFlux_revq(params, q, aux_vars, nrm, F_bar, q_bar)
+  EulerEquationMod.calcEulerFlux_revq(params, q, q_bar, aux_vars, nrm, F_bar)
   val2 = sum(q_bar .* q_dot)
 
   @test abs(val - val2) < 1e-13
 
 
   q_bar_orig = copy(q_bar)
-  EulerEquationMod.calcEulerFlux_revq(params, q, aux_vars, nrm, F_bar, q_bar)
+  EulerEquationMod.calcEulerFlux_revq(params, q, q_bar, aux_vars, nrm, F_bar)
   @test maximum(abs.(2*q_bar_orig - q_bar)) < 1e-13
 
   return nothing
