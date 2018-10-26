@@ -34,7 +34,7 @@ function getEulerFlux_revm(mesh::AbstractMesh{Tmsh},
         flux_bar = sview(eqn.flux_parametric_bar, :, j, i, k)
 
         # this will dispatch to the proper calcEulerFlux
-        calcEulerFlux_revm(eqn.params, q_vals, aux_vars, nrm, flux_bar, nrm_bar)
+        calcEulerFlux_revm(eqn.params, q_vals, aux_vars, nrm, nrm_bar, flux_bar)
 
         for p=1:Tdim
           # nrm[p] = mesh.dxidx[k, p, j, i]

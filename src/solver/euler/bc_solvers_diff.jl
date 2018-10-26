@@ -286,7 +286,7 @@ function RoeSolver_revm(params::ParamType{2},
 
   # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
   nrm2_bar = zeros(Tmsh, 2)
-  calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, nrm2_bar, euler_flux_bar)
 
   # nrm2[2] = ny
   ny_bar = nrm2_bar[2]
@@ -2584,8 +2584,8 @@ function RoeSolver_revm(params::ParamType{3},
   end
 
   # calcEulerFlux(q, nrm, euler_flux)
-  # calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, euler_flux_bar, nrm2_bar)
-  calcEulerFlux_revm(params, q, aux_vars, nrm, euler_flux_bar, nrm_bar)
+  # calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, nrm2_bar, euler_flux_bar)
+  calcEulerFlux_revm(params, q, aux_vars, nrm, nrm_bar, euler_flux_bar)
 
   #-- get E3*dq
   E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4

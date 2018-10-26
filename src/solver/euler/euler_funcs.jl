@@ -545,8 +545,9 @@ flux direction.
 function calcEulerFlux_revm(params::ParamType{2, :conservative},
           q::AbstractArray{Tsol,1}, aux_vars,
           dir::AbstractArray{Tmsh,1},
+          dir_bar::AbstractArray{Tmsh,1},
           F_bar::AbstractArray{Tres,1},
-          dir_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol, Tres}
+          ) where {Tmsh, Tsol, Tres}
 
   # Compute the reverse mode
   # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
@@ -575,8 +576,9 @@ end
 function calcEulerFlux_revm(params::ParamType{3, :conservative},
             q::AbstractArray{Tsol,1}, aux_vars,
             dir::AbstractArray{Tmsh,1},
-            F_bar::AbstractArray{Tres,1},
-            dir_bar::AbstractArray{Tmsh,1}) where {Tmsh,Tsol,Tres}
+            dir_bar::AbstractArray{Tmsh,1},
+            F_bar::AbstractArray{Tres,1}
+            ) where {Tmsh,Tsol,Tres}
 
   # press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
   press = calcPressure(params, q)

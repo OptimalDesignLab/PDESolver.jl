@@ -600,7 +600,7 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
   end
 
 #  nrm2_bar = zeros(Tmsh, 2)
-  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, euler_flux_bar, nrm_bar)
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, nrm_bar, euler_flux_bar)
   calcSAT_revm(params, nrm, dq, [u,v], H, sat_bar, nrm_bar)
 #  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
 
@@ -870,7 +870,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   # Reverse sweep
 #  nrm2_bar = zeros(Tmsh, 2)
   qg_bar = zeros(Tsol, 4)
-  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, bndryflux_bar, nrm_bar)
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, nrm_bar, bndryflux_bar)
   calcEulerFlux_revq(params, v_vals, qg_bar, aux_vars, nrm, bndryflux_bar)
 
   # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
@@ -952,7 +952,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType3,
   # Reverse Sweep
   nrm2_bar = zeros(Tmsh, 3)
   v_vals_bar = zeros(Tsol, 5)
-  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux_bar, nrm2_bar)
+  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2, nz2], nrm2_bar, bndryflux_bar)
   calcEulerFlux_revq(params, v_vals, v_vals_bar, aux_vars, [nx2, ny2, nz2], bndryflux_bar)
 
   nz2_bar = nrm2_bar[3]

@@ -516,7 +516,7 @@ function test_eulerflux_revm(params::AbstractParamType{Tdim}) where Tdim
   nrm .-= pert*nrm_dot
 
   EulerEquationMod.calcEulerFlux_revm(params, q, aux_vars,
-                                      nrm, F_bar, nrm_bar)
+                                      nrm, nrm_bar, F_bar)
 
   val2 = sum(nrm_bar.*nrm_dot)
   @test abs(val - val2) < 1e-13
@@ -524,7 +524,7 @@ function test_eulerflux_revm(params::AbstractParamType{Tdim}) where Tdim
   # test accumulation behavior
   nrm_bar_orig = copy(nrm_bar)
   EulerEquationMod.calcEulerFlux_revm(params, q, aux_vars,
-                                      nrm, F_bar, nrm_bar)
+                                      nrm, nrm_bar, F_bar)
   @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-13
 
 
