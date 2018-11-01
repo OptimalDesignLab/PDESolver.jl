@@ -210,6 +210,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
      @test isapprox( A04_code[i], A03[i]) atol=1e-10
    end
 
+   test_IRA0inv(eqn.params, q)
 
       # test A1
     A1 = zeros(4,4)
@@ -263,6 +264,43 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
   return nothing
 end  # end function
+
+function test_IRA0inv(params, q)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # test calcIRA0inv
+  q3 = zeros(Complex128, length(q))
+  copy!(q3, real(q))
+  
+  numDofPerNode = length(q)
+
+  qe = zeros(q3)
+  A0inv = zeros(Complex128, numDofPerNode, numDofPerNode)
+  A0invc = zeros(Complex128, numDofPerNode, numDofPerNode)
+
+  for i=1:numDofPerNode
+    q3[i] += pert
+    EulerEquationMod.convertToIR_(params, q3, qe)
+    q3[i] -= pert
+    A0invc[:, i] = imag(qe)/h
+  end
+
+  EulerEquationMod.getIRA0inv(params, q3, A0inv)
+
+  @test maximum(abs.(A0inv - A0invc)) < 1e-12
+
+  # test against the inverse of A0
+  A0 = zeros(A0inv)
+  EulerEquationMod.getIRA0(params, q3, A0)
+  A0inv2 = inv(A0)
+  @assert maximum(abs.(A0inv - A0inv2)) < 1e-9
+
+  return nothing
+end
+
+
 
 #test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST])

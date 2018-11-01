@@ -34,7 +34,7 @@ function getEulerFlux_revm(mesh::AbstractMesh{Tmsh},
         flux_bar = sview(eqn.flux_parametric_bar, :, j, i, k)
 
         # this will dispatch to the proper calcEulerFlux
-        calcEulerFlux_revm(eqn.params, q_vals, aux_vars, nrm, flux_bar, nrm_bar)
+        calcEulerFlux_revm(eqn.params, q_vals, aux_vars, nrm, nrm_bar, flux_bar)
 
         for p=1:Tdim
           # nrm[p] = mesh.dxidx[k, p, j, i]
@@ -144,11 +144,12 @@ Reverse mode of `calcFaceFlux`.
 """
 
 function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
- sbp::AbstractSBP,
- eqn::EulerData{Tsol, Tres, Tdim, :conservative},
- functor_bar::FluxType_revm,
- interfaces::AbstractArray{Interface,1},
- flux_face_bar::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres, Tdim}
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+                           functor_bar::FluxType_revm,
+                           interfaces::AbstractArray{Interface,1},
+                           flux_face_bar::AbstractArray{Tres, 3}
+                           ) where {Tmsh,  Tsol, Tres, Tdim}
 
   fill!(mesh.nrm_face_bar, 0.0)  # should this be zeroed out here?
   nfaces = length(interfaces)
@@ -170,7 +171,7 @@ function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
       #functor(eqn.params, qL, qR, aux_vars, dxidx, nrm, flux_j)
 
       flux_j_bar = sview(flux_face_bar, :, j, i)
-      functor_bar(eqn.params, qL, qR, aux_vars, nrm, flux_j_bar, nrm_bar)
+      functor_bar(eqn.params, qL, qR, aux_vars, nrm, nrm_bar, flux_j_bar)
     end
   end
 

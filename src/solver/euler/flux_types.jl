@@ -18,6 +18,11 @@ struct RoeFluxData{Tsol, Tres, Tmsh}
   euler_flux_bar::Vector{Tres}
   sat_bar::Vector{Tres}
 
+  # revq
+  v_vals_bar::Vector{Tres}
+  dq_bar::Vector{Tres}
+  roe_vars_bar::Vector{Tres}
+
   # diff
   roe_vars_dot::Vector{Tres}
 
@@ -35,14 +40,20 @@ struct RoeFluxData{Tsol, Tres, Tmsh}
     euler_flux_bar = zeros(Tres, numDofPerNode)
     sat_bar = zeros(Tres, numDofPerNode)
 
+    # revq
+    v_vals_bar = zeros(Tres, numDofPerNode)
+    dq_bar = zeros(Tres, numDofPerNode)
+    roe_vars_bar = zeros(Tres, 4)
+
     # diff
     roe_vars_dot = zeros(Tres, 22)  # 22 needed in 3D
 
     obj = new(dq, sat, roe_vars, euler_flux, v_vals, nrm2,
               euler_flux_bar, sat_bar,
+              v_vals_bar, dq_bar, roe_vars_bar,
               roe_vars_dot)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -60,6 +71,12 @@ struct CalcSatData{Tres}
 
   # no arrays are used for the diff version
 
+  # revq
+  E1dq_bar::Vector{Tres}
+  E2dq_bar::Vector{Tres}
+  E3dq_bar::Vector{Tres}
+  E4dq_bar::Vector{Tres}
+
   function CalcSatData{Tres}(numDofPerNode::Integer) where {Tres}
 
     E1dq = zeros(Tres, numDofPerNode)
@@ -67,10 +84,18 @@ struct CalcSatData{Tres}
     E3dq = zeros(Tres, numDofPerNode)
     E4dq = zeros(Tres, numDofPerNode)
 
+    # revq
+    E1dq_bar = zeros(Tres, numDofPerNode)
+    E2dq_bar = zeros(Tres, numDofPerNode)
+    E3dq_bar = zeros(Tres, numDofPerNode)
+    E4dq_bar = zeros(Tres, numDofPerNode)
 
-    obj = new(E1dq, E2dq, E3dq, E4dq)
 
-    assertArraysUnique(obj)
+
+    obj = new(E1dq, E2dq, E3dq, E4dq,
+              E1dq_bar, E2dq_bar, E3dq_bar, E4dq_bar)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -105,7 +130,7 @@ struct LFFluxData{Tres}
 
     obj = new(fluxL, fluxR, F_dotL, F_dotR, lambda_dotL, lambda_dotR)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
     
     return obj
   end
@@ -239,7 +264,7 @@ struct IRFluxData{Tsol}
                p1_hat_dotL, p1_hat_dotR, h_hat_dotL,h_hat_dotR,
                logdata)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -247,26 +272,41 @@ end
 
 
 """
-  Temporary arrays for [`getEntropyLFStab`](@ref)
+  Temporary arrays for [`applyEntropyKernel_diagE`](@ref)
 """
-struct GetEntropyLFStabData{Tsol}
+struct ApplyEntropyKernel_diagEData{Tsol, Tres}
   q_avg::Vector{Tsol}
   
-  # for getEntropyLFStab_inner
+  # diff method
+  q_avg_dot::Matrix{Tres}
+  F::Vector{Tres}
+  F_dot::Matrix{Tres}
+
+  # for applyEntropyKernel_inner
   vL::Vector{Tsol}
   vR::Vector{Tsol}
-  A0::Matrix{Tsol}
+  F_tmp::Vector{Tres}
 
-  function GetEntropyLFStabData{Tsol}(numDofPerNode::Integer) where {Tsol}
+  # diff method
+  delta_w_dot::Matrix{Tsol}
+
+  function ApplyEntropyKernel_diagEData{Tsol, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tres}
 
     q_avg = zeros(Tsol, numDofPerNode)
     vL = zeros(Tsol, numDofPerNode)
     vR = zeros(Tsol, numDofPerNode)
-    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+    F_tmp = zeros(Tres, numDofPerNode)
 
-    obj = new(q_avg, vL, vR, A0)
+    # diff  method
+    q_avg_dot = zeros(Tsol, numDofPerNode, nd)
+    F = zeros(Tres, numDofPerNode)
+    F_dot = zeros(Tres, numDofPerNode, nd)
 
-    assertArraysUnique(obj)
+    delta_w_dot = zeros(Tsol, numDofPerNode, nd)
+
+    obj = new(q_avg, q_avg_dot, F, F_dot, vL, vR, F_tmp, delta_w_dot)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
     return obj
   end
 end
@@ -283,7 +323,7 @@ struct GetLambdaMaxSimpleData{Tsol}
 
     obj = new(q_avg)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -319,7 +359,7 @@ struct CalcVorticityData{Tsol, Tres, Tmsh}
 
     obj = new(dxidx_element, velocities, velocity_deriv, velocity_deriv_xy)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -370,7 +410,7 @@ struct GetTauData{Tsol, Tres}
     obj = new(AjAk, flux_term, A0inv, tmp_mat,
               B_d, B_p, A_mat_hat, A0, tmp_mat2)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -393,14 +433,26 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
   # for SparseFace method
   flux_tmp::Vector{Tres}
 
+  # diff method
+  fL_dotD::Array{Tres, 3}
+  fR_dotD::Array{Tres, 3}
+  fL_dot::Array{Tres, 2}
+  fR_dot::Array{Tres, 2}
+
   function CalcECFaceIntegralData{Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tres, Tmsh}
     fluxD = zeros(Tres, numDofPerNode, dim)
     nrmD = zeros(Tmsh, dim, dim)
     flux_tmp = zeros(Tres, numDofPerNode)
 
-    obj = new(fluxD, nrmD, flux_tmp)
+    fL_dotD = zeros(Tres, numDofPerNode, numDofPerNode, dim)
+    fR_dotD = zeros(Tres, numDofPerNode, numDofPerNode, dim)
 
-    assertArraysUnique(obj)
+    fL_dot = zeros(Tres, numDofPerNode, numDofPerNode)
+    fR_dot = zeros(Tres, numDofPerNode, numDofPerNode)
+
+    obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -422,8 +474,29 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
   q_avg::Vector{Tsol}
   res_vals::Vector{Tres}
 
+  #------------------
+  # diff method
+  q_avg_dot::Matrix{Tsol}
+  delta_w_dot::Matrix{Tsol}
+  flux_dot_i::Matrix{Tres}  # used to compute the flux
+
+  # arrays in the format required by SBP
+  flux_dotL::Array{Tres, 3}
+  flux_dotR::Array{Tres, 3}
+
+  jacLL_tmp::Array{Tres, 4}
+  jacLR_tmp::Array{Tres, 4}
+  jacRL_tmp::Array{Tres, 4}
+  jacRR_tmp::Array{Tres, 4}
+
+  A0invL::Matrix{Tsol}
+  A0invR::Matrix{Tsol}
+
+
   function CalcEntropyPenaltyIntegralData{Tsol, Tres}(numDofPerNode::Integer,
-                                    stencilsize::Integer) where {Tsol, Tres}
+                              numNodesPerFace::Integer,
+                              stencilsize::Integer, numNodesPerElement::Integer,
+                              nd::Integer) where {Tsol, Tres}
 
     wL = zeros(Tsol, numDofPerNode, stencilsize)
     wR = zeros(Tsol, numDofPerNode, stencilsize)
@@ -438,9 +511,31 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
     q_avg = zeros(Tsol, numDofPerNode)
     res_vals = zeros(Tres, numDofPerNode)
 
-    obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg, res_vals)
 
-    assertArraysUnique(obj)
+    # diff method
+    q_avg_dot = zeros(Tsol, numDofPerNode, nd)
+    delta_w_dot = zeros(Tsol, numDofPerNode, nd)
+    flux_dot_i = zeros(Tres, numDofPerNode, nd)
+
+    # arrays needed by SBP function
+    flux_dotL = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerFace)
+    flux_dotR = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerFace)
+
+    jacLL_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    jacLR_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    jacRL_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    jacRR_tmp = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+
+    A0invL = zeros(Tsol, numDofPerNode, numDofPerNode)
+    A0invR = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+
+    obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg,
+              res_vals,
+             q_avg_dot, delta_w_dot, flux_dot_i, flux_dotL, flux_dotR,
+             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -462,7 +557,7 @@ struct InterpolateElementStaggeredData{Tsol}
 
     obj = new(wvars_s, wvars_f)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -483,6 +578,7 @@ struct CalcEulerFluxData{Tsol}
     return obj
   end
 end
+
 
 """
   Temporary storage for all BC functors.  This one is a bit odd, because
@@ -514,9 +610,100 @@ struct BCData{Tsol, Tres}
 
     obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
+  end
+end
+
+
+#------------------------------------------------------------------------------
+# entropy kernel functions for entropy-stable scheme
+
+struct LW2Kernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
+  nrm::Array{Tmsh, 1}
+  P::Array{Tmsh, 2}
+  Y::Array{Tsol, 2}  # eigenvectors
+  Lambda::Array{Tsol, 1}  # eigenvalues
+  S2::Array{Tsol, 1}  # scaling for the eigensystem
+  q_tmp::Array{Tsol, 1}
+  tmp1::Array{Tres, 1}
+  tmp2::Array{Tres, 1}
+
+  function LW2Kernel{Tsol, Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tsol, Tres, Tmsh}
+    nrm = zeros(Tmsh, dim)
+    P = zeros(Tmsh, numDofPerNode, numDofPerNode)
+    Y = zeros(Tsol, numDofPerNode, numDofPerNode)
+    Lambda = zeros(Tsol, numDofPerNode)
+    S2 = zeros(Tsol, numDofPerNode)
+    q_tmp = zeros(Tsol, numDofPerNode)
+    tmp1 = zeros(Tres, numDofPerNode)
+    tmp2 = zeros(Tres, numDofPerNode)
+
+    obj =  new(nrm, P, Y, Lambda, S2, q_tmp, tmp1, tmp2)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
+
+    return obj
+  end
+end
+
+"""
+  Data for Lax-Friedrich entropy dissipation
+"""
+mutable struct LFKernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
+  A0::Array{Tsol, 2}
+
+  # diff method
+  A0_dot::Array{Tsol, 3}
+  t1::Array{Tsol, 1}
+  t1_dot::Array{Tsol, 2}
+  lambda_max_dot::Array{Tres, 1}
+
+  # revm method
+  t1_bar::Array{Tres, 1}
+  A0_bar::Array{Tres, 2}
+
+  function LFKernel{Tsol, Tres, Tmsh}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tres, Tmsh}
+
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+    # diff method
+    A0_dot = zeros(Tsol, numDofPerNode, numDofPerNode, nd)
+    t1 = zeros(Tsol, numDofPerNode)
+    t1_dot = zeros(Tsol, numDofPerNode, nd)
+    lambda_max_dot = zeros(Tres, numDofPerNode)
+
+    # revq method
+    t1_bar = zeros(Tres, numDofPerNode)
+    A0_bar = zeros(Tres, numDofPerNode, numDofPerNode)
+   
+
+    obj = new(A0, A0_dot, t1, t1_dot, lambda_max_dot, t1_bar, A0_bar)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
+
+    return obj
+  end
+end
+
+
+mutable struct IdentityKernel{Tsol, Tres, Tmsh} <: AbstractEntropyKernel
+
+  function IdentityKernel{Tsol, Tres, Tmsh}() where {Tsol, Tres, Tmsh}
+
+    return new()
+  end
+end
+
+struct GetIRA0Data{Tsol}
+  p_dot::Array{Tsol, 1}
+
+  function GetIRA0Data{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    p_dot = zeros(Tsol, numDofPerNode)
+
+    return new(p_dot)
   end
 end
 
@@ -548,7 +735,7 @@ struct FaceElementIntegralData{Tsol, Tres}
 
     obj = new(resL_s, resR_s, resL_f, resR_f, qvars_f)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -592,7 +779,7 @@ struct CalcFaceIntegralsData{Tsol, Tres}
 
     obj = new(q_faceL, q_faceR, flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end
@@ -650,7 +837,7 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     obj = new(flux_jac, res_jac, nrm,
               nrmD, F_d, S, Sx, res_s, res_f)
 
-    assertArraysUnique(obj)
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
 
     return obj
   end

@@ -41,7 +41,7 @@ export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
 export fastzero!, fastscale!, removeComplex
 export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
-       assertArraysUnique
+       assertArraysUnique, assertFieldsConcrete
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
@@ -1056,6 +1056,25 @@ function assertArraysUnique(obj::T) where {T}
         end
       end
     end
+  end
+
+  return nothing
+end
+
+"""
+  Asserts that all fields of the given object have declared field types that
+  are concrete.  Note that this only considers the types of the field as
+  written in the type declaration, not the runtime type of the fields.
+
+  **Inputs**
+
+   * obj: an object
+"""
+function assertFieldsConcrete(obj::T) where {T}
+
+  for i=1:nfields(T)
+    type_i = fieldtype(T, i)
+    @assert isleaftype(type_i)
   end
 
   return nothing

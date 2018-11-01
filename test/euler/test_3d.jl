@@ -472,13 +472,16 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
       @test isapprox( A04_code[i], A03[i]) atol=1e-10
     end
 
+    test_IRA0inv(eqn.params, q3)
+
+
   end  # end facts block
 
   return nothing
 end  # end function
 
 #test_3d_matrices(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST])
+add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST, TAG_ENTROPYVARS])
 
 """
   Test Roe solver in 3D

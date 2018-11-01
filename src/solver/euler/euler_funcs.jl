@@ -298,7 +298,6 @@ function calcVolumeIntegralsSplitFormCurvilinear(
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType) where {Tmsh, Tsol, Tres, Tdim}
 
-#  println("----- entered calcVolumeIntegralsSplitForm -----")
   dxidx = mesh.dxidx
   res = eqn.res
   q = eqn.q
@@ -546,8 +545,9 @@ flux direction.
 function calcEulerFlux_revm(params::ParamType{2, :conservative},
           q::AbstractArray{Tsol,1}, aux_vars,
           dir::AbstractArray{Tmsh,1},
+          dir_bar::AbstractArray{Tmsh,1},
           F_bar::AbstractArray{Tres,1},
-          dir_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol, Tres}
+          ) where {Tmsh, Tsol, Tres}
 
   # Compute the reverse mode
   # Differentiate euler flux product with F_bar in reverse mode w.r.t dir to get
@@ -576,8 +576,9 @@ end
 function calcEulerFlux_revm(params::ParamType{3, :conservative},
             q::AbstractArray{Tsol,1}, aux_vars,
             dir::AbstractArray{Tmsh,1},
-            F_bar::AbstractArray{Tres,1},
-            dir_bar::AbstractArray{Tmsh,1}) where {Tmsh,Tsol,Tres}
+            dir_bar::AbstractArray{Tmsh,1},
+            F_bar::AbstractArray{Tres,1}
+            ) where {Tmsh,Tsol,Tres}
 
   # press = gami*(q[4] - 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1])
   press = calcPressure(params, q)
@@ -612,9 +613,9 @@ Compute the derivative of the Euler flux in reverse mode w.r.t q
 """->
 
 function calcEulerFlux_revq(params::ParamType{2, :conservative},
-          q::AbstractArray{Tsol,1}, aux_vars,
+          q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1}, aux_vars,
           dir::AbstractArray{Tmsh,1}, F_bar::AbstractArray{Tres,1},
-          q_bar::AbstractArray{Tsol,1}) where {Tmsh, Tsol, Tres}
+          ) where {Tmsh, Tsol, Tres}
 
   press = calcPressure(params, q)
   U = (q[2]*dir[1] + q[3]*dir[2])/q[1]
@@ -646,16 +647,16 @@ function calcEulerFlux_revq(params::ParamType{2, :conservative},
   q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2])/(q[1]*q[1])
 
   # Reverse diff press = calcPressure(params, q)
-  calcPressure_revq(params, q, press_bar, q_bar)
+  calcPressure_revq(params, q, q_bar, press_bar)
 
   return nothing
 end
 
 function calcEulerFlux_revq(params::ParamType{3, :conservative},
-                q::AbstractArray{Tsol,1}, aux_vars,
-                dir::AbstractArray{Tmsh,1},
-                F_bar::AbstractArray{Tsol,1},
-                q_bar::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1}, aux_vars,
+              dir::AbstractArray{Tmsh,1},
+              F_bar::AbstractArray{Tsol,1},
+              ) where {Tmsh, Tsol}
 
   #  Forward Sweep
   press = calcPressure(params, q)
@@ -692,7 +693,7 @@ function calcEulerFlux_revq(params::ParamType{3, :conservative},
   q_bar[4] += U_bar*dir[3]/q[1]
   q_bar[1] -= U_bar*(q[2]*dir[1] + q[3]*dir[2] + q[4]*dir[3])/(q[1]*q[1])
 
-  calcPressure_revq(params, q, press_bar, q_bar)
+  calcPressure_revq(params, q, q_bar, press_bar)
 
   return nothing
 end
@@ -884,49 +885,6 @@ function calcPressure(params::ParamType{2, :entropy},
   s = gamma - q[1] + k1    # entropy
   rho_int = exp(-s/gamma_1)*(gamma_1/((-q[4])^gamma))^(1/gamma_1)
   return gamma_1*rho_int
-end
-
-@doc """
-###EulerEquationMod.calcPressure_revq
-
-Compute the gradient of pressure w.r.t q in the reverse mode
-
-**Arguments**
-
-* `params` : Parameter object
-* `q` : Forward sweep solution variable
-* `press_bar` : Reverse pressure gradient
-* `q_bar` : Reverse mode solution gradient
-`
-"""->
-
-function calcPressure_revq(params::ParamType{2, :conservative},
-                     q::AbstractArray{Tsol,1}, press_bar,
-                     q_bar) where Tsol
-
-  gamma_1 = params.gamma_1
-  q1_inv = 1.0/q[1]
-  q_bar[4] += press_bar*gamma_1
-  q_bar[3] -= gamma_1*press_bar*q[3]*q1_inv
-  q_bar[2] -= gamma_1*press_bar*q[2]*q1_inv
-  q_bar[1] += 0.5*gamma_1*press_bar*(q[2]*q[2] + q[3]*q[3])*q1_inv*q1_inv
-
-  return nothing
-end
-
-function calcPressure_revq(params::ParamType{3, :conservative},
-                     q::AbstractArray{Tsol,1}, press_bar,
-                     q_bar) where Tsol
-
-  gamma_1 = params.gamma_1
-  q1_inv = 1.0/q[1]
-  q_bar[5] += press_bar*gamma_1
-  q_bar[4] -= press_bar*gamma_1*q1_inv*q[4]
-  q_bar[3] -= press_bar*gamma_1*q1_inv*q[3]
-  q_bar[2] -= press_bar*gamma_1*q1_inv*q[2]
-  q_bar[1] += press_bar*gamma_1*0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])*q1_inv*q1_inv
-
-  return nothing
 end
 
 

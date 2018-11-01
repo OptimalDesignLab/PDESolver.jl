@@ -51,6 +51,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
+  numDofPerNode::Int
+  numNodesPerElement::Int
+  numNodesPerFace::Int
   #TODO: consider making these vectors views of a matrix, to guarantee
   #      spatial locality
 
@@ -65,7 +68,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
   irfluxdata::IRFluxData{Tsol}
-  get_entropy_lf_stab_data::GetEntropyLFStabData{Tsol}
+  apply_entropy_kernel_diagE_data::ApplyEntropyKernel_diagEData{Tsol, Tres}
   get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
   get_lambda_max_data::GetLambdaMaxData{Tsol}
   calc_vorticity_data::CalcVorticityData{Tsol, Tres, Tmsh}
@@ -84,6 +87,12 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
 
 
+  # entropy kernels
+  entropy_lf_kernel::LFKernel{Tsol, Tres, Tmsh}
+  entropy_lw2_kernel::LW2Kernel{Tsol, Tres, Tmsh}
+  entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
+
+  get_ira0data::GetIRA0Data{Tsol}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -158,9 +167,11 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     if opts["use_staggered_grid"]
       numNodesPerElement = mesh.mesh2.numNodesPerElement
       stencilsize = size(mesh.mesh2.sbpface.perm, 1)
+      numNodesPerFace = mesh.mesh2.numNodesPerFace
     else
       numNodesPerElement = mesh.numNodesPerElement
       stencilsize = size(mesh.sbpface.perm, 1)
+      numNodesPerFace = mesh.numNodesPerFace
     end
 
     t = 0.0
@@ -173,13 +184,14 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     end
 
 
+    nd = 2*mesh.numDofPerNode
     eulerfluxdata = CalcEulerFluxData{Tsol}(mesh.numDofPerNode)
     bcdata = BCData{Tsol, Tres}(mesh.numDofPerNode)
     roefluxdata = RoeFluxData{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
-    get_entropy_lf_stab_data = GetEntropyLFStabData{Tsol}(mesh.numDofPerNode)
+    apply_entropy_kernel_diagE_data = ApplyEntropyKernel_diagEData{Tsol, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
     get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
     get_lambda_max_data = GetLambdaMaxData{Tsol}(mesh.numDofPerNode)
 
@@ -188,7 +200,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     get_tau_data = GetTauData{Tsol, Tres}(mesh.numDofPerNode, mesh.dim)
 
     calc_ec_face_integral_data = CalcECFaceIntegralData{Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
-    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, stencilsize)
+    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, numNodesPerFace, stencilsize, numNodesPerElement, 2*mesh.numDofPerNode)
     interpolate_element_staggered_data = InterpolateElementStaggeredData{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement, numNodesPerElement)
 
     calc_volume_integrals_data = CalcVolumeIntegralsData{Tres, Tmsh}(
@@ -200,6 +212,12 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
                                mesh.numDofPerNode, mesh.numNodesPerFace,
                                mesh.numNodesPerElement)
+    entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, nd)
+    entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
+    get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
+
+
     h = maximum(mesh.jac)
 
     gamma = opts["gamma"]
@@ -274,11 +292,12 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
     time = Timings()
 
-    return new(f, t, order,
+    return new(f, t, order, mesh.numDofPerNode, mesh.numNodesPerElement,
+               mesh.numNodesPerFace,
                # flux functions
                eulerfluxdata, bcdata,
                roefluxdata, calcsatdata, lffluxdata, irfluxdata,
-               get_entropy_lf_stab_data, get_lambda_max_simple_data,
+               apply_entropy_kernel_diagE_data, get_lambda_max_simple_data,
                get_lambda_max_data,
                calc_vorticity_data, contract_res_entropy_vars_data,
                get_tau_data,
@@ -288,6 +307,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # entire mesh functions
                calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
+               entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
+               get_ira0data,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
@@ -450,6 +471,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
+  volume_flux_func_diff::FluxType_diff
   viscous_flux_func::FluxType  # functor for the viscous flux numerical flux function
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use

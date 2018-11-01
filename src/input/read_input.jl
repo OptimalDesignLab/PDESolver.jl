@@ -179,7 +179,7 @@ end
 
 # volume integral options
 get!(arg_dict, "volume_integral_type", 1)
-get!(arg_dict, "Volume_flux_name", "StandardFlux")
+get!(arg_dict, "Volume_flux_name", "ErrorFlux")
 get!(arg_dict, "Viscous_flux_name", "ErrorFlux")
 get!(arg_dict, "face_integral_type", 1)
 get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
@@ -689,6 +689,24 @@ end
   if arg_dict["isViscous"] && commsize > 1
     error("Viscous terms not working in parallel.")
   end
+
+  # error if diagonalE and type 2 face integral
+  if arg_dict["face_integral_type"] == 2 &&
+    contains(arg_dict["operator_type"], "Diagonal") &&
+    arg_dict["operator_type2"] == "SBPNone"
+
+    error("type 2 face integral not supported for Diagonal E operators, use type 1 face integral with appropriate flux function instead")
+  end
+
+  if arg_dict["face_integral_type"] == 2 &&
+    contains(arg_dict["operator_type"], "Diagonal") &&
+    arg_dict["operator_type2"] != "SBPNone"
+
+    error("type 2 face integral not supported for Diagonal E operators on flux grid, use type 1 face integral with appropriate flux function instead")
+  end
+    
+
+
 
   checkBCOptions(arg_dict)
   checkPhysicsSpecificOptions(arg_dict)

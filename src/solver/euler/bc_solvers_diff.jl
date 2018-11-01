@@ -203,6 +203,874 @@ function RoeSolver_diff(params::ParamType{2, :conservative},
 
 end # ends the function RoeSolver
 
+
+function RoeSolver_revq(params::ParamType{2, :conservative},
+                   q::AbstractArray{Tsol,1},
+                   q_bar::AbstractArray{Tsol, 1},
+                   qg::AbstractArray{Tsol, 1},
+                   qg_bar::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh,1},
+                   flux_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+  # SAT terms are used for ensuring consistency with the physical problem. Its
+  # similar to upwinding which adds dissipation to the problem. SATs on the
+  # boundary can be thought of as having two overlapping nodes and because of
+  # the discontinuous nature of SBP adds some dissipation.
+
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2
+
+  # Declaring constants
+  d1_0 = 1.0
+  d0_0 = 0.0
+  d0_5 = 0.5
+  tau = 1.0
+  gamma = params.gamma
+  gami = params.gamma_1
+  sat_fac = 1  # multiplier for SAT term
+
+  # Begin main execution
+  nx = nrm[1]
+  ny = nrm[2]
+
+  # Compute the Roe Averaged states
+  # The left state of Roe are the actual solution variables
+  fac = d1_0/q[1]
+  uL = q[2]*fac; vL = q[3]*fac;
+  phi = d0_5*(uL*uL + vL*vL)
+  HL = gamma*q[4]*fac - gami*phi # Total enthalpy, H = e + 0.5*(u^2 + v^2) + p/rho,
+                                 # where e is the internal energy per unit mass
+
+  # The right side of the Roe solver comprises the boundary conditions
+  fac = d1_0/qg[1]
+  uR = qg[2]*fac; vR = qg[3]*fac;
+  phi = d0_5*(uR*uR + vR*vR)
+  HR = gamma*qg[4]*fac - gami*phi # Total Enthalpy
+
+  # Averaged states
+  sqL = sqrt(q[1])
+  sqR = sqrt(qg[1])
+  fac = d1_0/(sqL + sqR)
+  u = (sqL*uL + sqR*uR)*fac
+  v = (sqL*vL + sqR*vR)*fac
+  H = (sqL*HL + sqR*HR)*fac
+
+  for i=1:length(dq)
+    dq[i] = q[i] - qg[i]
+  end
+
+  roe_vars[1] = u
+  roe_vars[2] = v
+  roe_vars[3] = H
+#  calcSAT(params, roe_vars, dq, nrm, sat)
+
+  # calculate Euler flux in wall normal directiona
+  # because edge numbering is rather arbitary, any memory access is likely to
+  # be a cache miss, so we recalculate the Euler flux
+#  nrm2[1] = nx   # why are we assigning to nrm2?
+#  nrm2[2] = ny
+
+#  convertFromNaturalToWorkingVars(params, q, v_vals)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+
+#  for i=1:4  # ArrayViews does not support flux[:] = .
+#    flux[i] = (sat_fac*sat[i] + euler_flux[i])
+#  end
+
+  #----------------------------------------------------------------------------
+  # reverse sweep
+
+  numDofPerNode = length(dq)
+  @unpack data sat_bar v_vals_bar roe_vars_bar dq_bar
+
+  fill!(sat_bar, 0); fill!(roe_vars_bar, 0); fill!(dq_bar, 0)
+  fill!(v_vals_bar, 0)
+  for i=1:4
+    sat_bar[i] = sat_fac*flux_bar[i]
+  end
+  euler_flux_bar = flux_bar
+
+  calcEulerFlux_revq(params, v_vals, v_vals_bar, aux_vars, nrm, euler_flux_bar)
+
+  #TODO: this is where convertFromNatualToWorkingVars_rev should be
+  for i=1:numDofPerNode
+    q_bar[i] += v_vals_bar[i]
+  end
+
+  calcSAT_revq(params, roe_vars, roe_vars_bar, dq, dq_bar, nrm, sat_bar)
+
+  for i=1:length(dq)
+    q_bar[i]  += dq_bar[i]
+    qg_bar[i] -= dq_bar[i]
+  end
+
+  u_bar = roe_vars_bar[1]
+  v_bar = roe_vars_bar[2]
+  H_bar = roe_vars_bar[3]
+
+  # averaged states
+  sqL_bar = HL*fac*H_bar; sqR_bar = HR*fac*H_bar
+  HL_bar  = sqL*fac*H_bar; HR_bar = sqR*fac*H_bar
+  fac_bar = H_bar*(sqL*HL + sqR*HR)
+
+  sqL_bar += vL*fac*v_bar; sqR_bar += vR*fac*v_bar
+  vL_bar   = sqL*fac*v_bar; vR_bar  = sqR*fac*v_bar
+  fac_bar += (sqL*vL + sqR*vR)*v_bar
+
+  sqL_bar += uL*fac*u_bar; sqR_bar += uR*fac*u_bar
+  uL_bar   = sqL*fac*u_bar; uR_bar  = sqR*fac*u_bar
+  fac_bar += (sqL*uL + sqR*uR)*u_bar
+
+  sqL_bar += -fac*fac*fac_bar; sqR_bar += -fac*fac*fac_bar
+  q_bar[1] += 0.5/sqL*sqL_bar; qg_bar[1] += 0.5/sqR*sqR_bar
+
+  # right state
+  fac = d1_0/qg[1]
+  fac_bar = zero(fac_bar)  # this is a different variable in single assignment
+  qg_bar[4] += gamma*fac*HR_bar
+  fac_bar += gamma*qg[4]*HR_bar
+  phi_bar = -gami*HR_bar
+
+  uR_bar += uR*phi_bar
+  vR_bar += vR*phi_bar
+
+  qg_bar[2] += fac*uR_bar; qg_bar[3] += fac*vR_bar
+  fac_bar += qg[2]*uR_bar; fac_bar += qg[3]*vR_bar
+
+  qg_bar[1] += -fac*fac*fac_bar
+
+  # left state
+  fac = d1_0/q[1]
+  fac_bar = zero(fac_bar); phi_bar = zero(phi_bar)
+  q_bar[4] += gamma*fac*HL_bar
+  fac_bar += gamma*q[4]*HL_bar
+  phi_bar += -gami*HL_bar
+
+  uL_bar += uL*phi_bar
+  vL_bar += vL*phi_bar
+
+  q_bar[2] += fac*uL_bar; q_bar[3] += fac*vL_bar
+  fac_bar += q[2]*uL_bar; fac_bar += q[3]*vL_bar
+  q_bar[1] += -fac*fac*fac_bar
+
+
+  return nothing
+end
+
+
+
+
+
+@doc """
+###EulerEquationMod.RoeSolver_revm
+
+Reverse mode of `EulerEquationMod.RoeSolver`. This function computes the
+reverse mode of the Roe flux w.r.t the mesh metrics
+
+**Inputs**
+
+* `params` : Parameter object
+* `q`  : Conservative variable of the fluid
+* `qg` : Conservative variable of the boundary or the adjacent element
+* `aux_vars` : Auxiliary variables
+* `nrm` : Element face normal vector in the physical space
+* `flux_bar` : Flux value which needs to get differentiated
+
+**Output**
+
+* `nrm_bar` : derivaitve of the flux_bar w.r.t the mesh metrics
+
+Aliasing Restrictions: Same as the forward function
+
+"""->
+
+function RoeSolver_revm(params::ParamType{2},
+                   q::AbstractArray{Tsol,1},
+                   qg::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh,1},
+                   nrm_bar::AbstractArray{Tmsh, 1},
+                   flux_bar::AbstractArray{Tres, 1},
+                   ) where {Tmsh, Tsol, Tres}
+
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2 euler_flux_bar sat_bar
+
+  # Forward sweep
+  tau = 1.0
+  gamma = params.gamma
+  gami = params.gamma_1
+  sat_fac = 1  # multiplier for SAT term
+
+  # Begin main execution
+  nx = nrm[1]
+  ny = nrm[2]
+
+  # Compute the Roe Averaged states
+  fac = 1.0/q[1]
+  uL = q[2]*fac; vL = q[3]*fac;
+  phi = 0.5*(uL*uL + vL*vL)
+  HL = gamma*q[4]*fac - gami*phi
+  fac = 1.0/qg[1]
+  uR = qg[2]*fac
+  vR = qg[3]*fac
+  phi = 0.5*(uR*uR + vR*vR)
+  HR = gamma*qg[4]*fac - gami*phi # Total Enthalpy
+  sqL = sqrt(q[1])
+  sqR = sqrt(qg[1])
+  fac = 1.0/(sqL + sqR)
+  u = (sqL*uL + sqR*uR)*fac
+  v = (sqL*vL + sqR*vR)*fac
+  H = (sqL*HL + sqR*HR)*fac
+  for i=1:length(dq)
+    dq[i] = q[i] - qg[i]
+  end
+
+  nrm2[1] = nx
+  nrm2[2] = ny
+  convertFromNaturalToWorkingVars(params, q, v_vals)
+
+  # Reverse Sweep
+  # for i=1:4  # ArrayViews does not support flux[:] = .
+  #   flux[i] = (sat_fac*sat[i] + euler_flux[i])
+  # end
+  fill!(euler_flux_bar, 0.0)
+  fill!(sat_bar, 0.0)
+  for i = 4:-1:1
+    euler_flux_bar[i] += flux_bar[i]
+    sat_bar[i] += sat_fac*flux_bar[i]
+  end
+
+  # calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+  nrm2_bar = zeros(Tmsh, 2)
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, nrm2_bar, euler_flux_bar)
+
+  # nrm2[2] = ny
+  ny_bar = nrm2_bar[2]
+  # nrm2[1] = nx
+  nx_bar = nrm2_bar[1]
+
+  #  calcSAT(params, nrm, dq, sat, [u, v], H)
+  calcSAT_revm(params, nrm, dq, [u, v], H, sat_bar, nrm_bar)
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+
+  return nothing
+end
+
+
+@doc """
+###EulerEquationMod.calcSAT_revm
+
+Reverse mode of calcSAT
+
+**Inputs**
+* `params` : Parameter object of type ParamType
+* `nrm` : Normal to face in the physical space
+* `dq`  : Boundary condition penalty variable
+* `vel` : Velocities along X & Y directions in the physical space
+* `H`   : Total enthalpy
+* `sat_bar` : Inpute seed for sat flux whose derivative needs to be computed
+
+**Output**
+
+* `nrm_bar` : derivative of `sat_bar` w.r.t physical normal vector
+
+"""->
+function calcSAT_revm(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
+          dq::AbstractArray{Tsol,1}, vel::AbstractArray{Tsol, 1},
+          H::Tsol, sat_bar::AbstractArray{Tsol, 1},
+          nrm_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
+
+  data = params.calcsatdata
+  @unpack data E1dq E2dq E3dq E4dq
+
+  # Forward Sweep
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  u = vel[1]
+  v = vel[2]
+  gami = params.gamma_1
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+  dA = sqrt(nx*nx + ny*ny)
+  Un = u*nx + v*ny # Normal Velocity
+  phi = 0.5*(u*u + v*v)
+  a = sqrt(gami*(H - phi)) # speed of sound
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+  rhoA = absvalue(Un) + dA*a
+
+  lambda1 = 0.5*(max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = 0.5*(max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+
+  dq1 = dq[1]
+  dq2 = dq[2]
+  dq3 = dq[3]
+  dq4 = dq[4]
+
+  sat = zeros(Tsol, 4)
+  sat[1] = lambda3*dq1
+  sat[2] = lambda3*dq2
+  sat[3] = lambda3*dq3
+  sat[4] = lambda3*dq4
+
+  #-- get E1*dq
+  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*H
+
+  #-- get E2*dq
+  E2dq[1] = 0.0
+  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = 1.0/(dA*dA)
+
+  #-- get E3*dq
+  E3dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
+  E3dq[2] = E3dq[1]*u
+  E3dq[3] = E3dq[1]*v
+  E3dq[4] = E3dq[1]*H
+
+  #-- get E4*dq
+  E4dq[1] = 0.0
+  E4dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E4dq[3] = E4dq[2]*ny
+  E4dq[4] = E4dq[2]*Un
+  E4dq[2] = E4dq[2]*nx
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
+
+  # Reverse sweep
+  @unpack data E3dq_bar E4dq_bar
+  fill!(E3dq_bar, 0); fill!(E4dq_bar, 0)
+#  E3dq_bar = zeros(Tsol, 4)
+#  E4dq_bar = zeros(Tsol, 4)
+  tmp1_bar = zero(Tsol)
+  for i = 1:length(sat_bar)
+    E3dq_bar[i] += sat_bar[i]*tmp1
+    E4dq_bar[i] = sat_bar[i]*tmp1*gami
+    tmp1_bar += sat_bar[i]*(E3dq[i] + gami*E4dq[i])
+  end
+
+  # tmp1 = 0.5*(lambda1 - lambda2)/(dA*a)
+  lambda1_bar = (0.5/(dA*a))*tmp1_bar
+  lambda2_bar = -(0.5/(dA*a))*tmp1_bar
+  dA_bar = -(0.5*(lambda1 - lambda2)/(dA*dA*a))*tmp1_bar
+
+
+  #  E4dq[2] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  #  E4dq[3] = E4dq[2]*ny
+  #  E4dq[4] = E4dq[2]*Un
+  #  E4dq[2] = E4dq[2]*nx
+  nx_bar = E4dq_bar[2]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
+  Un_bar = E4dq_bar[4]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
+  ny_bar = E4dq_bar[3]*(phi*dq1 - u*dq2 - v*dq3 + dq4)
+
+  # E3dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
+  # E3dq[2] = E3dq[1]*u
+  # E3dq[3] = E3dq[1]*v
+  # E3dq[4] = E3dq[1]*H
+  E3dq_bar[1] += E3dq_bar[4]*H + E3dq_bar[3]*v + E3dq_bar[2]*u
+  Un_bar += -E3dq_bar[1]*dq1
+  nx_bar += E3dq_bar[1]*dq2
+  ny_bar += E3dq_bar[1]*dq3
+
+  #  for i=1:length(sat)
+  #    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+  #  end
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3 # For E1dq & E2dq matrices
+  tmp1_bar = zero(Tsol) # Reset tmp1_bar to 0 since the variable is being reused
+  E1dq_bar = zeros(Tsol, 4)
+  E2dq_bar = zeros(Tsol, 4)
+  tmp3_bar = zero(Tsol)
+  for i = 1:length(sat_bar)
+    E1dq_bar[i] += sat_bar[i]*tmp1*tmp2
+    E2dq_bar[i] += sat_bar[i]*tmp1*tmp3
+    tmp1_bar += sat_bar[i]*(tmp2*E1dq[i] + tmp3*E2dq[i])
+    tmp3_bar += sat_bar[i]*tmp1*E2dq[i]
+  end
+
+  # tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  # tmp2 = gami/(a*a)
+  # tmp3 = 1.0/(dA*dA)
+  dA_bar += -2*tmp3_bar/(dA^3)
+  lambda1_bar += tmp1_bar*0.5
+  lambda2_bar += tmp1_bar*0.5
+  lambda3_bar = -tmp1_bar
+
+  #  E2dq[1] = 0.0
+  #  intvar = -Un*dq1 + nx*dq2 + ny*dq3
+  #  E2dq[2] = intvar*nx
+  #  E2dq[3] = intvar*ny
+  #  E2dq[4] = intvar*Un
+  intvar = -Un*dq1 + nx*dq2 + ny*dq3
+  Un_bar += E2dq_bar[4]*intvar
+  ny_bar += E2dq_bar[3]*intvar
+  nx_bar += E2dq_bar[2]*intvar
+  intvar_bar = E2dq_bar[4]*Un + E2dq_bar[3]*ny + E2dq_bar[2]*nx
+  Un_bar -= intvar_bar*dq1
+  nx_bar += intvar_bar*dq2
+  ny_bar += intvar_bar*dq3
+
+  # None of the following need to be differentiated as they dont depen on nrm
+  # E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
+  # E1dq[2] = E1dq[1]*u
+  # E1dq[3] = E1dq[1]*v
+  # E1dq[4] = E1dq[1]*H
+
+  # sat[1] = lambda3*dq1
+  # sat[2] = lambda3*dq2
+  # sat[3] = lambda3*dq3
+  # sat[4] = lambda3*dq4
+  lambda3_bar += dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
+
+  rhoA_bar = zero(Tsol)
+  # lambda3 = 0.5*(max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+  # Breaking the above down. lambda3 on RHS = Un
+  # intVar1 = = absvalue(Un)
+  # intVar2 = sat_Vl*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda3 = 0.5*(intVar3 - Un)
+  intVar3_bar = 0.5*lambda3_bar
+  Un_bar -= 0.5*lambda3_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un), sat_Vl*rhoA, intVar3_bar)
+  rhoA_bar += sat_Vl*intVar2_bar
+  Un_bar += intVar1_bar*absvalue_deriv(Un)
+
+  L2 = Un - dA*a
+  # lambda2 = 0.5*(max(absvalue(L2),sat_Vn *rhoA) - L2)
+  # intVar1 = absvalue(L2)
+  # intVar2 = sat_Vn*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda2 = 0.5*(intVar3 - L2)
+  intVar3_bar = 0.5*lambda2_bar
+  L2_bar = -0.5*lambda2_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(L2), sat_Vn*rhoA, intVar3_bar)
+  rhoA_bar += sat_Vn*intVar2_bar
+  L2_bar += intVar1_bar*absvalue_deriv(L2)
+
+  L1 = Un + dA*a
+  # lambda1 = 0.5*(max(absvalue(L1),sat_Vn *rhoA) - L1)
+  # intVar1 = absvalue(L1)
+  # intVar2 = sat_Vn*rhoA
+  # intVar3 = max(intVar1, intVar2)
+  # lambda1 = 0.5*(intVar3 - L1)
+  intVar3_bar = 0.5*lambda1_bar
+  L1_bar = -0.5*lambda1_bar
+  intVar1_bar, intVar2_bar = max_deriv_rev(absvalue(Un + dA*a), sat_Vn*rhoA, intVar3_bar)
+  rhoA_bar += intVar2_bar*sat_Vn
+  L1_bar += intVar1_bar*absvalue_deriv(L1)
+
+  # rhoA = absvalue(Un) + dA*a
+  dA_bar += rhoA_bar*a
+  if real(Un) >= 0.0
+    Un_bar += rhoA_bar
+  else
+    Un_bar -= rhoA_bar
+  end
+
+  # lambda1 = Un + dA*a
+  # lambda2 = Un - dA*a
+  # lambda3 = Un
+  Un_bar += L1_bar + L2_bar #  + lambda3_bar
+  dA_bar += a*L1_bar - a*L2_bar
+
+  # nx = nrm[1]
+  # ny = nrm[2]
+  # dA = sqrt(nx*nx + ny*ny)
+  # Un = u*nx + v*ny
+  nx_bar += u*Un_bar
+  ny_bar += v*Un_bar
+  nx_bar += nx*dA_bar/dA
+  ny_bar += ny*dA_bar/dA
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+
+  return nothing
+end
+
+
+"""
+  Reverse mode wrt. q of [`calcSAT`](@ref)
+
+  **Inputs**
+
+   * params
+   * roe_vars
+   * dq
+   * nrm
+   * sat_bar
+
+  **Inputs/Outputs**
+
+   * roe_vars_bar
+   *  dq_bar
+"""
+function calcSAT_revq(params::ParamType{2},
+                 roe_vars::AbstractArray{Tsol, 1},
+                 roe_vars_bar::AbstractArray{Tres, 1},
+                 dq::AbstractArray{Tsol,1},
+                 dq_bar::AbstractArray{Tres, 1},
+                 nrm::AbstractArray{Tmsh,1},
+                 sat_bar::AbstractArray{Tsol,1}) where {Tmsh, Tsol, Tres}
+# roe_vars = [u, v, H] at Roe average 
+
+  data = params.calcsatdata
+  @unpack data E1dq E2dq E3dq E4dq
+
+  numDofPerNode = length(dq)
+
+  # SAT parameters
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  tau = 1.0
+
+  u = roe_vars[1]
+  v = roe_vars[2]
+  H = roe_vars[3]
+
+  gami = params.gamma_1
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+
+  dA = sqrt(nx*nx + ny*ny)
+
+  Un = u*nx + v*ny # Normal Velocity
+
+  phi = 0.5*(u*u + v*v)
+
+  a = sqrt(gami*(H - phi)) # speed of sound
+
+
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+
+  rhoA = absvalue(Un) + dA*a
+
+  # Compute Eigen Values of the Flux Jacobian
+  # The eigen values calculated above cannot be used directly. Near stagnation
+  # points lambda3 approaches zero while near sonic lines lambda1 and lambda2
+  # approach zero. This has a possibility of creating numerical difficulties.
+  # As a result, the eigen values are limited by the following expressions.
+
+  lambda1_orig = lambda1  # save these for reverse sweep
+  lambda2_orig = lambda2
+  lambda3_orig = lambda3
+
+  lambda1 = 0.5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = 0.5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = 0.5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+
+
+  dq1 = dq[1]
+  dq2 = dq[2]
+  dq3 = dq[3]
+  dq4 = dq[4]
+
+  
+  #=
+  sat[1] = lambda3*dq1
+  sat[2] = lambda3*dq2
+  sat[3] = lambda3*dq3
+  sat[4] = lambda3*dq4
+  =#
+
+  #-- get E1*dq
+  t1 = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E1dq[1] = t1
+  E1dq[2] = t1*u
+  E1dq[3] = t1*v
+  E1dq[4] = t1*H
+
+
+  #-- get E2*dq
+  t2 = -Un*dq1 + nx*dq2 + ny*dq3
+  E2dq[1] = 0.0
+  E2dq[2] = t2*nx
+  E2dq[3] = t2*ny
+  E2dq[4] = t2*Un
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = 1.0/(dA*dA)
+
+#  for i=1:length(sat)
+#    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+#  end
+
+  #-- get E3*dq
+  t3 = -Un*dq1 + nx*dq2 + ny*dq3
+
+  E3dq[1] = t3
+  E3dq[2] = t3*u
+  E3dq[3] = t3*v
+  E3dq[4] = t3*H
+
+  #-- get E4*dq
+  t4 = phi*dq1 - u*dq2 - v*dq3 + dq4
+  E4dq[1] = 0.0
+  E4dq[2] = t4*nx
+  E4dq[3] = t4*ny
+  E4dq[4] = t4*Un
+
+  #-- add to sat
+  tmp4 = 0.5*(lambda1 - lambda2)/(dA*a)
+#  for i=1:length(sat)
+#    sat[i] = sat[i] + tmp4*(E3dq[i] + gami*E4dq[i])
+#  end
+
+  #----------------------------------------------------------------------------
+  # reverse sweep
+  @unpack data E1dq_bar E2dq_bar E3dq_bar E4dq_bar
+  t1_bar = zero(Tres)
+  t2_bar = zero(Tres)
+  t3_bar = zero(Tres)
+  t4_bar = zero(Tres)
+  tmp1_bar = zero(Tres)
+  tmp2_bar = zero(Tres)
+  tmp3_bar = zero(Tres)
+  tmp4_bar = zero(Tres)
+  Un_bar = zero(Tres)
+  phi_bar = zero(Tres)
+  dq1_bar = zero(Tres)
+  dq2_bar = zero(Tres)
+  dq3_bar = zero(Tres)
+  dq4_bar = zero(Tres)
+  lambda1_bar = zero(Tres)
+  lambda2_bar = zero(Tres)
+  lambda3_bar = zero(Tres)
+  rhoA_bar = zero(Tres)
+  a_bar = zero(Tres)
+  u_bar = zero(Tres)
+  v_bar = zero(Tres)
+  H_bar = zero(Tres)
+
+  fill!(E1dq_bar, 0)
+  fill!(E2dq_bar, 0)
+  fill!(E3dq_bar, 0)
+  fill!(E4dq_bar, 0)
+
+  tmp_bar = zero(Tres)
+
+  for i=1:length(sat_bar)
+    tmp4_bar += (E3dq[i] + gami*E4dq[i])*sat_bar[i]
+    E3dq_bar[i] += tmp4*sat_bar[i]
+    E4dq_bar[i] += tmp4*gami*sat_bar[i]
+  end
+
+  lambda1_bar +=  0.5*tmp4_bar/(dA*a)
+  lambda2_bar += -0.5*tmp4_bar/(dA*a)
+  a_bar       += -tmp4*tmp4_bar/a
+
+
+  # E4*dq
+  
+  t4_bar += E4dq_bar[4]*Un
+  Un_bar += t4*E4dq_bar[4]
+
+  t4_bar += E4dq_bar[3]*ny
+
+  t4_bar += E4dq_bar[2]*nx
+
+  phi_bar +=  dq1*t4_bar
+  dq1_bar +=  phi*t4_bar
+  u_bar   += -dq2*t4_bar
+  dq2_bar += -u*t4_bar
+  v_bar   += -dq3*t4_bar
+  dq3_bar += -v*t4_bar
+  dq4_bar +=  t4_bar
+
+
+  # E3*dq
+  t3_bar += E3dq_bar[4]*H
+  H_bar  += t3*E3dq_bar[4]
+
+  t3_bar += E3dq_bar[3]*v
+  v_bar  += E3dq_bar[3]*t3
+
+  t3_bar += E3dq_bar[2]*u
+  u_bar  += E3dq_bar[2]*t3
+  
+  t3_bar += E3dq_bar[1]
+
+  Un_bar  += -dq1*t3_bar
+  dq1_bar += -Un*t3_bar
+  dq2_bar +=  nx*t3_bar
+  dq3_bar +=  ny*t3_bar
+
+
+
+  for i=1:length(sat_bar)
+    tmp1_bar    += sat_bar[i]*(tmp2*E1dq[i] + tmp3*E2dq[i])
+    tmp2_bar    += tmp1*E1dq[i]*sat_bar[i]
+    E1dq_bar[i] += tmp1*tmp2*sat_bar[i]
+#    tmp3_bar    += tmp1*E2dq[i]*sat_bar[i]
+    E2dq_bar[i] += tmp1*tmp3*sat_bar[i]
+  end
+
+  a_bar += (-2*tmp2/a)*tmp2_bar
+  lambda1_bar += 0.5*tmp1_bar
+  lambda2_bar += 0.5*tmp1_bar
+  lambda3_bar += -tmp1_bar
+
+
+  # E2*dq
+
+  t2_bar += Un*E2dq_bar[4]
+  Un_bar += t2*E2dq_bar[4]
+
+  t2_bar += ny*E2dq_bar[3]
+
+  t2_bar += nx*E2dq_bar[2]
+
+  Un_bar  += -dq1*t2_bar
+  dq1_bar += -Un*t2_bar
+  dq2_bar +=  nx*t2_bar
+  dq3_bar +=  ny*t2_bar
+
+
+
+  # E1*dq
+  t1_bar += E1dq_bar[4]*H
+  H_bar  += E1dq_bar[4]*t1
+
+  t1_bar += E1dq_bar[3]*v
+  v_bar  += E1dq_bar[3]*t1
+
+  t1_bar += E1dq_bar[2]*u
+  u_bar  += E1dq_bar[2]*t1
+
+  t1_bar += E1dq_bar[1]
+
+  phi_bar +=  dq1*t1_bar
+  dq1_bar +=  phi*t1_bar
+  u_bar   += -dq2*t1_bar
+  dq2_bar += -u*t1_bar
+  v_bar   += -dq3*t1_bar
+  dq3_bar += -v*t1_bar
+  dq4_bar +=  t1_bar
+
+
+
+  # sat diagonal term
+  lambda3_bar += dq1*sat_bar[1]
+  dq1_bar     += lambda3*sat_bar[1]
+
+  lambda3_bar += dq2*sat_bar[2]
+  dq2_bar     += lambda3*sat_bar[2]
+
+  lambda3_bar += dq3*sat_bar[3]
+  dq3_bar     += lambda3*sat_bar[3]
+
+  lambda3_bar += dq4*sat_bar[4]
+  dq4_bar     += lambda3*sat_bar[4]
+
+
+
+  # re-pack dq
+  dq_bar[1] += dq1_bar
+  dq_bar[2] += dq2_bar
+  dq_bar[3] += dq3_bar
+  dq_bar[4] += dq4_bar
+
+
+  # restore lambdas to original values from forward sweep
+  # lambda_bar variables will be overwritten below
+  lambda1 = lambda1_orig
+  lambda2 = lambda2_orig
+  lambda3 = lambda3_orig
+
+  # entropy fix
+  alambda1 = absvalue(lambda1)
+  alambda2 = absvalue(lambda2)
+  alambda3 = absvalue(lambda3)
+  # compute the alambda_bar variables inside the conditionals because they
+  # are not always needed
+
+  if alambda1 > sat_Vn*rhoA
+    # overwrite lambda here because in the primal code it gets re-assigned
+    alambda1_bar = lambda1 > 0 ? lambda1_bar : -lambda1_bar
+    lambda1_bar  = 0.5*(tau*alambda1_bar - lambda1_bar)
+  else
+    rhoA_bar    += 0.5*tau*sat_Vn*lambda1_bar
+    lambda1_bar = -0.5*lambda1_bar
+  end
+
+  if alambda2 > sat_Vn*rhoA
+    alambda2_bar = lambda2 > 0 ? lambda2_bar : -lambda2_bar
+    lambda2_bar  = 0.5*(tau*alambda2_bar - lambda2_bar)
+  else
+    rhoA_bar    += 0.5*tau*sat_Vn*lambda2_bar
+    lambda2_bar = -0.5*lambda2_bar
+  end
+
+  if alambda3 > sat_Vl*rhoA
+    alambda3_bar = lambda3 > 0 ? lambda3_bar : -lambda3_bar
+    lambda3_bar  = 0.5*tau*(alambda3_bar - lambda3_bar)
+  else
+    rhoA_bar    += 0.5*tau*sat_Vl*lambda3_bar
+    lambda3_bar = -0.5*lambda3_bar
+  end
+
+  # rhoA
+  if Un > 0
+    Un_bar += rhoA_bar
+  else
+    Un_bar += -rhoA_bar
+  end
+  a_bar += dA*rhoA_bar
+
+
+  # lambda calculation
+  Un_bar += lambda1_bar
+  a_bar  += dA*lambda1_bar
+
+  Un_bar += lambda2_bar
+  a_bar  += -dA*lambda2_bar
+
+  Un_bar += lambda3_bar
+
+  # a calculation
+  H_bar   += (0.5/a)*gami*a_bar
+  phi_bar += -(0.5/a)*gami*a_bar
+
+  # phi
+  u_bar += u*phi_bar
+  v_bar += v*phi_bar
+
+  # Un
+  u_bar += nx*Un_bar
+  v_bar += ny*Un_bar
+
+  roe_vars_bar[1] += u_bar
+  roe_vars_bar[2] += v_bar
+  roe_vars_bar[3] += H_bar
+  
+
+  return nothing
+end  # End function calcSAT
+
+
+
+
 function RoeSolver_diff(params::ParamType{3, :conservative},
                    q::AbstractArray{Tsol,1},
                    qg::AbstractArray{Tsol, 1},
@@ -2166,6 +3034,828 @@ end  # End function calcSAT
 
 
 """
+  Reverse mode wrt q and qg of [`RoeSolver`](@ref)
+"""
+function RoeSolver_revq(params::ParamType{3, :conservative},
+                   q::AbstractArray{Tsol,1},
+                   q_bar::AbstractArray{Tsol, 1},
+                   qg::AbstractArray{Tsol, 1},
+                   qg_bar::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh,1},
+                   flux_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+  # SAT terms are used for ensuring consistency with the physical problem. Its
+  # similar to upwinding which adds dissipation to the problem. SATs on the
+  # boundary can be thought of as having two overlapping nodes and because of
+  # the discontinuous nature of SBP adds some dissipation.
+
+  data = params.roefluxdata
+  @unpack data dq sat roe_vars euler_flux v_vals nrm2
+
+  # Declaring constants
+  d1_0 = 1.0
+  d0_0 = 0.0
+  d0_5 = 0.5
+  tau = 1.0
+  gamma = params.gamma
+  gami = params.gamma_1
+  sat_fac = 1  # multiplier for SAT term
+
+  # Begin main execution
+  nx = nrm[1]
+  ny = nrm[2]
+
+  # Compute the Roe Averaged states
+  # The left state of Roe are the actual solution variables
+  fac = d1_0/q[1]
+  uL = q[2]*fac; vL = q[3]*fac; wL = q[4]*fac
+  phi = d0_5*(uL*uL + vL*vL + wL*wL)
+  HL = gamma*q[5]*fac - gami*phi # Total enthalpy, H = e + 0.5*(u^2 + v^2) + p/rho,
+                                 # where e is the internal energy per unit mass
+
+  # The right side of the Roe solver comprises the boundary conditions
+  fac = d1_0/qg[1]
+  uR = qg[2]*fac; vR = qg[3]*fac; wR = qg[4]*fac
+  phi = d0_5*(uR*uR + vR*vR + wR*wR)
+  HR = gamma*qg[5]*fac - gami*phi # Total Enthalpy
+
+  # Averaged states
+  sqL = sqrt(q[1])
+  sqR = sqrt(qg[1])
+  fac = d1_0/(sqL + sqR)
+  u = (sqL*uL + sqR*uR)*fac
+  v = (sqL*vL + sqR*vR)*fac
+  w = (sqL*wL + sqR*wR)*fac
+  H = (sqL*HL + sqR*HR)*fac
+
+  for i=1:length(dq)
+    dq[i] = q[i] - qg[i]
+  end
+
+  roe_vars[1] = u
+  roe_vars[2] = v
+  roe_vars[3] = w
+  roe_vars[4] = H
+
+#  calcSAT(params, roe_vars, dq, nrm, sat)
+
+  # calculate Euler flux in wall normal directiona
+  # because edge numbering is rather arbitary, any memory access is likely to
+  # be a cache miss, so we recalculate the Euler flux
+#  nrm2[1] = nx   # why are we assigning to nrm2?
+#  nrm2[2] = ny
+
+#  convertFromNaturalToWorkingVars(params, q, v_vals)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm2, euler_flux)
+
+#  for i=1:5  # ArrayViews does not support flux[:] = .
+#    flux[i] = (sat_fac*sat[i] + euler_flux[i])
+#  end
+
+  #----------------------------------------------------------------------------
+  # reverse sweep
+
+  numDofPerNode = length(q)
+
+  @unpack data sat_bar v_vals_bar roe_vars_bar dq_bar
+
+  fill!(sat_bar, 0); fill!(roe_vars_bar, 0); fill!(dq_bar, 0)
+  fill!(v_vals_bar, 0)
+  for i=1:5
+    sat_bar[i] = sat_fac*flux_bar[i]
+  end
+  euler_flux_bar = flux_bar
+
+  calcEulerFlux_revq(params, v_vals, v_vals_bar, aux_vars, nrm, euler_flux_bar)
+
+  #TODO: this is where convertFromNatualToWorkingVars_rev should be
+  for i=1:numDofPerNode
+    q_bar[i] += v_vals_bar[i]
+  end
+
+  calcSAT_revq(params, roe_vars, roe_vars_bar, dq, dq_bar, nrm, sat_bar)
+
+  for i=1:length(dq)
+    q_bar[i]  += dq_bar[i]
+    qg_bar[i] -= dq_bar[i]
+  end
+
+  u_bar = roe_vars_bar[1]
+  v_bar = roe_vars_bar[2]
+  w_bar = roe_vars_bar[3]
+  H_bar = roe_vars_bar[4]
+
+  # averaged states
+  sqL_bar = HL*fac*H_bar; sqR_bar = HR*fac*H_bar
+  HL_bar  = sqL*fac*H_bar; HR_bar = sqR*fac*H_bar
+  fac_bar = H_bar*(sqL*HL + sqR*HR)
+
+  sqL_bar += wL*fac*w_bar; sqR_bar += wR*fac*w_bar
+  wL_bar   = sqL*fac*w_bar; wR_bar  = sqR*fac*w_bar
+  fac_bar += (sqL*wL + sqR*wR)*w_bar
+
+  sqL_bar += vL*fac*v_bar; sqR_bar += vR*fac*v_bar
+  vL_bar   = sqL*fac*v_bar; vR_bar  = sqR*fac*v_bar
+  fac_bar += (sqL*vL + sqR*vR)*v_bar
+
+  sqL_bar += uL*fac*u_bar; sqR_bar += uR*fac*u_bar
+  uL_bar   = sqL*fac*u_bar; uR_bar  = sqR*fac*u_bar
+  fac_bar += (sqL*uL + sqR*uR)*u_bar
+
+  sqL_bar += -fac*fac*fac_bar; sqR_bar += -fac*fac*fac_bar
+  q_bar[1] += 0.5/sqL*sqL_bar; qg_bar[1] += 0.5/sqR*sqR_bar
+
+  # right state
+  fac = d1_0/qg[1]
+  fac_bar = zero(fac_bar)  # this is a different variable in single assignment
+  qg_bar[5] += gamma*fac*HR_bar
+  fac_bar += gamma*qg[5]*HR_bar
+  phi_bar = -gami*HR_bar
+
+  uR_bar += uR*phi_bar
+  vR_bar += vR*phi_bar
+  wR_bar += wR*phi_bar
+
+  qg_bar[2] += fac*uR_bar; qg_bar[3] += fac*vR_bar; qg_bar[4] += fac*wR_bar
+  fac_bar += qg[2]*uR_bar; fac_bar += qg[3]*vR_bar; fac_bar += qg[4]*wR_bar
+
+  qg_bar[1] += -fac*fac*fac_bar
+
+  # left state
+  fac = d1_0/q[1]
+  fac_bar = zero(fac_bar); phi_bar = zero(phi_bar)
+  q_bar[5] += gamma*fac*HL_bar
+  fac_bar += gamma*q[5]*HL_bar
+  phi_bar += -gami*HL_bar
+
+  uL_bar += uL*phi_bar
+  vL_bar += vL*phi_bar
+  wL_bar += wL*phi_bar
+
+  q_bar[2] += fac*uL_bar; q_bar[3] += fac*vL_bar; q_bar[4] += fac*wL_bar
+  fac_bar += q[2]*uL_bar; fac_bar += q[3]*vL_bar; fac_bar += q[4]*wL_bar
+  q_bar[1] += -fac*fac*fac_bar
+
+
+  return nothing
+end
+
+"""
+  3D method
+"""
+function calcSAT_revq(params::ParamType{3},
+                 roe_vars::AbstractArray{Tsol, 1},
+                 roe_vars_bar::AbstractArray{Tres, 1},
+                 dq::AbstractArray{Tsol,1},
+                 dq_bar::AbstractArray{Tres, 1},
+                 nrm::AbstractArray{Tmsh,1},
+                 sat_bar::AbstractArray{Tsol,1}) where {Tmsh, Tsol, Tres}
+# roe_vars = [u, v, H] at Roe average 
+
+  data = params.calcsatdata
+  @unpack data E1dq E2dq E3dq E4dq
+
+  numDofPerNode = length(dq)
+
+  # SAT parameters
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  tau = 1.0
+
+  u = roe_vars[1]
+  v = roe_vars[2]
+  w = roe_vars[3]
+  H = roe_vars[4]
+
+  gami = params.gamma_1
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+  nz = nrm[3]
+
+  dA = sqrt(nx*nx + ny*ny + nz*nz)
+
+  Un = u*nx + v*ny + w*nz# Normal Velocity
+
+  phi = 0.5*(u*u + v*v + w*w)
+
+  a = sqrt(gami*(H - phi)) # speed of sound
+
+
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+
+  rhoA = absvalue(Un) + dA*a
+
+  # Compute Eigen Values of the Flux Jacobian
+  # The eigen values calculated above cannot be used directly. Near stagnation
+  # points lambda3 approaches zero while near sonic lines lambda1 and lambda2
+  # approach zero. This has a possibility of creating numerical difficulties.
+  # As a result, the eigen values are limited by the following expressions.
+
+  lambda1_orig = lambda1  # save these for reverse sweep
+  lambda2_orig = lambda2
+  lambda3_orig = lambda3
+
+  lambda1 = 0.5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = 0.5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = 0.5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+
+
+  dq1 = dq[1]
+  dq2 = dq[2]
+  dq3 = dq[3]
+  dq4 = dq[4]
+  dq5 = dq[5]
+
+  
+  #=
+  sat[1] = lambda3*dq1
+  sat[2] = lambda3*dq2
+  sat[3] = lambda3*dq3
+  sat[4] = lambda3*dq3
+  sat[5] = lambda3*dq5
+  =#
+
+  #-- get E1*dq
+  t1 = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
+  E1dq[1] = t1
+  E1dq[2] = t1*u
+  E1dq[3] = t1*v
+  E1dq[4] = t1*w
+  E1dq[5] = t1*H
+
+
+  #-- get E2*dq
+  t2 = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  E2dq[1] = 0.0
+  E2dq[2] = t2*nx
+  E2dq[3] = t2*ny
+  E2dq[4] = t2*nz
+  E2dq[5] = t2*Un
+
+  #-- add to sat
+  tmp1 = 0.5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = 1.0/(dA*dA)
+
+#  for i=1:length(sat)
+#    sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+#  end
+
+  #-- get E3*dq
+  t3 = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+
+  E3dq[1] = t3
+  E3dq[2] = t3*u
+  E3dq[3] = t3*v
+  E3dq[4] = t3*w
+  E3dq[5] = t3*H
+
+  #-- get E4*dq
+  t4 = phi*dq1 - u*dq2 - v*dq3 + - w*dq4 + dq5
+  E4dq[1] = 0.0
+  E4dq[2] = t4*nx
+  E4dq[3] = t4*ny
+  E4dq[4] = t4*nz
+  E4dq[5] = t4*Un
+
+  #-- add to sat
+  tmp4 = 0.5*(lambda1 - lambda2)/(dA*a)
+#  for i=1:length(sat)
+#    sat[i] = sat[i] + tmp4*(E3dq[i] + gami*E4dq[i])
+#  end
+
+  #----------------------------------------------------------------------------
+  # reverse sweep
+  @unpack data E1dq_bar E2dq_bar E3dq_bar E4dq_bar
+  t1_bar = zero(Tres)
+  t2_bar = zero(Tres)
+  t3_bar = zero(Tres)
+  t4_bar = zero(Tres)
+  tmp1_bar = zero(Tres)
+  tmp2_bar = zero(Tres)
+  tmp3_bar = zero(Tres)
+  tmp4_bar = zero(Tres)
+  Un_bar = zero(Tres)
+  phi_bar = zero(Tres)
+  dq1_bar = zero(Tres)
+  dq2_bar = zero(Tres)
+  dq3_bar = zero(Tres)
+  dq4_bar = zero(Tres)
+  dq5_bar = zero(Tres)
+  lambda1_bar = zero(Tres)
+  lambda2_bar = zero(Tres)
+  lambda3_bar = zero(Tres)
+  rhoA_bar = zero(Tres)
+  a_bar = zero(Tres)
+  u_bar = zero(Tres)
+  v_bar = zero(Tres)
+  w_bar = zero(Tres)
+  H_bar = zero(Tres)
+
+  fill!(E1dq_bar, 0)
+  fill!(E2dq_bar, 0)
+  fill!(E3dq_bar, 0)
+  fill!(E4dq_bar, 0)
+
+  tmp_bar = zero(Tres)
+
+  for i=1:length(sat_bar)
+    tmp4_bar += (E3dq[i] + gami*E4dq[i])*sat_bar[i]
+    E3dq_bar[i] += tmp4*sat_bar[i]
+    E4dq_bar[i] += tmp4*gami*sat_bar[i]
+  end
+
+  lambda1_bar +=  0.5*tmp4_bar/(dA*a)
+  lambda2_bar += -0.5*tmp4_bar/(dA*a)
+  a_bar       += -tmp4*tmp4_bar/a
+
+
+  # E4*dq
+  
+  t4_bar += E4dq_bar[5]*Un
+  Un_bar += t4*E4dq_bar[5]
+
+  t4_bar += E4dq_bar[4]*nz
+
+  t4_bar += E4dq_bar[3]*ny
+
+  t4_bar += E4dq_bar[2]*nx
+
+  phi_bar +=  dq1*t4_bar
+  dq1_bar +=  phi*t4_bar
+  u_bar   += -dq2*t4_bar
+  dq2_bar += -u*t4_bar
+  v_bar   += -dq3*t4_bar
+  dq3_bar += -v*t4_bar
+  w_bar   += -dq4*t4_bar
+  dq4_bar += -w*t4_bar
+  dq5_bar +=  t4_bar
+
+
+  # E3*dq
+  t3_bar += E3dq_bar[5]*H
+  H_bar  += t3*E3dq_bar[5]
+
+  t3_bar += E3dq_bar[4]*w
+  w_bar  += E3dq_bar[4]*t3
+
+  t3_bar += E3dq_bar[3]*v
+  v_bar  += E3dq_bar[3]*t3
+
+  t3_bar += E3dq_bar[2]*u
+  u_bar  += E3dq_bar[2]*t3
+  
+  t3_bar += E3dq_bar[1]
+
+  Un_bar  += -dq1*t3_bar
+  dq1_bar += -Un*t3_bar
+  dq2_bar +=  nx*t3_bar
+  dq3_bar +=  ny*t3_bar
+  dq4_bar +=  nz*t3_bar
+
+  for i=1:length(sat_bar)
+    tmp1_bar    += sat_bar[i]*(tmp2*E1dq[i] + tmp3*E2dq[i])
+    tmp2_bar    += tmp1*E1dq[i]*sat_bar[i]
+    E1dq_bar[i] += tmp1*tmp2*sat_bar[i]
+#    tmp3_bar    += tmp1*E2dq[i]*sat_bar[i]
+    E2dq_bar[i] += tmp1*tmp3*sat_bar[i]
+  end
+
+  a_bar += (-2*tmp2/a)*tmp2_bar
+  lambda1_bar += 0.5*tmp1_bar
+  lambda2_bar += 0.5*tmp1_bar
+  lambda3_bar += -tmp1_bar
+
+
+  # E2*dq
+
+  t2_bar += Un*E2dq_bar[5]
+  Un_bar += t2*E2dq_bar[5]
+
+  t2_bar += nz*E2dq_bar[4]
+
+  t2_bar += ny*E2dq_bar[3]
+
+  t2_bar += nx*E2dq_bar[2]
+
+  Un_bar  += -dq1*t2_bar
+  dq1_bar += -Un*t2_bar
+  dq2_bar +=  nx*t2_bar
+  dq3_bar +=  ny*t2_bar
+  dq4_bar += nz*t2_bar
+
+
+
+  # E1*dq
+  t1_bar += E1dq_bar[5]*H
+  H_bar  += E1dq_bar[5]*t1
+
+  t1_bar += E1dq_bar[4]*w
+  w_bar  += E1dq_bar[4]*t1
+
+  t1_bar += E1dq_bar[3]*v
+  v_bar  += E1dq_bar[3]*t1
+
+  t1_bar += E1dq_bar[2]*u
+  u_bar  += E1dq_bar[2]*t1
+
+  t1_bar += E1dq_bar[1]
+
+  phi_bar +=  dq1*t1_bar
+  dq1_bar +=  phi*t1_bar
+  u_bar   += -dq2*t1_bar
+  dq2_bar += -u*t1_bar
+  v_bar   += -dq3*t1_bar
+  dq3_bar += -v*t1_bar
+  w_bar   += -dq4*t1_bar
+  dq4_bar += -w*t1_bar
+  dq5_bar +=  t1_bar
+
+
+
+  # sat diagonal term
+  lambda3_bar += dq1*sat_bar[1]
+  dq1_bar     += lambda3*sat_bar[1]
+
+  lambda3_bar += dq2*sat_bar[2]
+  dq2_bar     += lambda3*sat_bar[2]
+
+  lambda3_bar += dq3*sat_bar[3]
+  dq3_bar     += lambda3*sat_bar[3]
+
+  lambda3_bar += dq4*sat_bar[4]
+  dq4_bar     += lambda3*sat_bar[4]
+
+  lambda3_bar += dq5*sat_bar[5]
+  dq5_bar     += lambda3*sat_bar[5]
+
+
+
+  # re-pack dq
+  dq_bar[1] += dq1_bar
+  dq_bar[2] += dq2_bar
+  dq_bar[3] += dq3_bar
+  dq_bar[4] += dq4_bar
+  dq_bar[5] += dq5_bar
+
+
+  # restore lambdas to original values from forward sweep
+  # lambda_bar variables will be overwritten below
+  lambda1 = lambda1_orig
+  lambda2 = lambda2_orig
+  lambda3 = lambda3_orig
+
+  # entropy fix
+  alambda1 = absvalue(lambda1)
+  alambda2 = absvalue(lambda2)
+  alambda3 = absvalue(lambda3)
+  # compute the alambda_bar variables inside the conditionals because they
+  # are not always needed
+
+  if alambda1 > sat_Vn*rhoA
+    # overwrite lambda here because in the primal code it gets re-assigned
+    alambda1_bar = lambda1 > 0 ? lambda1_bar : -lambda1_bar
+    lambda1_bar  = 0.5*(tau*alambda1_bar - lambda1_bar)
+  else
+    rhoA_bar    += 0.5*tau*sat_Vn*lambda1_bar
+    lambda1_bar = -0.5*lambda1_bar
+  end
+
+  if alambda2 > sat_Vn*rhoA
+    alambda2_bar = lambda2 > 0 ? lambda2_bar : -lambda2_bar
+    lambda2_bar  = 0.5*(tau*alambda2_bar - lambda2_bar)
+  else
+    rhoA_bar    += 0.5*tau*sat_Vn*lambda2_bar
+    lambda2_bar = -0.5*lambda2_bar
+  end
+
+  if alambda3 > sat_Vl*rhoA
+    alambda3_bar = lambda3 > 0 ? lambda3_bar : -lambda3_bar
+    lambda3_bar  = 0.5*tau*(alambda3_bar - lambda3_bar)
+  else
+    rhoA_bar    += 0.5*tau*sat_Vl*lambda3_bar
+    lambda3_bar = -0.5*lambda3_bar
+  end
+
+  # rhoA
+  if Un > 0
+    Un_bar += rhoA_bar
+  else
+    Un_bar += -rhoA_bar
+  end
+  a_bar += dA*rhoA_bar
+
+
+  # lambda calculation
+  Un_bar += lambda1_bar
+  a_bar  += dA*lambda1_bar
+
+  Un_bar += lambda2_bar
+  a_bar  += -dA*lambda2_bar
+
+  Un_bar += lambda3_bar
+
+  # a calculation
+  H_bar   += (0.5/a)*gami*a_bar
+  phi_bar += -(0.5/a)*gami*a_bar
+
+  # phi
+  u_bar += u*phi_bar
+  v_bar += v*phi_bar
+  w_bar += w*phi_bar
+
+  # Un
+  u_bar += nx*Un_bar
+  v_bar += ny*Un_bar
+  w_bar += nz*Un_bar
+
+  roe_vars_bar[1] += u_bar
+  roe_vars_bar[2] += v_bar
+  roe_vars_bar[3] += w_bar
+  roe_vars_bar[4] += H_bar
+  
+
+  return nothing
+end  # End function calcSAT
+
+
+
+
+function RoeSolver_revm(params::ParamType{3},
+      q::AbstractArray{Tsol,1}, qg::AbstractArray{Tsol, 1},
+      aux_vars::AbstractArray{Tres, 1},
+      nrm::AbstractArray{Tmsh,1},
+      nrm_bar::AbstractArray{Tmsh, 1},
+      flux_bar::AbstractArray{Tres, 1},
+      ) where {Tmsh, Tsol, Tres}
+
+  @unpack params.calcsatdata E1dq E2dq
+
+  # Declaring constants
+  d1_0 = one(Tres)
+  d0_0 = zero(Tres)
+  d0_5 = 0.5*one(Tres)
+  tau = one(Tres)
+
+  gamma = params.gamma
+  gami = params.gamma_1
+
+  sat_Vn = convert(Tsol, 0.025)
+  sat_Vl = convert(Tsol, 0.025)
+  sat_fac = 1  # multiplier for SAT term
+
+  # Begin main executuion
+  nx = nrm[1]
+  ny = nrm[2]
+  nz = nrm[3]
+
+  dA = sqrt(nx*nx + ny*ny + nz*nz)
+
+  fac = d1_0/q[1]
+  uL = q[2]*fac; vL = q[3]*fac; wL = q[4]*fac
+  phi = d0_5*(uL*uL + vL*vL + wL*wL)
+  HL = gamma*q[5]*fac - gami*phi
+
+  fac = d1_0/qg[1]
+  uR = qg[2]*fac; vR = qg[3]*fac; wR = qg[4]*fac
+  phi = d0_5*(uR*uR + vR*vR + wR*wR)
+  HR = gamma*qg[5]*fac - gami*phi
+
+  sqL = sqrt(q[1])
+  sqR = sqrt(qg[1])
+  fac = d1_0/(sqL + sqR)
+  u = (sqL*uL + sqR*uR)*fac
+  v = (sqL*vL + sqR*vR)*fac
+  w = (sqL*wL + sqR*wR)*fac
+
+  H = (sqL*HL + sqR*HR)*fac
+  phi = d0_5*(u*u + v*v + w*w)
+  a = sqrt(gami*(H - phi))
+  Un = u*nx + v*ny + w*nz
+
+  lambda1 = Un + dA*a
+  lambda2 = Un - dA*a
+  lambda3 = Un
+  rhoA = absvalue(Un) + dA*a
+
+  lambda1 = d0_5*(tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
+  lambda2 = d0_5*(tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
+  lambda3 = d0_5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
+
+  dq1 = q[1] - qg[1]
+  dq2 = q[2] - qg[2]
+  dq3 = q[3] - qg[3]
+  dq4 = q[4] - qg[4]
+  dq5 = q[5] - qg[5]
+
+  # start reverse sweep
+
+  euler_flux_bar = zeros(flux_bar)
+  sat_bar = zeros(flux_bar)
+  for i=1:5
+    # flux[i] = (sat_fac*sat[i] + euler_flux[i])
+    euler_flux_bar[i] += flux_bar[i]
+    sat_bar[i] += sat_fac*flux_bar[i]
+  end
+
+  # calcEulerFlux(q, nrm, euler_flux)
+  # calcEulerFlux_revm(params, v_vals, aux_vars, nrm2, nrm2_bar, euler_flux_bar)
+  calcEulerFlux_revm(params, q, aux_vars, nrm, nrm_bar, euler_flux_bar)
+
+  #-- get E3*dq
+  E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*w
+  E1dq[5] = E1dq[1]*H
+
+  #-- get E4*dq
+  E2dq[1] = d0_0
+  E2dq[2] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*nz
+  E2dq[5] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
+  tmp1_bar = zero(tmp1)
+  E1dq_bar = zeros(E1dq)
+  E2dq_bar = zeros(E2dq)
+  for i = 1:5
+    # sat[i] = sat[i] + tmp1*(E1dq[i] + gami*E2dq[i])
+    tmp1_bar += (E1dq[i] + gami*E2dq[i])*sat_bar[i]
+    E1dq_bar[i] += tmp1*sat_bar[i]
+    E2dq_bar[i] += tmp1*gami*sat_bar[i]
+  end
+  # tmp1 = d0_5*(lambda1 - lambda2)/(dA*a)
+  lambda1_bar = d0_5*tmp1_bar/(dA*a)
+  lambda2_bar = -d0_5*tmp1_bar/(dA*a)
+  dA_bar = -d0_5*(lambda1 - lambda2)*tmp1_bar/(dA*dA*a)
+
+  fac = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
+  #E2dq[5] = fac*Un
+  Un_bar = E2dq_bar[5]*fac
+  # E2dq[4] = fac*nz
+  nz_bar = E2dq_bar[4]*fac
+  # E2dq[3] = fac*ny
+  ny_bar = E2dq_bar[3]*fac
+  # E2dq[2] = fac*nx
+  nx_bar = E2dq_bar[2]*fac
+
+  fac = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  fac_bar = zero(fac)
+  # E1dq[5] = fac*H
+  # E1dq[4] = fac*w
+  # E1dq[3] = fac*v
+  # E1dq[2] = fac*u
+  # E1dq[1] = fac
+  fac_bar += (E1dq_bar[5]*H + E1dq_bar[4]*w + E1dq_bar[3]*v + E1dq_bar[2]*u
+  + E1dq_bar[1])
+  # fac = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  Un_bar += -dq1*fac_bar
+  nx_bar += dq2*fac_bar
+  ny_bar += dq3*fac_bar
+  nz_bar += dq4*fac_bar
+
+  #-- get E1*dq
+  E1dq[1] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
+  E1dq[2] = E1dq[1]*u
+  E1dq[3] = E1dq[1]*v
+  E1dq[4] = E1dq[1]*w
+  E1dq[5] = E1dq[1]*H
+
+  #-- get E2*dq
+  E2dq[1] = d0_0
+  E2dq[2] = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  E2dq[3] = E2dq[2]*ny
+  E2dq[4] = E2dq[2]*nz
+  E2dq[5] = E2dq[2]*Un
+  E2dq[2] = E2dq[2]*nx
+
+  tmp1 = d0_5*(lambda1 + lambda2) - lambda3
+  tmp2 = gami/(a*a)
+  tmp3 = d1_0/(dA*dA)
+  tmp1_bar = zero(tmp1)
+  tmp3_bar = zero(tmp3)
+  fill!(E1dq_bar, zero(Tres))
+  fill!(E2dq_bar, zero(Tres))
+  for i=1:5
+    # sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
+    tmp1_bar += (tmp2*E1dq[i] + tmp3*E2dq[i])*sat_bar[i]
+    tmp3_bar += tmp1*E2dq[i]*sat_bar[i]
+    # E1dq_bar[i] += tmp1*tmp2*sat_bar[i] # E1dq is independent of nrm
+    E2dq_bar[i] += tmp1*tmp3*sat_bar[i]
+  end
+  # tmp1 = d0_5*(lambda1 + lambda2) - lambda3
+  lambda1_bar += d0_5*tmp1_bar
+  lambda2_bar += d0_5*tmp1_bar
+  lambda3_bar = -tmp1_bar
+  # tmp3 = d1_0/(dA*dA)
+  dA_bar += -2.0*tmp3_bar/(dA*dA*dA)
+
+  fac = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  fac_bar = zero(fac)
+  # E2dq[5] = fac*Un
+  Un_bar += fac*E2dq_bar[5]
+  fac_bar += Un*E2dq_bar[5]
+  # E2dq[4] = fac*nz
+  nz_bar += fac*E2dq_bar[4]
+  fac_bar += nz*E2dq_bar[4]
+  # E2dq[3] = fac*ny
+  ny_bar += fac*E2dq_bar[3]
+  fac_bar += ny*E2dq_bar[3]
+  # E2dq[2] = fac*nx
+  nx_bar += fac*E2dq_bar[2]
+  fac_bar += nx*E2dq_bar[2]
+  # fac = -Un*dq1 + nx*dq2 + ny*dq3 + nz*dq4
+  Un_bar += -dq1*fac_bar
+  nx_bar += dq2*fac_bar
+  ny_bar += dq3*fac_bar
+  nz_bar += dq4*fac_bar
+
+  # E1*dq is independent of nrm
+  # E1dq[1] = phi*dq1 - u*dq2 - v*dq3 - w*dq4 + dq5
+  # E1dq[2] = E1dq[1]*u
+  # E1dq[3] = E1dq[1]*v
+  # E1dq[4] = E1dq[1]*w
+  # E1dq[5] = E1dq[1]*H
+
+  # sat[1] = lambda3*dq1
+  # sat[2] = lambda3*dq2
+  # sat[3] = lambda3*dq3
+  # sat[4] = lambda3*dq4
+  # sat[5] = lambda3*dq5
+  lambda3_bar += (dq1*sat_bar[1] + dq2*sat_bar[2] + dq3*sat_bar[3] + dq4*sat_bar[4]
+  + dq5*sat_bar[5])
+
+  rhoA_bar = zero(rhoA)
+
+  # lambda1 = d0_5*(tau*max_val - lambda1)
+  max_val_bar = d0_5*tau*lambda1_bar
+  lambda1_bar = -d0_5*lambda1_bar
+  # max_val = max(absvalue(lambda1),sat_Vn *rhoA)
+  tmp1_bar, tmp2_bar = max_deriv_rev(absvalue(Un + dA*a), sat_Vn*rhoA, max_val_bar)
+  lambda1_bar += tmp1_bar*absvalue_deriv(Un + dA*a)
+  rhoA_bar += tmp2_bar*sat_Vn
+
+  # lambda2 = d0_5*(tau*max_val - lambda2)
+  max_val_bar = d0_5*tau*lambda2_bar
+  lambda2_bar = -d0_5*lambda2_bar
+  # max_val =  max(absvalue(lambda2),sat_Vn *rhoA)
+  tmp1_bar, tmp2_bar = max_deriv_rev(absvalue(Un - dA*a), sat_Vn*rhoA, max_val_bar)
+  lambda2_bar += tmp1_bar*absvalue_deriv(Un - dA*a)
+  rhoA_bar += tmp2_bar*sat_Vn
+
+  # lambda3 = d0_5*(tau*max_val - lambda3)
+  max_val_bar = d0_5*tau*lambda3_bar
+  lambda3_bar = -d0_5*lambda3_bar
+  # max_val =  max(absvalue(lambda3),sat_Vn *rhoA)
+  tmp1_bar, tmp2_bar = max_deriv_rev(absvalue(Un), sat_Vn*rhoA, max_val_bar)
+  lambda3_bar += tmp1_bar*absvalue_deriv(Un)
+  rhoA_bar += tmp2_bar*sat_Vn
+
+  #rhoA = absvalue(Un) + dA*a
+  Un_bar += absvalue_deriv(Un)*rhoA_bar
+  dA_bar += a*rhoA_bar
+  #lambda3 = Un
+  Un_bar += lambda3_bar
+  #lambda2 = Un - dA*a
+  Un_bar += lambda2_bar
+  dA_bar += -a*lambda2_bar
+  #lambda1 = Un + dA*a
+  Un_bar += lambda1_bar
+  dA_bar += a*lambda1_bar
+
+  # Un = u*nx + v*ny + w*nz
+  nx_bar += u*Un_bar
+  ny_bar += v*Un_bar
+  nz_bar += w*Un_bar
+
+  # dA = sqrt(nx*nx + ny*ny + nz*nz)
+  nx_bar += nx*dA_bar/dA
+  ny_bar += ny*dA_bar/dA
+  nz_bar += nz*dA_bar/dA
+
+  # nx = nrm[1]
+  # ny = nrm[2]
+  # nz = nrm[3]
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+  nrm_bar[3] += nz_bar
+
+  return nothing
+
+end # ends the function eulerRoeSAT_revm
+
+
+
+
+"""
   Computes the Jacobian of the LF flux with respect to qL and qR
 """
 function calcLFFlux_diff(
@@ -4014,4 +5704,25 @@ function logavg_rev(aL, aR, a_avg_bar)
   return aL_bar, aR_bar
 end
 
+
+
+#------------------------------------------------------------------------------
+# calcEulerFlux_* methods
+
+function calcEulerFlux_IRSLF_diff(params::ParamType{Tdim, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 1},
+                   FL_dot::AbstractArray{Tres, 2},
+                   FR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  kernel = params.entropy_lf_kernel
+
+  calcEulerFlux_IR_diff(params, qL, qR, aux_vars, nrm, FL_dot, FR_dot)
+  applyEntropyKernel_diagE_diff(params, kernel, qL, qR, aux_vars, nrm, FL_dot, FR_dot)
+
+  return nothing
+end
 

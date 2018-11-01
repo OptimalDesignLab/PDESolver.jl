@@ -1,4 +1,41 @@
 # differentiated version of functions in euler_funcs.jl
+
+"""
+  Applies the element level inverse mass matrix to an element-level jacobian
+  contribution
+
+  **Inputs**
+
+   * jac_el: vector, length `numNodesPerElement`, containing the determinant
+              of the mapping jacobian at each node of the element
+   * weights: the SBP integration weights for each node of the element,
+               length `numNodesPerElement
+
+  **Inputs/Outputs**
+
+   * res_jac: array containing element level Jacobian, to be multiplied by
+              the inverse mass matrix, size `numDofPerNode` x `numDofPerNode`
+              x `numNodesPerElement` x `numNodesPerElement`
+"""
+function applyMinvElement(jac_el::AbstractVector, weights::AbstractVector,
+                          res_jac::AbstractArray{T, 4}) where {T}
+
+  # multiply by Minv if needed
+  for q=1:size(res_jac, 4)
+    for p=1:size(res_jac, 3)
+      val = jac_el[p]/weights[p]  # entry in Minv
+      @simd for m=1:size(res_jac, 2)
+        @simd for n=1:size(res_jac, 1)
+          res_jac[n, m, p, q] *= val
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+
 """
   Computes the derivataive of the volume term of the Roe scheme with respect
   to `q`, ie
@@ -25,10 +62,10 @@ function calcVolumeIntegrals_nopre_diff(
 
   data = eqn.params.calc_volume_integrals_data
   @unpack data flux_jac res_jac nrm
-  fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
     fill!(flux_jac, 0)
+    fill!(res_jac, 0)
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
@@ -52,22 +89,13 @@ function calcVolumeIntegrals_nopre_diff(
 
     
     if eqn.params.use_Minv == 1
-      # multiply by Minv if needed
-      for q=1:mesh.numNodesPerElement
-        for p=1:mesh.numNodesPerElement
-          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
-          @simd for m=1:mesh.numDofPerNode
-            @simd for n=1:mesh.numDofPerNode
-              res_jac[n, m, p, q] *= val
-            end
-          end
-        end
-      end
+      jac_el = sview(mesh.jac, :, i)
+      applyMinvElement(jac_el, sbp.w, res_jac)
     end
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
-    fill!(res_jac, 0.0)
+#    fill!(res_jac, 0.0)
     # flux_jac gets overwritten, so no need to zero it 
 
   end  # end loop i
@@ -101,14 +129,14 @@ function calcVolumeIntegralsStrong_nopre_diff(
                                    assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
-  @assert eqn.params.use_Minv != 1  # use_Minv not supported
+  @assert eqn.params.use_Minv != 1  # use_Minv not supported (TODO: why?)
 
   data = eqn.params.calc_volume_integrals_data
   @unpack data flux_jac res_jac nrm
-  fill!(flux_jac, 0.0); fill!(res_jac, 0.0)
 
   for i=1:mesh.numEl
     fill!(flux_jac, 0)
+    fill!(res_jac, 0)
     for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i)
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
@@ -132,28 +160,132 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
     
     if eqn.params.use_Minv == 1
-      # multiply by Minv if needed
-      for q=1:mesh.numNodesPerElement
-        for p=1:mesh.numNodesPerElement
-          val = mesh.jac[p, i]/sbp.w[p]  # entry in Minv
-          @simd for m=1:mesh.numDofPerNode
-            @simd for n=1:mesh.numDofPerNode
-              res_jac[n, m, p, q] *= val
-            end
-          end
-        end
-      end
+      jac_el = sview(mesh.jac, :, i)
+      applyMinvElement(jac_el, sbp.w, res_jac)
     end
 
     # assemble element level jacobian into the residual
     assembleElement(assembler, mesh, i, res_jac)
-    fill!(res_jac, 0.0)
-    # flux_jac gets overwritten, so no need to zero it 
 
   end  # end loop i
 
   return nothing
 end  # end function
+
+"""
+  Differentiated version of [`calcVolumeIntegralsSplitForm`](@ref)
+
+  **Inputs**
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: the numerical flux function F, of type FluxType_diff
+"""
+function calcVolumeIntegralsSplitForm_diff(
+                mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                functor::FluxType_diff,
+                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
+
+  if opts["use_staggered_grid"]
+    error("Jacobian of staggered grid volume integrals not supported")
+  else
+    # do the curvilinear version even if msh is linear
+    calcVolumeIntegralsSplitFormCurvilinear_diff(mesh, sbp, eqn, opts, functor,
+                                                 assembler)
+  end
+
+  return nothing
+end
+
+
+
+"""
+  Computes the Jacobian contribution from [`calcVolumeIntegralsSplitFormCurvilinear`](@ref).
+  
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: [`FluxType_diff`](@ref). 
+   * assembler: used to assemble the contribution of each element into the
+                Jacobian
+ 
+"""
+function calcVolumeIntegralsSplitFormCurvilinear_diff(
+                mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                functor::FluxType_diff,
+                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
+
+  dxidx = mesh.dxidx
+  res = eqn.res
+  aux_vars = eqn.aux_vars
+  params = eqn.params
+
+  data = params.calc_volume_integrals_data
+  @unpack data nrmD F_d Sx res_jac
+
+  flux_jacL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, Tdim)
+  flux_jacR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, Tdim)
+
+  # S is calculated in x-y-z, so the normal vectors should be the unit normals
+  fill!(nrmD, 0.0)
+  for d=1:Tdim
+    nrmD[d, d] = 1
+  end
+
+  for i=1:mesh.numEl
+    # get S for this element
+    dxidx_i = ro_sview(dxidx, :, :, :, i)
+    calcSCurvilinear(sbp, dxidx_i, Sx)
+
+    fill!(res_jac, 0.0)
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(aux_vars, :, j, i)
+      for k=1:(j-1)  # loop over lower triangle of S
+        q_k = ro_sview(eqn.q, :, k, i)
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+        fill!(flux_jacL, 0.0)
+        fill!(flux_jacR, 0.0)
+        functor(params, q_j, q_k, aux_vars_j, nrmD, flux_jacL, flux_jacR)
+
+        @simd for d=1:Tdim
+          @simd for p=1:mesh.numDofPerNode
+            @simd for q=1:mesh.numDofPerNode
+              res_jac[q, p, j, j] -= 2*Sx[j, k, d]*flux_jacL[q, p, d]
+              res_jac[q, p, j, k] -= 2*Sx[j, k, d]*flux_jacR[q, p, d]
+
+              res_jac[q, p, k, j] += 2*Sx[j, k, d]*flux_jacL[q, p, d]
+              res_jac[q, p, k, k] += 2*Sx[j, k, d]*flux_jacR[q, p, d]
+            end
+          end
+        end
+
+      end  # end k loop
+    end  # end j loop
+
+    if eqn.params.use_Minv == 1
+      jac_el = sview(mesh.jac, :, i)
+      applyMinvElement(jac_el, sbp.w, res_jac)
+    end
+
+    # assemble element level jacobian into the residual
+    assembleElement(assembler, mesh, i, res_jac)
+  end  # end i loop
+
+  return nothing
+end
+
+
+
 
 
 """
@@ -379,5 +511,274 @@ function calcPressure_revq(params::ParamType{3, :conservative},
 
   return nothing
 end
+
+
+"""
+  Differentiated version of [`getLambdaMax`](@ref)
+
+  **Inputs**
+
+   * params: ParamType
+   * qL: vector of conservative variables at a node
+   * dir: direction vector (can be scaled)
+
+  **Inputs/Outputs**
+
+   * qL_dot: derivative of lambda max wrt qL (overwritten)
+
+  **Outputs**
+
+   * lambda_max: maximum eigenvalue
+"""
+function getLambdaMax_diff(params::ParamType{2},
+                      qL::AbstractVector{Tsol},
+                      dir::AbstractVector{Tmsh},
+                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
+
+  gamma = params.gamma
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+  rhoLinv_dotL1 = -rhoLinv*rhoLinv
+
+  p_dot = params.get_lambda_max_data.p_dot
+  pL = calcPressure_diff(params, qL, p_dot)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+  t1 = gamma*rhoLinv/(2*aL)
+  t2 = gamma*pL/(2*aL)
+  aL_dotL1 = t1*p_dot[1] + t2*rhoLinv_dotL1
+  aL_dotL2 = t1*p_dot[2]
+  aL_dotL3 = t1*p_dot[3]
+  aL_dotL4 = t1*p_dot[4]
+
+
+  Un_dotL1 = dir[1]*qL[2]*rhoLinv_dotL1
+  Un_dotL2 = dir[1]*rhoLinv
+  Un += dir[1]*qL[2]*rhoLinv
+
+  Un_dotL1 += dir[2]*qL[3]*rhoLinv_dotL1
+  Un_dotL3 = dir[2]*rhoLinv
+  Un += dir[2]*qL[3]*rhoLinv
+
+  for i=1:2
+    dA += dir[i]*dir[i]
+  end
+
+  dA = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA*aL
+  lambda_dot[1] = dA*aL_dotL1
+  lambda_dot[2] = dA*aL_dotL2
+  lambda_dot[3] = dA*aL_dotL3
+  lambda_dot[4] = dA*aL_dotL4
+
+  if Un > 0
+    lambda_dot[1] += Un_dotL1
+    lambda_dot[2] += Un_dotL2
+    lambda_dot[3] += Un_dotL3
+  else
+    lambda_dot[1] -= Un_dotL1
+    lambda_dot[2] -= Un_dotL2
+    lambda_dot[3] -= Un_dotL3
+  end
+
+
+  return lambda_max
+end
+
+
+
+function getLambdaMax_diff(params::ParamType{3},
+                      qL::AbstractVector{Tsol},
+                      dir::AbstractVector{Tmsh},
+                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
+
+  gamma = params.gamma
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+  rhoLinv_dotL1 = -rhoLinv*rhoLinv
+
+  p_dot = params.get_lambda_max_data.p_dot
+  pL = calcPressure_diff(params, qL, p_dot)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+  t1 = gamma*rhoLinv/(2*aL)
+  t2 = gamma*pL/(2*aL)
+  aL_dotL1 = t1*p_dot[1] + t2*rhoLinv_dotL1
+  aL_dotL2 = t1*p_dot[2]
+  aL_dotL3 = t1*p_dot[3]
+  aL_dotL4 = t1*p_dot[4]
+  aL_dotL5 = t1*p_dot[5]
+
+
+  Un_dotL1 = dir[1]*qL[2]*rhoLinv_dotL1
+  Un_dotL2 = dir[1]*rhoLinv
+  Un += dir[1]*qL[2]*rhoLinv
+
+  Un_dotL1 += dir[2]*qL[3]*rhoLinv_dotL1
+  Un_dotL3 = dir[2]*rhoLinv
+  Un += dir[2]*qL[3]*rhoLinv
+
+  Un_dotL1 += dir[3]*qL[4]*rhoLinv_dotL1
+  Un_dotL4 = dir[3]*rhoLinv
+  Un += dir[3]*qL[4]*rhoLinv
+
+
+  for i=1:3
+    dA += dir[i]*dir[i]
+  end
+
+  dA = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA*aL
+  lambda_dot[1] = dA*aL_dotL1
+  lambda_dot[2] = dA*aL_dotL2
+  lambda_dot[3] = dA*aL_dotL3
+  lambda_dot[4] = dA*aL_dotL4
+  lambda_dot[5] = dA*aL_dotL5
+
+  if Un > 0
+    lambda_dot[1] += Un_dotL1
+    lambda_dot[2] += Un_dotL2
+    lambda_dot[3] += Un_dotL3
+    lambda_dot[4] += Un_dotL4
+  else
+    lambda_dot[1] -= Un_dotL1
+    lambda_dot[2] -= Un_dotL2
+    lambda_dot[3] -= Un_dotL3
+    lambda_dot[4] -= Un_dotL4
+  end
+
+
+  return lambda_max
+end
+
+
+"""
+  Reverse mode of [`getLambdaMax`](@ref) with respect to the metrics
+
+  **Inputs**
+
+   * params
+   * qL
+   * dir
+   * lambda_bar: seed value for reverse mode
+
+  **Inputs/Outputs**
+
+   * nrm_bar: vector to be updated (not overwritten) with the result
+"""
+function getLambdaMax_revm(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh},
+                      dir_bar::AbstractVector{Tmsh}, lambda_bar::Number) where {Tsol, Tmsh, Tdim}
+
+  Tres = promote_type(Tsol, Tmsh)
+  gamma = params.gamma
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+
+  
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    Un += dir[i]*qL[i+1]*rhoLinv
+    dA += dir[i]*dir[i]
+  end
+
+  dA2 = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA2*aL
+
+  # reverse sweep
+  fac = Un > 0 ? 1 : -1
+  Un_bar = fac*lambda_bar
+  dA2_bar = aL*lambda_bar
+#  aL_bar = dA2*lambda_bar
+
+  dA_bar = dA2_bar/(2*dA2)
+
+  for i=1:Tdim
+    # Un
+    dir_bar[i] += qL[i+1]*rhoLinv*Un_bar
+    # dA
+    dir_bar[i] += 2*dir[i]*dA_bar
+  end
+
+
+  return lambda_max
+end
+
+
+"""
+  Reverse mode wrt q of [`getLambdaMax`](@ref)
+
+  **Inputs**
+
+   * params
+   * qL
+   * dir
+   * lambda_bar: reverse mode seed value
+
+  **Inputs/Outputs**
+
+   * qL_bar: adjoint part of qL, will be updated (not overwritten)
+"""
+function getLambdaMax_revq(params::ParamType{Tdim}, 
+                           qL::AbstractVector{Tsol}, 
+                           qL_bar::AbstractVector{Tsol},
+                           dir::AbstractVector{Tmsh},
+                           lambda_bar::Number) where {Tsol, Tmsh, Tdim}
+
+  Tres = promote_type(Tsol, Tmsh)
+  gamma = params.gamma
+  Un = zero(Tres)
+  dA = zero(Tmsh)
+  rhoLinv = 1/qL[1]
+
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    Un += dir[i]*qL[i+1]*rhoLinv
+    dA += dir[i]*dir[i]
+  end
+
+  dA2 = sqrt(dA)
+
+  lambda_max = absvalue(Un) + dA2*aL
+  rhoLinv_bar = zero(Tsol)
+ 
+
+  # reverse sweep
+  fac = Un > 0 ? 1 : -1
+  Un_bar = fac*lambda_bar
+#  dA2_bar = aL*lambda_bar
+  aL_bar = dA2*lambda_bar
+
+  
+  # dA2 = sqrt(dA)
+#  dA_bar = dA2_bar/(2*dA2)
+
+  rhoLinv_bar = zero(Tsol)
+  for i=1:Tdim
+    qL_bar[i+1] += dir[i]*rhoLinv*Un_bar
+    rhoLinv_bar += dir[i]*qL[i+1]*Un_bar
+    # dir is not being differentated here
+  end
+
+  # aL
+  pL_bar = gamma*rhoLinv*aL_bar/(2*aL)
+  rhoLinv_bar += gamma*pL*aL_bar/(2*aL)
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+
+  qL_bar[1] += -rhoLinv*rhoLinv*rhoLinv_bar
+  
+  return lambda_max
+end
+
 
 

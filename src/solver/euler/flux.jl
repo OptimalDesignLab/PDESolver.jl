@@ -152,8 +152,9 @@ function getFaceElementIntegral(
     resL = sview(eqn.res, :, :, elL)
     resR = sview(eqn.res, :, :, elR)
 
-    face_integral_functor(params, sbpface, iface, qL, qR, aux_vars,
-                       nrm_face, flux_functor, resL, resR)
+    calcFaceElementIntegral(face_integral_functor, params, sbpface, iface, qL,
+                            qR, aux_vars, nrm_face, flux_functor, resL, resR)
+
   end
 
   return nothing
@@ -214,8 +215,9 @@ function getFaceElementIntegral(
     fill!(resL_f, 0.0)
     fill!(resR_f, 0.0)
 
-    face_integral_functor(params, sbpface, iface, qf_L, qf_R, aux_vars,
-                       nrm_face, flux_functor, resL_f, resR_f)
+    calcFaceElementIntegral(face_integral_functor, params, sbpface, iface,
+                            qf_L, qf_R, aux_vars, nrm_face, flux_functor,
+                            resL_f, resR_f)
 
     # interpolate back
     smallmatmat!(resL_f, mesh_s.I_S2F, resL_s)
@@ -314,8 +316,9 @@ function calcSharedFaceElementIntegrals_element_inner(
     nrm_face = ro_sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
 
-    face_integral_functor(eqn.params, mesh.sbpface, iface_j, qL, qR, aux_vars,
-                          nrm_face, flux_functor, resL, resR)
+    calcFaceElementIntegral(face_integral_functor, eqn.params, mesh.sbpface,
+                            iface_j, qL, qR, aux_vars,
+                            nrm_face, flux_functor, resL, resR)
   end  # end loop j
 
   return nothing
@@ -390,8 +393,9 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
 
     fill!(resL_f, 0.0)
     # we dont carea bout resR, so dont waste time zeroing it out
-    face_integral_functor(eqn.params, mesh_f.sbpface, iface_j, qL, qvars_f,
-                          aux_vars, nrm_face, flux_functor, resL_f, resR_f)
+    calcFaceElementIntegral(face_integral_functor, eqn.params, mesh_f.sbpface,
+                            iface_j, qL, qvars_f, aux_vars, nrm_face,
+                            flux_functor, resL_f, resR_f)
 
 
     # interpolate residual back to solution grid
@@ -563,10 +567,12 @@ end
 
 # element parallel version
 """
-  This function calculates the shared face integrals for a given set of faces.
-  It uses the MPI send and receive buffers that contain the solution for the
-  elements on the boundary (rather than the data on the faces).  This
-  enables calculating a sparse jacobian with minimal parallel communication.
+  This function calculates the shared face integrals for a given set of faces,
+  using the MPI receive buffer to get the data for the right element.
+  This function expects the receive buffer to contain the solution for the
+  entire element, not just the face.
+  This enables calculating a sparse jacobian with minimal parallel
+  communication.
 
   **Inputs**:
 
@@ -766,9 +772,9 @@ function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_data"] == 1
+  if opts["parallel_data"] == "face"
     for peer=1:mesh.npeers
-      q_vals_p = eqn.q_face_send[peer]
+      q_vals_p = eqn.shared_data[peer].q_send
       aux_vars = eqn.aux_vars_sharedface[peer]
       for i=1:mesh.peer_face_counts[peer]
         for j=1:mesh.numNodesPerFace
@@ -867,13 +873,28 @@ end
 
 function (obj::RoeFlux_revm)(params::ParamType,
               uL::AbstractArray{Tsol,1}, uR::AbstractArray{Tsol, 1}, aux_vars,
-              nrm::AbstractVector{Tmsh},
-              flux_bar::AbstractVector{Tres}, nrm_bar::AbstractArray{Tmsh, 1}) where {Tsol, Tres, Tmsh}
+              nrm::AbstractVector{Tmsh}, nrm_bar::AbstractArray{Tmsh, 1},
+              flux_bar::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
 
-  RoeSolver_revm(params, uL, uR, aux_vars, nrm, flux_bar, nrm_bar)
+  RoeSolver_revm(params, uL, uR, aux_vars, nrm, nrm_bar, flux_bar)
 
   return nothing
 end
+
+mutable struct RoeFlux_revq <: FluxType_revq
+end
+
+function (obj::RoeFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  RoeSolver_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, dir, F_bar)
+
+  return nothing
+end
+
 
 
 """
@@ -994,6 +1015,27 @@ function (obj::IRSLFFlux)(params::ParamType,
   return nothing
 end
 
+"""
+  Computes only the penalty term from the [`IRSLFFlux`](@ref)
+"""
+mutable struct LFPenalty <: FluxType
+end
+
+function (obj::LFPenalty)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE(params, kernel, uL, uR, aux_vars, nrm, F)
+
+  return nothing
+end
+
+
+
 @doc """
 ### EulerEquationMod.FluxDict
 
@@ -1020,6 +1062,7 @@ global const FluxDict = Dict{String, FluxType}(
 "DucrosFlux" => DucrosFlux(),
 "IRFlux" => IRFlux(),
 "IRSLFFlux" => IRSLFFlux(),
+"LFPenalty" => LFPenalty(),
 )
 
 @doc """
@@ -1041,6 +1084,8 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   name = opts["Volume_flux_name"]
   eqn.volume_flux_func = FluxDict[name]
 
+  assertFieldsConcrete(eqn.flux_func)
+  assertFieldsConcrete(eqn.volume_flux_func)
   return nothing
 end
 
@@ -1055,11 +1100,14 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   name = opts["Flux_name"]
   eqn.flux_func_bar = FluxDict_revm[name]
 
+  assertFieldsConcrete(eqn.flux_func_bar)
+
   return nothing
 end # End function getFluxFunctors_revm
 
 
 global const FluxDict_revq = Dict{String, FluxType_revq}(
+"RoeFlux" => RoeFlux_revq(),
 "IRFlux" => IRFlux_revq(),
 )
 
@@ -1076,7 +1124,7 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   name = opts["Flux_name"]
-  eqn.flux_func_bar = FluxDict_revq[name]
+  eqn.flux_func_barq = FluxDict_revq[name]
 
   return nothing
 end # End function getFluxFunctors_revq
