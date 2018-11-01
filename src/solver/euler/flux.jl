@@ -881,6 +881,21 @@ function (obj::RoeFlux_revm)(params::ParamType,
   return nothing
 end
 
+mutable struct RoeFlux_revq <: FluxType_revq
+end
+
+function (obj::RoeFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  RoeSolver_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, dir, F_bar)
+
+  return nothing
+end
+
+
 
 """
   Calls [`calcEulerFlux_standard`](@ref)
@@ -1092,6 +1107,7 @@ end # End function getFluxFunctors_revm
 
 
 global const FluxDict_revq = Dict{String, FluxType_revq}(
+"RoeFlux" => RoeFlux_revq(),
 "IRFlux" => IRFlux_revq(),
 )
 

@@ -18,6 +18,11 @@ struct RoeFluxData{Tsol, Tres, Tmsh}
   euler_flux_bar::Vector{Tres}
   sat_bar::Vector{Tres}
 
+  # revq
+  v_vals_bar::Vector{Tres}
+  dq_bar::Vector{Tres}
+  roe_vars_bar::Vector{Tres}
+
   # diff
   roe_vars_dot::Vector{Tres}
 
@@ -35,11 +40,17 @@ struct RoeFluxData{Tsol, Tres, Tmsh}
     euler_flux_bar = zeros(Tres, numDofPerNode)
     sat_bar = zeros(Tres, numDofPerNode)
 
+    # revq
+    v_vals_bar = zeros(Tres, numDofPerNode)
+    dq_bar = zeros(Tres, numDofPerNode)
+    roe_vars_bar = zeros(Tres, 4)
+
     # diff
     roe_vars_dot = zeros(Tres, 22)  # 22 needed in 3D
 
     obj = new(dq, sat, roe_vars, euler_flux, v_vals, nrm2,
               euler_flux_bar, sat_bar,
+              v_vals_bar, dq_bar, roe_vars_bar,
               roe_vars_dot)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
@@ -60,6 +71,12 @@ struct CalcSatData{Tres}
 
   # no arrays are used for the diff version
 
+  # revq
+  E1dq_bar::Vector{Tres}
+  E2dq_bar::Vector{Tres}
+  E3dq_bar::Vector{Tres}
+  E4dq_bar::Vector{Tres}
+
   function CalcSatData{Tres}(numDofPerNode::Integer) where {Tres}
 
     E1dq = zeros(Tres, numDofPerNode)
@@ -67,8 +84,16 @@ struct CalcSatData{Tres}
     E3dq = zeros(Tres, numDofPerNode)
     E4dq = zeros(Tres, numDofPerNode)
 
+    # revq
+    E1dq_bar = zeros(Tres, numDofPerNode)
+    E2dq_bar = zeros(Tres, numDofPerNode)
+    E3dq_bar = zeros(Tres, numDofPerNode)
+    E4dq_bar = zeros(Tres, numDofPerNode)
 
-    obj = new(E1dq, E2dq, E3dq, E4dq)
+
+
+    obj = new(E1dq, E2dq, E3dq, E4dq,
+              E1dq_bar, E2dq_bar, E3dq_bar, E4dq_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 

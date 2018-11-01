@@ -56,6 +56,7 @@ function test_jac_terms()
     func = EulerEquationMod.FluxDict["RoeFlux"]
     func_diff = EulerEquationMod.FluxDict_diff["RoeFlux"]
     func_revm = EulerEquationMod.FluxDict_revm["RoeFlux"]
+    func_revq = EulerEquationMod.FluxDict_revq["RoeFlux"]
    
 
 
@@ -76,10 +77,11 @@ function test_jac_terms()
     lf_kernel3 = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh3.numDofPerNode, 2*mesh3.numDofPerNode)
     
     q = Complex128[2.0, 3.0, 4.0, 7.0]
-    qg = q + 1
+    qg = q + 0.1
 
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
 
     test_lambda(eqn.params, q, nrm)
     test_lambdasimple(eqn.params, q, qg, nrm)
@@ -114,31 +116,37 @@ function test_jac_terms()
     
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
-    qg = q + 1
+    qg = q + 0.1
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
+    test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
+
+
     test_lambda(eqn.params, q, nrm2)
     test_lambdasimple(eqn.params, q, qg, nrm2)
-
-
+    
     println("testing lambda1 entropy fix")
-    q = Complex128[1.1, 0.47, 0.53, 2.2]
-    qg = q + 1
+    q = Complex128[1.1, -0.72405, -0.82405, 2.2] 
+    qg = q + 0.1
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
    
     println("testing lambda2 entropy fix")
-    q = Complex128[1.1, -1.32, -1.34, 2.2] 
-    qg = q + 1
+    q = Complex128[1.1, 0.64405, 0.73405, 2.2] 
+    qg = q + 0.1
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
 
     println("testing lambda3 entropy fix")
-    q = Complex128[1.1, -0.42, -0.45, 2.2]
-    qg = q + 1
+    q = Complex128[1.1, -0.681, 0.47, 2.2]
+    qg = q + 0.1
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
     
@@ -154,6 +162,7 @@ function test_jac_terms()
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
     test_2flux_revm(eqn3.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn3.params, q, qg, nrm, func, func_revq)
     test_lambda(eqn3.params, q, nrm)
     test_lambdasimple(eqn3.params, q, qg, nrm)
 
@@ -169,25 +178,29 @@ function test_jac_terms()
     q = Complex128[2.0, 3.0, 4.0, 5.0, 13.0]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
+    test_2flux_revm(eqn3.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn3.params, q, qg, nrm, func, func_revq)
     test_lambda(eqn3.params, q, nrm2)
     test_lambdasimple(eqn3.params, q, qg, nrm2)
 
 
     println("testing lambda1 entropy fix")
     # lambda1 entropy fix active
-    q = Complex128[1.05, -1.1, -1.2, -1.3, 2.5] 
-    qg = q + 1
-    test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
-    test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
-    test_2flux_revm(eqn3.params, q, qg, nrm, func, func_revm)
-
-    println("testing lambda2 entropy fix")
-    # lambda1 entropy fix active
     q = Complex128[1.05, 0.9, 1.2, -1.3, 2.5]
     qg = q + 1
     test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
     test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
     test_2flux_revm(eqn3.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn3.params, q, qg, nrm, func, func_revq)
+
+    println("testing lambda2 entropy fix")
+    # lambda1 entropy fix active
+    q = Complex128[1.05, -1.1, -1.2, -1.3, 2.5] 
+    qg = q + 1
+    test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
+    test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
+    test_2flux_revm(eqn3.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn3.params, q, qg, nrm, func, func_revq)
 
     println("testing lambda3 entropy fix")
     # lambda3 entropy fix active
@@ -196,6 +209,7 @@ function test_jac_terms()
     test_ad_inner(eqn3.params, q, qg, nrm, func, func_diff)
     test_ad_inner(eqn3.params, q, qg, nrm2, func, func_diff)
     test_2flux_revm(eqn3.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn3.params, q, qg, nrm, func, func_revq)
 
     test_ad_inner(eqn3.params, q, qg, nrm, func3, func3_diff)
     test_2flux_revq(eqn3.params, q, qg, nrm, func3, func3_revq, test_multid=true)
@@ -1983,7 +1997,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
          sum(mesh.nrm_bndry_bar .* nrm_bndry_dot) +
          sum(mesh.nrm_face_bar .* nrm_face_dot)
 
-  @test abs(val - val2) < 1e-13
+  @test abs(val - val2) < 1e-12
 
   return nothing
 end
