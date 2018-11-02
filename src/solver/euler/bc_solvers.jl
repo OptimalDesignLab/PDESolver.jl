@@ -990,7 +990,7 @@ function calcECOptFlux(params::ParamType{Tdim, :conservative},
   end
   num -= delta_psi
 
-  if den > 1e-13
+  if den > 1e-8
     for i=1:numDofPerNode
       F[i] -= num*(wL[i] - wR[i])/den
     end
