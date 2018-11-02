@@ -259,6 +259,34 @@ function convertToConservativeFromIR_(params::ParamType{3},
 end
 
 
+"""
+  Calculates the potential flux (usually denotes psi) for the IR variables
+
+  **Inputs**
+
+   * params
+   * q: state (conservative variables)
+   * nrm: normal vector
+
+  **Outputs**
+
+   * potential flux in direction `nrm`
+"""
+function calcPotentialFluxIR(params::ParamType{Tdim, :conservative},
+                             q::AbstractVector{Tsol}, nrm::AbstractVector{Tmsh}
+                            ) where {Tsol, Tmsh, Tdim}
+
+  Tres = promote_type(Tsol, Tmsh)
+
+  pflux = zero(Tres)
+  for i=1:Tdim
+    pflux += q[i + 1]*nrm[i]
+  end
+
+  return pflux
+end
+
+
 
 #------------------------------------------------------------------------------
 # converting to conservative variables safely

@@ -954,3 +954,65 @@ function logavg(aL, aR)
 
   return (aL + aR)/(2*F)
 end
+
+
+"""
+  Entropy conservative flux computed by solving an optimization problem
+"""
+function calcECOptFlux(params::ParamType{Tdim, :conservative},
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractVector{Tres},
+                      nrm::AbstractVector{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  numDofPerNode = length(qL)
+  data = params.ecoptfluxdata
+  @unpack data q_avg wL wR
+
+  for i=1:numDofPerNode
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  calcEulerFlux(params, q_avg, aux_vars, nrm, F)
+
+  convertToIR(params, qL, wL)
+  convertToIR(params, qR, wR)
+
+  delta_psi = calcPotentialFluxIR(params, qL, nrm) -
+              calcPotentialFluxIR(params, qR, nrm)
+
+  num = zero(Tres)
+  den = zero(Tres)
+
+  for i=1:numDofPerNode
+    delta_w = wL[i] - wR[i]
+    num += delta_w*F[i]
+    den += delta_w*delta_w
+  end
+  num -= delta_psi
+
+  if den > 1e-13
+    for i=1:numDofPerNode
+      F[i] -= num*(wL[i] - wR[i])/den
+    end
+  end
+
+  return nothing
+end
+
+
+function calcECOptFlux(params::ParamType{Tdim, :conservative},
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractVector{Tres},
+                      nrm::AbstractMatrix{Tmsh},  F::AbstractArray{Tres,2}) where {Tmsh, Tsol, Tres, Tdim}
+
+  #TODO: implement a specialized method that doesn't require converting to
+  #      entropy variables repeatedly
+
+  for i=1:size(nrm, 2)
+    nrm_i = sview(nrm, :, i)
+    F_i = sview(F, :, i)
+    calcECOptFlux(params, qL, qR, aux_vars, nrm_i, F_i)
+  end
+
+  return nothing
+end

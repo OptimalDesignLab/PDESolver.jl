@@ -138,6 +138,32 @@ end
 
 
 """
+  Data needed by [`calcECOptFlux`](@ref)
+"""
+struct ECOptFluxData{Tsol}
+  q_avg::Vector{Tsol}
+  wL::Vector{Tsol}
+  wR::Vector{Tsol}
+
+
+  function ECOptFluxData{Tsol}(numDofPerNode::Integer) where {Tsol}
+
+    q_avg = zeros(Tsol, numDofPerNode)
+    wL = zeros(Tsol, numDofPerNode)
+    wR = zeros(Tsol, numDofPerNode)
+
+    obj = new(q_avg, wL, wR)
+
+    assertArraysUnique(obj); assertFieldsConcrete(obj)
+
+    return obj
+  end
+end
+
+
+
+
+"""
   Data needed by [`logavg_diff`](@ref)
 
   **Static Parameters**

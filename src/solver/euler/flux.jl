@@ -1035,6 +1035,41 @@ function (obj::LFPenalty)(params::ParamType,
 end
 
 
+mutable struct ECOptFlux <: FluxType
+end
+
+function (obj::ECOptFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres}) where {Tsol, Tres}
+
+  calcECOptFlux(params, uL, uR, aux_vars, nrm, F)
+
+  return nothing
+end
+
+mutable struct ECOptLFFlux <: FluxType
+end
+
+function (obj::ECOptLFFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres}) where {Tsol, Tres}
+
+  calcECOptFlux(params, uL, uR, aux_vars, nrm, F)
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE(params, kernel, uL, uR, aux_vars, nrm, F)
+
+
+  return nothing
+end
+
+
+
 
 @doc """
 ### EulerEquationMod.FluxDict
@@ -1063,6 +1098,8 @@ global const FluxDict = Dict{String, FluxType}(
 "IRFlux" => IRFlux(),
 "IRSLFFlux" => IRSLFFlux(),
 "LFPenalty" => LFPenalty(),
+"ECOptFlux" => ECOptFlux(),
+"ECOptLFFlux" => ECOptLFFlux(),
 )
 
 @doc """
