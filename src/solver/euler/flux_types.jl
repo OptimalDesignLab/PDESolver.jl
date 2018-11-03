@@ -599,6 +599,10 @@ struct BCData{Tsol, Tres}
   roe_vars::Vector{Tsol}
   euler_flux::Vector{Tres}
 
+  # reverse mode
+  q_bar::Vector{Tres}
+  qg_bar::Vector{Tres}
+
   function BCData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
 
     qg = zeros(Tsol, numDofPerNode)
@@ -608,7 +612,12 @@ struct BCData{Tsol, Tres}
     roe_vars = zeros(Tsol, numDofPerNode)
     euler_flux = zeros(Tres, numDofPerNode)
 
-    obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux)
+    # reverse mode
+    q_bar = zeros(Tres, numDofPerNode)
+    qg_bar = zeros(Tres, numDofPerNode)
+
+    obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux,
+              q_bar, qg_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 

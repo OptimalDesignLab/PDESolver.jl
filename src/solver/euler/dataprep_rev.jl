@@ -125,11 +125,12 @@ function calcBoundaryFlux_revm(mesh::AbstractDGMesh{Tmsh},
       convertToConservative(eqn.params, q, q2)
       aux_vars = sview(eqn.aux_vars_bndry, :, j, global_facenum)
       x = sview(mesh.coords_bndry, :, j, global_facenum)
+      coords_bar = sview(mesh.coords_bndry_bar, :, j, global_facenum)
       nrm = sview(mesh.nrm_bndry, :, j, global_facenum)
       nrm_bar = sview(mesh.nrm_bndry_bar, :, j, global_facenum)
       bndryflux_i = sview(bndryflux_bar, :, j, i)
 
-      functor_bar(eqn.params, q2, aux_vars, x, nrm, nrm_bar, bndryflux_i)
+      functor_bar(eqn.params, q2, aux_vars, x, coords_bar, nrm, nrm_bar, bndryflux_i)
     end
   end
 

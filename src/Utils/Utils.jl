@@ -46,7 +46,7 @@ export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
 # complexify.jl functions
-export absvalue, absvalue_deriv
+export absvalue, absvalue_deriv, absvalue_rev, atan2_rev
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
@@ -795,43 +795,6 @@ function inversePerm(permvec::AbstractVector, invperm::AbstractVector)
 
   return nothing
 end
-
-@doc """
-###Utils.absvalue_deriv
-
-Computes the derivative of the absolute value of a variable w.r.t itself
-
-**Inputs**
-
-* `val` : The variable whose derivative needs to be computed e.r.t itself
-
-"""->
-
-function absvalue_deriv(val::Tval) where Tval
-
-  if val > zero(Tval)
-    return one(Tval)
-  elseif val < zero(Tval)
-    return -one(Tval)
-  else
-    return zero(Tval)
-  end
-
-end # End function absvalue_deriv
-
-function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
-
-  x_bar = zero(Tval)
-  y_bar = zero(Tval)
-  
-  if real(x) > real(y)
-    x_bar += max_val_bar
-  else
-    y_bar += max_val_bar
-  end
-
-  return x_bar, y_bar
-end # End function max_rev
 
 # TODO: write functions to apply inverse permutation from permvec, without
 #       needing to explicetly compute the inverse permutation vector

@@ -487,7 +487,7 @@ end
 
   This is a low level functor.
 """
-
+#=
 function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
@@ -530,13 +530,13 @@ function (obj::isentropicVortexBC)(params::ParamType,
 
   return nothing
 end
+=#
 
-#=
 # low level function
 function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-               nrm::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
@@ -547,7 +547,7 @@ function (obj::isentropicVortexBC)(params::ParamType,
   return nothing
 
 end # ends the function isentropicVortexBC
-=#
+
 
 @makeBC isentropicVortexBC_revm """
 ###EulerEquationMod.isentropicVortexBC_revm
@@ -556,9 +556,39 @@ Reverse mode for isentropicVortexBC.
 
 """
 
+
 function (obj::isentropicVortexBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm::AbstractArray{Tmsh,1},
+              nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+   # Forward Sweep
+  @unpack params.bcdata qg q_bar qg_bar
+  fill!(q_bar, 0); fill!(qg_bar, 0)
+
+  calcIsentropicVortex(params, coords, qg)
+
+  # Reverse Sweep
+
+  # RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm, nrm_bar, bndryflux_bar)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm, bndryflux_bar)
+
+  calcIsentropicVortex_rev(params, coords, coords_bar, qg_bar)
+
+  return nothing
+end
+
+#=  
+function (obj::isentropicVortexBC_revm)(params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1},
               nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -606,6 +636,8 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
 
   return nothing
 end
+=#
+
 
 @makeBC isentropicVortexBC_physical """
 ### EulerEquationMod.isentropicVortexBC_physical <: BCTypes
@@ -840,7 +872,8 @@ Reverse mode for noPenetrationBC.
 """
 function (obj::noPenetrationBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1192,7 +1225,8 @@ Reverse mode for FreeStreamBC.
 """
 function (obj::FreeStreamBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1204,6 +1238,7 @@ function (obj::FreeStreamBC_revm)(params::ParamType,
   # Reverse sweep
   RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
 
+  # calcFreeStream does not depend on coords, so no need to reverse mode it
   return nothing
 end
 
@@ -1305,19 +1340,25 @@ Reverse mode of ExpBC
 
 function (obj::ExpBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward Sweep
-  qg = params.bcdata.qg
+  @unpack params.bcdata qg q_bar qg_bar
+  fill!(q_bar, 0); fill!(qg_bar, 0)
+
   calcExp(params, coords, qg)
 
   # Reverse Sweep
 
   # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
   RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  calcExp_rev(params, coords, coords_bar, qg_bar)
 
   return nothing
 end

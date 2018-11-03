@@ -23,7 +23,7 @@ function test_jac_terms()
 
   # list of boundary conditions to test revm method in 2D
   bclist_revm_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC", "isentropicVortexBC"]
-  bclist_revm_3d = [                  "FreeStreamBC", "ExpBC"]
+  bclist_revm_3d = [                   "FreeStreamBC"]
 
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
@@ -49,6 +49,8 @@ function test_jac_terms()
 
     nrm = [0.45, 0.55]
     nrm2 = -nrm
+    coords = Complex128[1.1, 1.2]
+
 
     println("testing all positive eigenvalues")
 
@@ -112,8 +114,14 @@ function test_jac_terms()
       bc_revm = EulerEquationMod.BCDict_revm[bcname](mesh3, eqn3)
       test_bc_revm(eqn3.params, bc, bc_revm)
     end
+
+    # test common_funcs
+    test_common_func_rev(eqn.params, coords, EulerEquationMod.calcExp,
+                                             EulerEquationMod.calcExp_rev)
  
-    
+    test_common_func_rev(eqn.params, coords, EulerEquationMod.calcIsentropicVortex,
+                                              EulerEquationMod.calcIsentropicVortex_rev)
+  
     println("testing all negative eigenvalues")
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 0.1
@@ -393,7 +401,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------
@@ -1226,6 +1234,47 @@ function test_2flux_revm(params::AbstractParamType{Tdim}, qL, qR, nrm,
   return nothing
 end
 
+
+"""
+  Test the reverse mode of a function in common_funcs.jl
+"""
+function test_common_func_rev(params::AbstractParamType{Tdim},
+                              coords::AbstractArray{Tmsh, 1}, func, func_rev
+                             ) where {Tdim, Tmsh}
+
+  println("testing common function ", func)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+
+  coords_dot = rand_realpart(Tdim)
+  coords_bar = zeros(Tmsh, Tdim)
+  q_bar = rand_realpart(params.numDofPerNode)
+  q = zeros(Complex128, params.numDofPerNode)
+
+  coords .+= pert*coords_dot
+  func(params, coords, q)
+  coords .-= pert*coords_dot
+  val1 = sum(imag(q)/h .* q_bar)
+
+  func_rev(params, coords, coords_bar, q_bar)
+  val2 = sum(coords_bar .* coords_dot)
+
+  @test abs(val1 - val2) < 1e-13
+
+  # test accumulation
+  coords_bar_orig = copy(coords_bar)
+  func_rev(params, coords, coords_bar, q_bar)
+
+  @test maximum(abs.(coords_bar - 2*coords_bar_orig)) < 1e-13
+
+
+  return nothing
+end
+
+
+
 """
   Test reverse mode of BC functor
 """
@@ -1255,20 +1304,24 @@ function test_bc_revm(params::AbstractParamType{Tdim},
   nrm_dot = rand_realpart(Tdim)
   flux_bar = rand_realpart(numDofPerNode)
   flux_dot = zeros(Complex128, numDofPerNode)
+  coords_bar = zeros(Complex128, Tdim)
+  coords_dot = rand_realpart(Tdim)
 
   nrm .+= pert*nrm_dot
+  coords .+= pert*coords_dot
   func(params, q, aux_vars, coords, nrm, flux_dot)
   nrm .-= pert*nrm_dot
+  coords .-= pert*coords_dot
   val = sum(flux_bar .* imag(flux_dot)/h)
 
-  func_revm(params, q, aux_vars, coords, nrm, nrm_bar, flux_bar)
-  val2 = sum(nrm_bar .* nrm_dot)
+  func_revm(params, q, aux_vars, coords, coords_bar, nrm, nrm_bar, flux_bar)
+  val2 = sum(nrm_bar .* nrm_dot + coords_bar .* coords_dot)
 
   @test abs(val - val2) < 1e-13
 
   # test accumulation
   nrm_bar_orig = copy(nrm_bar)
-  func_revm(params, q, aux_vars, coords, nrm, nrm_bar, flux_bar)
+  func_revm(params, q, aux_vars, coords, coords_bar, nrm, nrm_bar, flux_bar)
  
   @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-13
 
