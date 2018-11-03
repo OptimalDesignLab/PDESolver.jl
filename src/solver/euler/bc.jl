@@ -487,50 +487,6 @@ end
 
   This is a low level functor.
 """
-#=
-function (obj::isentropicVortexBC)(params::ParamType,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-
-  gamma = params.gamma
-  gami = params.gamma_1
-
-  data = params.bcdata
-  @unpack data qg v_vals sat dq roe_vars euler_flux
-  fill!(euler_flux, 0)
-
-  # getting qg
-  calcIsentropicVortex(params, coords, qg) # Get the boundary value
-  convertFromNaturalToWorkingVars(params, q, v_vals)
-
-  # Getting SAT terms
-  specific_vol = 1.0/v_vals[1]
-  u = v_vals[2]*specific_vol
-  v = v_vals[3]*specific_vol
-  phi = 0.5*(u*u + v*v)
-  H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
-
-  for i=1:length(q)
-    dq[i] = q[i] - qg[i]
-  end
-  roe_vars[1] = u
-  roe_vars[2] = v
-  roe_vars[3] = H
-  calcSAT(params, roe_vars, dq, nrm_xy, sat)
-
-  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, euler_flux)
-
-  sat_fac = 1.0 # Multiplier for SAT term
-  for i=1:4
-    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
-  end
-
-  return nothing
-end
-=#
 
 # low level function
 function (obj::isentropicVortexBC)(params::ParamType,
@@ -583,60 +539,6 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
 
   return nothing
 end
-
-#=  
-function (obj::isentropicVortexBC_revm)(params::ParamType2,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
-              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
-              nrm::AbstractArray{Tmsh,1},
-              nrm_bar::AbstractVector{Tmsh},
-              bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-
-  # Forward sweep
-  gamma = params.gamma
-  gami = params.gamma_1
-
-  # getting qg
-  qg = params.bcdata.qg
-  calcIsentropicVortex(params, coords, qg) # Get the boundary value
-  v_vals = params.bcdata.v_vals
-  convertFromNaturalToWorkingVars(params, q, v_vals)
-
-  # Getting SAT terms
-  specific_vol = 1.0/v_vals[1]
-  u = v_vals[2]*specific_vol
-  v = v_vals[3]*specific_vol
-  phi = 0.5*(u*u + v*v)
-  H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
-
-  dq = zeros(Tsol, 4)
-  dq = v_vals - qg
-#  nrm2 = params.nrm2
-#  calcBCNormal(params, dxidx, nrm, nrm2)
-
-  sat_fac = 1.0 # Multiplier for SAT term
-  # for i=1:4
-  #   bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
-  # end
-
-  # Reverse sweep
-  sat_bar = zeros(Tsol, 4)
-  euler_flux_bar = zeros(Tsol, 4)
-  for i = 1:4
-    sat_bar[i] = sat_fac*bndryflux_bar[i]
-    euler_flux_bar[i] = bndryflux_bar[i]
-  end
-
-#  nrm2_bar = zeros(Tmsh, 2)
-  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, nrm_bar, euler_flux_bar)
-  calcSAT_revm(params, nrm, dq, [u,v], H, sat_bar, nrm_bar)
-#  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
-
-  return nothing
-end
-=#
 
 
 @makeBC isentropicVortexBC_physical """
