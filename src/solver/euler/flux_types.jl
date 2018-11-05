@@ -809,10 +809,14 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
   # calcVolumeIntegralsSplitFormLinear
   nrmD::Matrix{Tmsh}
   F_d::Matrix{Tres}
+  nrmD_bar::Matrix{Tmsh}
+  F_d_bar::Matrix{Tres}
+
   S::Array{Float64, 3}  # SBP S matrix (should elementtype really be Float64?)
 
   # calcVolumeIntegralsSplitFormCurvilinear
   Sx::Array{Tmsh, 3}
+  Sx_bar::Array{Tmsh, 3}
 
   # staggered grid methods
   res_s::Matrix{Tres}
@@ -830,11 +834,16 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     # split form stuff
     nrmD = zeros(Tmsh, dim, dim)
     F_d = zeros(Tres, numDofPerNode, dim)
+    nrmD_bar = zeros(Tmsh, dim, dim)
+    F_d_bar = zeros(Tres, numDofPerNode, dim)
+
+
     # the staggered grid calculation only uses the curvilinear method, so
     # make S numNodesPerElement_s, to match the sbp operator on the solution
     # grid (S is not used if they don't match>
     S = zeros(Float64, numNodesPerElement_s, numNodesPerElement_s, dim)
     Sx = zeros(Tmsh, numNodesPerElement_f, numNodesPerElement_f, dim)
+    Sx_bar = zeros(Tmsh, numNodesPerElement_f, numNodesPerElement_f, dim)
 
     for i=1:dim
       S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
@@ -844,7 +853,7 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     res_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
 
     obj = new(flux_jac, res_jac, nrm,
-              nrmD, F_d, S, Sx, res_s, res_f)
+              nrmD, F_d, nrmD_bar, F_d_bar,  S, Sx, Sx_bar, res_s, res_f)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 

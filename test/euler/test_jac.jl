@@ -434,7 +434,7 @@ function test_jac_terms_long()
     opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
     opts_tmp["need_adjoint"] = true
     # TEMPORARY
-    opts_tmp["addFaceIntegrals"] = false
+#    opts_tmp["addFaceIntegrals"] = true
     opts_tmp["addBoundaryIntegrals"] = false
     make_input(opts_tmp, fname4)
     mesh_r3, sbp_r3, eqn_r3, opts_r3 = run_solver(fname4)

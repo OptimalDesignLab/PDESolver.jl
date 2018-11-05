@@ -308,6 +308,19 @@ function calcVolumeIntegralsSplitForm_revm(
 end
 
 
+"""
+  Reverse mode of [`calcVolumeIntegralsSplitFormLinear`](@ref).  The _bar fields
+  of the mesh are updated.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: the two point flux function (`FluxType`)
+   * functor_revm: the reverse mode wrt metrics flux function (`FluxType_revm`)
+"""
 function calcVolumeIntegralsSplitFormLinear_revm(
                                         mesh::AbstractMesh{Tmsh},
                                         sbp::AbstractSBP,
@@ -323,7 +336,7 @@ function calcVolumeIntegralsSplitFormLinear_revm(
   aux_vars = eqn.aux_vars
   params = eqn.params
   data = params.calc_volume_integrals_data
-  @unpack data nrmD F_d S
+  @unpack data nrmD F_d S F_d_bar nrmD_bar
 
   F_d_bar = zeros(F_d)
   nrmD_bar = zeros(Tmsh, mesh.dim, mesh.dim)
@@ -378,7 +391,9 @@ function calcVolumeIntegralsSplitFormLinear_revm(
 end
 
 
-
+"""
+  Reverse mode wrt metrics of [`calcVolumeIntegralsSplitFormCurvilinear`](@ref)
+"""
 function calcVolumeIntegralsSplitFormCurvilinear_revm(
                       mesh::AbstractMesh{Tmsh},
                       sbp::AbstractSBP,
@@ -396,10 +411,7 @@ function calcVolumeIntegralsSplitFormCurvilinear_revm(
   params = eqn.params
 
   data = params.calc_volume_integrals_data
-  @unpack data nrmD F_d Sx
-
-  Sx_bar = zeros(Sx)
-  F_d_bar = zeros(F_d)
+  @unpack data nrmD F_d Sx Sx_bar F_d_bar
 
   # S is calculated in x-y-z, so the normal vectors should be the unit normals
   fill!(nrmD, 0.0)
