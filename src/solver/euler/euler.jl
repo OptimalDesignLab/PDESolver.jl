@@ -126,7 +126,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#    println("volume integral @time printed above")
+    println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]
@@ -135,7 +135,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
-#    println("boundary integral @time printed above")
+    println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
@@ -145,7 +145,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
+    println("face integral @time printed above")
   end
 
 
@@ -518,37 +518,6 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 # this is almost the exact list of everything we *shouldn't* be storing, but
 # rather recalculating on the fly
 
-#println("Entered dataPrep()")
-
-#  println("typeof(eqn) = ", typeof(eqn))
-#  println("typeof(eqn.params) = ", typeof(eqn.params))
-#  println("eqn.q[:, :, 10180] = \n", eqn.q[:, :, 10180])
-#  println("coords = \n", mesh.coords[:, :, 10180])
-
-#=
-  # replace abnormally small density values with element average
-  # this is a really terrible idea
-  q_tmp = zeros(Tsol, mesh.numDofPerNode)
-
-  for i=1:mesh.numEl
-    avg_val = zero(Tsol)
-    for j=1:mesh.numNodesPerElement
-      avg_val += eqn.q[1, j, i]
-    end
-    avg_val /= mesh.numNodesPerElement
-
-    for j=1:mesh.numNodesPerElement
-      if eqn.q[1, j, i] < 0.5*avg_val
-        coords_j = sview(mesh.coords, :, j, i)
-        calcFreeStream(eqn.params, coords_j, q_tmp)
-        println("replacing value for element ", i, ", node ", j)
-        for k=1:mesh.numDofPerNode
-          eqn.q[k, j, i] = q_tmp[k]
-        end
-      end
-    end
-  end
-=#
 
   # apply filtering to input
   if eqn.params.use_filter
@@ -583,6 +552,8 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     end
   end
 
+  #TODO: consider setting precompute_volume_flux to false for type 2 volume
+  #      integrals
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
     # println("  getEulerFlux @time printed above")

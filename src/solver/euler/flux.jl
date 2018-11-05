@@ -812,6 +812,23 @@ function (obj::ErrorFlux)(params::ParamType,
   return nothing
 end
 
+
+mutable struct ErrorFlux_revm <: FluxType_revm
+end
+
+function (obj::ErrorFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  error("ErrorFlux_revm called")
+
+  return nothing
+end
+
+
+
 """
   This flux function sets F = q.  Useful for testing
 """
@@ -1091,6 +1108,7 @@ end
 
 
 global const FluxDict_revm = Dict{String, FluxType_revm}(
+"ErrorFlux" => ErrorFlux_revm(),
 "RoeFlux" => RoeFlux_revm(),
 "IRFlux" => IRFlux_revm(),
 )
@@ -1100,7 +1118,11 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   name = opts["Flux_name"]
   eqn.flux_func_bar = FluxDict_revm[name]
 
+  name = opts["Volume_flux_name"]
+  eqn.volume_flux_func_revm = FluxDict_revm[name]
+
   assertFieldsConcrete(eqn.flux_func_bar)
+  assertFieldsConcrete(eqn.volume_flux_func_revm)
 
   return nothing
 end # End function getFluxFunctors_revm

@@ -15,8 +15,7 @@ Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
 function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0) where Tsol
 
-  println("size(input_array) = ", size(input_array))
-  println("size(res_bar) = ", size(eqn.res_bar))
+  #TODO: do parallel communication on input_array
   array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
 
   time = eqn.params.time
@@ -38,6 +37,7 @@ function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
+    println("doing reverse volume integrals")
     evalVolumeIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
@@ -47,7 +47,8 @@ function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
   end
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-   evalBoundaryIntegrals_revm(mesh, sbp, eqn)
+    println("doing reverse boundary integrals")
+    evalBoundaryIntegrals_revm(mesh, sbp, eqn)
   end
 
 
@@ -56,6 +57,7 @@ function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
   # end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
+    println("doing reverse face integrals")
     evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
@@ -147,8 +149,8 @@ function evalVolumeIntegrals_revm(mesh::AbstractMesh{Tmsh},
       end
     end  # end if
   elseif integral_type == 2
-    error("integral_type == 2 not supported")
-    calcVolumeIntegralsSplitForm(mesh, sbp, eqn, opts, eqn.volume_flux_func)
+    calcVolumeIntegralsSplitForm_revm(mesh, sbp, eqn, opts, eqn.volume_flux_func,
+                                 eqn.volume_flux_func_revm)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end

@@ -47,6 +47,8 @@ function test_jac_terms()
     test_IRA0(eqn.params)
     test_IRA0(eqn3.params)
 
+    test_SCurvilinear(eqn.params, sbp)
+
     nrm = [0.45, 0.55]
     nrm2 = -nrm
     coords = Complex128[1.1, 1.2]
@@ -241,7 +243,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
 
 
 """
@@ -251,7 +253,11 @@ function test_jac_terms_long()
 
   @testset "----- Testing additional Jacobian calculation -----" begin
 
+    # starting point for different configurations
+    fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
+
+
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -385,8 +391,11 @@ function test_jac_terms_long()
 
 =#
     # test revm products
+
+    # regular Roe scheme
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
+    opts_tmp["IC_name"] = "ICExp"
     opts_tmp["BC1_name"] = "FreeStreamBC"  # BC with reverse mode functor
     opts_tmp["operator_type"] = "SBPDiagonalE"
     opts_tmp["order"] = 2
@@ -396,12 +405,49 @@ function test_jac_terms_long()
 
     test_revm_product(mesh_r1, sbp_r1, eqn_r1, opts_r1)
 
+    # test 2d BC that depends on mesh.coords_bndry
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname)
+    opts_tmp["IC_name"] = "ICExp"
+    opts_tmp["BC1_name"] = "isentropicVortexBC"  # BC with reverse mode functor
+    opts_tmp["operator_type"] = "SBPOmega"
+    opts_tmp["order"] = 2
+    opts_tmp["need_adjoint"] = true
+    make_input(opts_tmp, fname4)
+    mesh_r2, sbp_r2, eqn_r2, opts_r2 = run_solver(fname4)
+
+    test_revm_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
+
+
+    # SBPOmega ES scheme
+    println("testing ES scheme")
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["IC_name"] = "ICExp"
+    opts_tmp["jac_type"] = 3
+    opts_tmp["operator_type"] = "SBPOmega"
+    opts_tmp["BC1_name"] = "FreeStreamBC"  # BC with reverse mode functor
+    opts_tmp["volume_integral_type"] = 2
+    opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["face_integral_type"] = 2
+    opts_tmp["Flux_name"] = "IRFlux"
+    opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
+    opts_tmp["need_adjoint"] = true
+    # TEMPORARY
+    opts_tmp["addFaceIntegrals"] = false
+    opts_tmp["addBoundaryIntegrals"] = false
+    make_input(opts_tmp, fname4)
+    mesh_r3, sbp_r3, eqn_r3, opts_r3 = run_solver(fname4)
+
+    test_revm_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
+
+
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -1602,6 +1648,42 @@ function test_entropyPenalty(params::AbstractParamType{Tdim},
 end
 
 
+"""
+  Test reverse mode of calcSCurvilinear
+"""
+function test_SCurvilinear(params::AbstractParamType{Tdim}, sbp) where {Tdim}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  numNodesPerElement = params.numNodesPerElement
+  dxidx = rand_realpart(Tdim, Tdim, numNodesPerElement)
+  Sx = zeros(Complex128, numNodesPerElement, numNodesPerElement, Tdim)
+
+  dxidx_dot = rand_realpart(Tdim, Tdim, numNodesPerElement)
+  dxidx_bar = zeros(Complex128, Tdim, Tdim, numNodesPerElement)
+  Sx_bar = rand_realpart(numNodesPerElement, numNodesPerElement, Tdim)
+
+
+  dxidx .+= pert*dxidx_dot
+  Utils.calcSCurvilinear(sbp, dxidx, Sx)
+  dxidx .-= pert*dxidx_dot
+  val = sum( imag(Sx)/h .* Sx_bar)
+
+  Utils.calcSCurvilinear_rev(sbp, dxidx, dxidx_bar, Sx, Sx_bar)
+  val2 = sum(dxidx_bar .* dxidx_dot)
+
+  @test abs(val - val2) < 1e-13
+
+  # test accumulation
+  dxidx_bar_orig = copy(dxidx_bar)
+  Utils.calcSCurvilinear_rev(sbp, dxidx, dxidx_bar, Sx, Sx_bar)
+
+  @test maximum(abs.(dxidx_bar - 2.*dxidx_bar_orig)) < 1e-13
+
+
+  return nothing
+end
 
 
 """
@@ -2004,7 +2086,9 @@ function test_strongdiagjac(mesh, sbp, eqn, _opts)
   return nothing
 end
 
-
+"""
+  Test psi^T dRdm product
+"""
 function test_revm_product(mesh, sbp, eqn, opts)
 
   h = 1e-20
@@ -2014,43 +2098,124 @@ function test_revm_product(mesh, sbp, eqn, opts)
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
-  # fields: dxidx, jac, nrm_bndry, nrm_face
-  # TODO: add coords_bndry at least 
+  # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
   res_bar = rand_realpart(mesh.numDof)
 
-  dxidx_dot     = rand_realpart(size(mesh.dxidx))
-  jac_dot       = rand_realpart(size(mesh.jac))
-  nrm_bndry_dot = rand_realpart(size(mesh.nrm_bndry))
-  nrm_face_dot  = rand_realpart(size(mesh.nrm_face_bar))
-#  nrm_face_dot = zeros(Complex128, size(mesh.nrm_face))
-#  nrm_face_dot[1, 1, 1] = 1
+  dxidx_dot       = rand_realpart(size(mesh.dxidx))
+  jac_dot         = rand_realpart(size(mesh.jac))
+  nrm_bndry_dot   = rand_realpart(size(mesh.nrm_bndry))
+  nrm_face_dot    = rand_realpart(size(mesh.nrm_face_bar))
+  coords_bndry_dot = rand_realpart(size(mesh.coords_bndry))
+
 
   zeroBarArrays(mesh)
 
-  mesh.dxidx     .+= pert*dxidx_dot
-  mesh.jac       .+= pert*jac_dot
-  mesh.nrm_bndry .+= pert*nrm_bndry_dot
-  mesh.nrm_face  .+= pert*nrm_face_dot
+  mesh.dxidx        .+= pert*dxidx_dot
+  mesh.jac          .+= pert*jac_dot
+  mesh.nrm_bndry    .+= pert*nrm_bndry_dot
+  mesh.nrm_face     .+= pert*nrm_face_dot
+  mesh.coords_bndry .+= pert*coords_bndry_dot
 
   fill!(eqn.res, 0)
   evalResidual(mesh, sbp, eqn, opts)
   array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   val = sum(imag(eqn.res_vec)/h .* res_bar)
 
-  mesh.dxidx     .-= pert*dxidx_dot
-  mesh.jac       .-= pert*jac_dot
-  mesh.nrm_bndry .-= pert*nrm_bndry_dot
-  mesh.nrm_face  .-= pert*nrm_face_dot
+  mesh.dxidx        .-= pert*dxidx_dot
+  mesh.jac          .-= pert*jac_dot
+  mesh.nrm_bndry    .-= pert*nrm_bndry_dot
+  mesh.nrm_face     .-= pert*nrm_face_dot
+  mesh.coords_bndry .-= pert*coords_bndry_dot
 
 
   EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, res_bar)
-  val2 = sum(mesh.dxidx_bar .* dxidx_dot)         +
-         sum(mesh.jac_bar .* jac_dot)             +
-         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot) +
-         sum(mesh.nrm_face_bar .* nrm_face_dot)
+  val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
+         sum(mesh.jac_bar .* jac_dot)                  +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
+         sum(mesh.nrm_face_bar .* nrm_face_dot)        +
+         sum(mesh.coords_bndry_bar .* coords_bndry_dot)
 
+  println("val = ", real(val))
+  println("val2 = ", real(val2))
   @test abs(val - val2) < 1e-12
+
+  # test accumulation behavior
+
+
+  dxidx_bar_orig        = copy(mesh.dxidx_bar)
+  jac_bar_orig          = copy(mesh.jac_bar)
+  nrm_bndry_bar_orig    = copy(mesh.nrm_bndry_bar)
+  nrm_face_bar_orig     = copy(mesh.nrm_face_bar)
+  coords_bndry_bar_orig = copy(mesh.coords_bndry_bar)
+  # test curvilinear version of volume terms
+
+  EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, res_bar)
+
+  @test maximum(abs.(mesh.dxidx_bar - 2*dxidx_bar_orig)) < 1e-13
+  @test maximum(abs.(mesh.jac_bar - 2*jac_bar_orig)) < 1e-13
+  @test maximum(abs.(mesh.nrm_bndry_bar - 2*nrm_bndry_bar_orig)) < 1e-13
+  @test maximum(abs.(mesh.nrm_face_bar - 2*nrm_face_bar_orig)) < 1e-13
+  @test maximum(abs.(mesh.coords_bndry_bar - 2*coords_bndry_bar_orig)) < 1e-13
+
+
+  if opts["volume_integral_type"] == 2
+    # test SplitFormLinear and SplitFormCurvilinear
+
+    # linear
+    zeroBarArrays(mesh)
+    fill!(eqn.res, 0)
+
+    mesh.dxidx .+= pert*dxidx_dot
+    EulerEquationMod.calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn,
+                                                   opts, eqn.volume_flux_func)
+
+    mesh.dxidx .-= pert*dxidx_dot
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    val = sum(imag(eqn.res_vec)/h .* res_bar)
+
+    EulerEquationMod.calcVolumeIntegralsSplitFormLinear_revm(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revm)
+    val2 = sum(mesh.dxidx_bar .* dxidx_dot)
+
+    @test abs(val - val2) < 1e-13
+
+    # test accumulation
+    dxidx_bar_orig = copy(mesh.dxidx_bar)
+    EulerEquationMod.calcVolumeIntegralsSplitFormLinear_revm(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revm)
+
+    @test maximum(abs.(mesh.dxidx_bar - 2*dxidx_bar_orig)) < 1e-13
+
+
+    # curvilinear
+    zeroBarArrays(mesh)
+    fill!(eqn.res, 0)
+
+    mesh.dxidx .+= pert*dxidx_dot
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn,
+                                                   opts, eqn.volume_flux_func)
+    mesh.dxidx .-= pert*dxidx_dot
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    val = sum(imag(eqn.res_vec)/h .* res_bar)
+
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear_revm(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revm)
+
+    val2 = sum(mesh.dxidx_bar .* dxidx_dot)
+
+    @test abs(val - val2) < 1e-13
+
+    # test accumulation
+    dxidx_bar_orig = copy(mesh.dxidx_bar)
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear_revm(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revm)
+
+    @test maximum(abs.(mesh.dxidx_bar - 2*dxidx_bar_orig)) < 1e-13
+
+  end
+
+
 
   return nothing
 end

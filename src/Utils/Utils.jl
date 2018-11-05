@@ -57,7 +57,7 @@ export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
        applyMassMatrixInverse
 
 # curvilinear.jl
-export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
+export calcSCurvilinear, calcSCurvilinear_rev, calcECurvilinear, calcDCurvilinear
 
 # area.jl
 export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev

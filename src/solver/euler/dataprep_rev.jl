@@ -19,7 +19,6 @@ function getEulerFlux_revm(mesh::AbstractMesh{Tmsh},
 
   nrm = zeros(Tmsh, Tdim)
   nrm_bar = zeros(nrm)
-  fill!(mesh.dxidx_bar, 0.0)
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement  # loop over nodes on current element
       q_vals = sview(eqn.q, :, j, i)
@@ -152,7 +151,6 @@ function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
                            flux_face_bar::AbstractArray{Tres, 3}
                            ) where {Tmsh,  Tsol, Tres, Tdim}
 
-  fill!(mesh.nrm_face_bar, 0.0)  # should this be zeroed out here?
   nfaces = length(interfaces)
 #  nrm = zeros(Tmsh, size(sbp.facenormal,1))
   for i=1:nfaces  # loop over faces

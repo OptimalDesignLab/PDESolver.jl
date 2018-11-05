@@ -472,6 +472,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
   volume_flux_func_diff::FluxType_diff
+  volume_flux_func_revm::FluxType_revm
+
   viscous_flux_func::FluxType  # functor for the viscous flux numerical flux function
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use

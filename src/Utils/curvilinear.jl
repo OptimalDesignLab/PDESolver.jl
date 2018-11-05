@@ -23,7 +23,6 @@ function calcSCurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, S::Ab
 
   #TODO: test performance
   #      maybe doing 2 passed over the data in order would be better?
-  #TODO: S is supposed to be skew-symmetric, so only do half of it
   for d1=1:Tdim  # cartesian direction
     for d2=1:Tdim  # parametric direction
       for i=1:nnodes
@@ -39,6 +38,54 @@ function calcSCurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, S::Ab
 
   return nothing
 end
+
+"""
+  Reverse mode of [`calcSCurvilinar`](@ref)
+
+  **Inputs**
+
+   * sbp
+   * dxidx
+   * S
+   * S_bar: seed values for reverse mode
+
+  **Outputs**
+
+   * dxidx_bar: updated with reverse propigation of S_bar
+"""
+function calcSCurvilinear_rev(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3},
+                               dxidx_bar::AbstractArray{Tmsh, 3},
+                               S::AbstractArray{T, 3}, S_bar::AbstractArray{T, 3}) where {T, Tmsh}
+
+  Tdim = size(S, 3)
+  nnodes = size(S, 1)
+  fill!(S, 0.0)
+
+  for d1=1:Tdim  # cartesian direction
+    for d2=1:Tdim  # parametric direction
+      for i=1:nnodes
+        for j=1:(i - 1)
+          S[j, i, d1] += 0.5*dxidx[d2, d1, j ]*sbp.Q[j, i, d2] - 0.5*dxidx[d2, d1, i]*sbp.Q[i, j, d2]
+          S[i, j, d1] = -S[j, i, d1]
+
+          dxidx_bar[d2, d1, j] += 0.5*sbp.Q[j, i, d2]*S_bar[j, i, d1]
+          dxidx_bar[d2, d1, i] -= 0.5*sbp.Q[i, j, d2]*S_bar[j, i, d1]
+
+          dxidx_bar[d2, d1, j] -= 0.5*sbp.Q[j, i, d2]*S_bar[i, j, d1]
+          dxidx_bar[d2, d1, i] += 0.5*sbp.Q[i, j, d2]*S_bar[i, j, d1]
+
+
+        end
+      end
+    end
+  end
+
+
+  return nothing
+end
+
+
+
 
 
 """
