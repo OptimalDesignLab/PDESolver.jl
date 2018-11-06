@@ -107,8 +107,6 @@ function calcFaceIntegral_nopre_revm(
         functor_revm::FluxType_revm,
         interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
 
-  println("entered calcFaceIntegral_nopre_revm, functor_revm = ", functor_revm)
-
   nfaces = length(interfaces)
   params = eqn.params
 

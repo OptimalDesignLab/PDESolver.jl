@@ -265,7 +265,7 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 
-#=
+
     # SBPDiagonalE, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -389,7 +389,7 @@ function test_jac_terms_long()
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
 
-=#
+
     # test revm products
 
     # regular Roe scheme
@@ -464,7 +464,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -1799,6 +1799,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01*rand(size(eqn.q))
 
   # get the correct differentiated flux function (this is needed because the
   # input file set calc_jac_explicit = false
@@ -2148,7 +2149,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
   mesh.coords_bndry .-= pert*coords_bndry_dot
 
 
-  EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, res_bar)
+  evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
   val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
          sum(mesh.jac_bar .* jac_dot)                  +
          sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
@@ -2172,9 +2173,8 @@ function test_revm_product(mesh, sbp, eqn, opts)
   nrm_bndry_bar_orig    = copy(mesh.nrm_bndry_bar)
   nrm_face_bar_orig     = copy(mesh.nrm_face_bar)
   coords_bndry_bar_orig = copy(mesh.coords_bndry_bar)
-  # test curvilinear version of volume terms
 
-  EulerEquationMod.evalrevm_transposeproduct(mesh, sbp, eqn, opts, res_bar)
+  evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
 
   @test maximum(abs.(mesh.dxidx_bar - 2*dxidx_bar_orig)) < 1e-13
   @test maximum(abs.(mesh.jac_bar - 2*jac_bar_orig)) < 1e-13

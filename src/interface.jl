@@ -328,3 +328,39 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionDat
 
 end
 
+
+"""
+  This function performs the reverse mode calculation of the residual with
+  respect to the metrics.  Specifically, it takes an input vector and back
+  propigates it to the fields of the mesh.  The following fields of the mesh
+  are updated with the result:
+
+   * dxidx_bar
+   * jac_bar
+   * nrm_bndry_bar
+   * nrm_face_bar
+   * coords_bndry_bar
+
+  It is the caller's responsibility to zero out these arrays before calling
+  this function, if required.  Mesh implementations should provide a
+  `zeroBarArrays` function to do this.
+
+  Note: the mesh and equation objects must have the `need_adjoint` option set
+  to true in the options dictionary used to create them.
+
+  **Inputs**
+
+   * mesh:
+   * sbp
+   * eqn
+   * opts
+   * input_array: seed vector for back propigation, same shape as `eqn.res_vec`
+   * t: optional argument, gives current time value
+"""
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                     opts::Dict, input_array::AbstractArray{T, 1}, t=0.0
+                    ) where {T}
+
+  error("Generic fallback for evalResidual_revm: did you forget to extend evalResidual_revm with a new method for your AbstractSolutionData")
+
+end

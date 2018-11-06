@@ -1,3 +1,7 @@
+# main file for evalResidual_revm
+
+import PDESolver.evalResidual_revm
+
 @doc """
 ### EulerEquationMod.evalrevm_transposeproduct
 
@@ -12,7 +16,7 @@ Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
 
 """->
 
-function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0) where Tsol
 
   #TODO: do parallel communication on input_array
