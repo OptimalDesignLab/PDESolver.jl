@@ -28,6 +28,8 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
 
   val = calcFunctional(mesh, sbp, eqn, opts, functionalData)
 
+  val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+
   return val
 end
 
@@ -73,24 +75,47 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
 
 
   fill!(eqn.res, 0.0)
+  # use functions called from evalResidual to compute the dissipation, then
+  # contract it with the entropy variables afterwards
 
-  # local part
-  face_integral_functor = functionalData.func
-  flux_functor = ErrorFlux()  # not used, but required by the interface
-  getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+  if typeof(mesh.sbpface) <: DenseFace
+    @assert opts["parallel_data"] == "element"
 
-  # parallel part
+    # local part
+    face_integral_functor = functionalData.func
+    flux_functor = ErrorFlux()  # not used, but required by the interface
+    getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+ 
+    # parallel part
 
-  # temporarily change the face integral functor
-  face_integral_functor_orig = eqn.face_element_integral_func
-  eqn.face_element_integral_func = face_integral_functor
+    # temporarily change the face integral functor
+    face_integral_functor_orig = eqn.face_element_integral_func
+    eqn.face_element_integral_func = face_integral_functor
 
-  # finish data exchange/do the shared face integrals
-  # this works even if the receives have already been waited on
-  finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
+    # finish data exchange/do the shared face integrals
+    # this works even if the receives have already been waited on
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
 
-  # restore eqn object to original state
-  eqn.face_element_integral_func = face_integral_functor_orig
+    # restore eqn object to original state
+    eqn.face_element_integral_func = face_integral_functor_orig
+  else  # SparseFace
+    flux_functor = functionalData.func_sparseface
+    calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor, mesh.interfaces)
+
+    # parallel part
+
+    # figure out which paralle function to call
+    if opts["parallel_data"] == "face"
+      pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, flux_functor)
+    elseif opts["paralle_data"] == "element"
+      pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_elemen_inner(mesh, sbp, eqn, opts, data, flux_functor)
+    else
+      error("unregonized parallel data: $(opts["parallel_data"])")
+    end
+
+    # do shared face integrals
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, pfunc)
+  end
 
   # compute the contraction
   val = zero(Tres)
@@ -104,6 +129,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
       end
     end
   end
+
 
   #TODO: allreduce on val???
 
