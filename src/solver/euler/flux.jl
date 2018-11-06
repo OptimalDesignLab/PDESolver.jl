@@ -95,6 +95,7 @@ function calcFaceIntegral_nopre(
 
   for i=1:nfaces
     iface_i = interfaces[i]
+#    fill!(flux_face, 0)
 
     qL = ro_sview(eqn.q, :, :, iface_i.elementL)
     qR = ro_sview(eqn.q, :, :, iface_i.elementR)
@@ -1099,6 +1100,7 @@ function (obj::LFPenalty)(params::ParamType,
               F::AbstractVector{Tres}) where {Tsol, Tres}
 
   kernel = params.entropy_lf_kernel
+  fill!(F, 0)  # fluxes must *overwrite* the F array
   applyEntropyKernel_diagE(params, kernel, uL, uR, aux_vars, nrm, F)
 
   return nothing
@@ -1137,6 +1139,28 @@ end
   In general, these functors call similarly-named function in bc_solvers.jl.
   It is recommened to look at the documentation for those functions.
 
+  Each functor must be callable as:
+
+  ```
+  function (obj::FunctorName)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+  ```
+
+  **Inputs**
+
+   * params: ParamType
+   * uL: vector containing the left state, length `numDofPerNode`
+   * ur: vector containing the right state, length `numDofPerNode`
+   * aux_vars: vector of auxiliary variables for the left state
+   * nrm: scaled normal vector in xy space, length `mesh.dim`
+
+  **Inputs/Outputs**
+
+   * F: vector to overwrite with the flux, length `numDofPerNode`
   TODO: document signature of the functors here
 
 """->
@@ -1176,7 +1200,27 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
+"""
+  Dictionary to put all the reverse mode wrt metric flux functors in.
 
+  Each functor should be callable as:
+
+  ```
+  function (obj::FunctorName_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+  ```
+
+  The arguments are similar to the regular functor, the only differences are:
+
+  * F_bar: input vector, same length as `F`
+  * nrm_bar: vector to be updated with the back-propigation of `F_bar`, same
+             length as `nrm`
+
+
+"""
 global const FluxDict_revm = Dict{String, FluxType_revm}(
 "ErrorFlux" => ErrorFlux_revm(),
 "RoeFlux" => RoeFlux_revm(),
@@ -1199,7 +1243,27 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end # End function getFluxFunctors_revm
 
+"""
+  Dictionary to put all the reverse mode wrt the solution functors
 
+  Each functor should be callable as
+
+  ```
+  function (obj::IRFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+  ```
+
+  The arguments are similar to the regular functors, the only differences are:
+
+   * F_bar: input vector, same length as `F`
+   * qL_bar: vector corresponding to `qL`, to be updated with the back
+             propigation of `F_bar`
+   * qR_bar: vector corresponding to `qR`, to be updated with back
+             propigation of `F_bar`
+"""
 global const FluxDict_revq = Dict{String, FluxType_revq}(
 "RoeFlux" => RoeFlux_revq(),
 "IRFlux" => IRFlux_revq(),

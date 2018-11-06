@@ -393,6 +393,7 @@ function test_jac_terms_long()
     # test revm products
 
     # regular Roe scheme
+    println("\n\nTesting Roe scheme")
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
     opts_tmp["IC_name"] = "ICExp"
@@ -406,6 +407,7 @@ function test_jac_terms_long()
     test_revm_product(mesh_r1, sbp_r1, eqn_r1, opts_r1)
 
     # test 2d BC that depends on mesh.coords_bndry
+    println("\n\nTesting 2D boundary condition")
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname)
     opts_tmp["IC_name"] = "ICExp"
@@ -420,6 +422,7 @@ function test_jac_terms_long()
 
 
     # SBPOmega ES scheme
+    println("\n\ntesting SBP Omega ES scheme")
     println("testing ES scheme")
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -439,7 +442,7 @@ function test_jac_terms_long()
     test_revm_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
 
     # SBPDiagonalE ES scheme
-    println("\n\ntesting diagonalE scheme")
+    println("\n\ntesting diagonalE ES scheme")
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
     opts_tmp["operator_type"] = "SBPDiagonalE"
@@ -450,7 +453,6 @@ function test_jac_terms_long()
     opts_tmp["Flux_name"] = "LFPenalty"
     opts_tmp["order"] = 2
     opts_tmp["need_adjoint"] = true
-    #opts_tmp["addFaceIntegrals"] = false  # TEMPORARY
     make_input(opts_tmp, fname4)
     mesh_r4, sbp_r4, eqn_r4, opts_r4 = run_solver(fname4)
 
@@ -2112,6 +2114,8 @@ function test_revm_product(mesh, sbp, eqn, opts)
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+                                     # interfaces non-zero
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
@@ -2177,6 +2181,27 @@ function test_revm_product(mesh, sbp, eqn, opts)
   @test maximum(abs.(mesh.nrm_bndry_bar - 2*nrm_bndry_bar_orig)) < 1e-13
   @test maximum(abs.(mesh.nrm_face_bar - 2*nrm_face_bar_orig)) < 1e-13
   @test maximum(abs.(mesh.coords_bndry_bar - 2*coords_bndry_bar_orig)) < 1e-13
+
+#=
+  if opts["face_integral_type"] == 1
+    println("testing type 1 face integrals")
+    zeroBarArrays(mesh)
+    fill!(eqn.res, 0)
+
+    mesh.nrm_face .+= pert*nrm_face_dot
+    EulerEquationMod.calcFaceIntegral_nopre(mesh, sbp, eqn, opts, eqn.flux_func, mesh.interfaces)
+    mesh.nrm_face .-= pert*nrm_face_dot
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    val1 = sum(imag(eqn.res_vec)/h .* res_bar)
+
+    EulerEquationMod.calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar, mesh.interfaces)
+    val2 = sum(mesh.nrm_face_bar .* nrm_face_dot)
+
+    println("val = ", real(val))
+    println("val2 = ", real(val2))
+    @test abs(val - val2) < 1e-13
+  end
+=#
 
 
   if opts["volume_integral_type"] == 2

@@ -107,6 +107,7 @@ function calcFaceIntegral_nopre_revm(
         functor_revm::FluxType_revm,
         interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
 
+  println("entered calcFaceIntegral_nopre_revm, functor_revm = ", functor_revm)
 
   nfaces = length(interfaces)
   params = eqn.params
@@ -130,7 +131,7 @@ function calcFaceIntegral_nopre_revm(
     resR_bar = sview(eqn.res_bar, :, :, iface_i.elementR)
     interiorFaceIntegrate_rev!(mesh.sbpface, iface_i, flux_face_bar, resL_bar,
                                resR_bar, SummationByParts.Subtract())
- 
+
     for j=1:mesh.numNodesPerFace
       qL_j = ro_sview(q_faceL, :, j)
       qR_j = ro_sview(q_faceR, :, j)
@@ -138,7 +139,7 @@ function calcFaceIntegral_nopre_revm(
       eqn.aux_vars_face[1, j, i] = calcPressure(params, qL_j)
       aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
 
-      nrm_xy = ro_sview(mesh.nrm_face, :, j, i)
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
       nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
       flux_bar_j = sview(flux_face_bar, :, j)
 
