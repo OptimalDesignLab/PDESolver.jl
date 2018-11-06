@@ -222,7 +222,7 @@ function test_eqn_copy()
 
 end   # end of function test_eqn_copy
 
-add_func1!(EulerTests, test_eqn_copy, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_eqn_copy, [TAG_SHORTTEST, TAG_TMP])
 
 #=
 All fields of Euler's eqn obj, as of 20170522

@@ -59,9 +59,9 @@ function createObjects(opts::Dict)
   # depend on the physics module
   init(mesh, sbp, eqn, opts, pmesh)
 
-  if opts["need_adjoint"]
-    init_revm(mesh, sbp, eqn, opts, pmesh)
-  end
+#  if opts["need_adjoint"]
+#    init_revm(mesh, sbp, eqn, opts, pmesh)
+#  end
 
   return mesh, sbp, eqn, opts, pmesh
 end

@@ -126,7 +126,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-    println("volume integral @time printed above")
+    #println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]
@@ -135,7 +135,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
-    println("boundary integral @time printed above")
+    #println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
@@ -145,7 +145,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-    println("face integral @time printed above")
+    #println("face integral @time printed above")
   end
 
 
@@ -226,6 +226,7 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
 
+  init_revm(mesh, sbp, eqn, opts, pmesh)
 
   return nothing
 end
@@ -561,7 +562,6 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 
   if mesh.isDG
-    println("opts[precompute_q_face] = ", opts["precompute_q_face"])
     if opts["precompute_q_face"]
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       # println("  interpolateFace @time printed above")

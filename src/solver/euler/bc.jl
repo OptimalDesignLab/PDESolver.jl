@@ -476,6 +476,36 @@ end
 
 
 
+@makeBC errorBC """
+  This BC generates an error if it is called
+"""
+
+function (obj::errorBC)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  error("errorBC has been called")
+end
+
+@makeBC errorBC_revm """
+  This BC generates an error if it is called.  Used as a placeholder if no
+  BC is specified
+"""
+function (obj::errorBC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm::AbstractArray{Tmsh,1},
+              nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  error("errorBC_revm has been called")
+end
+
 
 @makeBC isentropicVortexBC """
 ### EulerEquationMod.isentropicVortexBC <: BCTypes
@@ -1521,6 +1551,7 @@ end
   Each functor should be callable with the signature
 """
 global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
+"errorBC" => errorBC,
 "isentropicVortexBC" => isentropicVortexBC,
 "noPenetrationBC" => noPenetrationBC,
 "noPenetrationESBC" => noPenetrationESBC,
@@ -1601,9 +1632,10 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   end
 
   return nothing
-end # ENd function getBCFunctors
+end # End function getBCFunctors
 
 global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
+"errorBC" => errorBC_revm,
 "noPenetrationBC" => noPenetrationBC_revm,
 "FreeStreamBC" => FreeStreamBC_revm,
 "ExpBC" => ExpBC_revm,
@@ -1614,6 +1646,8 @@ global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
   This function uses the options dictionary to populate mesh.bndry_funcs_revm.
 
   The functors must be of time [`BCType_revm`](@ref)
+
+  If opts["need_adjoint"] is false, the error BC is supplied instead.
 
   The function must be callable with the signature
 
@@ -1649,7 +1683,12 @@ function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData
 
   for i = 1:mesh.numBC
     key_i = string("BC", i, "_name")
-    val = opts[key_i]
+    if opts["need_adjoint"]
+      val = opts[key_i]
+    else
+      val = "errorBC"  # placeholder, because the BC in use might not have
+                       # a reverse-mode version
+    end
     ctor = BCDict_revm[val]
 #    println("BCDict_revm[$val] = ", BCDict_revm[val])
     mesh.bndry_funcs_revm[i] = ctor(mesh, eqn)

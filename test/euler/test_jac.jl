@@ -450,7 +450,7 @@ function test_jac_terms_long()
     opts_tmp["BC1_name"] = "FreeStreamBC"  # BC with reverse mode functor
     opts_tmp["volume_integral_type"] = 2
     opts_tmp["Volume_flux_name"] = "IRFlux"
-    opts_tmp["Flux_name"] = "LFPenalty"
+    opts_tmp["Flux_name"] = "IRSLFFlux"
     opts_tmp["order"] = 2
     opts_tmp["need_adjoint"] = true
     make_input(opts_tmp, fname4)
@@ -464,7 +464,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------

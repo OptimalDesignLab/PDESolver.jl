@@ -220,6 +220,43 @@ function getFaceElementIntegral_diff(
 end
 
 
+"""
+  Reverse mode wrt metrics of [`getFaceElementIntegral`](@ref)
+"""
+function getFaceElementIntegral_revm(
+                           mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  params = eqn.params
+  nfaces = length(interfaces)
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = ro_sview(eqn.q, :, :, elL)
+    qR = ro_sview(eqn.q, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    nrm_face_bar = sview(mesh.nrm_face_bar, :, :, i)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+    resR_bar = ro_sview(eqn.res_bar, :, :, elR)
+
+    calcFaceElementIntegral_revm(face_integral_functor, params, sbpface, iface,
+                        qL, qR, aux_vars, nrm_face, nrm_face_bar, flux_functor,
+                        resL_bar, resR_bar)
+
+  end
+
+  return nothing
+end
+
+
+
+
 
 #------------------------------------------------------------------------------
 # Shared face integrals
