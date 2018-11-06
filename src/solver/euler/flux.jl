@@ -1206,7 +1206,7 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   else
     name = "ErrorFlux"
   end
-  eqn.flux_func_bar = FluxDict_revm[name]
+  eqn.flux_func_revm = FluxDict_revm[name]
 
   if opts["need_adjoint"]
     name = opts["Volume_flux_name"]
@@ -1215,7 +1215,7 @@ function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   end
   eqn.volume_flux_func_revm = FluxDict_revm[name]
 
-  assertFieldsConcrete(eqn.flux_func_bar)
+  assertFieldsConcrete(eqn.flux_func_revm)
   assertFieldsConcrete(eqn.volume_flux_func_revm)
 
   return nothing
@@ -1260,7 +1260,7 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   name = opts["Flux_name"]
-  eqn.flux_func_barq = FluxDict_revq[name]
+  eqn.flux_func_revmq = FluxDict_revq[name]
 
   return nothing
 end # End function getFluxFunctors_revq

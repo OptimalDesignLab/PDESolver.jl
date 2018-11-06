@@ -464,7 +464,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
-  flux_func_bar::FluxType_revm # Functor for the reverse mode of face flux
+  flux_func_revm::FluxType_revm # Functor for the reverse mode of face flux
   flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
@@ -654,7 +654,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 
     # functor defaults. functorThatErrors() is defined in ODLCommonTools
     eqn.flux_func = functorThatErrors()
-    eqn.flux_func_bar = functorThatErrors_revm()
+    eqn.flux_func_revm = functorThatErrors_revm()
     eqn.volume_flux_func = functorThatErrors()
     eqn.viscous_flux_func = functorThatErrors()
 
@@ -676,7 +676,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
           eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
         end
 
-      eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts)
+        eqn.shared_data_bar = Array{SharedFaceData{Tsol}}(0) 
       else
         eqn.shared_data_bar = zeros(SharedFaceData, 0)
       end

@@ -41,7 +41,6 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
-    println("doing reverse volume integrals")
     evalVolumeIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
@@ -65,13 +64,13 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
-  # time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
+  time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
 
 
-  # # apply inverse mass matrix to eqn.res, necessary for CN
-  # if opts["use_Minv"]
-  #   applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
-  # end
+  # apply inverse mass matrix to eqn.res, necessary for CN
+  if opts["use_Minv"]
+    error("use_Minv not supported for revm product")
+  end
 
 
   time.t_dataprep += @elapsed dataPrep_revm(mesh, sbp, eqn, opts)
@@ -213,7 +212,7 @@ function evalFaceIntegrals_revm(mesh::AbstractDGMesh{Tmsh},
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
-    calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar,
+    calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, eqn.flux_func_revm,
                          mesh.interfaces)
 
   elseif face_integral_type == 2
@@ -242,9 +241,9 @@ function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   if face_integral_type == 1
 
     if opts["parallel_data"] == "face"
-      calcSharedFaceIntegrals_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar)
+      calcSharedFaceIntegrals_revm(mesh, sbp, eqn, opts, eqn.flux_func_revm)
     elseif opts["parallel_data"] == "element"
-      calcSharedFaceIntegrals_element_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar)
+      calcSharedFaceIntegrals_element_revm(mesh, sbp, eqn, opts, eqn.flux_func_revm)
     else
       throw(ErrorException("unsupported parallel data type"))
     end
@@ -261,6 +260,8 @@ function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
+
+#TODO: what is this and why is it here?
 """
 ### EulerEquationMod.calcSharedFaceIntegrals_revm
 
@@ -343,7 +344,6 @@ Reverse mode of evalSourceTerm w.r.t mesh metrics.
 documentation as and when this code is developed*
 
 """
-
 function evalSourceTerm_revm(mesh::AbstractMesh{Tmsh},
                      sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                      opts) where {Tmsh, Tsol, Tres, Tdim}
@@ -352,13 +352,13 @@ function evalSourceTerm_revm(mesh::AbstractMesh{Tmsh},
   # placeholder for multiple source term functionality (similar to how
   # boundary conditions are done)
   if opts["use_src_term"]
-    applySourceTerm(mesh, sbp, eqn, opts, eqn.src_func)
+    error("source terms not supported for revm product")
   end
 
   return nothing
 end  # end function
 
-
+#=
 @doc """
 ###EulerEquationMod.updatePumiMesh
 
@@ -393,3 +393,4 @@ function updatePumiMesh(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
 
   return nothing
 end
+=#
