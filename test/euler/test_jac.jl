@@ -2264,3 +2264,26 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+
+#=
+"""
+  Test the psi^T dR/dq product
+"""
+function test_revm_product(mesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+                                     # interfaces non-zero
+
+  # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
+
+  res_bar = rand_realpart(mesh.numDof)
+  q_dot = rand_realpart(mesh.numDof)
+
+=#

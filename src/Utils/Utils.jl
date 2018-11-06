@@ -95,23 +95,28 @@ end
 @doc """
 ### Utils.array1DTo3D
 
-  This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
-  3 dimensional array.  This function uses mesh.dofs
-  to speed the process.
+  This takes a solution vector, and disassembles it into the 3D array form.
+  This function uses mesh.dofs to speed the process.
 
   This function also calls writeQ to do any requested output.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * q_vec: vector, same shape as `eqn.q_vec
+
+  **Inputs/Outputs**
+
+   * q_arr: array, same shape as `eqn.q`, to be overwritten
 
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 
-  The DG method for array1DTo3D assumes that q and q_vec refer to the
-    same memory address, and therefore does no explicit writing/copying.
+  This function is optimized for DG meshes where `q_vec` and `q` might
+  refer to the same array.
 
   Aliasing restrictions: none
 """->
@@ -179,13 +184,32 @@ end
 @doc """
 ### Utils.array3DTo1D
 
-  This function takes the 3D array of variables in arr and
-  reassembles it into the vector res_vec.  Note that
-  This is a reduction operation and zeros res_vec before performing the
+  This function takes the 3D array of variables and
+  reassembles it into the vector form by summing into the output array.
+  Note that
+  this is a reduction operation and zeros res_vec before performing the
   operation, unless zero_resvec is set to false
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * res_array: 3D array, same shape as `eqn.res`
+
+  **Inputs/Outputs**
+
+   * res_vec: vector, same shape as `eqn.res_vec`, to sum into
+
+  **Keyword Arguments**
+
+   * zero_resvec: if true (default), zeros `res_vec` before summing into it
+
+
 """->
 # mid level function (although it doesn't need Tdim)
 function array3DTo1D(mesh::AbstractCGMesh{Tmsh},
@@ -195,24 +219,28 @@ function array3DTo1D(mesh::AbstractCGMesh{Tmsh},
 # arr is the array to be assembled into res_vec
 
 #  println("in array3DTo1D")
-  if mesh.isDG
-    return nothing
-  end
 
   if zero_resvec
-    fill!(res_vec, 0.0)
-  end
-
-
-  for i=1:mesh.numEl  # loop over elements
-    for j=1:mesh.numNodesPerElement
-      for k=1:size(res_arr, 1)  # loop over dofs on the node
-        dofnum_k = mesh.dofs[k, j, i]
-        res_vec[dofnum_k] += res_arr[k,j,i]
+    # assign to output
+    for i=1:mesh.numEl  # loop over elements
+      for j=1:mesh.numNodesPerElement
+        @simd for k=1:size(res_arr, 1)  # loop over dofs on the node
+          dofnum_k = mesh.dofs[k, j, i]
+          res_vec[dofnum_k] = res_arr[k,j,i]
+        end
+      end
+    end
+  else
+    # sum into output
+    for i=1:mesh.numEl  # loop over elements
+      for j=1:mesh.numNodesPerElement
+        @simd for k=1:size(res_arr, 1)  # loop over dofs on the node
+          dofnum_k = mesh.dofs[k, j, i]
+          res_vec[dofnum_k] += res_arr[k,j,i]
+        end
       end
     end
   end
-
   return nothing
 end
 
@@ -223,8 +251,14 @@ function array3DTo1D(mesh::AbstractDGMesh{Tmsh},
 
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(res_arr) != pointer(res_vec)
-    for i = 1:length(res_vec)
-      res_vec[i] = res_arr[i]
+    if zero_resvec
+      @simd for i = 1:length(res_vec)
+        res_vec[i] = res_arr[i]
+      end
+    else
+      @simd for i = 1:length(res_vec)
+        res_vec[i] += res_arr[i]
+      end
     end
   end
 

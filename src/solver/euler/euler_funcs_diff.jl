@@ -177,6 +177,76 @@ function calcVolumeIntegrals_nopre_revm(
   return nothing
 end  # end function
 
+"""
+  Reverse mode wrt q of [`calcVolumeIntegrals_nopre`](@ref)
+"""
+function calcVolumeIntegrals_nopre_revq(
+           mesh::AbstractMesh{Tmsh},
+           sbp::AbstractSBP,
+           eqn::EulerData{Tsol, Tres, Tdim},
+           opts) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  # flux in the parametric directions for a given element
+  flux_el_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+  nrm = zeros(Tmsh, mesh.dim)
+#=
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      for k=1:Tdim
+        flux_k = sview(flux_el, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        # consider calculating all directions at once
+        # not sure if that will help because the data dependencies are
+        # really simple
+        calcEulerFlux(eqn.params, q_j, aux_vars_j, nrm, flux_k)
+      end  # end loop k
+    end  # end loop j
+
+    res_i = sview(eqn.res, :, :, i)
+    for k=1:Tdim
+      weakDifferentiateElement!(sbp, k, sview(flux_el, :, :, k), res_i, SummationByParts.Add(), true)
+    end
+=#
+  #-----------------------------
+  # reverse sweep
+  for i=1:mesh.numEl
+    res_bar_i = sview(eqn.res_bar, :, :, i)
+    fill!(flux_el_bar, 0)
+    for k=1:Tdim
+      flux_bar_k = sview(flux_el_bar, :, :, k)
+      weakDifferentiateElement_rev!(sbp, k, flux_bar_k, res_bar_i,
+                                    SummationByParts.Add(), true)
+    end
+
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      q_bar_j = sview(eqn.q_bar, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      for k=1:Tdim
+        fill!(nrm_bar, 0)
+        flux_bar_k = sview(flux_el_bar, :, j, k)
+
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+
+        calcEulerFlux_revq(eqn.params, q_j, q_bar_j, aux_vars_j, nrm, flux_bar_k)
+      end  # end loop k
+    end  # end loop j
+  end  # end loop i
+
+  return nothing
+end  # end function
+
 
 
 """
