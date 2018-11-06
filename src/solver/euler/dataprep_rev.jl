@@ -1,4 +1,7 @@
 # dataprep_rev.jl
+
+#=
+
 """
 ### EulerEquationMod.getEulerFlux_revm
 
@@ -48,43 +51,12 @@ function getEulerFlux_revm(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end
+=#
 
-"""
-### EulerEquationMod.getBCFluxes_revm
 
-Reverse mode of getBCFluxes w.r.t mesh metrics
 
-**Arguments**
 
-* mesh  : a mesh object
-* sbp   : SBP operator object
-* eqn   : an EulerData object
-* opts  : options dictionary
-
-"""
-
-function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
-  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
-
-#  fill!(mesh.dxidx_bndry_bar, 0.0)
-  for i=1:mesh.numBC
-    functor_i = mesh.bndry_funcs_revm[i]
-    start_index = mesh.bndry_offsets[i]
-    end_index = mesh.bndry_offsets[i+1]
-    idx_range = start_index:end_index  # TODO: should this be start_index:(end_index - 1) ?
-    bndry_facenums_i = sview(mesh.bndryfaces, start_index:(end_index - 1))
-    bndryflux_i = sview(eqn.bndryflux_bar, :, :, start_index:(end_index - 1))
-
-    # call the function that calculates the flux for this boundary condition
-    # passing the functor into another function avoid type instability
-    calcBoundaryFlux_revm(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i, bndryflux_i)
-  end
-
-  writeBoundary(mesh, sbp, eqn, opts)
-
-  return nothing
-end
-
+#=
 """
 ### EulerEquationMod.calcBoundaryFlux_revm
 
@@ -135,7 +107,13 @@ function calcBoundaryFlux_revm(mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+=#
 
+
+
+
+
+#=
 """
 ### EulerEquationMod.calcFaceFlux_revm
 
@@ -176,3 +154,4 @@ function calcFaceFlux_revm( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+=#

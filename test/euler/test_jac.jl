@@ -433,13 +433,28 @@ function test_jac_terms_long()
     opts_tmp["Flux_name"] = "IRFlux"
     opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
     opts_tmp["need_adjoint"] = true
-    # TEMPORARY
-#    opts_tmp["addFaceIntegrals"] = true
-    opts_tmp["addBoundaryIntegrals"] = false
     make_input(opts_tmp, fname4)
     mesh_r3, sbp_r3, eqn_r3, opts_r3 = run_solver(fname4)
 
     test_revm_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
+
+    # SBPDiagonalE ES scheme
+    println("\n\ntesting diagonalE scheme")
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["IC_name"] = "ICExp"
+    opts_tmp["BC1_name"] = "FreeStreamBC"  # BC with reverse mode functor
+    opts_tmp["volume_integral_type"] = 2
+    opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["Flux_name"] = "LFPenalty"
+    opts_tmp["order"] = 2
+    opts_tmp["need_adjoint"] = true
+    #opts_tmp["addFaceIntegrals"] = false  # TEMPORARY
+    make_input(opts_tmp, fname4)
+    mesh_r4, sbp_r4, eqn_r4, opts_r4 = run_solver(fname4)
+
+    test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
 
 
   end
@@ -2138,6 +2153,11 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
   println("val = ", real(val))
   println("val2 = ", real(val2))
+  println("max dxidx_bar = ", maximum(abs.(mesh.dxidx_bar)))
+  println("max jac_bar = ", maximum(abs.(mesh.jac_bar)))
+  println("max nrm_bndry_bar = ", maximum(abs.(mesh.nrm_bndry_bar)))
+  println("max nrm_face_bar = ", maximum(abs.(mesh.nrm_face_bar)))
+  println("max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
   @test abs(val - val2) < 1e-12
 
   # test accumulation behavior

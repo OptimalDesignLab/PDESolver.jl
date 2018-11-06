@@ -87,6 +87,72 @@ function calcFaceIntegral_nopre_diff(
 end
 
 
+"""
+  Reverse mode wrt metrics of [`calcFaceIntegral_nopre`](@ref)
+
+  **Inputs**
+
+   * mesh: bar fields are updated
+   * sbp
+   * eqn: res_bar fields in input
+   * opts
+   * functor_revm: reverse mode wrt metrics functor (`FluxType_revm`)
+   * interfaces
+"""
+function calcFaceIntegral_nopre_revm(
+        mesh::AbstractDGMesh{Tmsh},
+        sbp::AbstractSBP,
+        eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+        opts,
+        functor_revm::FluxType_revm,
+        interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  nfaces = length(interfaces)
+  params = eqn.params
+
+  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  # reverse sweep
+  for i=1:nfaces
+    iface_i = interfaces[i]
+
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
+    interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL,
+                             q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = sview(eqn.res_bar, :, :, iface_i.elementL)
+    resR_bar = sview(eqn.res_bar, :, :, iface_i.elementR)
+    interiorFaceIntegrate_rev!(mesh.sbpface, iface_i, flux_face_bar, resL_bar,
+                               resR_bar, SummationByParts.Subtract())
+ 
+    for j=1:mesh.numNodesPerFace
+      qL_j = ro_sview(q_faceL, :, j)
+      qR_j = ro_sview(q_faceR, :, j)
+
+      eqn.aux_vars_face[1, j, i] = calcPressure(params, qL_j)
+      aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
+
+      nrm_xy = ro_sview(mesh.nrm_face, :, j, i)
+      nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
+      flux_bar_j = sview(flux_face_bar, :, j)
+
+      functor_revm(params, qL_j, qR_j, aux_vars, nrm_xy, nrm_bar, flux_bar_j)
+    end  # end loop j
+
+  end  # end loop i
+
+  return nothing
+end
+
+
+
+
 function getFaceElementIntegral_diff(
                            mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},

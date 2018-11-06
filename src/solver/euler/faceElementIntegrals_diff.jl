@@ -659,6 +659,46 @@ function applyEntropyKernel_diagE_diff(
   return nothing
 end
 
+"""
+  Reverse mode wrt metrics of [`applyEntropyKernel_diagE`](@ref)
+
+  **Inputs**
+  
+   * params
+   * kernel
+   * qL
+   * qR
+   * aux_var
+   * dir
+   * F_bar
+
+  **Inputs/Outputs**
+
+   * dir_bar: updated with back-propigation of `F_bar`
+
+"""
+function applyEntropyKernel_diagE_revm(
+                      params::ParamType{Tdim, :conservative},
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh}, dir_bar::AbstractArray{Tmsh},
+                      F_bar::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  q_avg = params.apply_entropy_kernel_diagE_data.q_avg
+
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  applyEntropyKernel_diagE_inner_revm(params, kernel, qL, qR, q_avg, aux_vars,
+                                      dir, dir_bar, F_bar)
+
+  return nothing
+end
+
+
+
 
 function applyEntropyKernel_diagE_inner_diff(
                       params::ParamType{Tdim, :conservative}, 
@@ -669,7 +709,6 @@ function applyEntropyKernel_diagE_inner_diff(
                       dir::AbstractArray{Tmsh},
                       F::AbstractArray{Tres,1}, F_dot::AbstractMatrix{Tres}
                       ) where {Tmsh, Tsol, Tres, Tdim}
-#  println("entered getEntropyLFStab_inner")
 
   @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp delta_w_dot
   gamma = params.gamma
@@ -700,6 +739,32 @@ function applyEntropyKernel_diagE_inner_diff(
 
   return nothing
 end
+
+
+function applyEntropyKernel_diagE_inner_revm(
+                      params::ParamType{Tdim, :conservative}, 
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                      q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh}, dir_bar::AbstractArray{Tmsh},
+                      F_bar::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+  @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp
+  gamma = params.gamma
+  gamma_1inv = 1/params.gamma_1
+#  p = calcPressure(params, q_avg)
+
+  convertToIR(params, qL, vL)
+  convertToIR(params, qR, vR)
+
+  for i=1:length(vL)
+    vL[i] = vL[i] - vR[i]
+  end
+
+  applyEntropyKernel_revm(kernel, params, q_avg, vL, dir, dir_bar, F_tmp, F_bar)
+
+  return nothing
+end
+
 
 
 

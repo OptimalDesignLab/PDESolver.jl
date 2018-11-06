@@ -33,7 +33,7 @@ function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
   # !!!! MAKE SURE TO DO DATA EXCHANGE BEFORE !!!!
 
   # Forward sweep
-  time.t_dataprep += @elapsed dataPrep(mesh, sbp, eqn, opts)
+  time.t_dataprep += @elapsed dataPrep_for_revm(mesh, sbp, eqn, opts)
 
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
@@ -42,22 +42,18 @@ function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
   end
 
   if opts["use_GLS"]
-    println("adding boundary integrals")
-    GLS(mesh,sbp,eqn)
+    error("GLS not supported for revm product")
   end
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
-    println("doing reverse boundary integrals")
-    evalBoundaryIntegrals_revm(mesh, sbp, eqn)
+    evalBoundaryIntegrals_revm(mesh, sbp, eqn, opts)
   end
-
 
   # time.t_stab += @elapsed if opts["addStabilization"]
   #   addStabilization(mesh, sbp, eqn, opts)
   # end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
-    println("doing reverse face integrals")
     evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
@@ -76,9 +72,48 @@ function evalrevm_transposeproduct(mesh::AbstractMesh, sbp::AbstractSBP, eqn::Eu
 
   time.t_dataprep += @elapsed dataPrep_revm(mesh, sbp, eqn, opts)
 
-
   return nothing
 end  # end evalResidual
+
+
+"""
+  Dataprep-type function that should be called at the beginning of a reverse
+  mode product, rather than the regular `dataPrep` function.
+"""
+function dataPrep_for_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                   eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
+
+  # apply filtering to input
+  if eqn.params.use_filter
+    applyFilter(mesh, sbp, eqn, eqn.q, opts)
+  end
+
+  getAuxVars(mesh, eqn)
+
+  if opts["use_staggered_grid"]
+    error("staggered grid not supported for revm product")
+    aux_vars = zeros(Tres, 1, mesh.mesh2.numNodesPerElement)
+    for i=1:mesh.numEl
+      qs = ro_sview(eqn.q, :, :, i)
+      qf = sview(eqn.q_flux, :, :, i)
+      interpolateElementStaggered(eqn.params, mesh, qs, aux_vars, qf)
+    end
+  end
+
+
+  # only eqn.q_bndry is required, all other methods are no-precompute
+  if mesh.isDG
+    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
+  end
+
+  if eqn.params.use_edgestab
+    stabscale(mesh, sbp, eqn)
+  end
+
+  return nothing
+end
+
+
 
 @doc """
 ### EulerEquationMod.dataPrep_revm
@@ -94,23 +129,7 @@ Reverse mode of dataPrep w.r.t mesh metrics
 function dataPrep_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                    eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
-  getBCFluxes_revm(mesh, sbp, eqn, opts)
-
-  if mesh.isDG
-
-    if opts["face_integral_type"] == 1
-      calcFaceFlux_revm(mesh, sbp, eqn, eqn.flux_func_bar, mesh.interfaces, eqn.flux_face_bar)
-      # interpolateFace_revm(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
-    end
-
-    # fill!(eqn.q_bndry, 0.0)
-    # fill!(eqn.q_face, 0.0)
-    # fill!(eqn.flux_face, 0.0)
-    # interpolateBoundary_revm(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-
-  end
-
-  getEulerFlux_revm(mesh, sbp,  eqn, opts)
+  # nothing to do here
 
   return nothing
 end
@@ -134,19 +153,9 @@ function evalVolumeIntegrals_revm(mesh::AbstractMesh{Tmsh},
   integral_type = opts["volume_integral_type"]
   if integral_type == 1
     if opts["Q_transpose"] == true
-      fill!(eqn.flux_parametric_bar, 0.0) # zero out for first use
-      for i=1:Tdim
-        # Input: eqn.res_bar
-        # Output: flux_parametric_bar
-        weakdifferentiate_rev!(sbp, i, sview(eqn.flux_parametric_bar, :, :, :, i),
-                               eqn.res_bar, trans=true)
-      end
+      calcVolumeIntegrals_nopre_revm(mesh, sbp, eqn, opts)
     else
-      fill!(eqn.flux_parametric_bar, 0.0)
-      for i=1:Tdim
-        weakdifferentiate_rev!(sbp, i, sview(eqn.flux_parametric_bar, :, :, :, i),
-                               eqn.res_bar, SummationByParts.Subtract(), trans=false)
-      end
+      error("Q_transpose = false not supported for revm product")
     end  # end if
   elseif integral_type == 2
     calcVolumeIntegralsSplitForm_revm(mesh, sbp, eqn, opts, eqn.volume_flux_func,
@@ -173,18 +182,9 @@ Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂
 """->
 
 function evalBoundaryIntegrals_revm(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
+                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
-  #TODO: remove conditional
-  fill!(eqn.bndryflux_bar, 0.0)
-  if mesh.isDG
-    boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar,
-                           eqn.res_bar, SummationByParts.Subtract())
-  else
-    boundaryintegrate_rev!(mesh.sbpface, mesh.bndryfaces, eqn.bndryflux_bar,
-                           eqn.res_bar, SummationByParts.Subtract())
-  end
-
+  getBCFluxes_revm(mesh, sbp, eqn, opts)
 
   return nothing
 
@@ -208,11 +208,9 @@ function evalFaceIntegrals_revm(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
-  fill!(eqn.flux_face_bar, 0.0)
   if face_integral_type == 1
-    # Output to the call below = eqn.flux_face_bar
-    interiorfaceintegrate_rev!(mesh.sbpface, mesh.interfaces, eqn.flux_face_bar,
-                               eqn.res_bar, SummationByParts.Subtract())
+    calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, eqn.flux_func_bar,
+                         mesh.interfaces)
 
   elseif face_integral_type == 2
 

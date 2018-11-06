@@ -428,12 +428,10 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
-  flux_parametric_bar::Array{Tsol, 4}  # adjoint part
   shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI send and receive buffers
   shared_data_bar::Array{SharedFaceData{Tsol}, 1} # adjoint part
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
-  flux_face_bar::Array{Tres, 3}  # adjoint part
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   flux_sharedface_bar::Array{Array{Tres, 3}, 1}  # adjoint part
   res::Array{Tres, 3}             # result of computation
@@ -448,7 +446,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
                                   # Tdim x Tdim x nnodesPerElement x numEl
   bndryflux::Array{Tsol, 3}       # boundary flux
-  bndryflux_bar::Array{Tsol, 3}   # adjoint part
   stabscale::Array{Tsol, 2}       # stabilization scale factor
 
   # artificial dissipation operator:
@@ -665,7 +662,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.q_bar = zeros(eqn.q)
       eqn.q_face_bar = zeros(eqn.q_face)
       eqn.q_bndry_bar = zeros(eqn.q_bndry)
-      eqn.flux_parametric_bar = zeros(eqn.flux_parametric)
 
       eqn.aux_vars_bar = zeros(eqn.aux_vars)
       eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
@@ -685,14 +681,11 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
         eqn.shared_data_bar = zeros(SharedFaceData, 0)
       end
 
-      eqn.flux_face_bar = zeros(eqn.flux_face)
-      eqn.bndryflux_bar = zeros(eqn.bndryflux)
       eqn.res_bar = zeros(eqn.res)
     else  # don't allocate arrays if they are not needed
       eqn.q_bar = zeros(Tsol, 0, 0, 0)
       eqn.q_face_bar = zeros(Tsol, 0, 0, 0, 0)
       eqn.q_bndry_bar = zeros(Tsol, 0, 0, 0)
-      eqn.flux_parametric_bar = zeros(Tsol, 0, 0, 0, 0)
 
       eqn.aux_vars_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
@@ -702,8 +695,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(0)
       eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(0)
 
-      eqn.flux_face_bar = zeros(Tres, 0, 0, 0)
-      eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 

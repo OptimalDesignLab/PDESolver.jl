@@ -1065,6 +1065,26 @@ function (obj::IRSLFFlux)(params::ParamType,
   return nothing
 end
 
+
+mutable struct IRSLFFlux_revm <: FluxType_revm
+end
+
+function (obj::IRSLFFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  calcEulerFlux_IR_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+  applyEntropyKernel_diagE_revm(params, kernel, qL, qR, aux_vars, nrm, nrm_bar,
+                                F_bar)
+
+  return nothing
+end
+
+
+
 """
   Computes only the penalty term from the [`IRSLFFlux`](@ref)
 """
@@ -1081,6 +1101,23 @@ function (obj::LFPenalty)(params::ParamType,
   kernel = params.entropy_lf_kernel
   applyEntropyKernel_diagE(params, kernel, uL, uR, aux_vars, nrm, F)
 
+  return nothing
+end
+
+
+mutable struct LFPenalty_revm <: FluxType_revm
+end
+
+
+function (obj::LFPenalty_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE_revm(params, kernel, qL, qR, aux_vars, nrm, nrm_bar,
+                                F_bar)
   return nothing
 end
 
@@ -1144,6 +1181,8 @@ global const FluxDict_revm = Dict{String, FluxType_revm}(
 "ErrorFlux" => ErrorFlux_revm(),
 "RoeFlux" => RoeFlux_revm(),
 "IRFlux" => IRFlux_revm(),
+"IRSLFFLux" => IRSLFFlux_revm(),
+"LFPenalty" => LFPenalty_revm(),
 )
 
 function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)

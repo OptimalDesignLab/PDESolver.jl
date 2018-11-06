@@ -561,6 +561,7 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 
   if mesh.isDG
+    println("opts[precompute_q_face] = ", opts["precompute_q_face"])
     if opts["precompute_q_face"]
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       # println("  interpolateFace @time printed above")

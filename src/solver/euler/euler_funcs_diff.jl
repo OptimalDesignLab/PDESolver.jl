@@ -103,6 +103,82 @@ function calcVolumeIntegrals_nopre_diff(
   return nothing
 end  # end function
 
+
+"""
+  Reverse mode wrt metrics of [`calcVolumeIntegrals_nopre`](@ref)
+"""
+function calcVolumeIntegrals_nopre_revm(
+           mesh::AbstractMesh{Tmsh},
+           sbp::AbstractSBP,
+           eqn::EulerData{Tsol, Tres, Tdim},
+           opts) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  # flux in the parametric directions for a given element
+  flux_el_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, Tdim)
+  nrm = zeros(Tmsh, mesh.dim)
+  nrm_bar = zeros(Tmsh, mesh.dim)
+#=
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      for k=1:Tdim
+        flux_k = sview(flux_el, :, j, k)
+
+        # get the direction vector
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+        # consider calculating all directions at once
+        # not sure if that will help because the data dependencies are
+        # really simple
+        calcEulerFlux(eqn.params, q_j, aux_vars_j, nrm, flux_k)
+      end  # end loop k
+    end  # end loop j
+
+    res_i = sview(eqn.res, :, :, i)
+    for k=1:Tdim
+      weakDifferentiateElement!(sbp, k, sview(flux_el, :, :, k), res_i, SummationByParts.Add(), true)
+    end
+=#
+  #-----------------------------
+  # reverse sweep
+  for i=1:mesh.numEl
+    res_bar_i = sview(eqn.res_bar, :, :, i)
+    fill!(flux_el_bar, 0)
+    for k=1:Tdim
+      flux_bar_k = sview(flux_el_bar, :, :, k)
+      weakDifferentiateElement_rev!(sbp, k, flux_bar_k, res_bar_i,
+                                    SummationByParts.Add(), true)
+    end
+
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
+
+      for k=1:Tdim
+        fill!(nrm_bar, 0)
+        flux_bar_k = sview(flux_el_bar, :, j, k)
+
+        for p=1:Tdim
+          nrm[p] = mesh.dxidx[k, p, j, i]
+        end
+
+        calcEulerFlux_revm(eqn.params, q_j, aux_vars_j, nrm, nrm_bar, flux_bar_k)
+        for p=1:Tdim
+          mesh.dxidx_bar[k, p, j, i] += nrm_bar[p]
+        end
+      end  # end loop k
+    end  # end loop j
+  end  # end loop i
+
+  return nothing
+end  # end function
+
+
+
 """
   Computes the derivative of the strong form volume terms with
   respect to `q`, ie.
@@ -402,7 +478,7 @@ function calcVolumeIntegralsSplitFormCurvilinear_revm(
                       functor_revm::FluxType_revm) where {Tmsh, Tsol, Tres, Tdim}
 
 
-  println("\nentered calcVolumeIntegralsSplitFormCurvilinear_revm")
+#  println("\nentered calcVolumeIntegralsSplitFormCurvilinear_revm")
   dxidx = mesh.dxidx
   res = eqn.res
   res_bar = eqn.res_bar
