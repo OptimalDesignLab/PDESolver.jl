@@ -1064,6 +1064,23 @@ function (obj::IRSLFFlux_revm)(params::ParamType,
   return nothing
 end
 
+mutable struct IRSLFFlux_revq <: FluxType_revq
+end
+
+function (obj::IRSLFFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  calcEulerFlux_IR_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm,
+                        F_bar)
+  applyEntropyKernel_diagE_revq(params, kernel, qL, qL_bar, qR, qR_bar,
+                                aux_vars, nrm, F_bar)
+  return nothing
+end
+
 
 
 """
@@ -1100,6 +1117,21 @@ function (obj::LFPenalty_revm)(params::ParamType,
   kernel = params.entropy_lf_kernel
   applyEntropyKernel_diagE_revm(params, kernel, qL, qR, aux_vars, nrm, nrm_bar,
                                 F_bar)
+  return nothing
+end
+
+mutable struct LFPenalty_revq <: FluxType_revq
+end
+
+function (obj::LFPenalty_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE_revq(params, kernel, qL, qL_bar, qR, qR_bar,
+                                aux_bars, nrm, F_bar)
   return nothing
 end
 
@@ -1260,6 +1292,8 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 "ErrorFlux" => ErrorFlux_revq(),
 "RoeFlux" => RoeFlux_revq(),
 "IRFlux" => IRFlux_revq(),
+"IRSLFFlux" => IRSLFFlux_revq(),
+"LFPenalty" => LFPenalty_revq(),
 )
 
 """

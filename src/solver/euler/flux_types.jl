@@ -290,6 +290,12 @@ struct ApplyEntropyKernel_diagEData{Tsol, Tres}
   # diff method
   delta_w_dot::Matrix{Tsol}
 
+  # rev method
+  q_avg_bar::Vector{Tres}
+  delta_w::Vector{Tsol}
+  delta_w_bar::Vector{Tsol}
+  A0inv::Matrix{Tsol}
+
   function ApplyEntropyKernel_diagEData{Tsol, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tres}
 
     q_avg = zeros(Tsol, numDofPerNode)
@@ -304,7 +310,16 @@ struct ApplyEntropyKernel_diagEData{Tsol, Tres}
 
     delta_w_dot = zeros(Tsol, numDofPerNode, nd)
 
-    obj = new(q_avg, q_avg_dot, F, F_dot, vL, vR, F_tmp, delta_w_dot)
+    # rev
+    q_avg_bar = zeros(Tres, numDofPerNode)
+    delta_w = zeros(Tsol, numDofPerNode)
+    delta_w_bar = zeros(Tsol, numDofPerNode)
+    A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+
+
+    obj = new(q_avg, q_avg_dot, F, F_dot, vL, vR, F_tmp, delta_w_dot,
+              q_avg_bar, delta_w, delta_w_bar, A0inv)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
     return obj
@@ -498,6 +513,20 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
   A0invL::Matrix{Tsol}
   A0invR::Matrix{Tsol}
 
+  #---------------
+  # rev methods
+  flux_bar::Vector{Tres}
+  qL_bar_i::Vector{Tres}
+  qR_bar_i::Vector{Tres}
+  wL_bar_i::Vector{Tres}
+  wR_bar_i::Vector{Tres}
+  delta_w_bar::Vector{Tres}
+  q_avg_bar::Vector{Tres}
+  wL_bar::Matrix{Tres} 
+  wR_bar::Matrix{Tres}
+
+
+
 
   function CalcEntropyPenaltyIntegralData{Tsol, Tres}(numDofPerNode::Integer,
                               numNodesPerFace::Integer,
@@ -535,11 +564,26 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
     A0invL = zeros(Tsol, numDofPerNode, numDofPerNode)
     A0invR = zeros(Tsol, numDofPerNode, numDofPerNode)
 
+    # rev methods
+    flux_bar = zeros(Tres, numDofPerNode)
+
+    qL_bar_i = zeros(Tres, numDofPerNode)
+    qR_bar_i = zeros(Tres, numDofPerNode)
+    wL_bar_i = zeros(Tres, numDofPerNode)
+    wR_bar_i = zeros(Tres, numDofPerNode)
+    delta_w_bar = zeros(Tres, numDofPerNode)
+    q_avg_bar = zeros(Tres, numDofPerNode)
+    wL_bar = zeros(Tres, numDofPerNode, stencilsize)
+    wR_bar = zeros(Tres, numDofPerNode, stencilsize)
+
+
 
     obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg,
               res_vals,
              q_avg_dot, delta_w_dot, flux_dot_i, flux_dotL, flux_dotR,
-             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR)
+             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR,
+             flux_bar, qL_bar_i, qR_bar_i, wL_bar_i, wR_bar_i, delta_w_bar,
+             q_avg_bar, wL_bar, wR_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 

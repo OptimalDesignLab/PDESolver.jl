@@ -191,7 +191,7 @@ function calcECFaceIntegral_revq(
      resR_bar::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
 
   data = params.calc_ec_face_integral_data
-  @unpack data fluxD fluxD_bar nrmD
+  @unpack data nrmD fluxD fluxD_bar
   numDofPerNode = size(fluxD, 1)
 
 
@@ -557,9 +557,7 @@ function calcEntropyPenaltyIntegral_revm(
 
   # convert qL and qR to entropy variables (only the nodes that will be used)
   data = params.calc_entropy_penalty_integral_data
-  @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux
-
-  flux_bar = zeros(flux)
+  @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux flux_bar
 
   # convert to IR entropy variables
   for i=1:sbpface.stencilsize
@@ -680,16 +678,8 @@ function calcEntropyPenaltyIntegral_revq(
   # convert qL and qR to entropy variables (only the nodes that will be used)
   data = params.calc_entropy_penalty_integral_data
   @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux
-
-  A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
-  qL_bar_i = zeros(Tres, numDofPerNode)
-  qR_bar_i = zeros(Tres, numDofPerNode)
-  wL_bar_i = zeros(Tres, numDofPerNode)
-  wR_bar_i = zeros(Tres, numDofPerNode)
-  delta_w_bar = zeros(Tres, numDofPerNode)
-  q_avg_bar = zeros(Tres, numDofPerNode)
-  wL_bar = zeros(Tres, numDofPerNode, sbpface.stencilsize)
-  wR_bar = zeros(Tres, numDofPerNode, sbpface.stencilsize)
+  @unpack data A0 qL_bar_i qR_bar_i wL_bar_i wR_bar_i delta_w_bar q_avg_bar
+  @unpack data wL_bar wR_bar
 
   fill!(wL_bar, 0)
   fill!(wR_bar, 0)
@@ -1069,6 +1059,56 @@ function applyEntropyKernel_diagE_revm(
 end
 
 
+"""
+  Reverse mode wrt q of [`applyEntropyKernel_diagE`](@ref)
+
+  **Inputs**
+  
+   * params
+   * kernel
+   * qL
+   * qR
+   * aux_var
+   * dir
+   * F_bar
+
+  **Inputs/Outputs**
+
+   * qL_bar, qR_bar: updated with back-propigation of `F_bar`
+
+"""
+function applyEntropyKernel_diagE_revq(
+                      params::ParamType{Tdim, :conservative},
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tres, 1},
+                      qR::AbstractArray{Tsol,1}, qR_bar::AbstractArray{Tres, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},
+                      F_bar::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  data = params.apply_entropy_kernel_diagE_data
+  @unpack data q_avg q_avg_bar
+
+  fill!(q_avg_bar, 0)
+
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  applyEntropyKernel_diagE_inner_revq(params, kernel, qL, qL_bar, qR, qR_bar,
+                                      q_avg, q_avg_bar, aux_vars, dir, F_bar)
+
+  for i=1:length(q_avg)
+    qL_bar[i] += 0.5*q_avg_bar[i]
+    qR_bar[i] += 0.5*q_avg_bar[i]
+  end
+
+  return nothing
+end
+
+
+
+
 
 
 function applyEntropyKernel_diagE_inner_diff(
@@ -1132,6 +1172,43 @@ function applyEntropyKernel_diagE_inner_revm(
   end
 
   applyEntropyKernel_revm(kernel, params, q_avg, vL, dir, dir_bar, F_tmp, F_bar)
+
+  return nothing
+end
+
+
+function applyEntropyKernel_diagE_inner_revq(
+                      params::ParamType{Tdim, :conservative}, 
+                      kernel::AbstractEntropyKernel,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tres,1},
+                      qR::AbstractArray{Tsol,1}, qR_bar::AbstractArray{Tres, 1},
+                      q_avg::AbstractArray{Tsol},
+                      q_avg_bar::AbstractArray{Tres, 1},
+                      aux_vars::AbstractArray{Tres},
+                      dir::AbstractArray{Tmsh},
+                      F_bar::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+  @unpack params.apply_entropy_kernel_diagE_data vL vR F_tmp delta_w delta_w_bar A0inv
+
+  fill!(delta_w_bar, 0)
+
+  gamma = params.gamma
+  gamma_1inv = 1/params.gamma_1
+#  p = calcPressure(params, q_avg)
+
+  convertToIR(params, qL, vL)
+  convertToIR(params, qR, vR)
+
+  for i=1:length(vL)
+    delta_w[i] = vL[i] - vR[i]
+  end
+
+  applyEntropyKernel_revq(kernel, params, q_avg, q_avg_bar, delta_w, delta_w_bar, dir, F_tmp, F_bar)
+
+  # combine the delta_w and convertToIR steps
+  getIRA0inv(params, qL, A0inv)
+  smallmatTvec_kernel!(A0inv, delta_w_bar, qL_bar, 1, 1)
+  getIRA0inv(params, qR, A0inv)
+  smallmatTvec_kernel!(A0inv, delta_w_bar, qR_bar, -1, 1)
 
   return nothing
 end

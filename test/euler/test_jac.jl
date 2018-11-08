@@ -75,7 +75,9 @@ function test_jac_terms()
     
     func4 = EulerEquationMod.FluxDict["IRSLFFlux"]
     func4_diff = EulerEquationMod.FluxDict_diff["IRSLFFlux"]
-
+    func4_revm = EulerEquationMod.FluxDict_revm["IRSLFFlux"]
+    func4_revq = EulerEquationMod.FluxDict_revq["IRSLFFlux"]
+ 
 
     # Abstract Entropy Kernels
     lf_kernel = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
@@ -99,7 +101,9 @@ function test_jac_terms()
    
     println("testing applyEntropyKernel_diagE")
     test_ad_inner(eqn.params, q, qg, nrm, func4, func4_diff)
-
+    test_2flux_revq(eqn.params, q, qg, nrm, func4, func4_revq)
+    test_2flux_revm(eqn.params, q, qg, nrm, func4, func4_revm)
+ 
     test_EntropyKernel(eqn.params, lf_kernel)
     test_EntropyKernel_revq(eqn.params, lf_kernel)
     test_EntropyKernel_revm(eqn.params, lf_kernel)
@@ -454,15 +458,13 @@ function test_jac_terms_long()
     opts_tmp["face_integral_type"] = 2
     opts_tmp["Flux_name"] = "IRFlux"
     opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
-    #opts_tmp["FaceElementIntegral_name"] = "ELFPenaltyFaceIntegral"
     opts_tmp["need_adjoint"] = true
-    # TESTING
     make_input(opts_tmp, fname4)
     mesh_r3, sbp_r3, eqn_r3, opts_r3 = run_solver(fname4)
 
     test_revm_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
     test_revq_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
-#=
+
     # SBPDiagonalE ES scheme
     println("\n\ntesting diagonalE ES scheme")
     fname4 = "input_vals_jac_tmp.jl"
@@ -479,7 +481,8 @@ function test_jac_terms_long()
     mesh_r4, sbp_r4, eqn_r4, opts_r4 = run_solver(fname4)
 
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
-=#
+    test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
+
 
   end
 
@@ -1170,15 +1173,15 @@ function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
     func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
     val = sum(qL_bar.*qL_dot) + sum(qR_bar.*qR_dot)
 
-    @test abs(val - val_c) < 1e-13
+    @test abs(val - val_c) < 1e-12
 
     # test qL_bar is summed into
     qL_bar_orig = copy(qL_bar)
     qR_bar_orig = copy(qR_bar)
     func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
 
-    @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-13
-    @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-13
+    @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-12
+    @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-12
 
     fill!(qL_bar, 0.0); fill!(qR_bar, 0.0)
   end
@@ -1212,15 +1215,15 @@ function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
       func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm2, F_bar)
       val = sum(qL_bar.*qL_dot) + sum(qR_bar.*qR_dot)
 
-      @test abs(val_c - val) < 1e-13
+      @test abs(val_c - val) < 1e-12
 
       # test qL_bar is summed into
       qL_bar_orig = copy(qL_bar)
       qR_bar_orig = copy(qR_bar)
       func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm2, F_bar)
 
-      @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-13
-      @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-13
+      @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-12
+      @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-12
 
       fill!(qL_bar, 0.0); fill!(qR_bar, 0.0)
     end
