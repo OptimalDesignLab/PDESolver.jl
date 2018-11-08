@@ -124,4 +124,76 @@ function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
   return createFunctional(mesh, sbp, eqn, opts, functional_name, functional_bcs)
 end
 
+"""
+  This method allows the user to supply a 1D vector as the seed values for
+  reverse mode with respect to the metrics.  See the other method for details
+  of the reverse mode calculation.
+
+  **Inputs**
+
+   * mesh: the `_bar` fields of the mesh are updated
+   * sbp
+   * eqn: `eqn.res_bar` is overwritten by unpacking `input_array`
+   * opts
+   * input_array: 1D array that is the seed vector for reverse mode
+   * t: optional argument for time value 
+"""
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
+                     eqn::AbstractSolutionData, opts::Dict,
+                     input_array::AbstractArray{T, 1}, t::Number=0.0
+                    ) where {T}
+
+  @assert eqn.commsize == 1
+  #TODO: do parallel communication on input_array
+  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
+
+  evalResidual_revm(mesh, sbp, eqn, opts, t)
+
+  return nothing
+end
+
+"""
+  This function allows the user to supply 1D input and output vectors for
+  doing reverse mode calculations with respect to the solution.  See the other
+  method for the details of the reverse mode calculation
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: `eqn.q_bar` and `eqn.res_bar` are overwritten
+   * opts
+   * input_array: vector, same shape as `eqn.res_vec` containing the seed
+                  values for the reverse mode calculation
+  * t: optional argument for time value
+
+  **Inputs/Outputs**
+
+   * output_array: array, same shape as `eqn.q_vec` to be updated with the
+                   result
+
+  **Keyword Arguments**
+
+   * zero_output: is true, overwrite the output array, if false, sum into it,
+                  default true
+"""
+function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
+                     eqn::AbstractSolutionData,
+                     opts::Dict, input_array::AbstractVector,
+                     output_array::AbstractVector, t::Number=0.0; zero_output=true)
+
+
+  @assert mesh.commsize == 1
+
+  #TODO: do parallel communication on input_array
+  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
+  fill!(eqn.q_bar, 0)
+
+  evalResidual_revq(mesh, sbp, eqn, opts, t)
+
+  # accumulate into output array
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.q_bar, output_array, zero_resvec=zero_output)
+
+  return nothing
+end
 

@@ -263,6 +263,7 @@ function RoeSolver_revq(params::ParamType{2, :conservative},
   roe_vars[1] = u
   roe_vars[2] = v
   roe_vars[3] = H
+
 #  calcSAT(params, roe_vars, dq, nrm, sat)
 
   # calculate Euler flux in wall normal directiona
@@ -288,6 +289,7 @@ function RoeSolver_revq(params::ParamType{2, :conservative},
   fill!(v_vals_bar, 0)
   for i=1:4
     sat_bar[i] = sat_fac*flux_bar[i]
+    v_vals[i] = q[i]
   end
   euler_flux_bar = flux_bar
 
@@ -1323,10 +1325,6 @@ function calcSAT_diff(params::ParamType{2},
   H_dotL4 = roe_vars_dot[15]
   H_dotR4 = roe_vars_dot[16]
 
-#  @printit u v H
-
-#  @printit u_dotL1 u_dotR1 u_dotL2 u_dotR2 v_dotL1 v_dotR1 v_dotL3 v_dotR3 H_dotL1 H_dotR1 H_dotL2 H_dotR2 H_dotL3 H_dotR3 H_dotL4 H_dotR4
-
   gami = params.gamma_1
 
   # Begin main execution
@@ -1357,8 +1355,6 @@ function calcSAT_diff(params::ParamType{2},
   phi_dotR3 = v*v_dotR3
 
 
-#  @printit Un_dotL1 phi_dotL1
-
   a = sqrt(gami*(H - phi)) # speed of sound
   t1 = gami/(2*a)
   a_dotL1 = t1*(H_dotL1 - phi_dotL1)
@@ -1372,8 +1368,6 @@ function calcSAT_diff(params::ParamType{2},
 
   a_dotL4 = t1*H_dotL4
   a_dotR4 = t1*H_dotR4
-
-#  @printit a_dotL1
 
   lambda1 = Un + dA*a
   lambda1_dotL1 = Un_dotL1 + dA*a_dotL1
@@ -1413,8 +1407,6 @@ function calcSAT_diff(params::ParamType{2},
   lambda3_dotL3 = Un_dotL3
   lambda3_dotR3 = Un_dotR3
 
-#  @printit lambda1 lambda2 lambda3 lambda1_dotR1 lambda2_dotR1 lambda3_dotR1
-
   rhoA = absvalue(Un) + dA*a
   #TODO: see if there is a better way to do this
   if Un > 0
@@ -1435,8 +1427,6 @@ function calcSAT_diff(params::ParamType{2},
   rhoA_dotL4 = dA*a_dotL4
   rhoA_dotR4 = dA*a_dotR4
 
-#  @printit rhoA rhoA_dotR1 sat_Vn
-
   # Compute Eigen Values of the Flux Jacobian
   # The eigen values calculated above cannot be used directly. Near stagnation
   # points lambda3 approaches zero while near sonic lines lambda1 and lambda2
@@ -1446,15 +1436,12 @@ function calcSAT_diff(params::ParamType{2},
 
   # see lambda1 expression below
   if absvalue(lambda1) > sat_Vn*rhoA
-#    println("lambda1 is used")
     if lambda1 > 0
       fac = 1
     else
       fac = -1
     end
-#    @printit fac tau lambda1 lambda2 lambda3
-#    println("fac = ", fac)
-
+    
     t1 = tau*fac
     #TODO: lambda1_dotL1 - lambgda1_dotL1 = 0, so simplify this
     lambda1_dotL1 = 0.5 * (t1 * lambda1_dotL1 - lambda1_dotL1) 
@@ -1471,7 +1458,6 @@ function calcSAT_diff(params::ParamType{2},
 
 
   else
-#    println("not using lambda1")
     t1 = sat_Vn*tau
     lambda1_dotL1 =  0.5 * (t1 * rhoA_dotL1 - lambda1_dotL1) 
     lambda1_dotR1 =  0.5 * (t1 * rhoA_dotR1 - lambda1_dotR1) 
@@ -1570,9 +1556,6 @@ function calcSAT_diff(params::ParamType{2},
 
   lambda3 = 0.5*(tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
 
-#  println("after entropy fix")
-#  @printit lambda1 lambda2 lambda3 lambda1_dotR1 lambda2_dotR1 lambda3_dotR1
-
                     
   dq1 = dq[1]
   dq2 = dq[2]
@@ -1622,8 +1605,6 @@ function calcSAT_diff(params::ParamType{2},
   sat_jacR[4, 2] +=            dq4*lambda3_dotR2
   sat_jacR[4, 3] +=            dq4*lambda3_dotR3
   sat_jacR[4, 4] += -lambda3 + dq4*lambda3_dotR4
-
-#  @printit sat_jacR[2, 1]
 
   #-- get E1*dq
   E1dq[1] = phi*dq1 - u*dq2 - v*dq3 + dq4
@@ -1712,8 +1693,6 @@ function calcSAT_diff(params::ParamType{2},
   E2dq2_dotR2 = nx*E2dq2_dotR2
   E2dq2_dotR3 = nx*E2dq2_dotR3
 
-#  @printit E1dq1_dotR1 E1dq2_dotR1 E1dq3_dotR1 E1dq4_dotR1 E2dq2_dotR1
-
   #-- add to sat
   tmp1 = 0.5*(lambda1 + lambda2) - lambda3
   tmp1_dotL1 = 0.5*(lambda1_dotL1 + lambda2_dotL1) - lambda3_dotL1
@@ -1744,8 +1723,6 @@ function calcSAT_diff(params::ParamType{2},
   #for i=1:length(sat)
   #  sat[i] = sat[i] + tmp1*(tmp2*E1dq[i] + tmp3*E2dq[i])
   #end
-
-#  @printit tmp1 tmp2 E1dq1_dotR1 E1dq[1] tmp1_dotR1 tmp2_dotR1 tmp3 E2dq[1]
 
   #TODO: align + signs
   sat_jacL[1,1] += tmp1*tmp2*E1dq1_dotL1   + tmp1*E1dq[1]*tmp2_dotL1 + 
@@ -1879,9 +1856,6 @@ function calcSAT_diff(params::ParamType{2},
                    tmp2*E1dq[4]*tmp1_dotR4 + 
                                            + tmp3*E2dq[4]*tmp1_dotR4
 
-#  println("after first summation")
-#  @printit sat_jacR[2, 1]
-
   #-- get E3*dq
   E1dq[1] = -Un*dq1 + nx*dq2 + ny*dq3
   E1dq1_dotL1 = -Un - dq1*Un_dotL1
@@ -1974,8 +1948,6 @@ function calcSAT_diff(params::ParamType{2},
   E2dq4_dotR3 = Un*t1_dotR3 + t1*Un_dotR3
   E2dq4_dotR4 = Un*t1_dotR4
 
-#  @printit E1dq1_dotR1 E1dq2_dotR1 E1dq3_dotR1 E1dq4_dotR1 E2dq2_dotR1 E2dq3_dotR1 E2dq4_dotR1
-
   #-- add to sat
   t1 = 1/(dA*a)
   t2 = 1/a
@@ -2040,9 +2012,6 @@ function calcSAT_diff(params::ParamType{2},
   sat_jacR[4, 3] += tmp1*(E1dq4_dotR3 + gami*E2dq4_dotR3) + t1*tmp1_dotR3
   sat_jacR[4, 4] += tmp1*(E1dq4_dotR4 + gami*E2dq4_dotR4) + t1*tmp1_dotR4
 
-
-#  println("after second summation")
-#  @printit sat_jacR[2, 1]
 
   return nothing
 end  # End function calcSAT
@@ -3124,10 +3093,12 @@ function RoeSolver_revq(params::ParamType{3, :conservative},
   fill!(v_vals_bar, 0)
   for i=1:5
     sat_bar[i] = sat_fac*flux_bar[i]
+    v_vals[i] = q[i] 
   end
   euler_flux_bar = flux_bar
 
   calcEulerFlux_revq(params, v_vals, v_vals_bar, aux_vars, nrm, euler_flux_bar)
+
 
   #TODO: this is where convertFromNatualToWorkingVars_rev should be
   for i=1:numDofPerNode
@@ -3135,6 +3106,7 @@ function RoeSolver_revq(params::ParamType{3, :conservative},
   end
 
   calcSAT_revq(params, roe_vars, roe_vars_bar, dq, dq_bar, nrm, sat_bar)
+
 
   for i=1:length(dq)
     q_bar[i]  += dq_bar[i]
@@ -3165,6 +3137,7 @@ function RoeSolver_revq(params::ParamType{3, :conservative},
 
   sqL_bar += -fac*fac*fac_bar; sqR_bar += -fac*fac*fac_bar
   q_bar[1] += 0.5/sqL*sqL_bar; qg_bar[1] += 0.5/sqR*sqR_bar
+
 
   # right state
   fac = d1_0/qg[1]

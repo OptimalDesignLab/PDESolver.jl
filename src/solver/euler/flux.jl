@@ -827,6 +827,20 @@ function (obj::ErrorFlux_revm)(params::ParamType,
   return nothing
 end
 
+mutable struct ErrorFlux_revq <: FluxType_revq
+end
+
+function (obj::ErrorFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  error("ErrorFlux_revq called")
+
+  return nothing
+end
+
 
 
 """
@@ -1243,6 +1257,7 @@ end # End function getFluxFunctors_revm
              propigation of `F_bar`
 """
 global const FluxDict_revq = Dict{String, FluxType_revq}(
+"ErrorFlux" => ErrorFlux_revq(),
 "RoeFlux" => RoeFlux_revq(),
 "IRFlux" => IRFlux_revq(),
 )
@@ -1259,8 +1274,25 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 """
 function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  name = opts["Flux_name"]
-  eqn.flux_func_revmq = FluxDict_revq[name]
+  if opts["need_adjoint"]
+    name = opts["Flux_name"]
+  else
+    name = "ErrorFlux"
+  end
+  eqn.flux_func_revq = FluxDict_revq[name]
+
+  if opts["need_adjoint"]
+    name = opts["Volume_flux_name"]
+  else
+    name = "ErrorFlux"
+  end
+
+  eqn.volume_flux_func_revq = FluxDict_revq[name]
+
+  assertFieldsConcrete(eqn.flux_func_revq)
+  assertFieldsConcrete(eqn.volume_flux_func_revq)
+
+
 
   return nothing
 end # End function getFluxFunctors_revq

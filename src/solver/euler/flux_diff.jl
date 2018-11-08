@@ -150,6 +150,75 @@ function calcFaceIntegral_nopre_revm(
 end
 
 
+"""
+  Reverse mode wrt q of [`calcFaceIntegral_nopre`](@ref)
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: `res_bar` field as input, `q_bar` as output
+   * opts
+   * functor_revq: reverse mode wrt metrics functor (`FluxType_revq`)
+   * interfaces
+"""
+function calcFaceIntegral_nopre_revq(
+        mesh::AbstractDGMesh{Tmsh},
+        sbp::AbstractSBP,
+        eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+        opts,
+        functor_revq::FluxType_revq,
+        interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  nfaces = length(interfaces)
+  params = eqn.params
+
+  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+  q_faceL_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  # reverse sweep
+  for i=1:nfaces
+    iface_i = interfaces[i]
+
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
+    qL_bar = sview(eqn.q_bar, :, :, iface_i.elementL)
+    qR_bar = sview(eqn.q_bar, :, :, iface_i.elementR)
+    interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL,
+                             q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = sview(eqn.res_bar, :, :, iface_i.elementL)
+    resR_bar = sview(eqn.res_bar, :, :, iface_i.elementR)
+    interiorFaceIntegrate_rev!(mesh.sbpface, iface_i, flux_face_bar, resL_bar,
+                               resR_bar, SummationByParts.Subtract())
+
+    fill!(q_faceL_bar, 0); fill!(q_faceR_bar, 0)
+    for j=1:mesh.numNodesPerFace
+      qL_j = ro_sview(q_faceL, :, j); qL_bar_j = sview(q_faceL_bar, :, j)
+      qR_j = ro_sview(q_faceR, :, j); qR_bar_j = sview(q_faceR_bar, :, j)
+
+      eqn.aux_vars_face[1, j, i] = calcPressure(params, qL_j)
+      aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
+
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
+      flux_bar_j = sview(flux_face_bar, :, j)
+
+      functor_revq(params, qL_j, qL_bar_j, qR_j, qR_bar_j, aux_vars, nrm_xy, flux_bar_j)
+    end  # end loop j
+
+    interiorFaceInterpolate_rev!(mesh.sbpface, iface_i, qL_bar, qR_bar,
+                                 q_faceL_bar, q_faceR_bar)
+
+  end  # end loop i
+
+  return nothing
+end
+
 
 
 function getFaceElementIntegral_diff(
@@ -252,6 +321,39 @@ function getFaceElementIntegral_revm(
   return nothing
 end
 
+
+"""
+  Reverse mode wrt q of [`getFaceElementIntegral`](@ref)
+"""
+function getFaceElementIntegral_revq(
+                           mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  params = eqn.params
+  nfaces = length(interfaces)
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = ro_sview(eqn.q, :, :, elL); qL_bar = sview(eqn.q_bar, :, :, elL)
+    qR = ro_sview(eqn.q, :, :, elR); qR_bar = sview(eqn.q_bar, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+    resR_bar = ro_sview(eqn.res_bar, :, :, elR)
+
+    calcFaceElementIntegral_revq(face_integral_functor, params, sbpface, iface,
+                        qL, qL_bar, qR, qR_bar, aux_vars, nrm_face,
+                        flux_functor, resL_bar, resR_bar)
+
+  end
+
+  return nothing
+end
 
 
 

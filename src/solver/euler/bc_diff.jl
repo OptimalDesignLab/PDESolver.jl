@@ -67,6 +67,31 @@ function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
   return nothing
 end
 
+"""
+  Reverse mode of [`getBCFluxes`](@ref) wrt the solution.  `eqn.res_bar` is the
+  input and `eqn.q_bar` is updated with the result
+"""
+function getBCFluxes_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+  #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
+
+#  fill!(mesh.dxidx_bndry_bar, 0.0)
+  for i=1:mesh.numBC
+    functor_i = mesh.bndry_funcs_revq[i]
+    start_index = mesh.bndry_offsets[i]
+    end_index = mesh.bndry_offsets[i+1] - 1
+    idx_range = start_index:(end_index)
+    bndry_facenums_i = sview(mesh.bndryfaces, start_index:end_index)
+
+    # call the function that calculates the flux for this boundary condition
+    # passing the functor into another function avoid type instability
+    calcBoundaryFlux_nopre_revq(mesh, sbp, eqn, functor_i, idx_range, bndry_facenums_i)
+  end
+
+  writeBoundary(mesh, sbp, eqn, opts)
+
+  return nothing
+end
+
 
 
 
@@ -183,7 +208,7 @@ end
 
 
 """
-  Reverse mode wrt metrics of [`calcBoundaryFlux_nopre_revm`](@ref)
+  Reverse mode wrt metrics of [`calcBoundaryFlux_nopre`](@ref)
 """
 function calcBoundaryFlux_nopre_revm( mesh::AbstractDGMesh{Tmsh},
                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
@@ -225,6 +250,63 @@ function calcBoundaryFlux_nopre_revm( mesh::AbstractDGMesh{Tmsh},
                   bndryflux_bar_i, bndry_node)
     end
 
+  end
+
+  return nothing
+end
+
+
+"""
+  Reverse mode wrt metrics of [`calcBoundaryFlux_nopre`](@ref)
+"""
+function calcBoundaryFlux_nopre_revq( mesh::AbstractDGMesh{Tmsh},
+                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          functor_bar::BCType_revq, idx_range::UnitRange,
+                          bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
+  # calculate the boundary flux for the boundary condition evaluated by the
+  # functor
+
+  nfaces = length(bndry_facenums)
+#  q2 = zeros(Tsol, mesh.numDofPerNode)
+  q_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  params = eqn.params
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  for i=1:nfaces  # loop over faces with this BC
+    bndry_i = bndry_facenums[i]
+    global_facenum = idx_range[i]
+
+
+    q_vol = sview(eqn.q, :, :, bndry_i.element)
+    q_vol_bar = sview(eqn.q_bar, :, :, bndry_i.element)
+    boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, q_vol, q_face)
+
+    res_bar_i = sview(eqn.res_bar, :, :, bndry_i.element)
+    fill!(flux_face_bar, 0)
+    boundaryFaceIntegrate_rev!(mesh.sbpface, bndry_i.face, flux_face_bar,
+                               res_bar_i, SummationByParts.Subtract())
+
+    fill!(q_face_bar, 0)
+
+    for j = 1:mesh.numNodesPerFace
+      # get components
+      q_j = sview(q_face, :, j)
+      q_bar_j = sview(q_face_bar, :, j)
+      # convert to conservative variables if needed
+      #convertToConservative(eqn.params, q, q2)
+      aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
+      coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
+      nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
+      bndryflux_bar_i = sview(flux_face_bar, :, j)
+
+      bndry_node = BoundaryNode(bndry_i, i, j)
+
+      functor_bar(params, q_j, q_bar_j, aux_vars, coords, nrm_xy,
+                  bndryflux_bar_i, bndry_node)
+    end
+
+    boundaryFaceInterpolate_rev!(mesh.sbpface, bndry_i.face, q_vol_bar, q_face_bar)
   end
 
   return nothing

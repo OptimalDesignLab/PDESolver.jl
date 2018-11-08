@@ -331,8 +331,7 @@ end
 
 """
   This function performs the reverse mode calculation of the residual with
-  respect to the metrics.  Specifically, it takes an input vector and back
-  propigates it to the fields of the mesh.  The following fields of the mesh
+  respect to the metrics. The following fields of the mesh
   are updated with the result:
 
    * dxidx_bar
@@ -352,15 +351,46 @@ end
 
    * mesh:
    * sbp
-   * eqn
+   * eqn: when this function is called, `eqn.res_bar` must already have the 3D
+          array form of the seed vector in it
    * opts
-   * input_array: seed vector for back propigation, same shape as `eqn.res_vec`
    * t: optional argument, gives current time value
+
+  See the other method of this function if the seed vector is in 1D form.
 """
-function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
-                     opts::Dict, input_array::AbstractArray{T, 1}, t=0.0
-                    ) where {T}
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
+                           eqn::AbstractSolutionData, opts::Dict, t=0.0
+                          )
 
   error("Generic fallback for evalResidual_revm: did you forget to extend evalResidual_revm with a new method for your AbstractSolutionData")
+
+end
+
+
+"""
+  This function performs reverse mode calculation of the residual with
+  respect to the solution.  The `eqn.q_bar` array is updated with the result.
+  It is the callers responsibility to zero out this array before calling this
+  function, if required.
+
+  Note: the mesh and equation objects must have the `need_adjoint` option set
+  to true in the options dictionary used to create them.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: `eqn.res_bar` must have the 3D array form of the seed vector in it
+           when this function is called
+   * opts
+   * t: optional argument giving current time value
+
+"""
+function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
+                           eqn::AbstractSolutionData, opts::Dict, t=0.0
+                          )
+
+
+  error("Generic fallback for evalResidual_revq: did you forget to extend evalResidual_revq with a new method for your AbstractSolutionData")
 
 end

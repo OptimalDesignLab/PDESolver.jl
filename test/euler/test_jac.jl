@@ -24,7 +24,8 @@ function test_jac_terms()
   # list of boundary conditions to test revm method in 2D
   bclist_revm_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC", "isentropicVortexBC"]
   bclist_revm_3d = [                   "FreeStreamBC"]
-
+  bclist_revq_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC", "isentropicVortexBC"]
+  bclist_revq_3d = [                   "FreeStreamBC"]
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
   Tmsh = eltype(mesh.jac)
@@ -110,12 +111,25 @@ function test_jac_terms()
       test_bc_revm(eqn.params, bc, bc_revm)
     end
 
+    for bcname in bclist_revq_2d
+      bc = EulerEquationMod.BCDict[bcname](mesh, eqn)
+      bc_revq = EulerEquationMod.BCDict_revq[bcname](mesh, eqn)
+      test_bc_revq(eqn.params, bc, bc_revq)
+    end
+
     # test boundary conditions
     for bcname in bclist_revm_3d
       bc = EulerEquationMod.BCDict[bcname](mesh3, eqn3)
       bc_revm = EulerEquationMod.BCDict_revm[bcname](mesh3, eqn3)
       test_bc_revm(eqn3.params, bc, bc_revm)
     end
+
+    for bcname in bclist_revq_3d
+      bc = EulerEquationMod.BCDict[bcname](mesh3, eqn3)
+      bc_revq = EulerEquationMod.BCDict_revq[bcname](mesh3, eqn3)
+      test_bc_revq(eqn3.params, bc, bc_revq)
+    end
+
 
     # test common_funcs
     test_common_func_rev(eqn.params, coords, EulerEquationMod.calcExp,
@@ -257,7 +271,7 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-
+#=
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -388,7 +402,7 @@ function test_jac_terms_long()
  
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
-
+=#
 
     # test revm products
 
@@ -401,10 +415,14 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPDiagonalE"
     opts_tmp["order"] = 2
     opts_tmp["need_adjoint"] = true
+    # TESTING
+#    opts_tmp["addFaceIntegrals"] = false
+#    opts_tmp["addBoundaryIntegrals"] = false
     make_input(opts_tmp, fname4)
     mesh_r1, sbp_r1, eqn_r1, opts_r1 = run_solver(fname4)
 
     test_revm_product(mesh_r1, sbp_r1, eqn_r1, opts_r1)
+    test_revq_product(mesh_r1, sbp_r1, eqn_r1, opts_r1)
 
     # test 2d BC that depends on mesh.coords_bndry
     println("\n\nTesting 2D boundary condition")
@@ -419,6 +437,7 @@ function test_jac_terms_long()
     mesh_r2, sbp_r2, eqn_r2, opts_r2 = run_solver(fname4)
 
     test_revm_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
+    test_revq_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
 
 
     # SBPOmega ES scheme
@@ -436,11 +455,14 @@ function test_jac_terms_long()
     opts_tmp["Flux_name"] = "IRFlux"
     opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
     opts_tmp["need_adjoint"] = true
+    # TESTING
+    opts_tmp["addFaceIntegrals"] = false
     make_input(opts_tmp, fname4)
     mesh_r3, sbp_r3, eqn_r3, opts_r3 = run_solver(fname4)
 
     test_revm_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
-
+    test_revq_product(mesh_r3, sbp_r3, eqn_r3, opts_r3)
+#=
     # SBPDiagonalE ES scheme
     println("\n\ntesting diagonalE ES scheme")
     fname4 = "input_vals_jac_tmp.jl"
@@ -457,7 +479,7 @@ function test_jac_terms_long()
     mesh_r4, sbp_r4, eqn_r4, opts_r4 = run_solver(fname4)
 
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
-
+=#
 
   end
 
@@ -1351,12 +1373,10 @@ function test_bc_revm(params::AbstractParamType{Tdim},
 
   if Tdim == 2
     q = Complex128[1.0, 0.3, 0.4, 7.0]
-    delta_w = Complex128[0.1, 0.2, 0.3, 0.4]
     nrm = Complex128[1.0, 2.0]
     coords = Complex128[1.0, 1.1]
   else
     q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
-    delta_w = Complex128[0.1, 0.2, 0.3, 0.4, 0.5]
     nrm = Complex128[1.0, 2.0, 3.0]
     coords = Complex128[1.0, 1.1, 1.2]
   end
@@ -1390,6 +1410,46 @@ function test_bc_revm(params::AbstractParamType{Tdim},
 
   return nothing
 end
+
+
+function test_bc_revq(params::AbstractParamType{Tdim},
+                      func::EulerEquationMod.BCType,
+                      func_revq::EulerEquationMod.BCType_revq) where {Tdim}
+
+  println("testing BC function ", func, " in ", Tdim, " dimensions")
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  if Tdim == 2
+    q = Complex128[1.0, 0.3, 0.4, 7.0]
+    nrm = Complex128[1.0, 2.0]
+    coords = Complex128[1.0, 1.1]
+  else
+    q = Complex128[1.0, 0.3, 0.4, 0.5, 13.0]
+    nrm = Complex128[1.0, 2.0, 3.0]
+    coords = Complex128[1.0, 1.1, 1.2]
+  end
+
+  numDofPerNode = length(q)
+  aux_vars = Complex128[]
+  q_dot = rand_realpart(numDofPerNode)
+  q_bar = zeros(Complex128, numDofPerNode)
+  flux_bar = rand_realpart(numDofPerNode)
+  flux = zeros(Complex128, numDofPerNode)
+
+  q .+= pert*q_dot
+  func(params, q, aux_vars, coords, nrm, flux)
+  q .-= pert*q_dot
+  val1 = sum(flux_bar .* imag(flux)/h)
+
+  func_revq(params, q, q_bar, aux_vars, coords, nrm, flux_bar)
+  val2 = sum(q_bar .* q_dot)
+
+  @test abs(val1 - val2) < 1e-13
+
+  return nothing
+end
+
 
 function test_faceflux_revm(mesh, sbp, eqn, opts)
 
@@ -2266,24 +2326,115 @@ function test_revm_product(mesh, sbp, eqn, opts)
 end
 
 
-#=
+
 """
   Test the psi^T dR/dq product
 """
-function test_revm_product(mesh, sbp, eqn, opts)
+function test_revq_product(mesh, sbp, eqn, opts)
 
   h = 1e-20
   pert = Complex128(0, h)
 
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+#  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
                                      # interfaces non-zero
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
-  res_bar = rand_realpart(mesh.numDof)
-  q_dot = rand_realpart(mesh.numDof)
+  res_vec_bar = rand_realpart(mesh.numDof)
+  q_vec_dot = rand_realpart(mesh.numDof)
+  q_vec_bar = zeros(Complex128, mesh.numDof)
 
-=#
+  fill!(eqn.res, 0)
+  eqn.q_vec .+= pert*q_vec_dot
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  evalResidual(mesh, sbp, eqn, opts)
+  eqn.q_vec .-= pert*q_vec_dot
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val = sum(res_vec_bar .* imag(eqn.res_vec)/h)
+
+  evalResidual_revq(mesh, sbp, eqn, opts, res_vec_bar, q_vec_bar)
+  val2 = sum(q_vec_bar .* q_vec_dot)
+
+  println("val = ", val)
+  println("val2 = ", val2)
+  @test abs(val - val2) < 1e-13
+
+  #TODO: test accumulation behavior
+
+  if opts["volume_integral_type"] == 2
+    # test SplitFormLinear and SplitFormCurvilinear
+
+    # linear
+    fill!(eqn.res, 0)
+    fill!(eqn.q_bar, 0)
+
+    q_dot = rand_realpart(size(eqn.q))
+    q_bar = zeros(Complex128, size(eqn.q))
+    res_bar = rand_realpart(size(eqn.res))
+
+    eqn.q .+= pert*q_dot
+    EulerEquationMod.calcVolumeIntegralsSplitFormLinear(mesh, sbp, eqn,
+                                                   opts, eqn.volume_flux_func)
+    eqn.q .-= pert*q_dot
+    val = sum(res_bar .* imag(eqn.res)/h)
+
+    copy!(eqn.res_bar, res_bar)
+    EulerEquationMod.calcVolumeIntegralsSplitFormLinear_revq(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revq)
+
+    val2 = sum( q_dot .* eqn.q_bar)
+
+    println("val = ", val)
+    println("val2 = ", val2)
+    @test abs(val - val2) < 1e-13
+
+    # test accumulation
+    q_bar_orig = copy(eqn.q_bar)
+    EulerEquationMod.calcVolumeIntegralsSplitFormLinear_revq(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revq)
+    
+    @test maximum(abs.(eqn.q_bar - 2.*q_bar_orig)) < 1e-13
+
+    # curvilinear
+
+    fill!(eqn.res, 0)
+    fill!(eqn.q_bar, 0)
+
+    eqn.q .+= pert*q_dot
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear(mesh, sbp, eqn,
+                                                   opts, eqn.volume_flux_func)
+    eqn.q .-= pert*q_dot
+    val = sum(res_bar .* imag(eqn.res)/h)
+
+    copy!(eqn.res_bar, res_bar)
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear_revq(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revq)
+
+    val2 = sum(q_dot .* eqn.q_bar)
+
+    println("val = ", val)
+    println("val2 = ", val2)
+    @test abs(val - val2) < 1e-13
+
+    # test accumulation
+    q_bar_orig = copy(eqn.q_bar)
+    EulerEquationMod.calcVolumeIntegralsSplitFormCurvilinear_revq(
+        mesh, sbp, eqn, opts, eqn.volume_flux_func, eqn.volume_flux_func_revq)
+    
+    @test maximum(abs.(eqn.q_bar - 2.*q_bar_orig)) < 1e-13
+
+
+  end
+
+
+
+
+  return nothing
+end
+
+

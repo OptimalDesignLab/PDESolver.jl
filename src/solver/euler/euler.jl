@@ -227,6 +227,7 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
 
   init_revm(mesh, sbp, eqn, opts, pmesh)
+  init_revq(mesh, sbp, eqn, opts, pmesh)
 
   return nothing
 end
@@ -245,6 +246,23 @@ function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 
   return nothing
 end
+
+function init_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
+
+  # Get functors for the boundary conditions
+  getBCFunctors_revq(mesh, sbp, eqn, opts)
+  getBCFunctors_revq(pmesh, sbp, eqn, opts)
+
+  if mesh.isDG
+    # For element interface flux
+    getFluxFunctors_revq(mesh, sbp, eqn, opts)
+  end
+
+  return nothing
+end
+
+
 
 function majorIterationCallback(itr::Integer,
                                 mesh::AbstractMesh{Tmsh},

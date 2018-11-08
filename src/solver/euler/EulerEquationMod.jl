@@ -372,6 +372,7 @@ include("check_options.jl")
 include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function for invoking the solver
 include("evaldRdm.jl")
+include("evaldRdq.jl")
 include("homotopy.jl")
 
 # Jacobian calculation

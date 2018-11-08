@@ -214,39 +214,33 @@ end
 # mid level function (although it doesn't need Tdim)
 function array3DTo1D(mesh::AbstractCGMesh{Tmsh},
        sbp, eqn::AbstractSolutionData{Tsol}, opts,
-       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
+       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1};
        zero_resvec=true) where {Tmsh, Tsol, Tres}
 # arr is the array to be assembled into res_vec
 
 #  println("in array3DTo1D")
 
   if zero_resvec
-    # assign to output
-    for i=1:mesh.numEl  # loop over elements
-      for j=1:mesh.numNodesPerElement
-        @simd for k=1:size(res_arr, 1)  # loop over dofs on the node
-          dofnum_k = mesh.dofs[k, j, i]
-          res_vec[dofnum_k] = res_arr[k,j,i]
-        end
-      end
-    end
-  else
-    # sum into output
-    for i=1:mesh.numEl  # loop over elements
-      for j=1:mesh.numNodesPerElement
-        @simd for k=1:size(res_arr, 1)  # loop over dofs on the node
-          dofnum_k = mesh.dofs[k, j, i]
-          res_vec[dofnum_k] += res_arr[k,j,i]
-        end
+    @assert pointer(res_vec) != pointer(res_arr)
+    fill!(res_vec, 0)
+  end
+
+  # sum into output
+  for i=1:mesh.numEl  # loop over elements
+    for j=1:mesh.numNodesPerElement
+      @simd for k=1:size(res_arr, 1)  # loop over dofs on the node
+        dofnum_k = mesh.dofs[k, j, i]
+        res_vec[dofnum_k] += res_arr[k,j,i]
       end
     end
   end
+
   return nothing
 end
 
 function array3DTo1D(mesh::AbstractDGMesh{Tmsh},
        sbp, eqn::AbstractSolutionData{Tsol}, opts,
-       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
+       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1};
        zero_resvec=true) where {Tmsh, Tsol, Tres}
 
   # we assume the memory layouts of q_arr and q_vec are the same
@@ -260,7 +254,10 @@ function array3DTo1D(mesh::AbstractDGMesh{Tmsh},
         res_vec[i] += res_arr[i]
       end
     end
+
+  # else: nothing to do
   end
+
 
   return nothing
 

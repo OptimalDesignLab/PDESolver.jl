@@ -232,7 +232,6 @@ function calcVolumeIntegrals_nopre_revq(
       aux_vars_j = ro_sview(eqn.aux_vars, :, j, i)
 
       for k=1:Tdim
-        fill!(nrm_bar, 0)
         flux_bar_k = sview(flux_el_bar, :, j, k)
 
         for p=1:Tdim
@@ -454,6 +453,31 @@ function calcVolumeIntegralsSplitForm_revm(
 end
 
 
+function calcVolumeIntegralsSplitForm_revq(
+                mesh::AbstractMesh{Tmsh},
+                sbp::AbstractSBP,
+                eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                functor::FluxType,
+                functor_revq::FluxType_revq) where {Tmsh, Tsol, Tres, Tdim}
+
+  if opts["use_staggered_grid"]
+    error("staggered grid not supported in reverse mode wrt metrics")
+  else
+    if mesh.coord_order == 1
+      calcVolumeIntegralsSplitFormLinear_revq(mesh, sbp, eqn, opts, functor,
+                                                   functor_revq)
+    else
+      calcVolumeIntegralsSplitFormCurvilinear_revq(mesh, sbp, eqn, opts, functor,
+                                                   functor_revq)
+    end
+  end
+
+  return nothing
+end
+
+
+
+
 """
   Reverse mode of [`calcVolumeIntegralsSplitFormLinear`](@ref).  The _bar fields
   of the mesh are updated.
@@ -538,6 +562,88 @@ end
 
 
 """
+  Reverse mode of [`calcVolumeIntegralsSplitFormLinear`](@ref) wrt q.
+  The _bar fields
+  of the mesh are updated.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functor: the two point flux function (`FluxType`)
+   * functor_revq: the reverse mode wrt metrics flux function (`FluxType_revq`)
+"""
+function calcVolumeIntegralsSplitFormLinear_revq(
+                                        mesh::AbstractMesh{Tmsh},
+                                        sbp::AbstractSBP,
+                                        eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                                        functor::FluxType,
+                                        functor_revq::FluxType_revq) where {Tmsh, Tsol, Tres, Tdim}
+
+#  println("----- entered calcVolumeIntegralsSplitForm -----")
+  dxidx = mesh.dxidx
+  res = eqn.res
+  res_bar = eqn.res_bar
+  q = eqn.q
+  aux_vars = eqn.aux_vars
+  params = eqn.params
+  data = params.calc_volume_integrals_data
+  @unpack data nrmD F_d S F_d_bar
+
+  F_d_bar = zeros(F_d)
+  nrmD_bar = zeros(Tmsh, mesh.dim, mesh.dim)
+
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(q, :, j, i)
+      q_bar_j = sview(eqn.q_bar, :, j, i)
+      aux_vars_j = ro_sview(aux_vars, :, j, i)
+      for k=1:(j-1)  # loop over lower triangle of S
+        q_k = ro_sview(q, :, k, i)
+        q_bar_k = sview(eqn.q_bar, :, k, i)
+        # calcaulate the normal vector in each parametric directions
+        for d=1:Tdim
+          # get the normal vector
+          for p=1:Tdim
+            nrmD[p, d] = dxidx[d, p, j, i]
+          end
+        end
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+#        functor(params, q_j, q_k, aux_vars_j, nrmD, F_d)
+
+        fill!(F_d_bar, 0)
+        @simd for d=1:Tdim
+          # update residual
+          @simd for p=1:(Tdim+2)
+            #res[p, j, i] -= 2*S[j, k, d]*F_d[p, d]
+            #res[p, k, i] += 2*S[j, k, d]*F_d[p, d]
+
+            #--------------------
+            # reverse sweep
+            F_d_bar[p, d] -= 2*S[j, k, d]*res_bar[p, j, i]
+            F_d_bar[p, d] += 2*S[j, k, d]*res_bar[p, k, i]
+          end  # end p loop
+        end  # end d loop
+
+        functor_revq(params, q_j, q_bar_j, q_k, q_bar_k, aux_vars_j, nrmD, 
+                     F_d_bar)
+      end  # end k loop
+    end  # end j loop
+  end  # end i loop
+
+  return nothing
+end
+
+
+
+
+
+"""
   Reverse mode wrt metrics of [`calcVolumeIntegralsSplitFormCurvilinear`](@ref)
 """
 function calcVolumeIntegralsSplitFormCurvilinear_revm(
@@ -604,6 +710,78 @@ function calcVolumeIntegralsSplitFormCurvilinear_revm(
 
   return nothing
 end
+
+
+"""
+  Reverse mode wrt q of [`calcVolumeIntegralsSplitFormCurvilinear`](@ref)
+"""
+function calcVolumeIntegralsSplitFormCurvilinear_revq(
+                      mesh::AbstractMesh{Tmsh},
+                      sbp::AbstractSBP,
+                      eqn::EulerData{Tsol, Tres, Tdim}, opts,
+                      functor::FluxType,
+                      functor_revq::FluxType_revq) where {Tmsh, Tsol, Tres, Tdim}
+
+
+#  println("\nentered calcVolumeIntegralsSplitFormCurvilinear_revq")
+  dxidx = mesh.dxidx
+  res = eqn.res
+  res_bar = eqn.res_bar
+  q = eqn.q
+  aux_vars = eqn.aux_vars
+  params = eqn.params
+
+  data = params.calc_volume_integrals_data
+  @unpack data nrmD F_d Sx F_d_bar
+
+  # S is calculated in x-y-z, so the normal vectors should be the unit normals
+  fill!(nrmD, 0.0)
+  for d=1:Tdim
+    nrmD[d, d] = 1
+  end
+
+  for i=1:mesh.numEl
+    # get S for this element
+    dxidx_i = ro_sview(dxidx, :, :, :, i)
+    dxidx_i_bar = sview(mesh.dxidx_bar, :, :, :, i)
+    calcSCurvilinear(sbp, dxidx_i, Sx)
+
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(q, :, j, i)
+      q_bar_j = sview(eqn.q_bar, :, j, i)
+      aux_vars_j = ro_sview(aux_vars, :, j, i)
+      for k=1:(j-1)  # loop over lower triangle of S
+        q_k = ro_sview(q, :, k, i)
+        q_bar_k = sview(eqn.q_bar, :, k, i)
+
+        # calculate the numerical flux functions in all Tdim
+        # directions at once
+        #functor(params, q_j, q_k, aux_vars_j, nrmD, F_d)
+
+        fill!(F_d_bar, 0)
+        @simd for d=1:Tdim
+          # update residual
+          @simd for p=1:(Tdim+2)
+#            res[p, j, i] -= 2*Sx[j, k, d]*F_d[p, d]
+#            res[p, k, i] += 2*Sx[j, k, d]*F_d[p, d]
+
+            F_d_bar[p, d] -= 2*Sx[j, k, d]*res_bar[p, j, i]
+            F_d_bar[p, d] += 2*Sx[j, k, d]*res_bar[p, k, i]
+          end
+        end  # end d loop
+
+        functor_revq(params, q_j, q_bar_j, q_k, q_bar_k, aux_vars_j, nrmD,
+                     F_d_bar)
+
+      end  # end k loop
+    end  # end j loop
+
+  end  # end i loop
+
+  return nothing
+end
+
+
 
 
 

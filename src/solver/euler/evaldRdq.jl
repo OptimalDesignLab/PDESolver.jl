@@ -1,13 +1,11 @@
 # main file for computing dRdq transposed products
 
+import PDESolver.evalResidual_revq
+
 function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
-                     opts::Dict, input_array::AbstractArray{Tsol, 1},
-                     output_array::AbstractVector t=0.0) where Tsol
+                     opts::Dict, t::Number=0.0)
 
   @assert mesh.commsize == 1
-
-  #TODO: do parallel communication on input_array
-  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
 
   time = eqn.params.time
   eqn.params.t = t  # record t to params
@@ -20,6 +18,10 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   #   startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
   # end
 
+  println("initially:")
+  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
+  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
+  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
 
   # !!!! MAKE SURE TO DO DATA EXCHANGE BEFORE !!!!
 
@@ -30,7 +32,12 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_revq(mesh, sbp, eqn, opts)
   end
+  println("after volume integrals:")
+  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
+  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
+  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
 
+ 
   if opts["use_GLS"]
     error("GLS not supported for revq product")
   end
@@ -38,6 +45,12 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals_revq(mesh, sbp, eqn, opts)
   end
+
+  println("after boundary integrals:")
+  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
+  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
+  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
+
 
   # time.t_stab += @elapsed if opts["addStabilization"]
   #   addStabilization(mesh, sbp, eqn, opts)
@@ -47,6 +60,12 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
+  println("after face integrals:")
+  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
+  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
+  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
+
+ 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
   end
@@ -63,11 +82,49 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_dataprep += @elapsed dataPrep_revq(mesh, sbp, eqn, opts)
 
-  # accumulate into output array
-  array3DTo1D(mesh, sbp, eqn, opts, eqn.q_bar, output_array, zero_resvec=false)
-
   return nothing
 end  # end evalResidual
+
+
+"""
+  Dataprep-type function that should be called at the beginning of a reverse
+  mode product, rather than the regular `dataPrep` function.
+"""
+function dataPrep_for_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                   eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
+
+  # apply filtering to input
+  if eqn.params.use_filter
+    applyFilter(mesh, sbp, eqn, eqn.q, opts)
+  end
+
+  getAuxVars(mesh, eqn)
+
+  if opts["use_staggered_grid"]
+    error("staggered grid not supported for revq product")
+    aux_vars = zeros(Tres, 1, mesh.mesh2.numNodesPerElement)
+    for i=1:mesh.numEl
+      qs = ro_sview(eqn.q, :, :, i)
+      qf = sview(eqn.q_flux, :, :, i)
+      interpolateElementStaggered(eqn.params, mesh, qs, aux_vars, qf)
+    end
+  end
+
+
+  # only eqn.q_bndry is required, all other methods are no-precompute
+  if mesh.isDG
+    interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
+  end
+
+  if eqn.params.use_edgestab
+    stabscale(mesh, sbp, eqn)
+  end
+
+  return nothing
+end
+
+
+
 
 
 @doc """
@@ -113,7 +170,6 @@ function evalVolumeIntegrals_revq(mesh::AbstractMesh{Tmsh},
       error("Q_transpose = false not supported for revq product")
     end  # end if
   elseif integral_type == 2
-    error("not supported yet")
     calcVolumeIntegralsSplitForm_revq(mesh, sbp, eqn, opts, eqn.volume_flux_func,
                                  eqn.volume_flux_func_revq)
   else
@@ -140,7 +196,6 @@ Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂
 function evalBoundaryIntegrals_revq(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
-  error("not supported yet")
   getBCFluxes_revq(mesh, sbp, eqn, opts)
 
   return nothing
@@ -165,9 +220,8 @@ function evalFaceIntegrals_revq(mesh::AbstractDGMesh{Tmsh},
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
-    error("not supported yet")
-    calcFaceIntegral_nopre_revq(mesh, sbp, eqn, opts, eqn.flux_func_revm,
-                         mesh.interfaces)
+    calcFaceIntegral_nopre_revq(mesh, sbp, eqn, opts, eqn.flux_func_revq,
+                                mesh.interfaces)
 
   elseif face_integral_type == 2
 

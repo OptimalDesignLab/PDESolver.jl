@@ -465,11 +465,13 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
   flux_func_revm::FluxType_revm # Functor for the reverse mode of face flux
+  flux_func_revq::FluxType_revq
   flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
   volume_flux_func_diff::FluxType_diff
   volume_flux_func_revm::FluxType_revm
+  volume_flux_func_revq::FluxType_revq
 
   viscous_flux_func::FluxType  # functor for the viscous flux numerical flux function
   face_element_integral_func::FaceElementIntegralType  # function for face

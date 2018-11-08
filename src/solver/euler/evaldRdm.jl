@@ -17,11 +17,9 @@ Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
 """->
 
 function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
-                     opts::Dict, input_array::AbstractArray{Tsol, 1}, t=0.0) where Tsol
+                     opts::Dict, t::Number=0.0)
 
-  #TODO: do parallel communication on input_array
-  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
-
+  @assert eqn.commsize == 1
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
