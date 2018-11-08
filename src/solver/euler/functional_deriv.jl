@@ -1,6 +1,6 @@
 # functional derivative calculation
 
-import PDESolver.evalFunctionalDeriv
+import PDESolver.evalFunctionalDeriv_q
 
 """
   Computes a 3D array of hte derivative of a functional wrt eqn.q.
@@ -24,7 +24,7 @@ import PDESolver.evalFunctionalDeriv
 
   This funciton is not compatible with `precompute_q_bndry` = false
 """
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,

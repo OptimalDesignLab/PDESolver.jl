@@ -127,7 +127,7 @@ function test_functional_deriv(mesh, sbp, eqn, opts, func)
 #  q_dot[1, 1, 1] = 100
   q_bar = zeros(eqn.q)
 
-  evalFunctionalDeriv(mesh, sbp, eqn, opts, func, q_bar)
+  evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func, q_bar)
   val = sum(q_bar .* q_dot)
 
 

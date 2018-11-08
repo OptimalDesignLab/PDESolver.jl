@@ -1,11 +1,11 @@
 # functional derivative computation
 
-import PDESolver.evalFunctionalDeriv
+import PDESolver.evalFunctionalDeriv_q
 
 """
-  evalFunctionalDeriv for Advection
+  evalFunctionalDeriv_q for Advection
 """
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
+function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP,
                            eqn::AdvectionData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,

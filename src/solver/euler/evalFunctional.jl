@@ -41,7 +41,7 @@ end
   Currently this requires that the eqn object was creates with Tsol = Complex128
 """
 
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol, Tres}, opts,
                            functionalData::EntropyPenaltyFunctional,
@@ -69,7 +69,7 @@ end
 =#
 
 # derivative of functional wrt q
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol, Tres}, opts,
                            functionalData::EntropyPenaltyFunctional,

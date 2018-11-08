@@ -239,13 +239,13 @@ end
 
   This funciton is not compatible with `precompute_q_bndry` = false
 """
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  error("Generic fallback for evalFunctionalDeriv() reached: did you forget to extend evalFunctionalDeriv() with a new method for you AbstractSolutionData")
+  error("Generic fallback for evalFunctionalDeriv_q() reached: did you forget to extend evalFunctionalDeriv_q() with a new method for you AbstractSolutionData")
 
 end
 
