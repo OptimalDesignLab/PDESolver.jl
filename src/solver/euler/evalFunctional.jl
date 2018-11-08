@@ -33,11 +33,14 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
   return val
 end
 
+
+#=
 """
   Derivative for [`EntropyPenaltyFunctional`](@ref)s
 
   Currently this requires that the eqn object was creates with Tsol = Complex128
 """
+
 function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol, Tres}, opts,
@@ -63,8 +66,73 @@ function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+=#
+
+# derivative of functional wrt q
+function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::EulerData{Tsol, Tres}, opts,
+                           functionalData::EntropyPenaltyFunctional,
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
+
+  @assert size(func_deriv_arr, 1) == mesh.numDofPerNode
+  @assert size(func_deriv_arr, 2) == mesh.numNodesPerElement
+  @assert size(func_deriv_arr, 3) == mesh.numEl
+
+  @assert eqn.commsize == 1
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  # this is a trick to populate eqn.res (the forward sweep of reverse mode)
+  calcFunctional(mesh, sbp, eqn, opts, functionalData)
+
+  # compute reverse mode of the contraction, take val_bar = 1
+  w_j = zeros(Tsol, mesh.numDofPerNode)
+  w_bar_j = zeros(Tres, mesh.numDofPerNode)
+  fill!(eqn.res_bar, 0); fill!(eqn.q_bar, 0)
+  A0inv = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      q_bar_j = sview(eqn.q_bar, :, j, i)
+      fill!(w_bar_j, 0)
+      convertToIR(eqn.params, q_j, w_j)
+      for k=1:mesh.numDofPerNode
+        #val += w_j[k]*eqn.res[k, j, i]
+        #-----------------------------
+        # reverse sweep
+        w_bar_j[k] += eqn.res[k, j, i]
+        eqn.res_bar[k, j, i] += w_j[k]
+      end
+
+      getIRA0inv(eqn.params, q_j, A0inv)
+      smallmatTvec_kernel!(A0inv, w_bar_j, q_bar_j, 1, 1)
+    end
+  end
 
 
+  # do reverse mode of the face integrals
+  if typeof(mesh.sbpface) <: DenseFace
+    @assert opts["parallel_data"] == "element"
+
+    # local part
+    face_integral_functor = functionalData.func
+    flux_functor = ErrorFlux_revq()  # not used, but required by the interface
+    getFaceElementIntegral_revq(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+ 
+    #TODO: parallel part
+  else # SparseFace
+    flux_functor_revq = functionalData.func_sparseface_revq
+    calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor_revq,
+                           mesh.interfaces)
+    #TODO: parallel part
+  end
+
+  copy!(func_deriv_arr, eqn.q_bar)
+
+  return nothing
+end
 
 #------------------------------------------------------------------------------
 # Implementation for each functional
@@ -130,8 +198,6 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     end
   end
 
-
-  #TODO: allreduce on val???
 
   return val
 end

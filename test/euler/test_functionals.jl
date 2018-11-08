@@ -45,6 +45,7 @@ function test_functionals()
     "exact_soln_func" => "ICIsentropicVortex",
     "force_solution_complex" => true,
     "force_mesh_complex" => true,
+    "need_adjoint" => true,
     )
 
   mesh, sbp, eqn, opts = solvePDE(opts)
@@ -143,4 +144,4 @@ end
   
 
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

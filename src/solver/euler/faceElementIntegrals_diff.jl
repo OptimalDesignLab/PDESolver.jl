@@ -974,6 +974,30 @@ function applyEntropyKernel_revm(obj::LFKernel, params::ParamType,
 end
 
 
+function applyEntropyKernel_revm(obj::IdentityKernel, params::ParamType, 
+                        q_avg::AbstractVector, delta_w::AbstractVector,
+                        nrm::AbstractVector, nrm_bar::AbstractVector,
+                        flux::AbstractVector,
+                        flux_bar::AbstractVector)
+
+  # nothing to do
+
+  return nothing
+end
+
+function applyEntropyKernel_revq(obj::IdentityKernel, params::ParamType, 
+                        q_avg::AbstractVector, q_bar::AbstractVector,
+                        delta_w::AbstractVector, delta_w_bar::AbstractVector,
+                        nrm::AbstractVector, flux::AbstractVector,
+                        flux_bar::AbstractVector)
+
+  for i=1:length(q_avg)
+    delta_w_bar[i] += flux_bar[i]
+  end
+
+  return nothing
+end
+
 
 
 #------------------------------------------------------------------------------
@@ -1361,6 +1385,38 @@ end
 
 
 function calcFaceElementIntegral_revq(obj::ELFPenaltyFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+              qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor_revq::FluxType_revq, 
+              resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
+
+  calcEntropyPenaltyIntegral_revq(params, sbpface, iface, obj.kernel, qL,
+                qL_bar, qR, qR_bar, aux_vars, nrm_face,
+                resL_bar, resR_bar)
+end
+
+
+#---------------------
+# entropy jump penalty
+
+function calcFaceElementIntegral_revm(obj::EntropyJumpPenaltyFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qR::AbstractMatrix{Tsol}, 
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              nrm_face_bar::AbstractMatrix{Tmsh},
+              functor::FluxType, 
+              resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
+
+  calcEntropyPenaltyIntegral_revm(params, sbpface, iface, obj.kernel, qL, qR,
+                aux_vars, nrm_face, nrm_face_bar, resL_bar, resR_bar)
+end
+
+
+function calcFaceElementIntegral_revq(obj::EntropyJumpPenaltyFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
               qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
