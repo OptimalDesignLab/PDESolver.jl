@@ -175,6 +175,78 @@ function calcECFaceIntegral_revm(
 end
 
 
+"""
+  Reverse mode of [`calcECFaceIntegral`](@ref) wrt the q
+"""
+function calcECFaceIntegral_revq(
+     params::AbstractParamType{Tdim}, 
+     sbpface::DenseFace, 
+     iface::Interface,
+     qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+     qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_xy::AbstractMatrix{Tmsh},
+     functor_revq::FluxType_revq, 
+     resL_bar::AbstractMatrix{Tres}, 
+     resR_bar::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
+
+  data = params.calc_ec_face_integral_data
+  @unpack data fluxD fluxD_bar nrmD
+  numDofPerNode = size(fluxD, 1)
+
+
+  fill!(nrmD, 0.0)
+  for d=1:Tdim
+    nrmD[d, d] = 1
+  end
+
+  # loop over the nodes of "left" element that are in the stencil of interp
+  for i = 1:sbpface.stencilsize
+    p_i = sbpface.perm[i, iface.faceL]
+    qi = ro_sview(qL, :, p_i)
+    qi_bar = sview(qL_bar, :, p_i)
+    aux_vars_i = ro_sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
+
+    # loop over the nodes of "right" element that are in the stencil of interp
+    for j = 1:sbpface.stencilsize
+      p_j = sbpface.perm[j, iface.faceR]
+      qj = ro_sview(qR, :, p_j)
+      qj_bar = sview(qR_bar, :, p_j)
+
+      # compute flux and add contribution to left and right elements
+      #functor(params, qi, qj, aux_vars_i, nrmD, fluxD)
+
+      fill!(fluxD_bar, 0)
+      @simd for dim = 1:Tdim  # move this inside the j loop, at least
+        # accumulate entry p_i, p_j of E
+        Eij = zero(Tres)
+        @simd for k = 1:sbpface.numnodes
+          nrm_k = nrm_xy[dim, k]
+          kR = sbpface.nbrperm[k, iface.orient]
+          Eij += sbpface.interp[i,k]*sbpface.interp[j,kR]*sbpface.wface[k]*nrm_k
+        end  # end loop k
+ 
+       
+        @simd for p=1:numDofPerNode
+          #resL[p, p_i] -= Eij*fluxD[p, dim]
+          #resR[p, p_j] += Eij*fluxD[p, dim]
+
+          #----------------------------------
+          # reverse sweep
+          fluxD_bar[p, dim] -= Eij*resL_bar[p, p_i]
+          fluxD_bar[p, dim] += Eij*resR_bar[p, p_j]
+        end
+      end  # end loop dim
+
+      functor_revq(params, qi, qi_bar, qj, qj_bar, aux_vars, nrmD, fluxD_bar)
+    end  # end loop j
+  end  # end loop i
+
+
+  return nothing
+end
+
+
 
 
 #------------------------------------------------------------------------------
@@ -271,6 +343,28 @@ function calcESFaceIntegral_revm(
   return nothing
 end
 
+
+function calcESFaceIntegral_revq(
+     params::AbstractParamType{Tdim}, 
+     sbpface::AbstractFace, 
+     iface::Interface,
+     kernel::AbstractEntropyKernel,
+     qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+     qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+     aux_vars::AbstractMatrix{Tres}, 
+     nrm_face::AbstractMatrix{Tmsh},
+     functor_revq::FluxType_revq,
+     resL_bar::AbstractMatrix{Tres}, 
+     resR_bar::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
+
+  calcECFaceIntegral_revq(params, sbpface, iface, qL, qL_bar, qR, qR_bar,
+                     aux_vars, nrm_face, functor_revq, resL_bar, resR_bar)
+  calcEntropyPenaltyIntegral_revq(params, sbpface, iface, kernel, qL, qL_bar,
+                               qR, qR_bar, aux_vars, nrm_face,
+                               resL_bar, resR_bar)
+
+  return nothing
+end
 
 
 
@@ -476,7 +570,9 @@ function calcEntropyPenaltyIntegral_revm(
     # instability
     qL_itmp = ro_sview(qL, :, p_iL)
     qR_itmp = ro_sview(qR, :, p_iR)
-    wL_itmp = sview(wL, :, i)
+    wL_itmp = sview(wL, :, i)  # wL is a compacted representation: it only
+                               # stores the required values, in the order they
+                               # will be used later
     wR_itmp = sview(wR, :, i)
     convertToIR(params, qL_itmp, wL_itmp)
     convertToIR(params, qR_itmp, wR_itmp)
@@ -489,9 +585,143 @@ function calcEntropyPenaltyIntegral_revm(
     ni = sbpface.nbrperm[i, iface.orient]
     dir = ro_sview(nrm_face, :, i)
     dir_bar = sview(nrm_face_bar, :, i)
-    fastzero!(wL_i)
-    fastzero!(wR_i)
-    fill!(flux_bar, 0)
+    fastzero!(wL_i); fastzero!(wR_i)
+    fastzero!(flux_bar)
+
+    # interpolate wL and wR to this node
+    @simd for j=1:sbpface.stencilsize
+      interpL = sbpface.interp[j, i]
+      interpR = sbpface.interp[j, ni]
+
+      @simd for k=1:numDofPerNode
+        wL_i[k] += interpL*wL[k, j]
+        wR_i[k] += interpR*wR[k, j]
+      end
+    end
+
+    #TODO: write getLambdaMaxSimple and getIRA0 in terms of the entropy
+    #      variables to avoid the conversion
+    convertToConservativeFromIR_(params, wL_i, qL_i)
+    convertToConservativeFromIR_(params, wR_i, qR_i)
+    
+    # compute average qL
+    # also delta w (used later)
+    @simd for j=1:numDofPerNode
+      q_avg[j] = 0.5*(qL_i[j] + qR_i[j])
+      delta_w[j] = wL_i[j] - wR_i[j]
+    end
+
+    # call kernel (apply symmetric semi-definite matrix)
+    #applyEntropyKernel(kernel, params, q_avg, delta_w, dir, flux)
+    #for j=1:numDofPerNode
+    #  flux[j] *= sbpface.wface[i]
+    #end
+
+    # interpolate back to volume nodes
+    @simd for j=1:sbpface.stencilsize
+      j_pL = sbpface.perm[j, iface.faceL]
+      j_pR = sbpface.perm[j, iface.faceR]
+
+      @simd for p=1:numDofPerNode
+#        resL[p, j_pL] -= sbpface.interp[j, i]*flux[p]
+#        resR[p, j_pR] += sbpface.interp[j, ni]*flux[p]
+
+        #--------------------------
+        # reverse sweep
+        flux_bar[p] -= sbpface.interp[j, i ]*resL_bar[p, j_pL]
+        flux_bar[p] += sbpface.interp[j, ni]*resR_bar[p, j_pR]
+      end
+    end
+
+    for j=1:numDofPerNode
+      flux_bar[j] *= sbpface.wface[i]
+    end
+    applyEntropyKernel_revm(kernel, params, q_avg, delta_w, dir, dir_bar, flux,
+                            flux_bar)
+
+    # nothing further depends on the metrics
+  end  # end loop i
+
+
+
+  return nothing
+end
+
+"""
+  Reverse mode of [`calcEntropyPenaltyIntegral`](@ref) wrt the metrics
+
+  **Inputs**
+
+   * params
+   * sbpface
+   * kernel
+   * qL
+   * qR
+   * aux_vars
+   * nrm_face
+   * resL_bar, resR_bar
+
+  **Inputs/Outputs**
+
+   * qL_bar, qR_bar: updated with back propigation from `resL_bar`, `resR_bar`
+"""
+function calcEntropyPenaltyIntegral_revq(
+           params::ParamType{Tdim, :conservative},
+           sbpface::DenseFace, iface::Interface,
+           kernel::AbstractEntropyKernel,
+           qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+           qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+           aux_vars::AbstractMatrix{Tres},
+           nrm_face::AbstractArray{Tmsh, 2},
+           resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tdim, Tsol, Tres, Tmsh}
+
+  numDofPerNode = size(qL, 1)
+
+  # convert qL and qR to entropy variables (only the nodes that will be used)
+  data = params.calc_entropy_penalty_integral_data
+  @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux
+
+  A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+  qL_bar_i = zeros(Tres, numDofPerNode)
+  qR_bar_i = zeros(Tres, numDofPerNode)
+  wL_bar_i = zeros(Tres, numDofPerNode)
+  wR_bar_i = zeros(Tres, numDofPerNode)
+  delta_w_bar = zeros(Tres, numDofPerNode)
+  q_avg_bar = zeros(Tres, numDofPerNode)
+  wL_bar = zeros(Tres, numDofPerNode, sbpface.stencilsize)
+  wR_bar = zeros(Tres, numDofPerNode, sbpface.stencilsize)
+
+  fill!(wL_bar, 0)
+  fill!(wR_bar, 0)
+
+
+  flux_bar = zeros(flux)
+
+  # convert to IR entropy variables
+  for i=1:sbpface.stencilsize
+    # apply sbpface.perm here
+    p_iL = sbpface.perm[i, iface.faceL]
+    p_iR = sbpface.perm[i, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
+    wL_itmp = sview(wL, :, i)
+    wR_itmp = sview(wR, :, i)
+    convertToIR(params, qL_itmp, wL_itmp)
+    convertToIR(params, qR_itmp, wR_itmp)
+  end
+
+
+
+  # accumulate wL at the node
+  @simd for i=1:sbpface.numnodes  # loop over face nodes
+    ni = sbpface.nbrperm[i, iface.orient]
+    dir = ro_sview(nrm_face, :, i)
+    fastzero!(wL_i); fastzero!(qL_bar_i); fastzero!(wL_bar_i)
+    fastzero!(wR_i); fastzero!(qR_bar_i); fastzero!(wR_bar_i)
+    fastzero!(delta_w_bar); fastzero!(q_avg_bar); fastzero!(flux_bar)
+
 
     # interpolate wL and wR to this node
     @simd for j=1:sbpface.stencilsize
@@ -533,7 +763,7 @@ function calcEntropyPenaltyIntegral_revm(
 
         #--------------------------
         # reverse sweep
-        flux_bar[p] -= sbpface.interp[j, i]*resL_bar[p, j_pL]
+        flux_bar[p] -= sbpface.interp[j, i ]*resL_bar[p, j_pL]
         flux_bar[p] += sbpface.interp[j, ni]*resR_bar[p, j_pR]
       end
     end
@@ -541,13 +771,66 @@ function calcEntropyPenaltyIntegral_revm(
     for j=1:numDofPerNode
       flux_bar[j] *= sbpface.wface[i]
     end
-    applyEntropyKernel_revm(kernel, params, q_avg, delta_w, dir, dir_bar, flux, flux_bar)
+    applyEntropyKernel_revq(kernel, params, q_avg, q_avg_bar, delta_w,
+                            delta_w_bar, dir, flux, flux_bar)
 
-    # none of the remaining calculation depends on the metrics
+    # none of the remaining calculation depends on the metricsa
+    # compute average state
+    @simd for j=1:numDofPerNode
+      qL_bar_i[j] += 0.5*q_avg_bar[j]
+      qR_bar_i[j] += 0.5*q_avg_bar[j]
+      wL_bar_i[j] += delta_w_bar[j]
+      wR_bar_i[j] -= delta_w_bar[j]
+    end
+
+    # reverse of convertToConservatvieFromIR
+    getIRA0(params, qL_i, A0)
+    smallmatTvec_kernel!(A0, qL_bar_i, wL_bar_i, 1, 1)
+    getIRA0(params, qR_i, A0)
+    smallmatTvec_kernel!(A0, qR_bar_i, wR_bar_i, 1, 1)
+
+    # interpolate wL and wR to this node
+    @simd for j=1:sbpface.stencilsize
+      interpL = sbpface.interp[j, i]
+      interpR = sbpface.interp[j, ni]
+
+      @simd for k=1:numDofPerNode
+        #wL_i[k] += interpL*wL[k, j]
+        #wR_i[k] += interpR*wR[k, j]
+        wL_bar[k, j] += interpL*wL_bar_i[k]
+        wR_bar[k, j] += interpR*wR_bar_i[k]
+      end
+    end
+    
   end  # end loop i
+
+  # convert to IR entropy variables
+  for i=1:sbpface.stencilsize
+    # apply sbpface.perm here
+    p_iL = sbpface.perm[i, iface.faceL]
+    p_iR = sbpface.perm[i, iface.faceR]
+    # these need to have different names from qL_i etc. below to avoid type
+    # instability
+    qL_itmp = ro_sview(qL, :, p_iL)
+    qR_itmp = ro_sview(qR, :, p_iR)
+
+    qL_bar_itmp = sview(qL_bar, :, p_iL)
+    qR_bar_itmp = sview(qR_bar, :, p_iR)
+    wL_bar_itmp = sview(wL_bar, :, i)
+    wR_bar_itmp = sview(wR_bar, :, i)
+    getIRA0inv(params, qL_itmp, A0)
+    smallmatTvec_kernel!(A0, wL_bar_itmp, qL_bar_itmp, 1, 1)
+    getIRA0inv(params, qR_itmp, A0)
+    smallmatTvec_kernel!(A0, wR_bar_itmp, qR_bar_itmp, 1, 1)
+  end
+
+
+
 
   return nothing
 end
+
+
 
 
 
@@ -877,6 +1160,9 @@ function calcFaceElementIntegral_diff(obj::ECFaceIntegral,
 
 end
 
+"""
+  revm method for `ECFaceIntegral`
+"""
 function calcFaceElementIntegral_revm(obj::ECFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
@@ -890,6 +1176,24 @@ function calcFaceElementIntegral_revm(obj::ECFaceIntegral,
                           nrm_face_bar, functor, resL_bar, resR_bar)
 end
 
+"""
+  revq method for `ECFaceIntegral`
+"""
+function calcFaceElementIntegral_revq(obj::ECFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+              qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor_revq::FluxType_revq, 
+              resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
+
+  calcECFaceIntegral_revq(params, sbpface, iface, qL, qL_bar, qR, qR_bar,
+                          aux_vars, nrm_face, functor_revq, resL_bar, resR_bar)
+end
+
+#--------------------------
+# ESLFFaceIntegral
 
 """
   Differentiated method for `ESLFFaceIntegral`
@@ -909,7 +1213,9 @@ function calcFaceElementIntegral_diff(obj::ESLFFaceIntegral,
 
 end
 
-
+"""
+  revm method for `ESLFFaceIntegral`
+"""
 function calcFaceElementIntegral_revm(obj::ESLFFaceIntegral,
               params::AbstractParamType{Tdim}, 
               sbpface::AbstractFace, iface::Interface,
@@ -923,8 +1229,26 @@ function calcFaceElementIntegral_revm(obj::ESLFFaceIntegral,
                           nrm_face, nrm_face_bar, functor, resL_bar, resR_bar)
 end
 
+"""
+  revq method for `ESLFFaceIntegral`
+"""
+function calcFaceElementIntegral_revq(obj::ESLFFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+              qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor_revq::FluxType_revq, 
+              resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
+
+  calcESFaceIntegral_revq(params, sbpface, iface, obj.kernel, qL, qL_bar,
+                          qR, qR_bar, aux_vars, nrm_face, functor_revq,
+                          resL_bar, resR_bar)
+end
 
 
+#------------------------
+# ELFPenaltyIntegral
 
 """
   Differentiated method for `ELFPenaltyIntegral`
@@ -955,7 +1279,22 @@ function calcFaceElementIntegral_revm(obj::ELFPenaltyFaceIntegral,
               resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
   calcEntropyPenaltyIntegral_revm(params, sbpface, iface, obj.kernel, qL, qR,
-                aux_vars, nrm_face, nrm_face_bar, functor, resL_bar, resR_bar)
+                aux_vars, nrm_face, nrm_face_bar, resL_bar, resR_bar)
+end
+
+
+function calcFaceElementIntegral_revq(obj::ELFPenaltyFaceIntegral,
+              params::AbstractParamType{Tdim}, 
+              sbpface::AbstractFace, iface::Interface,
+              qL::AbstractMatrix{Tsol}, qL_bar::AbstractMatrix{Tres},
+              qR::AbstractMatrix{Tsol}, qR_bar::AbstractMatrix{Tres},
+              aux_vars::AbstractMatrix{Tres}, nrm_face::AbstractMatrix{Tmsh},
+              functor_revq::FluxType_revq, 
+              resL_bar::AbstractMatrix{Tres}, resR_bar::AbstractMatrix{Tres}) where {Tsol, Tres, Tmsh, Tdim}
+
+  calcEntropyPenaltyIntegral_revq(params, sbpface, iface, obj.kernel, qL,
+                qL_bar, qR, qR_bar, aux_vars, nrm_face,
+                resL_bar, resR_bar)
 end
 
 

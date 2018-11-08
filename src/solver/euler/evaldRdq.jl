@@ -225,9 +225,8 @@ function evalFaceIntegrals_revq(mesh::AbstractDGMesh{Tmsh},
 
   elseif face_integral_type == 2
 
-    error("not supported yet")
     getFaceElementIntegral_revq(mesh, sbp, eqn, eqn.face_element_integral_func,
-                           eqn.flux_func, mesh.sbpface, mesh.interfaces)
+                           eqn.flux_func_revq, mesh.sbpface, mesh.interfaces)
 
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))

@@ -329,7 +329,7 @@ function getFaceElementIntegral_revq(
                            mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
-                           flux_functor::FluxType,
+                           flux_functor_revq::FluxType_revq,
                            sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -348,7 +348,7 @@ function getFaceElementIntegral_revq(
 
     calcFaceElementIntegral_revq(face_integral_functor, params, sbpface, iface,
                         qL, qL_bar, qR, qR_bar, aux_vars, nrm_face,
-                        flux_functor, resL_bar, resR_bar)
+                        flux_functor_revq, resL_bar, resR_bar)
 
   end
 

@@ -454,9 +454,9 @@ function test_jac_terms_long()
     opts_tmp["face_integral_type"] = 2
     opts_tmp["Flux_name"] = "IRFlux"
     opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
+    #opts_tmp["FaceElementIntegral_name"] = "ELFPenaltyFaceIntegral"
     opts_tmp["need_adjoint"] = true
     # TESTING
-    opts_tmp["addFaceIntegrals"] = false
     make_input(opts_tmp, fname4)
     mesh_r3, sbp_r3, eqn_r3, opts_r3 = run_solver(fname4)
 

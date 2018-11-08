@@ -439,6 +439,9 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
   fL_dot::Array{Tres, 2}
   fR_dot::Array{Tres, 2}
 
+  # rev methods
+  fluxD_bar::Matrix{Tres}
+
   function CalcECFaceIntegralData{Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tres, Tmsh}
     fluxD = zeros(Tres, numDofPerNode, dim)
     nrmD = zeros(Tmsh, dim, dim)
@@ -450,7 +453,10 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
     fL_dot = zeros(Tres, numDofPerNode, numDofPerNode)
     fR_dot = zeros(Tres, numDofPerNode, numDofPerNode)
 
-    obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot)
+    fluxD_bar = zeros(Tres, numDofPerNode, dim)
+
+    obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot,
+              fluxD_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 
