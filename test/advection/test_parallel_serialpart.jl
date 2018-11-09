@@ -27,7 +27,7 @@ function test_parallel_mpi()
       mesh.shared_interfaces[i] = Array{Interface}(0)
       q_send = zeros(mesh.numDofPerNode, mesh.numNodesPerFace, nfaces)
       q_recv = zeros(q_send)
-      shared_data[i] = SharedFaceData(mesh, i, opts["parallel_data"], q_send, q_recv)
+      shared_data[i] = SharedFaceData(mesh, i, opts["parallel_data"], 100, q_send, q_recv)
     end
 
     for i=1:mesh.npeers

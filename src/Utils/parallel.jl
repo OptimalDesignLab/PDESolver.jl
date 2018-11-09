@@ -4,13 +4,6 @@ include("tag_manager.jl")  # managment of MPI tags
 include("parallel_types.jl")  # datatype
 
 
-# MPI tags
-"""
-  Default MPI tag used for sending and receiving solution variables.
-"""
-global const TAG_DEFAULT = 1
-
-
 """
   This function is a thin wrapper around exchangeData().  It is used for the
   common case of sending and receiving the solution variables to other processes.
@@ -20,19 +13,21 @@ global const TAG_DEFAULT = 1
 
   It is safe to call this function in the serial case.
 
-  Inputs:
-    mesh: an AbstractMesh
-    sbp: an SBP operator
-    eqn: an AbstractSolutionData
-    opts: options dictionary
+  **Inputs**
 
-  Keyword arguments:
-    tag: MPI tag to use for communication, defaults to TAG_DEFAULT
-    wait: wait for sends and receives to finish before exiting
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * eqn: an AbstractSolutionData
+   * opts: options dictionary
+
+  **Keyword arguments**
+
+   * tag: MPI tag to use for communication, defaults to TAG_DEFAULT
+   * wait: wait for sends and receives to finish before exiting
 """
 function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
                                   eqn::AbstractSolutionData, opts;
-                                  tag=TAG_DEFAULT, wait=false)
+                                  wait=false)
 
   if mesh.npeers == 0
     return nothing
@@ -47,7 +42,7 @@ function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
     throw(ErrorException("unsupported parallel_type = $(getParallelDataString(pdata))"))
   end
 
-  exchangeData(mesh, sbp, eqn, opts, eqn.shared_data, populate_buffer, tag=tag, wait=wait)
+  exchangeData(mesh, sbp, eqn, opts, eqn.shared_data, populate_buffer, wait=wait)
 
   return nothing
 end
@@ -79,10 +74,6 @@ end
                  communication to be done
 
   Keyword Arguments:
-    tag: MPI tag to use for this communication, defaults to TAG_DEFAULT
-         This tag is typically used by the communication of the solution
-         variables to other processes.  Other users of this function should
-         provide their own tag
 
     wait: wait for the sends and receives to finish before returning.  This
           is a debugging option only.  It will kill parallel performance.
@@ -91,7 +82,7 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
                       eqn::AbstractSolutionData, opts,
                       shared_data::Vector{SharedFaceData{T}},
                       populate_buffer::Function;
-                      tag=TAG_DEFAULT, wait=false) where T
+                      wait=false) where T
 
   npeers = length(shared_data)
 
@@ -109,6 +100,7 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
   for i=1:npeers
     data_i = shared_data[i]
     peer_i = data_i.peernum
+    tag = data_i.tag
     recv_buff = data_i.q_recv
     data_i.recv_req = MPI.Irecv!(recv_buff, peer_i, tag, data_i.comm)
     data_i.recv_waited = false
@@ -130,6 +122,7 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
 
     idx = i
     data_i = shared_data[idx]
+    tag = data_i.tag
 
     # wait on the previous send if it hasn't been waited on yet
     if !data_i.send_waited

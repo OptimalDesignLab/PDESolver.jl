@@ -21,6 +21,12 @@ mutable struct MPITagManager
 end
 
 """
+  Outer constrcutor for `MPITagManager`](@ref)
+
+  **Inputs**
+
+   * starting tag: an integer specifying the first tag the tag manager will
+                   use.  Using tags lower than this value is not allowed.
 """
 function MPITagManager(starting_tag::Integer=1)
 
@@ -67,6 +73,7 @@ function getNextTag(mgr::MPITagManager)
   end
 
   mgr.next_tag = new_next_tag
+  checkNextTag(new_next_tag)
 
   return next_tag
 end
@@ -128,8 +135,22 @@ function freeTag(mgr::MPITagManager, tag::Integer)
     mgr.next_tag = tag
   end
 
+  checkNextTag(mgr.next_tag)
+
   return nothing
 end
 
+"""
+  Internal function, throws an error if the maximum tag is reached
 
+  **Inputs**
 
+    * next_tag: next tag to be used
+"""
+function checkNextTag(next_tag::Integer)
+
+  # this triggers one tag early, but that will have to do
+  if next_tag == typemax(Cint)
+    error("reached maximum MPI tag.  Consider freeing some tags (also, how did you manage to use so many tags in the first place)")
+  end
+end

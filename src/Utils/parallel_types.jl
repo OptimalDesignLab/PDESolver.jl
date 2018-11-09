@@ -1,5 +1,10 @@
 # declare some datatypes used for parallel communication
 
+"""
+  Default MPI tag manager
+"""
+global const TagManager = MPITagManager()
+
 # allow sending of arbitrary face/element-based data
 global const PARALLEL_DATA_FACE = 1001
 global const PARALLEL_DATA_ELEMENT = 1002
@@ -99,6 +104,7 @@ mutable struct SharedFaceData{T} <: AbstractSharedFaceData{T}
   myrank::Int
   comm::MPI.Comm
   pdata::Int
+  tag::Cint
   q_send::Array{T, 3}  # send buffer
   q_recv::Array{T, 3}  # receive buffer
   send_waited::Bool
@@ -128,11 +134,13 @@ end
    * peeridx: the index of a peer in mesh.peer_parts
    * pdata: either integer enum or string describing what data is shared in
             parallel
+   * tag: MPI tag to use for all communications
    * q_send: the send buffer
    * q_recv: the receive buffer
 
 """
-function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::Int,
+function SharedFaceData(mesh::AbstractMesh, peeridx::Integer, pdata::Integer,
+                     tag::Integer,
                      q_send::Array{T, 3}, q_recv::Array{T, 3}) where T
 # create a SharedFaceData for a given peer
 
@@ -152,7 +160,11 @@ function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::Int,
   bndries_remote = mesh.bndries_remote[peeridx]
   interfaces = mesh.shared_interfaces[peeridx]
 
-  return SharedFaceData{T}(peernum, peeridx, myrank, comm, pdata, 
+  # it would be nice to have a finalizer to free the MPI tag, but finalizers
+  # don't run in a defined order, so its possible the MPI manager could be
+  # destroyed before the finalizer for the SharedFaceData is run.
+
+  return SharedFaceData{T}(peernum, peeridx, myrank, comm, pdata, tag,
                            q_send, q_recv,
                            send_waited, send_req, send_status,
                            recv_waited, recv_req, recv_status,
@@ -161,11 +173,12 @@ function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::Int,
 end
 
 
-function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::String,
+function SharedFaceData(mesh::AbstractMesh, peeridx::Integer, pdata::String,
+                     tag::Integer,
                      q_send::Array{T, 3}, q_recv::Array{T, 3}) where T
 
   pdata_enum = getParallelDataEnum(pdata)
-  return SharedFaceData(mesh, peeridx, pdata_enum, q_send, q_recv)
+  return SharedFaceData(mesh, peeridx, pdata_enum, tag, q_send, q_recv)
 end
 
 import Base.copy
@@ -263,19 +276,34 @@ end
    * sbp: an SBP operator
    * opts: the options dictonary
    * pdata: string describing what data is shared in parallel
+
+  **Keyword Arguments**
+
+   * tag: integer specifying the MPI tag that will be used for all
+          communications by the returned objects.  If negative (default),
+          a new unused tag will be determined.  If the user supplies a
+          non-negative tag value, it must not be in use according to the
+          `TagManager`.
     
   **Outputs**
 
    * data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
                mesh.peer_parts[i]
 """
-function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts, pdata::String) where Tsol
+function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts, pdata::String; tag::Integer=-1) where Tsol
 # return the vector of SharedFaceData used by the equation object constructor
 
   @assert mesh.isDG
 
   pdata_enum = getParallelDataEnum(pdata)
   data_vec = Array{SharedFaceData{Tsol}}(mesh.npeers)
+
+  if tag < 0
+    tag = getNextTag(TagManager)
+  else
+    markTagUsed(TagManager, tag)
+  end
+
   if pdata_enum == PARALLEL_DATA_FACE
     dim2 =  mesh.numNodesPerFace
     dim3_send = mesh.peer_face_counts
@@ -291,7 +319,7 @@ function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, o
   for i=1:mesh.npeers
     qsend = Array{Tsol}(mesh.numDofPerNode, dim2,dim3_send[i])
     qrecv = Array{Tsol}(mesh.numDofPerNode, dim2, dim3_recv[i])
-    data_vec[i] = SharedFaceData(mesh, i, pdata_enum, qsend, qrecv)
+    data_vec[i] = SharedFaceData(mesh, i, pdata_enum, tag, qsend, qrecv)
   end
 
   return data_vec
