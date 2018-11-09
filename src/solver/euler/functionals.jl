@@ -141,6 +141,7 @@ mutable struct EntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
   func::ELFPenaltyFaceIntegral
   func_sparseface::LFPenalty
   func_sparseface_revq::LFPenalty_revq
+  func_sparseface_revm::LFPenalty_revm
 end
 
 """
@@ -155,8 +156,9 @@ function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   func = ELFPenaltyFaceIntegral(mesh, eqn)
   func_sparseface = LFPenalty()
   func_sparseface_revq = LFPenalty_revq()
+  func_sparseface_revm = LFPenalty_revm()
 
-  return EntropyDissipationData{Topt}(func, func_sparseface, func_sparseface_revq)
+  return EntropyDissipationData{Topt}(func, func_sparseface, func_sparseface_revq, func_sparseface_revm)
 end
 
 """

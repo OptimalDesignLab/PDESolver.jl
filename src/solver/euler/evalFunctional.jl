@@ -3,6 +3,7 @@
 #------------------------------------------------------------------------------
 # API functions
 
+import PDESolver.evalFunctionalDeriv_m
 
 """
   Evaluates [`EntropyPenaltyFunctional`](@ref)s
@@ -124,8 +125,8 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     #TODO: parallel part
   else # SparseFace
     flux_functor_revq = functionalData.func_sparseface_revq
-    calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor_revq,
-                           mesh.interfaces)
+    calcFaceIntegral_nopre_revq(mesh, sbp, eqn, opts, flux_functor_revq,
+                                mesh.interfaces)
     #TODO: parallel part
   end
 
@@ -133,6 +134,59 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+
+
+
+function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           functionalData::EntropyPenaltyFunctional
+                           ) where {Tmsh, Tsol}
+
+  @assert eqn.commsize == 1
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  # compute reverse mode of the contraction, take val_bar = 1
+  w_j = zeros(Tsol, mesh.numDofPerNode)
+  fill!(eqn.res_bar, 0);
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      convertToIR(eqn.params, q_j, w_j)
+      for k=1:mesh.numDofPerNode
+        #val += w_j[k]*eqn.res[k, j, i]
+        #-----------------------------
+        # reverse sweep
+        eqn.res_bar[k, j, i] += w_j[k]
+      end
+    end
+  end
+
+
+  # do reverse mode of the face integrals
+  if typeof(mesh.sbpface) <: DenseFace
+    println("denseface")
+    @assert opts["parallel_data"] == "element"
+
+    # local part
+    face_integral_functor = functionalData.func
+    flux_functor = ErrorFlux()  # not used, but required by the interface
+    getFaceElementIntegral_revm(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+ 
+    #TODO: parallel part
+  else # SparseFace
+    println("sparseface")
+    flux_functor_revm = functionalData.func_sparseface_revm
+    calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, flux_functor_revm,
+                                mesh.interfaces)
+    #TODO: parallel part
+  end
+
+  return nothing
+end
+
 
 #------------------------------------------------------------------------------
 # Implementation for each functional

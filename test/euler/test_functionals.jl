@@ -49,6 +49,7 @@ function test_functionals()
     )
 
   mesh, sbp, eqn, opts = solvePDE(opts)
+  mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_jac3d.jl")
 
   testEntropyDissFunctional(mesh, sbp, eqn, opts)
 
@@ -56,9 +57,16 @@ function test_functionals()
   for funcname in keys(EulerEquationMod.FunctionalDict)
     println("testing functional", funcname)
     obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
-    test_functional_deriv(mesh, sbp, eqn, opts, obj)
+    test_functional_deriv_q(mesh, sbp, eqn, opts, obj)
   end
 
+  functional_revm_names = ["entropydissipation"]
+
+  for funcname in functional_revm_names
+    println("testing revm of functional ", funcname)
+    obj = createFunctional(mesh3, sbp3, eqn3, opts3, funcname, [1, 3])
+    test_functional_deriv_m(mesh3, sbp3, eqn3, opts3, obj)
+  end
 
   end  # end testset
 
@@ -111,7 +119,7 @@ end
 
   The eqn object must have been created with Tsol = Complex128 for this to work
 """
-function test_functional_deriv(mesh, sbp, eqn, opts, func)
+function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -141,7 +149,65 @@ function test_functional_deriv(mesh, sbp, eqn, opts, func)
   return nothing
 end
 
-  
+function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  zeroBarArrays(mesh)
+  func_bar = rand_realpart(mesh.numDof)
+
+  dxidx_dot       = rand_realpart(size(mesh.dxidx))
+  jac_dot         = rand_realpart(size(mesh.jac))
+  nrm_bndry_dot   = rand_realpart(size(mesh.nrm_bndry))
+  nrm_face_dot    = rand_realpart(size(mesh.nrm_face_bar))
+  coords_bndry_dot = rand_realpart(size(mesh.coords_bndry))
+
+
+  mesh.dxidx        .+= pert*dxidx_dot
+  mesh.jac          .+= pert*jac_dot
+  mesh.nrm_bndry    .+= pert*nrm_bndry_dot
+  mesh.nrm_face     .+= pert*nrm_face_dot
+  mesh.coords_bndry .+= pert*coords_bndry_dot
+
+  val = evalFunctional(mesh, sbp, eqn, opts, func)
+  println("functional value = ", val)
+  val = imag(val/h)
+
+  mesh.dxidx        .-= pert*dxidx_dot
+  mesh.jac          .-= pert*jac_dot
+  mesh.nrm_bndry    .-= pert*nrm_bndry_dot
+  mesh.nrm_face     .-= pert*nrm_face_dot
+  mesh.coords_bndry .-= pert*coords_bndry_dot
+
+
+  evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func)
+
+  val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
+         sum(mesh.jac_bar .* jac_dot)                  +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
+         sum(mesh.nrm_face_bar .* nrm_face_dot)        +
+         sum(mesh.coords_bndry_bar .* coords_bndry_dot)
+
+  println("val = ", real(val))
+  println("val2 = ", real(val2))
+  println("max dxidx_bar = ", maximum(abs.(mesh.dxidx_bar)))
+  println("max jac_bar = ", maximum(abs.(mesh.jac_bar)))
+  println("max nrm_bndry_bar = ", maximum(abs.(mesh.nrm_bndry_bar)))
+  println("max nrm_face_bar = ", maximum(abs.(mesh.nrm_face_bar)))
+  println("max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
+  @test abs(val - val2) < 1e-12
+
+  #TODO: test accumulation
+
+  return nothing
+end
 
 
 add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

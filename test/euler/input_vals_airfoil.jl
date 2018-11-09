@@ -39,6 +39,7 @@ arg_dict = Dict{Any, Any}(
 "solve" => true,
 "do_postproc" => true,
 "force_solution_complex" => true,
+"need_adjoint" => true,
 
 # functional options
 "functional_name1" => "lift",

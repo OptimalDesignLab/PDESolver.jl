@@ -216,6 +216,32 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
 
 end
 
+"""
+  Performs reverse-mode differentiation of a functional with respect to the
+  metrics.  The `_bar` fields of the mesh are updated with the result.
+  It is the callers responsiblity to zero out these fields beforehand, if
+  required.  Mesh implementation should provide a function `zeroBarArrays`
+  to do this.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functionalData: the [`AbstractIntegralFunctional`](@ref)
+"""
+function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           functionalData::AbstractFunctional
+                           ) where {Tmsh, Tsol}
+
+
+  error("Generic fallback for evalFunctionalDeriv_m() reached: did you forget to extend evalFunctionalDeriv_m() with a new method for you AbstractSolutionData")
+
+end
+
 
 """
   Computes a 3D array of hte derivative of a functional wrt eqn.q.

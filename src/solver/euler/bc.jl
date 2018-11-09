@@ -1209,6 +1209,47 @@ function (obj::Rho1E2U3BC)(params::ParamType,
   return nothing
 end
 
+@makeBC Rho1E2U3BC_revm """
+  Reverse mode wrt metrics of of`Rho1E2U3BC
+"""
+function (obj::Rho1E2U3BC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward sweep
+  qg = params.bcdata.qg
+  calcRho1Energy2U3(params, coords, qg)
+
+  # Reverse sweep
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+end
+
+
+@makeBC Rho1E2U3BC_revq """
+  Reverse mode wrt solution of Rho1E2U3BC
+"""
+function (obj::Rho1E2U3BC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  data = params.bcdata
+  @unpack data qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcRho1E2U3BC(params, coords, qg)
+  RoeSolver_revq(params, q, q_bar,  qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  return nothing
+end
+
+
 @makeBC FreeStreamBC """
 ### EulerEquationMod.FreeStreamBC <: BCTypes
 
@@ -1779,6 +1820,7 @@ end # End function getBCFunctors
 global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
 "errorBC" => errorBC_revm,
 "noPenetrationBC" => noPenetrationBC_revm,
+"Rho1E2U3BC" => Rho1E2U3BC_revm,
 "FreeStreamBC" => FreeStreamBC_revm,
 "ExpBC" => ExpBC_revm,
 "isentropicVortexBC" => isentropicVortexBC_revm,
@@ -1843,6 +1885,7 @@ end # End function getBCFunctors_revm
 global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
 "errorBC" => errorBC_revq,
 "noPenetrationBC" => noPenetrationBC_revq,
+"Rho1E2U3BC" => Rho1E2U3BC_revq,
 "FreeStreamBC" => FreeStreamBC_revq,
 "ExpBC" => ExpBC_revq,
 "isentropicVortexBC" => isentropicVortexBC_revq,
