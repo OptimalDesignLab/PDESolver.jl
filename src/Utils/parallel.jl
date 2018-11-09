@@ -14,6 +14,8 @@ global const TAG_DEFAULT = 1
   eqn.shared_data *must* be passed into the corresponding finishDataExchange
   call.
 
+  It is safe to call this function in the serial case.
+
   Inputs:
     mesh: an AbstractMesh
     sbp: an SBP operator
@@ -28,12 +30,17 @@ function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
                                   eqn::AbstractSolutionData, opts;
                                   tag=TAG_DEFAULT, wait=false)
 
-  if opts["parallel_data"] == "face"
+  if mesh.npeers == 0
+    return nothing
+  end
+
+  pdata = eqn.shared_data[1].pdata  # assume all are same
+  if pdata == PARALLEL_DATA_FACE
     populate_buffer = getSendDataFace
-  elseif opts["parallel_data"] == "element"
+  elseif pdata == PARALLEL_DATA_ELEMENT
     populate_buffer = getSendDataElement
   else
-    throw(ErrorException("unsupported parallel_type = $(opts["parallel_data"])"))
+    throw(ErrorException("unsupported parallel_type = $(getParallelDataString(pdata))"))
   end
 
   exchangeData(mesh, sbp, eqn, opts, eqn.shared_data, populate_buffer, tag=tag, wait=wait)
@@ -43,7 +50,7 @@ end
 
 
 """
-  This function posts the MPI sends and receives for a vector of SharedFaceData.  It works for both opts["parallel_data"] == "face" or "element".  The only
+  This function posts the MPI sends and receives for a vector of SharedFaceData.  It works for both `PARALLEL_DATA_FACE or `PARALLEL_DATA_ELEMENT.  The only
   difference between these two cases is the populate_buffer() function.
 
   The previous receives using these SharedFaceData objects should have
@@ -117,7 +124,6 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
     # TODO: use 2 arrays for the Requests: old and new, so the WaitAny trick
     #       works
 
-
     idx = i
     data_i = shared_data[idx]
 
@@ -137,7 +143,6 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
     data_i.send_waited = false
   end
 
-
   if wait
     waitAllSends(shared_data)
     waitAllReceives(shared_data)
@@ -151,9 +156,9 @@ end
   receives started in exchangeData.
 
   This function (efficiently) waits for a receive to finish and calls
-  a function to do calculations for on that data. If opts["parallel_data"]
+  a function to do calculations for on that data. If `PARALLEL_DATA_FACE`
   == "face", it also permutes the data in the receive buffers to agree
-  with the ordering of elementL.  For opts["parallel_data"] == "element",
+  with the ordering of elementL.  For `PARALLEL_DATA_ELEMENT,
   users should call SummationByParts.interiorFaceInterpolate to interpolate
   the data to the face while ensuring proper permutation.
 
@@ -191,7 +196,7 @@ function finishExchangeData(mesh, sbp, eqn, opts,
     end
 
     data_idx = shared_data[idx]
-    if opts["parallel_data"] == "face" && val == 0
+    if data_idx.pdata == PARALLEL_DATA_FACE && val == 0
       # permute the received nodes to be in the elementR orientation
       permuteinterface!(mesh.sbpface, data_idx.interfaces, data_idx.q_recv)
     end
@@ -229,7 +234,7 @@ end
 
 """
   This function populates the send buffer from eqn.q for 
-  opts["parallle_data"]  == "face"
+  `PARALLEL_DATA_FACE
 
   Inputs:
     mesh: a mesh
@@ -253,7 +258,7 @@ end
 
 """
   This function populates the send buffer from eqn.q for 
-  opts["parallle_data"]  == "element"
+  `PARALLEL_DATA_ELEMENT`
 
   Inputs:
 

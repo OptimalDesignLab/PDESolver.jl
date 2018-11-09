@@ -258,7 +258,7 @@ function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
-
+#=
 #TODO: what is this and why is it here?
 """
 ### EulerEquationMod.calcSharedFaceIntegrals_revm
@@ -332,6 +332,8 @@ function calcSharedFaceIntegrals_revm( mesh::AbstractDGMesh{Tmsh},
 
   return nothing
 end
+=#
+
 
 """
 ### EulerEquationMod.evalSourceTerm_revm

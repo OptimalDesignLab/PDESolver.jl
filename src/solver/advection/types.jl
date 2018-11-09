@@ -244,7 +244,8 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
     end  # end if precompute_face_flux
 
     if mesh.isDG
-      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
+                                          opts["parallel_data"])
     else
       eqn.shared_data = Array{SharedFaceData}(0)
     end

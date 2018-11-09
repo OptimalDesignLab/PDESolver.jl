@@ -420,7 +420,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   aux_vars_face_bar::Array{Tres, 3}  # adjoint part
   aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
-  aux_vars_sharedface_bar::Array{Array{Tres, 3}} # adjoint part
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated
                                   # to the boundaries
   aux_vars_bndry_bar::Array{Tres, 3}  # adjoint part
@@ -640,7 +639,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
         eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
-      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
+                                          opts["parallel_data"])
     else
       eqn.shared_data = Array{SharedFaceData}(0)
     end
@@ -669,15 +669,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
-      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
-      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
-
       if mesh.isDG
-        for i=1:mesh.npeers
-          eqn.flux_shareface_bar[i] = zeros(eqn.flux_sharedface[i])
-          eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
-        end
-
         eqn.shared_data_bar = Array{SharedFaceData{Tsol}}(0) 
       else
         eqn.shared_data_bar = zeros(SharedFaceData, 0)
@@ -694,9 +686,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
 
       eqn.shared_data_bar = Array{SharedFaceData}(0)
-      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(0)
-      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(0)
-
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 

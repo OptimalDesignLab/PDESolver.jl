@@ -1,46 +1,94 @@
 # declare some datatypes used for parallel communication
 
 # allow sending of arbitrary face/element-based data
+global const PARALLEL_DATA_FACE = 1001
+global const PARALLEL_DATA_ELEMENT = 1002
+
+"""
+  Given the string describing what data is shared in parallel, returns the
+  enum value.  An exception is thrown if an unrecognized value is supplied.
+
+  **Inputs**
+
+   * pdata: a string describing what data is shared in parallel
+
+  **Outputs**
+
+   * an Int enum
+"""
+function getParallelDataEnum(pdata::String)
+  if pdata == "face"
+    return PARALLEL_DATA_FACE
+  elseif pdata == "element"
+    return PARALLEL_DATA_ELEMENT
+  else
+    error("unrecognized parallel data string: $pdata")
+  end
+end
+
+"""
+  Inverse of [`getParallelDataEnum`](@ref), takes the enum and returns the
+  string.
+
+  **Inputs**
+
+   * pdata: Int enum
+
+  **Outputs**
+
+   * a String describing the parallel data
+"""
+function getParallelDataEnum(pdata::Int)
+  if pdata == PARALLEL_DATA_FACE
+    return "face"
+  elseif pdata == PARALLEL_DATA_ELEMENT
+    return "element"
+  else
+    error("unrecognized parallel data enum: $pdata")
+  end
+end
+
 
 """
   This type holds all the data necessary to perform MPI communication with
   a given peer process that shared mesh edges (2D) or faces (3D) with the
   current process.
 
-  Fields:
+  **Fields**
 
-    peernum: the MPI rank of the peer process
-    peeridx: the index of this peer in mesh.peer_parts
-    myrank: MPI rank of the current process
-    comm: MPI communicator used to define the above
+   * peernum: the MPI rank of the peer process
+   * peeridx: the index of this peer in mesh.peer_parts
+   * myrank: MPI rank of the current process
+   * comm: MPI communicator used to define the above
+   * pdata: enum describing if face or element data is sent in parallel
 
-    q_send: the send buffer, a 3D array of n x m x d.  While these dimensions
+   * q_send: the send buffer, a 3D array of n x m x d.  While these dimensions
             are arbitrary, there are two commonly used case.  If
-            opts["parallel_type"] == face, then m is mesh.numNodesPerFace and
+            `PARALLEL_DATA_FACE, then m is mesh.numNodesPerFace and
             d is the number of faces shared with peernum.
-            If opts["parallel_type"] == element, then 
+            If `PARALLEL_DATA_ELEMENT, then 
             m = mesh.numNodesPerElement and d is the number of elements that
             share faces with peernum.
-    q_recv: the receive buffer.  Similar to q_send, except the size needs to
+   * q_recv: the receive buffer.  Similar to q_send, except the size needs to
             to be the number of entities on the *remote* process.
 
-    send_waited: has someone called MPI.Wait() on send_req yet?  Some MPI
+   * send_waited: has someone called MPI.Wait() on send_req yet?  Some MPI
                  implementations complain if Wait() is called on a Request
                  more than once, so use this field to avoid doing so.
-    send_req: the MPI.Request object for the Send/Isend/whatever other type of
+   * send_req: the MPI.Request object for the Send/Isend/whatever other type of
               Send
-    send_status: the MPI.Status object returned by calling Wait() on send_req
+   * send_status: the MPI.Status object returned by calling Wait() on send_req
 
-    recv_waited: like send_waited, but for the receive
-    recv_req: like send_req, but for the receive
-    recv_status: like send_status, but for the receive
+   * recv_waited: like send_waited, but for the receive
+   * recv_req: like send_req, but for the receive
+   * recv_status: like send_status, but for the receive
 
-    bndries_local: Vector of Boundaries describing the faces from the local
+   * bndries_local: Vector of Boundaries describing the faces from the local
                    side of the interface
-    bndries_remote: Vector of Boundaries describing the facaes from the remote
+   * bndries_remote: Vector of Boundaries describing the facaes from the remote
                     side (see the documentation for PdePumiInterface before
                     using this field)
-    interfaces: Vector of Interfaces describing the faces from both sides (see
+   * interfaces: Vector of Interfaces describing the faces from both sides (see
                 the documentation for PdePumiInterfaces, particularly the
                 mesh.shared_interfaces field, before using this field
 
@@ -50,6 +98,7 @@ mutable struct SharedFaceData{T} <: AbstractSharedFaceData{T}
   peeridx::Int
   myrank::Int
   comm::MPI.Comm
+  pdata::Int
   q_send::Array{T, 3}  # send buffer
   q_recv::Array{T, 3}  # receive buffer
   send_waited::Bool
@@ -81,7 +130,7 @@ end
     q_recv: the receive buffer
 
 """
-function SharedFaceData(mesh::AbstractMesh, peeridx::Int,  
+function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::Int,
                      q_send::Array{T, 3}, q_recv::Array{T, 3}) where T
 # create a SharedFaceData for a given peer
 
@@ -101,7 +150,8 @@ function SharedFaceData(mesh::AbstractMesh, peeridx::Int,
   bndries_remote = mesh.bndries_remote[peeridx]
   interfaces = mesh.shared_interfaces[peeridx]
 
-  return SharedFaceData{T}(peernum, peeridx, myrank, comm,  q_send, q_recv,
+  return SharedFaceData{T}(peernum, peeridx, myrank, comm, pdata, 
+                           q_send, q_recv,
                            send_waited, send_req, send_status,
                            recv_waited, recv_req, recv_status,
                            bndries_local, bndries_remote, interfaces)
@@ -127,6 +177,7 @@ function copy(data::SharedFaceData{T}) where T
   peeridx = data.peeridx
   myrank = data.myrank
   comm = data.comm
+  pdata = data.pdata
 
   q_send = copy(data.q_send)
   q_recv = copy(data.q_recv)
@@ -144,7 +195,8 @@ function copy(data::SharedFaceData{T}) where T
   bndries_remote = data.bndries_remote
   interfaces = data.interfaces
 
-  return SharedFaceData{T}(peernum, peeridx, myrank, comm, q_send, q_recv,
+  return SharedFaceData{T}(peernum, peeridx, myrank, comm, pdata,
+                           q_send, q_recv,
                            send_waited, send_req, send_status,
                            recv_waited, recv_req, recv_status,
                            bndries_local, bndries_remote, interfaces)
@@ -186,49 +238,50 @@ end
   although it can be used to create additional vectors of SharedFaceData
   objects.
 
-  if opts["parallel_data"] == "face", then the send and receive buffers
+  if `pdata` == "face", then the send and receive buffers
   are numDofPerNode x numNodesPerFace x number of shared faces.
 
-  if opts["parallel_data"] == "element", the send and receive buffers are
+  if `pdata` == "element", the send and receive buffers are
     numDofPerNode x numNodesPerElement x number of elements that share the
     faces.  Note that the number of elements that share the faces can be
     different for the send and receive buffers.
 
-  Inputs:
+  **Inputs**
 
-    Tsol: element type of the arrays
-    mesh: an AbstractMesh object
-    sbp: an SBP operator
-    opts: the options dictonary
+   * Tsol: element type of the arrays
+   * mesh: an AbstractMesh object
+   * sbp: an SBP operator
+   * opts: the options dictonary
+   * pdata: string describing what data is shared in parallel
+    
+  **Outputs**
 
-  Outputs:
-
-    data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
-              mesh.peer_parts[i]
+   * data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
+               mesh.peer_parts[i]
 """
-function getSharedFaceData( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts) where Tsol
+function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts, pdata::String) where Tsol
 # return the vector of SharedFaceData used by the equation object constructor
 
   @assert mesh.isDG
 
+  pdata_enum = getParallelDataEnum(pdata)
   data_vec = Array{SharedFaceData{Tsol}}(mesh.npeers)
-  if opts["parallel_data"] == "face"
+  if pdata_enum == PARALLEL_DATA_FACE
     dim2 =  mesh.numNodesPerFace
     dim3_send = mesh.peer_face_counts
     dim3_recv = mesh.peer_face_counts
-  elseif opts["parallel_data"] == "element"
+  elseif pdata_enum == PARALLEL_DATA_ELEMENT
     dim2 = mesh.numNodesPerElement
     dim3_send = mesh.local_element_counts
     dim3_recv = mesh.remote_element_counts
   else
-    ptype = opts["parallel_type"]
-    throw(ErrorException("Unsupported parallel type requested: $ptype"))
+    throw(ErrorException("Unsupported parallel type requested: $pdata"))
   end
 
   for i=1:mesh.npeers
     qsend = Array{Tsol}(mesh.numDofPerNode, dim2,dim3_send[i])
     qrecv = Array{Tsol}(mesh.numDofPerNode, dim2, dim3_recv[i])
-    data_vec[i] = SharedFaceData(mesh, i, qsend, qrecv)
+    data_vec[i] = SharedFaceData(mesh, i, pdata_enum, qsend, qrecv)
   end
 
   return data_vec
@@ -359,7 +412,7 @@ end
 
 
 # static buffer of Request objects
-_waitall_reqs = Array{MPI.Request}(50)
+global const _waitany_reqs = Array{MPI.Request}(50)
 """
   Like MPI.WaitAny, but operates on the receives of  a vector of SharedFaceData.
   Only the index of the Request that was waited on is returned, 
@@ -368,13 +421,15 @@ _waitall_reqs = Array{MPI.Request}(50)
 function waitAnyReceive(shared_data::Vector{SharedFaceData{T}}) where T
 
   npeers = length(shared_data)
-  resize!(_waitall_reqs, npeers)
-
-  for i=1:npeers
-    _waitall_reqs[i] = shared_data[i].recv_req
+  if length(_waitany_reqs) != npeers
+    resize!(_waitany_reqs, npeers)
   end
 
-  idx, stat = MPI.Waitany!(_waitall_reqs)
+  for i=1:npeers
+    _waitany_reqs[i] = shared_data[i].recv_req
+  end
+
+  idx, stat = MPI.Waitany!(_waitany_reqs)
  
   shared_data[idx].recv_req = MPI.REQUEST_NULL  # make sure this request is not
                                                 # used again

@@ -276,7 +276,8 @@ mutable struct EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres,
         # eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         # numfacenodes, mesh.peer_face_counts[i])
       end
-      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
+                                          opts["parallel_data"])
     else
       eqn.shared_data = Array{SharedFaceData}(0)
     end
