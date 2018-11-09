@@ -39,7 +39,7 @@ function test_parallel2_comm()
     initMPIStructures(mesh, opts)
     =#
 
-    shared_data = getSharedFaceData(Float64, mesh, sbp, opts)
+    shared_data = getSharedFaceData(Float64, mesh, sbp, opts, opts["parallel_data"])
 
 #    send_data = Array{Array{Float64, 1}}(mesh.npeers)
 #    recv_data = Array{Array{Float64, 1}}(mesh.npeers)

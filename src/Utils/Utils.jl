@@ -15,7 +15,6 @@ using PdePumiInterface     # common mesh interface - pumi
 using Input
 
 include("output.jl")
-include("parallel_types.jl")
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
@@ -70,7 +69,8 @@ export SharedFaceData, getSharedFaceData
 
 # parallel.jl
 export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
-       @time_all, print_time_all, verifyReceiveCommunication
+       @time_all, print_time_all, verifyReceiveCommunication,
+       MPITagManager, getNextTag, markTagUsed, freeTag
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,

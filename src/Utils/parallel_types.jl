@@ -122,12 +122,14 @@ end
 """
   Outer constructor for SharedFaceData.
 
-  Inputs:
+  **Inputs**
 
-    mesh: a mesh object
-    peeridx: the index of a peer in mesh.peer_parts
-    q_send: the send buffer
-    q_recv: the receive buffer
+   * mesh: a mesh object
+   * peeridx: the index of a peer in mesh.peer_parts
+   * pdata: either integer enum or string describing what data is shared in
+            parallel
+   * q_send: the send buffer
+   * q_recv: the receive buffer
 
 """
 function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::Int,
@@ -156,6 +158,14 @@ function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::Int,
                            recv_waited, recv_req, recv_status,
                            bndries_local, bndries_remote, interfaces)
 
+end
+
+
+function SharedFaceData(mesh::AbstractMesh, peeridx::Int, pdata::String,
+                     q_send::Array{T, 3}, q_recv::Array{T, 3}) where T
+
+  pdata_enum = getParallelDataEnum(pdata)
+  return SharedFaceData(mesh, peeridx, pdata_enum, q_send, q_recv)
 end
 
 import Base.copy

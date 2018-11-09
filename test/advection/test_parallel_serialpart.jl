@@ -9,6 +9,10 @@ function test_parallel_mpi()
 
   # test the Utils parallel functions
   @testset "----- Testing Parallel Functions -----" begin
+
+    test_tagmanager()
+
+
     mesh.npeers = 1
     nfaces = length(mesh.bndryfaces)
     shared_data = Array{SharedFaceData}(mesh.npeers)
@@ -23,7 +27,7 @@ function test_parallel_mpi()
       mesh.shared_interfaces[i] = Array{Interface}(0)
       q_send = zeros(mesh.numDofPerNode, mesh.numNodesPerFace, nfaces)
       q_recv = zeros(q_send)
-      shared_data[i] = SharedFaceData(mesh, i, q_send, q_recv)
+      shared_data[i] = SharedFaceData(mesh, i, opts["parallel_data"], q_send, q_recv)
     end
 
     for i=1:mesh.npeers
@@ -113,8 +117,71 @@ function test_parallel_mpi()
   return nothing
 end
 
+function test_tagmanager()
+  @testset "MPITagManager" begin
+    mgr = MPITagManager()
+
+    for i=1:10
+      @test getNextTag(mgr) == i
+    end
+
+    # test using tags
+    markTagUsed(mgr, 12)
+    @test getNextTag(mgr) == 11
+    @test getNextTag(mgr) == 13
+
+    freeTag(mgr, 3)
+    freeTag(mgr, 4)
+    @test getNextTag(mgr) == 3
+    @test getNextTag(mgr) == 4
+    @test getNextTag(mgr) == 14
+
+    freeTag(mgr, 5)
+    freeTag(mgr, 4)
+    freeTag(mgr, 6)
+    @test getNextTag(mgr) == 4
+    @test getNextTag(mgr) == 5
+    @test getNextTag(mgr) == 6
+
+    freeTag(mgr, 3)
+    @test_throws Exception freeTag(mgr, 3)
+
+    @test_throws Exception markTagUsed(mgr, 4)
+
+
+    # test starting tag = 5
+    mgr = MPITagManager(5)
+
+    for i=1:10
+      @test getNextTag(mgr) == i + 5 - 1
+    end
+
+    markTagUsed(mgr, 16)
+    @test getNextTag(mgr) == 15
+    @test getNextTag(mgr) == 17
+
+    freeTag(mgr, 9)
+    freeTag(mgr, 7)
+    freeTag(mgr, 8)
+    @test getNextTag(mgr) == 7
+    @test getNextTag(mgr) == 8
+    @test getNextTag(mgr) == 9
+    @test getNextTag(mgr) == 18
+
+    @test_throws Exception freeTag(mgr, 2)
+    @test_throws Exception markTagUsed(mgr, 2)
+
+    freeTag(mgr, 7)
+    @test_throws Exception freeTag(mgr, 7)
+
+
+  end
+
+  return nothing
+end
+
 #test_parallel_mpi()
-add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST, TAG_TMP])
 
 function test_parallel_serialpart()
   fname = "input_vals_parallel.jl"

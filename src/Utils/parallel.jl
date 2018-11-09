@@ -1,5 +1,9 @@
 # parallel communication primatives
 
+include("tag_manager.jl")  # managment of MPI tags
+include("parallel_types.jl")  # datatype
+
+
 # MPI tags
 """
   Default MPI tag used for sending and receiving solution variables.

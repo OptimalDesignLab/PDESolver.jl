@@ -428,11 +428,10 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI send and receive buffers
-  shared_data_bar::Array{SharedFaceData{Tsol}, 1} # adjoint part
+  shared_data_res_bar::Array{SharedFaceData{Tres}, 1} # adjoint part
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
-  flux_sharedface_bar::Array{Array{Tres, 3}, 1}  # adjoint part
   res::Array{Tres, 3}             # result of computation
   res_bar::Array{Tres, 3}         # adjoint part
 
@@ -670,9 +669,9 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
       if mesh.isDG
-        eqn.shared_data_bar = Array{SharedFaceData{Tsol}}(0) 
+        eqn.shared_data_res_bar = getSharedFaceData(Tres, mesh, sbp, opts, "element")
       else
-        eqn.shared_data_bar = zeros(SharedFaceData, 0)
+        eqn.shared_data_res_bar = zeros(SharedFaceData, 0)
       end
 
       eqn.res_bar = zeros(eqn.res)
@@ -685,7 +684,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
 
-      eqn.shared_data_bar = Array{SharedFaceData}(0)
+      eqn.shared_data_res_bar = Array{SharedFaceData}(0)
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
