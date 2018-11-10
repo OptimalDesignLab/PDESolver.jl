@@ -1,4 +1,4 @@
-# evaluating AbstractFunctionals (those that are not AbstractIntegralFunctionals)
+# evaluating EntropyPenaltyFunctionals
 
 #------------------------------------------------------------------------------
 # API functions

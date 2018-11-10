@@ -10,7 +10,7 @@ lift and drag values
 
 """->
 
-mutable struct BoundaryForceData{Topt, fname} <: AbstractIntegralFunctional{Topt}
+mutable struct BoundaryForceData{Topt, fname} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int,1}  #TODO: make this non-abstract
   ndof::Int
   bndry_force::Array{Topt,1}
@@ -72,7 +72,7 @@ end
   compute the force and then divides by the (non-dimensional) dynamic pressure
   0.5*rho_free*Ma^2.  Note that this assumes the chord length (in 2d) is 1
 """
-mutable struct LiftCoefficient{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct LiftCoefficient{Topt} <: AbstractBoundaryFunctional{Topt}
   lift::BoundaryForceData{Topt, :lift}
   val::Topt
   bcnums::Array{Int, 1}
@@ -97,7 +97,7 @@ end
   Type for computing the mass flow rate over a boundary (integral rho*u dot n
   dGamma)
 """
-mutable struct MassFlowData{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct MassFlowData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
   ndof::Int
   val::Topt
@@ -116,7 +116,7 @@ end
   Type for computing the entropy flux rate over a boundary (integral S * u_i dot n_i
   dGamma), where S is the entropy function (from the IR entropy variables).
 """
-mutable struct EntropyFluxData{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct EntropyFluxData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
   ndof::Int
   val::Topt

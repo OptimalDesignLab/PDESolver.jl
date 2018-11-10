@@ -13,7 +13,7 @@ import PDESolver.evalFunctionalDeriv_q
    * sbp
    * eqn
    * opts
-   * functionalData: AbstractIntegralFunctional to evaluate
+   * functionalData: AbstractBoundaryFunctional to evaluate
 
   **Inputs/Outputs**
 
@@ -27,7 +27,7 @@ import PDESolver.evalFunctionalDeriv_q
 function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           functionalData::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
@@ -55,7 +55,7 @@ mesh nodes.
 *  `sbp`  : Summation-By-parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Functional object of super-type AbstractFunctional
+*  `functionalData` : Functional object of super-type AbstractBoundaryFunctional
                       that is needed for computing the adjoint vector.
                       Depending on the functional being computed, a different
                       method based on functional type may be needed to be
@@ -71,7 +71,7 @@ mesh nodes.
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           functionalData::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   integrand = zeros(eqn.q_bndry)
@@ -149,7 +149,7 @@ degrees of freedom at the node.
 *  `nrm`    : normal vector in the physical space
 *  `integrand_deriv` : Derivative of the integrand at that particular node
 *  `node_info` : Tuple containing information about the node
-*  `functionalData` : Functional object that is a subtype of AbstractFunctional.
+*  `functionalData` : Functional object that is a subtype of AbstractBoundaryFunctional.
 
 **Outputs**
 
@@ -233,7 +233,7 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
           aux_vars::AbstractArray{Tres, 1},
           nrm::AbstractArray{Tmsh},
           integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          functionalData::Tfunc) where {Tsol, Tres, Tmsh, Tfunc<:AbstractIntegralFunctional}
+          functionalData::Tfunc) where {Tsol, Tres, Tmsh, Tfunc<:AbstractBoundaryFunctional}
 
   h = 1e-20
   pert = Complex128(0, h)

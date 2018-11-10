@@ -333,7 +333,7 @@ abstract type AbstractEntropyKernel end
 """
   Functionals that use entropy penalties
 """
-abstract type EntropyPenaltyFunctional{Topt} <: AbstractFunctional{Topt} end
+abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt} end
 
 
 # high level functions should take in an AbstractEulerData, remaining

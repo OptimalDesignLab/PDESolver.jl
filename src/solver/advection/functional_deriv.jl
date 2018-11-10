@@ -8,7 +8,7 @@ import PDESolver.evalFunctionalDeriv_q
 function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP,
                            eqn::AdvectionData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           functionalData::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
@@ -36,7 +36,7 @@ mesh nodes.
 *  `sbp`   : Summation-By-Parts operator
 *  `eqn`   : Advection equation object
 *  `opts`  : Options dictionary
-*  `functionalData` : Object of subtype of AbstractFunctional. This is
+*  `functionalData` : Object of subtype of AbstractBoundaryFunctional. This is
                       the type associated with the adjoint of the functional
                       being computed and holds all the necessary data.
 *  `func_deriv_arr` : 3D array that stors the derivative of functional w.r.t
@@ -104,7 +104,7 @@ end
 # DG Version
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
                  eqn::AdvectionData{Tsol}, opts,
-                 functionalData::AbstractIntegralFunctional,
+                 functionalData::AbstractBoundaryFunctional,
                  func_deriv_arr) where {Tmsh, Tsol}
 
   alpha_x = eqn.params.alpha_x
@@ -164,7 +164,7 @@ step to compute the derivative
 """->
 
 function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
-                            functionalData::AbstractIntegralFunctional)
+                            functionalData::AbstractBoundaryFunctional)
 
   pert = complex(0, 1e-20)  # complex perturbation
   q += pert
