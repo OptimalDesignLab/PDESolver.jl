@@ -13,21 +13,27 @@ function test_parallel_mpi()
     test_tagmanager()
 
 
+    Tsol = eltype(eqn.q)
     mesh.npeers = 1
     nfaces = length(mesh.bndryfaces)
-    shared_data = Array{SharedFaceData}(mesh.npeers)
+    shared_data = Array{SharedFaceData{Tsol}}(mesh.npeers)
     resize!(mesh.bndries_local, mesh.npeers)
     resize!(mesh.bndries_remote, mesh.npeers)
     resize!(mesh.shared_interfaces, mesh.npeers)
     resize!(mesh.peer_parts, mesh.npeers)
+    resize!(mesh.peer_face_counts, mesh.npeers)
+    resize!(mesh.local_element_counts, mesh.npeers)
+    resize!(mesh.remote_element_counts, mesh.npeers)
     fill!(mesh.peer_parts, mesh.myrank)
+    fill!(mesh.peer_face_counts, nfaces)
+    fill!(mesh.local_element_counts, nfaces)
+    fill!(mesh.remote_element_counts, nfaces)
     for i=1:mesh.npeers
+      println("creating SharedFaceData for peer ", i, ", Tsol = ", Tsol)
       mesh.bndries_local[i] = mesh.bndryfaces
       mesh.bndries_remote[i] = mesh.bndryfaces
       mesh.shared_interfaces[i] = Array{Interface}(0)
-      q_send = zeros(mesh.numDofPerNode, mesh.numNodesPerFace, nfaces)
-      q_recv = zeros(q_send)
-      shared_data[i] = SharedFaceData(mesh, i, opts["parallel_data"], 100, q_send, q_recv)
+      shared_data[i] = SharedFaceData(Tsol, mesh, i, opts["parallel_data"], 100)
     end
 
     for i=1:mesh.npeers
@@ -112,6 +118,45 @@ function test_parallel_mpi()
     for i=1:length(eqn.flux_sharedface[1])
       @test isapprox( eqn.flux_sharedface[1][i], eqn.flux_face[i]) atol=1e-13
     end
+
+    # test changing buffers
+    @test getParallelData(shared_data) == "face"
+    @test size(data_i.q_send, 1) == mesh.numDofPerNode
+    @test size(data_i.q_send, 2) == mesh.numNodesPerFace
+    @test size(data_i.q_send, 3) == mesh.peer_face_counts[1]
+
+    @test size(data_i.q_recv, 1) == mesh.numDofPerNode
+    @test size(data_i.q_recv, 2) == mesh.numNodesPerFace
+    @test size(data_i.q_recv, 3) == mesh.peer_face_counts[1]
+
+    setParallelData(shared_data, "element")
+    @test getParallelData(shared_data) == "element"
+    @test size(data_i.q_send, 1) == mesh.numDofPerNode
+    @test size(data_i.q_send, 2) == mesh.numNodesPerElement
+    @test size(data_i.q_send, 3) == mesh.local_element_counts[1]
+
+    @test size(data_i.q_recv, 1) == mesh.numDofPerNode
+    @test size(data_i.q_recv, 2) == mesh.numNodesPerElement
+    @test size(data_i.q_recv, 3) == mesh.remote_element_counts[1]
+
+    # test copy
+    data_i2 = copy(data_i)
+    data_i2.q_send[1] = 10
+    data_i2.q_recv[1] = 10
+    @test data_i2.q_send[1] != data_i.q_send[1]
+    @test data_i2.q_recv[1] != data_i.q_recv[1]
+    @test pointer(data_i2.q_send) != pointer(data_i.q_send)
+    @test pointer(data_i2.q_recv) != pointer(data_i.q_recv)
+
+
+    copy!(data_i2, data_i)
+    @test data_i2.q_send[1] == data_i.q_send[1]
+    @test data_i2.q_recv[1] == data_i.q_recv[1]
+
+    old_tag = shared_data[1].tag
+    setNewTag(shared_data)
+    @test old_tag != shared_data[1].tag
+
   end  # end facts block
 
   return nothing

@@ -65,7 +65,8 @@ export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaCo
 export BufferedIO, BSTDOUT, BSTDERR
 
 # parallel_types.jl
-export SharedFaceData, getSharedFaceData
+export SharedFaceData, getSharedFaceData, setParallelData, getParallelData,
+       setNewTag
 
 # parallel.jl
 export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
