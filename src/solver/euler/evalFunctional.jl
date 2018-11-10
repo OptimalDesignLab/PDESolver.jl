@@ -27,6 +27,8 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+
   val = calcFunctional(mesh, sbp, eqn, opts, functionalData)
 
   val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
@@ -83,6 +85,8 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
   @assert eqn.commsize == 1
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
 
   # this is a trick to populate eqn.res (the forward sweep of reverse mode)
   calcFunctional(mesh, sbp, eqn, opts, functionalData)
@@ -147,6 +151,8 @@ function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+
   # compute reverse mode of the contraction, take val_bar = 1
   w_j = zeros(Tsol, mesh.numDofPerNode)
   fill!(eqn.res_bar, 0);
@@ -167,7 +173,6 @@ function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 
   # do reverse mode of the face integrals
   if typeof(mesh.sbpface) <: DenseFace
-    println("denseface")
     @assert opts["parallel_data"] == "element"
 
     # local part
@@ -177,7 +182,6 @@ function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
  
     #TODO: parallel part
   else # SparseFace
-    println("sparseface")
     flux_functor_revm = functionalData.func_sparseface_revm
     calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, flux_functor_revm,
                                 mesh.interfaces)

@@ -36,6 +36,8 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+
   # Calculate functional over edges
   val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
@@ -69,16 +71,17 @@ function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
                         functionalData::AbstractIntegralFunctional,
                         functionalName::String) where {Tmsh, Tsol}
 
-
+#=
   if opts["parallel_type"] == 1
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-
   end
-
+=#
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
+
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
 
   # Calculate functional over edges
   if functionalName == "lift"

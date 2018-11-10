@@ -35,6 +35,8 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+
   calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
 
   return nothing

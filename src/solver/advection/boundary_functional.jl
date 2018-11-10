@@ -34,6 +34,8 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   return functionalData.val

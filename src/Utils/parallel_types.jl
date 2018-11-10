@@ -1,57 +1,11 @@
 # declare some datatypes used for parallel communication
 
+import ODLCommonTools.getParallelData
+
 """
   Default MPI tag manager
 """
 global const TagManager = MPITagManager()
-
-# allow sending of arbitrary face/element-based data
-global const PARALLEL_DATA_FACE = 1001
-global const PARALLEL_DATA_ELEMENT = 1002
-
-"""
-  Given the string describing what data is shared in parallel, returns the
-  enum value.  An exception is thrown if an unrecognized value is supplied.
-
-  **Inputs**
-
-   * pdata: a string describing what data is shared in parallel
-
-  **Outputs**
-
-   * an Int enum
-"""
-function getParallelDataEnum(pdata::String)
-  if pdata == "face"
-    return PARALLEL_DATA_FACE
-  elseif pdata == "element"
-    return PARALLEL_DATA_ELEMENT
-  else
-    error("unrecognized parallel data string: $pdata")
-  end
-end
-
-"""
-  Inverse of [`getParallelDataEnum`](@ref), takes the enum and returns the
-  string.
-
-  **Inputs**
-
-   * pdata: Int enum
-
-  **Outputs**
-
-   * a String describing the parallel data
-"""
-function getParallelDataString(pdata::Int)
-  if pdata == PARALLEL_DATA_FACE
-    return "face"
-  elseif pdata == PARALLEL_DATA_ELEMENT
-    return "element"
-  else
-    error("unrecognized parallel data enum: $pdata")
-  end
-end
 
 
 """
@@ -479,6 +433,7 @@ function assertSendsConsistent(shared_data::Vector{SharedFaceData{T}}) where T
   return val
 end
 
+
 """
   Like assertSendsConsistent, but for the receives
 """
@@ -527,6 +482,7 @@ function waitAllSends(shared_data::Vector{SharedFaceData{T}}) where T
 
   return nothing
 end
+
 
 """
   This function is like MPI.Waitall, operating on the recvs of a vector of 
