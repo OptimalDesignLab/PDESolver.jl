@@ -307,7 +307,7 @@ function finishExchangeData_rev(mesh, sbp, eqn, opts,
 
   
   npeers = length(shared_data)
-  @assert npeers = length(shared_data_bar)
+  @assert npeers == length(shared_data_bar)
   val = assertReceivesConsistent(shared_data)
   val_bar = assertReceivesConsistent(shared_data)
 

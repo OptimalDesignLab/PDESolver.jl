@@ -9,6 +9,16 @@ function test_parallel2_comm()
 
   myrank = mesh.myrank
   commsize = mesh.commsize
+
+  AdvectionEquationMod.ICDict["ICp1"](mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  # add offset so we can tell where data came from
+  for i=1:length(eqn.q)
+    eqn.q[i] += myrank
+  end
+
+
+#=
   function wrap(i, commsize)
     if i > (commsize-1)
       i = 0
@@ -23,44 +33,72 @@ function test_parallel2_comm()
 
     return nothing
   end
-
+=#
   @testset "----- Testing Parallel Communication -----" begin
-    peer_up = wrap(myrank+1, commsize)
-    peer_down = wrap(myrank-1, commsize)
 
-    mesh.npeers = 2
-    mesh.peer_parts = [peer_down, peer_up]
-    #=
-    mesh.send_reqs = Array{MPI.Request}(mesh.npeers)
-    mesh.recv_reqs = Array{MPI.Request}(mesh.npeers)
-    mesh.recv_waited= Array{Bool}(mesh.npeers)
-    mesh.send_waited = Array{Bool}(mesh.npeers)
 
-    initMPIStructures(mesh, opts)
-    =#
-
+    # parallel_data == "face"
+    populate_buffer = Utils.getSendDataFace
     shared_data = getSharedFaceData(Float64, mesh, sbp, opts, opts["parallel_data"])
+    shared_data_bar = getSharedFaceData(Float64, mesh, sbp, opts, opts["parallel_data"])
 
-#    send_data = Array{Array{Float64, 1}}(mesh.npeers)
-#    recv_data = Array{Array{Float64, 1}}(mesh.npeers)
-    for i=1:mesh.npeers
-      shared_data[i].q_send = reshape(Float64[myrank + i, myrank + i + 1], 2, 1, 1)
-      shared_data[i].q_recv = reshape(Array{Float64}(mesh.npeers), 2, 1, 1)
+    exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
+    calc_func = (mesh, sbp, eqn, opts, data) -> return nothing
+    finishExchangeData(mesh, sbp, eqn, opts, shared_data, calc_func)
+
+    testSharedDataFace(mesh, sbp, eqn, opts, shared_data)
+
+    # test exchanging element data
+    setParallelData(shared_data, "element")
+    populate_buffer = Utils.getSendDataElement
+
+    exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
+    calc_func = (mesh, sbp, eqn, opts, data) -> return nothing
+    finishExchangeData(mesh, sbp, eqn, opts, shared_data, calc_func)
+
+
+    testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
+
+    # test finishExchangeData_rev
+    calc_func2 = (mesh, sbp, eqn, opts, data, data2) -> return nothing
+    setParallelData(shared_data, "face")
+    setParallelData(shared_data_bar, "face")
+    copy!(eqn.res_bar, eqn.q)
+    for i=1:length(eqn.res_bar)
+      eqn.res_bar[i] += 1   # add offset to distinguish q and res_bar
     end
 
-    exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer, wait=true)
+    populate_buffer = Utils.getSendDataFace
+    populate_buffer_rev = Utils.getSendDataFace_resbar
 
-    # peer down: the sent to its peer up
-    data = shared_data[1]
-    @test ( data.q_recv[1] )== peer_down + 2
-    @test ( data.q_recv[2] )== peer_down + 3
+    exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
+    exchangeData(mesh, sbp, eqn, opts, shared_data_bar, populate_buffer_rev)
 
-    # peer up: sent to its peer down
-    data = shared_data[2]
-    @test ( data.q_recv[1] )== peer_up + 1
-    @test ( data.q_recv[2] )== peer_up + 2
+    finishExchangeData_rev(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
+                           calc_func2)
+    testSharedDataFace(mesh, sbp, eqn, opts, shared_data)
+    testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
 
 
+    # make parallel_data different
+    setParallelData(shared_data, "element")
+    setParallelData(shared_data_bar, "face")
+
+    populate_buffer = Utils.getSendDataElement
+    populate_buffer_rev = Utils.getSendDataFace_resbar
+
+    exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
+    exchangeData(mesh, sbp, eqn, opts, shared_data_bar, populate_buffer_rev)
+
+    finishExchangeData_rev(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
+                           calc_func2)
+
+    testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
+    testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
+
+
+
+#=
     # test exchangeElementData
   #  fill!(eqn.q, 42)
     for i=1:mesh.npeers
@@ -85,6 +123,9 @@ function test_parallel2_comm()
     for j in data
       @test ( j )== peer_up + 1
     end
+=#
+    # test exchangeElementData_rev
+
 
 
   end  # end facts block
@@ -92,4 +133,65 @@ function test_parallel2_comm()
   return nothing
 end
 
-add_func1!(AdvectionTests, test_parallel2_comm, [TAG_SHORTTEST])
+
+"""
+  Test that face parallel data was sent correctly.  This requires the solution
+  on each process is linear and has a constant added to it equal to the
+  MPI rank of the process.
+"""
+function testSharedDataFace(mesh, sbp, eqn, opts, shared_data, offset=0)
+
+  # test the interpolation was exact + the data came from the right place
+  # using the peer rank offset
+  for i=1:mesh.npeers
+    peer_rank = mesh.peer_parts[i]
+    coords_peer = mesh.coords_sharedface[i]
+    data_i = shared_data[i]
+    for j=1:length(data_i.bndries_local)
+      for k=1:mesh.numNodesPerFace
+        coords_k = sview(coords_peer, :, k, j)
+        q_exact = AdvectionEquationMod.calc_p1(eqn.params, coords_k, 0.0) + peer_rank + offset
+        @test abs(data_i.q_recv[1, k, j] - q_exact) < 1e-13
+      end
+    end
+  end
+
+  return nothing
+end
+
+
+"""
+  Tests element parallel data was sent correctly.  Same requirements as the
+  above function
+"""
+function testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
+
+  q_faceL = zeros(eltype(eqn.q), mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+  for i=1:mesh.npeers
+    peer_rank = mesh.peer_parts[i]
+    data_i = shared_data[i]
+    el_offset = mesh.shared_element_offsets[i]
+    for j=1:length(data_i.interfaces)
+      iface_i = data_i.interfaces[j]
+    
+      qL = sview(eqn.q, :, :, iface_i.elementL)
+      elR = iface_i.elementR - el_offset + 1
+      qR = sview(data_i.q_recv, :, :, elR)
+
+      interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL, q_faceR)
+
+      for k=1:mesh.numNodesPerFace
+        @test abs(q_faceR[1, k] - peer_rank - (q_faceL[1, k] - mesh.myrank)) < 1e-13
+      end
+    end
+  end
+
+
+  return nothing
+end
+
+
+
+
+add_func1!(AdvectionTests, test_parallel2_comm, [TAG_SHORTTEST, TAG_TMP])
