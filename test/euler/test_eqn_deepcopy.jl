@@ -64,7 +64,6 @@ function test_eqn_copy()
     # note: q_face_send and q_face_recv purposes are now served by eqn.shared_data
     @test ( (eqn_copy.shared_data == eqn.shared_data) )== true
     @test ( (eqn_copy.flux_face == eqn.flux_face) )== true
-    @test ( (eqn_copy.flux_sharedface == eqn.flux_sharedface) )== true
     @test ( (eqn_copy.res == eqn.res) )== true
     @test ( (eqn_copy.res_vec == eqn.res_vec) )== true
     @test ( (eqn_copy.Axi == eqn.Axi) )== true
@@ -162,7 +161,6 @@ function test_eqn_copy()
     # note: q_face_send and q_face_recv purposes are now served by eqn.shared_data
     @test ( (pointer(eqn_copy.shared_data) == pointer(eqn.shared_data)) )== false
     @test ( (pointer(eqn_copy.flux_face) == pointer(eqn.flux_face)) )== false
-    @test ( (pointer(eqn_copy.flux_sharedface) == pointer(eqn.flux_sharedface)) )== false
     @test ( (pointer(eqn_copy.res) == pointer(eqn.res)) )== false
     @test ( (pointer(eqn_copy.res_vec) == pointer(eqn.res_vec)) )== false
     @test ( (pointer(eqn_copy.Axi) == pointer(eqn.Axi)) )== false
@@ -245,7 +243,6 @@ flux_parametric  Array{Float64,4}  false
 q_face_send  Array{Array{Float64,3},1}  false
 q_face_recv  Array{Array{Float64,3},1}  false
 flux_face  Array{Float64,3}  false
-flux_sharedface  Array{Array{Float64,3},1}  false
 res  Array{Float64,3}  false
 res_vec  Array{Float64,1}  false
 Axi  Array{Float64,4}  false

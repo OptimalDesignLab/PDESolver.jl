@@ -431,7 +431,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   shared_data_res_bar::Array{SharedFaceData{Tres}, 1} # adjoint part
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
-  flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
   res::Array{Tres, 3}             # result of computation
   res_bar::Array{Tres, 3}         # adjoint part
 
@@ -622,19 +621,9 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     end
 
     # send and receive buffers
-    if opts["precompute_face_flux"]
-      eqn.flux_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
-    else
-      eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
-    end
-
     eqn.aux_vars_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
     if mesh.isDG
       for i=1:mesh.npeers
-        if opts["precompute_face_flux"]
-          eqn.flux_sharedface[i] = zeros(Tres, mesh.numDofPerNode, numfacenodes,
-                                         mesh.peer_face_counts[i])
-        end
         eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end

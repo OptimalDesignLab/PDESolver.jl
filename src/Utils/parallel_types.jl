@@ -542,9 +542,30 @@ end
 
 
 """
+  Wait for a specific receive.  Prefer [`waitAnyReceive`](@ref) whenever
+  possible.
+
+  **Inputs**
+
+   * shared_data: vector of [`SharedFaceData`](@ref) objects
+   * idx: index into the `shared_data` array specifying which receive to wait
+          on
+"""
+function waitReceive(shared_data::Vector{SharedFaceData{T}}, idx::Integer) where {T}
+
+  stat = MPI.Wait!(shared_data[idx].recv_req)
+  shared_data[idx].recv_req = MPI.REQUEST_NULL
+  shared_data[idx].recv_status = stat
+  shared_data[idx].recv_waited = true
+
+  return nothing
+end
+
+
+"""
   Changes the vector of [`SharedFaceData`](@ref) object to a different parallel
-  data setting.  This function may not be called while a communication is
-  in progress.
+  data setting.  All receives must have completed before this function is
+  called.
 
   **Inputs**
 
@@ -556,9 +577,14 @@ function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::Integer
                         ) where {T}
 
 
-  # can't change buffer while buffers are in use
-  assertSendsWaited(shared_data)
+  # can't change buffer while MPI might still write to the recv buffer
   assertReceivesWaited(shared_data)
+  #assertSendsWaited(shared_data)  # this it not necessary because the old
+                                   # buffer still exists, so MPI can still
+                                   # read from it, and the communication
+                                   # functions check that the old send
+                                   # has finished before overwriting the
+                                   # buffer (even after a buffer change).
 
   if pdata == shared_data[1].pdata # all objects should have same pdata
     return nothing
