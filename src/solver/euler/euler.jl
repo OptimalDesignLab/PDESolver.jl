@@ -117,6 +117,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
 #  println("entered evalResidual")
   time.t_send += @elapsed if opts["parallel_type"] == 1
+    setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
@@ -931,7 +932,6 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
 

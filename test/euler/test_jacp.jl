@@ -39,7 +39,7 @@ function test_jac_parallel_long()
     end
     MPI.Barrier(MPI.COMM_WORLD)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname2)
-
+#=
     # SBPDiagonalE
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -71,13 +71,14 @@ function test_jac_parallel_long()
     end
     MPI.Barrier(MPI.COMM_WORLD)
     mesh7, sbp7, eqn7, opts7 = run_solver(fname2)
-
+=#
 
     opts4_tmp = copy(opts4)
-    test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
-    test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
+#    test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
+#    test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
+    test_revm_product(mesh4, sbp4, eqn4, opts4)
 
-
+#=
     test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
     # run test twice to make sure arrays are zeroed out correctly
@@ -87,12 +88,27 @@ function test_jac_parallel_long()
 
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
+=#
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
+
+#------------------------------------------------------------------------------
+# functions that run individual tests
+
+
+function rand_realpart(dims...)
+
+  a = rand(Complex128, dims...)
+  for i=1:length(a)
+    a[i] = real(a[i])
+  end
+
+  return a
+end
 
 
 
@@ -257,3 +273,93 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   return nothing
 end
 
+
+function test_revm_product(mesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+                                     # interfaces non-zero
+
+  # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
+
+  res_bar = rand_realpart(mesh.numDof)
+
+  dxidx_dot       = rand_realpart(size(mesh.dxidx))
+  jac_dot         = rand_realpart(size(mesh.jac))
+  nrm_bndry_dot   = rand_realpart(size(mesh.nrm_bndry))
+  nrm_face_dot    = rand_realpart(size(mesh.nrm_face_bar))
+  coords_bndry_dot = rand_realpart(size(mesh.coords_bndry))
+  nrm_sharedface_dot = Array{Array{Complex128, 3}}(mesh.npeers)
+  for i=1:mesh.npeers
+    nrm_sharedface_dot[i] = rand_realpart(size(mesh.nrm_sharedface[i]))
+    #nrm_sharedface_dot[i] = zeros(Complex128, size(mesh.nrm_sharedface[i]))
+  end
+  nrm_sharedface_dot[1][1] = 1
+
+
+
+  zeroBarArrays(mesh)
+
+  mesh.dxidx        .+= pert*dxidx_dot
+  mesh.jac          .+= pert*jac_dot
+  mesh.nrm_bndry    .+= pert*nrm_bndry_dot
+  mesh.nrm_face     .+= pert*nrm_face_dot
+  mesh.coords_bndry .+= pert*coords_bndry_dot
+  for i=1:mesh.npeers
+    mesh.nrm_sharedface[i] .+= pert*nrm_sharedface_dot[i]
+  end
+
+  startSolutionExchange(mesh, sbp, eqn, opts)
+
+  fill!(eqn.res, 0)
+  evalResidual(mesh, sbp, eqn, opts)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val = sum(imag(eqn.res_vec)/h .* res_bar)
+
+#  val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
+
+  mesh.dxidx        .-= pert*dxidx_dot
+  mesh.jac          .-= pert*jac_dot
+  mesh.nrm_bndry    .-= pert*nrm_bndry_dot
+  mesh.nrm_face     .-= pert*nrm_face_dot
+  mesh.coords_bndry .-= pert*coords_bndry_dot
+  for i=1:mesh.npeers
+    mesh.nrm_sharedface[i] .-= pert*nrm_sharedface_dot[i]
+  end
+
+
+
+  evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
+  val2 = 0
+  val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
+         sum(mesh.jac_bar .* jac_dot)                  +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
+         sum(mesh.nrm_face_bar .* nrm_face_dot)        +
+         sum(mesh.coords_bndry_bar .* coords_bndry_dot)
+
+  for i=1:mesh.npeers
+    val2 += sum(mesh.nrm_sharedface_bar[i] .* nrm_sharedface_dot[i])
+  end
+
+#  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
+
+  println(eqn.params.f, "val = ", real(val))
+  println(eqn.params.f, "val2 = ", real(val2))
+  println(eqn.params.f, "max dxidx_bar = ", maximum(abs.(mesh.dxidx_bar)))
+  println(eqn.params.f, "max jac_bar = ", maximum(abs.(mesh.jac_bar)))
+  println(eqn.params.f, "max nrm_bndry_bar = ", maximum(abs.(mesh.nrm_bndry_bar)))
+  println(eqn.params.f, "max nrm_face_bar = ", maximum(abs.(mesh.nrm_face_bar)))
+  println(eqn.params.f, "max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
+  for i=1:mesh.npeers
+    println(eqn.params.f, "max nrm_sharedface ", i, " = ", maximum(abs.(mesh.nrm_sharedface_bar[i])))
+  end
+  @test abs(val - val2) < 1e-12
+
+
+  return nothing
+end

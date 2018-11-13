@@ -586,7 +586,8 @@ function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::Integer
                                    # has finished before overwriting the
                                    # buffer (even after a buffer change).
 
-  if pdata == shared_data[1].pdata # all objects should have same pdata
+
+  if length(shared_data) == 0 || pdata == shared_data[1].pdata
     return nothing
   end
 
@@ -619,7 +620,8 @@ end
 
 """
   Returns the string describing the data that will be sent in parallel according
-  to the current configuration of the [`SharedFaceData`](@ref) objects.
+  to the current configuration of the [`SharedFaceData`](@ref) objects.  If the
+  array is length zero, returns `PARALLEL_DATA_NONE`.
 
   **Inputs**
 
@@ -631,7 +633,12 @@ end
 """
 function getParallelData(shared_data::Vector{SharedFaceData{T}}) where {T}
 
-  pdata_enum = shared_data[1].pdata
+  if length(shared_data) == 0
+    pdata_enum = PARALLEL_DATA_NONE
+  else
+    pdata_enum = shared_data[1].pdata
+  end
+
   return getParallelDataString(pdata_enum)
 end
 

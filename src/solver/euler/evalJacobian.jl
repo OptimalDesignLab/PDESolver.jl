@@ -13,6 +13,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   @assert opts["parallel_type"] == 2
 #  println("entered evalResidual")
   time.t_send += @elapsed if start_comm
+    setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
 

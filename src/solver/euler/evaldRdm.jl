@@ -19,20 +19,9 @@ Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
 function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t::Number=0.0)
 
-  @assert eqn.commsize == 1
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
-
-  # TODO: Is this needed??
-  # time.t_send += @elapsed if opts["parallel_type"] == 1
-  #   println(eqn.params.f, "starting data exchange")
-  #   #TODO: update this to use new parallel primatives
-  #   startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-  # end
-
-
-  # !!!! MAKE SURE TO DO DATA EXCHANGE BEFORE !!!!
 
   # Forward sweep
   time.t_dataprep += @elapsed dataPrep_for_revm(mesh, sbp, eqn, opts)
@@ -229,34 +218,41 @@ end
 @doc """
 ### EulerEquationMod.evalSharedFaceIntegrals_revm
 
-Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
+Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics
 
 """
 
 function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
+  # only element parallel is supported (for both q and res_bar
+  if getParallelData(eqn.shared_data) != getParallelData(eqn.shared_data_res_bar)
+    error("parallel data setting of eqn.shared_data and eqn.shared_data_res_bar must be the same")
+  end
+
+  if getParallelData(eqn.shared_data) != "element"
+    error("""parallel data setting must be "element" """)
+  end
+
+
+#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
+  println(eqn.params.f, "face integral type = ", face_integral_type)
   if face_integral_type == 1
 
-    if opts["parallel_data"] == "face"
-      calcSharedFaceIntegrals_revm(mesh, sbp, eqn, opts, eqn.flux_func_revm)
-    elseif opts["parallel_data"] == "element"
-      calcSharedFaceIntegrals_element_revm(mesh, sbp, eqn, opts, eqn.flux_func_revm)
-    else
-      throw(ErrorException("unsupported parallel data type"))
-    end
+    finishExchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_res_bar, calcSharedFaceIntegrals_element_revm)
 
   elseif face_integral_type == 2
-
-      error("integral_type == 2 not supported")
-    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts,
-                                eqn.face_element_integral_func,  eqn.flux_func)
+    
+    error("not supported yet")
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
+#    getSharedFaceElementIntegrals_element(mesh, sbp, eqn, opts, eqn.face_element_integral_func,  eqn.flux_func)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
 
   return nothing
 end
+
 
 #=
 #TODO: what is this and why is it here?

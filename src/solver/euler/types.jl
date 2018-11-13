@@ -649,6 +649,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     eqn.viscous_flux_func = functorThatErrors()
 
     if opts["need_adjoint"]
+      println(eqn.params.f, "initializing adjoint fields")
       eqn.q_bar = zeros(eqn.q)
       eqn.q_face_bar = zeros(eqn.q_face)
       eqn.q_bndry_bar = zeros(eqn.q_bndry)
@@ -658,13 +659,16 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
       if mesh.isDG
+        println(eqn.params.f, "getting shared face data for DG mesh")
         eqn.shared_data_res_bar = getSharedFaceData(Tres, mesh, sbp, opts, "element")
       else
+        println(eqn.params.f, "not getting shared face data for CG mesh")
         eqn.shared_data_res_bar = zeros(SharedFaceData, 0)
       end
 
       eqn.res_bar = zeros(eqn.res)
     else  # don't allocate arrays if they are not needed
+      println(eqn.params.f, "not initializing adjoint fields")
       eqn.q_bar = zeros(Tsol, 0, 0, 0)
       eqn.q_face_bar = zeros(Tsol, 0, 0, 0, 0)
       eqn.q_bndry_bar = zeros(Tsol, 0, 0, 0)

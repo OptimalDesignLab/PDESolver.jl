@@ -35,6 +35,7 @@ opts::Dict, t=0.0) where {Tmsh, Tsol, Tres, Tdim}
 
   # start communication right away
   params.time.t_send += @elapsed if opts["parallel_type"] == 1
+    setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
     #  println("send parallel data @time printed above")
   end

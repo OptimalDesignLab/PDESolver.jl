@@ -260,8 +260,26 @@ end
 
 """
   This method allows the user to supply a 1D vector as the seed values for
-  reverse mode with respect to the metrics.  See the other method for details
-  of the reverse mode calculation.
+  reverse mode with respect to the metrics.  The residual will be evaluated
+  at the state in `eqn.q_vec`, and the `_bar` fields of the mesh will be
+  updated with the result. The fields of the mesh that will be
+  updated are:
+
+   * `dxidx_bar`
+   * `jac_bar`
+   * `nrm_bndry_bar`
+   * `nrm_face_bar`
+   * `coords_bndry_bar`
+   * `coords_bar`
+   * `nrm_sharedface_bar`
+
+  It is the caller's responsibility to zero out these arrays before calling
+  this function, if required.  Mesh implementations should provide a
+  `zeroBarArrays` function to do this.
+
+  Note: the mesh and equation objects must have the `need_adjoint` option set
+  to true in the options dictionary used to create them.
+
 
   **Inputs**
 
@@ -271,17 +289,47 @@ end
    * opts
    * input_array: 1D array that is the seed vector for reverse mode
    * t: optional argument for time value 
+
+  **Keyword Arguments**
+
+   * start_comm: if true, this function will start parallel communication for
+                 the solution,
+                 otherwise parallel communication will not be started.
+                 As a side-effect, if this argument is false then the
+                 derivative will be evaluated at the state in `eqn.q` not
+                 `eqn.q_vec` (because the parallel communication was done using
+                 `eqn.q`.  Parallel communication is started for `eqn.res_bar`
+                 in either case.
 """
 function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
                      eqn::AbstractSolutionData, opts::Dict,
-                     input_array::AbstractArray{T, 1}, t::Number=0.0
-                    ) where {T}
+                     input_array::AbstractArray{T, 1}, t::Number=0.0;
+                     start_comm=true) where {T}
 
-  @assert eqn.commsize == 1
-  #TODO: do parallel communication on input_array
   array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
+  # do parallel communication
+  eqn.params.time.t_send += @elapsed if eqn.commsize > 1
+    setParallelData(eqn.shared_data_res_bar, "element")
+    if start_comm || getSharedData(eqn.shared_data) != "element"
+      array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+      setParallelData(eqn.shared_data, "element")
+    end
 
+    startSolutionExchange_rev(mesh, sbp, eqn, opts, send_q=start_comm)
+  end
+
+
+
+  @which evalResidual_revm(mesh, sbp, eqn, opts, t)
   evalResidual_revm(mesh, sbp, eqn, opts, t)
+
+  # verify evalResidual_revm finished communication
+  if eqn.commsize > 1
+    if start_comm 
+      assertReceivesWaited(eqn.shared_data)
+    end
+    assertReceivesWaited(eqn.shared_data_res_bar)
+  end
 
   return nothing
 end
@@ -289,8 +337,13 @@ end
 
 """
   This function allows the user to supply 1D input and output vectors for
-  doing reverse mode calculations with respect to the solution.  See the other
-  method for the details of the reverse mode calculation
+  doing reverse mode calculations with respect to the solution.  This function
+  computes the matrix-free product psi^T dR/dq, where `psi` is the input
+  vector.  The product is computed at the solution in `eqn.q_vec`.
+
+  Note: the mesh and equation objects must have the `need_adjoint` option set
+  to true in the options dictionary used to create them.
+
 
   **Inputs**
 
@@ -311,23 +364,44 @@ end
 
    * zero_output: is true, overwrite the output array, if false, sum into it,
                   default true
+   * start_comm: see [`evalResidual_revm`](@ref)
 """
 function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
                      eqn::AbstractSolutionData,
                      opts::Dict, input_array::AbstractVector,
-                     output_array::AbstractVector, t::Number=0.0; zero_output=true)
+                     output_array::AbstractVector, t::Number=0.0;
+                     zero_output=true, start_comm=true)
 
 
   @assert mesh.commsize == 1
 
-  #TODO: do parallel communication on input_array
-  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
   fill!(eqn.q_bar, 0)
+  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
+  # do parallel communication
+  eqn.params.time.t_send += @elapsed if eqn.commsize > 1
+    setParallelData(eqn.shared_data_res_bar, "element")
+    if start_comm || getParallelData(eqn.shared_data) != "element"
+      array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+      setParallelData(eqn.shared_data, "element")
+    end
+
+    startSolutionExchange_rev(mesh, sbp, eqn, opts, send_q=start_comm)
+  end
+
 
   evalResidual_revq(mesh, sbp, eqn, opts, t)
 
   # accumulate into output array
   array3DTo1D(mesh, sbp, eqn, opts, eqn.q_bar, output_array, zero_resvec=zero_output)
+
+  # verify evalResidual_revq finished communication
+  if eqn.commsize > 1
+    if start_comm 
+      assertReceivesWaited(eqn.shared_data)
+    end
+    assertReceivesWaited(eqn.shared_data_res_bar)
+  end
+
 
   return nothing
 end

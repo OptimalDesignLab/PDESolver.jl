@@ -380,7 +380,8 @@ end
 
 """
   This function performs the reverse mode calculation of the residual with
-  respect to the metrics. The following fields of the mesh
+  respect to the metrics.  The derivative should be evaluated at the solution
+  in `eqn.q`.  The following fields of the mesh
   are updated with the result:
 
    * dxidx_bar
@@ -395,6 +396,12 @@ end
 
   Note: the mesh and equation objects must have the `need_adjoint` option set
   to true in the options dictionary used to create them.
+
+  This function must finish parallel communication for `eqn.shared_data` and
+  `eqn.shared_data_res_bar` by calling either [`finishExchangeData`](@ref) or
+  [`finishExchangeData_rev`](@ref).  The parallel data setting of
+  `eqn.shared_data` and `eqn.shared_data_res_bar` are always the same, and
+  (currently) always equal to "element".
 
   **Inputs**
 
@@ -424,6 +431,12 @@ end
 
   Note: the mesh and equation objects must have the `need_adjoint` option set
   to true in the options dictionary used to create them.
+
+  This function must finish parallel communication for `eqn.shared_data` and
+  `eqn.shared_data_res_bar` by calling either [`finishExchangeData`](@ref) or
+  [`finishExchangeData_rev`](@ref).  The parallel data setting of
+  `eqn.shared_data` and `eqn.shared_data_res_bar` are always the same.
+
 
   **Inputs**
 

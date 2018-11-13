@@ -39,6 +39,7 @@ function _evalFunctional(mesh::AbstractMesh{Tmsh},
   return val
 end
 
+#=
 @doc """
 ### EulerEquationMod.evalFunctional_revm
 
@@ -63,11 +64,6 @@ function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
                         functionalData::AbstractBoundaryFunctional,
                         functionalName::String) where {Tmsh, Tsol}
 
-#=
-  if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-  end
-=#
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -106,7 +102,7 @@ function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end
-
+=#
 
 @doc """
 ### EulerEquationMod.eval_dJdaoa

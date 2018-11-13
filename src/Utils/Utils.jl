@@ -72,7 +72,7 @@ export SharedFaceData, getSharedFaceData, setParallelData, getParallelData,
 export startSolutionExchange, startSolutionExchange_rev, exchangeData,
        finishExchangeData, finishExchangeData_rev, @mpi_master, 
        @time_all, print_time_all, verifyReceiveCommunication,
-       MPITagManager, getNextTag, markTagUsed, freeTag
+       MPITagManager, getNextTag, markTagUsed, freeTag, assertReceivesWaited
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,

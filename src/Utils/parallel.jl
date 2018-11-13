@@ -51,7 +51,7 @@ end
   Similar to [`startSolutionExchange`](@ref), this function starts
   communciation of the solution `eqn.res_bar` and possibly `eqn.q`.
   See [`finishExchangeData_rev`](@ref) for a way to finish communication
-  for reverse-mode calculations. `eqn.shared_data` and `eqn.shared_data_bar`
+  for reverse-mode calculations. `eqn.shared_data` and `eqn.shared_data_res_bar`
   are used for the communications.
 
   **Inputs**
@@ -85,7 +85,7 @@ function startSolutionExchange_rev(mesh::AbstractMesh, sbp::AbstractSBP,
    startSolutionExchange(mesh, sbp, eqn, opts, wait=wait)
  end
 
-  pdata = eqn.shared_data_bar[1].pdata  # assume all are same
+  pdata = eqn.shared_data_res_bar[1].pdata  # assume all are same
   if pdata == PARALLEL_DATA_FACE
     populate_buffer = getSendDataFace_rev
   elseif pdata == PARALLEL_DATA_ELEMENT
@@ -94,7 +94,7 @@ function startSolutionExchange_rev(mesh::AbstractMesh, sbp::AbstractSBP,
     throw(ErrorException("unsupported parallel_type = $(getParallelDataString(pdata))"))
   end
 
-  exchangeData(mesh, sbp, eqn, opts, eqn.shared_data_bar, populate_buffer,
+  exchangeData(mesh, sbp, eqn, opts, eqn.shared_data_res_bar, populate_buffer,
                wait=wait)
 
   return nothing
