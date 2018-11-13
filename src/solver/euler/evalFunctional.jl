@@ -3,90 +3,32 @@
 #------------------------------------------------------------------------------
 # API functions
 
-import PDESolver.evalFunctionalDeriv_m
+import PDESolver._evalFunctionalDeriv_m
 
 """
   Evaluates [`EntropyPenaltyFunctional`](@ref)s
 
   Note that this function may overwrite eqn.res.
-
-
-  **Keyword Arguments**
-
-   * start_comm: start parallel communication, default true.
 """
-function evalFunctional(mesh::AbstractMesh{Tmsh},
+function _evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
-            functionalData::EntropyPenaltyFunctional; start_comm=true) where {Tmsh, Tsol, Tres}
-
-  #TODO: figure out what the generalization is here
-
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-  if start_comm
-    # TODO: wait=false
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-  end
-
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+            functionalData::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
 
   val = calcFunctional(mesh, sbp, eqn, opts, functionalData)
-
   val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
 
   return val
 end
 
 
-#=
-"""
-  Derivative for [`EntropyPenaltyFunctional`](@ref)s
-
-  Currently this requires that the eqn object was creates with Tsol = Complex128
-"""
-
-function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres}, opts,
-                           functionalData::EntropyPenaltyFunctional,
-                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
-
-  @assert size(func_deriv_arr, 1) == mesh.numDofPerNode
-  @assert size(func_deriv_arr, 2) == mesh.numNodesPerElement
-  @assert size(func_deriv_arr, 3) == mesh.numEl
-
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-
-  #TODO: use coloring at least
-  # complex step
-  h = 1e-20
-  pert = Complex128(0, h)
-  for i=1:length(eqn.q)
-    eqn.q[i] += pert
-    J_i = calcFunctional(mesh, sbp, eqn, opts, functionalData)
-    func_deriv_arr[i] = imag(J_i)/h
-    eqn.q[i] -= pert
-  end
-
-  return nothing
-end
-=#
-
 # derivative of functional wrt q
-function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol, Tres}, opts,
                            functionalData::EntropyPenaltyFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
-
-  @assert size(func_deriv_arr, 1) == mesh.numDofPerNode
-  @assert size(func_deriv_arr, 2) == mesh.numNodesPerElement
-  @assert size(func_deriv_arr, 3) == mesh.numEl
 
   @assert eqn.commsize == 1
-
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
 
   # this is a trick to populate eqn.res (the forward sweep of reverse mode)
   calcFunctional(mesh, sbp, eqn, opts, functionalData)
@@ -141,17 +83,13 @@ end
 
 
 
-function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::EntropyPenaltyFunctional
                            ) where {Tmsh, Tsol}
 
   @assert eqn.commsize == 1
-
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
 
   # compute reverse mode of the contraction, take val_bar = 1
   w_j = zeros(Tsol, mesh.numDofPerNode)

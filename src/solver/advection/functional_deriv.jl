@@ -1,22 +1,19 @@
 # functional derivative computation
 
-import PDESolver.evalFunctionalDeriv_q
+import PDESolver._evalFunctionalDeriv_q
 
 """
   evalFunctionalDeriv_q for Advection
 """
-function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP,
                            eqn::AdvectionData{Tsol}, opts,
                            functionalData::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
-
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
 
   calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
 

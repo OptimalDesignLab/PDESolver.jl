@@ -37,7 +37,10 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
   return nothing
 end
 
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, res::Abstract3DArray, t = 0.0)
+
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP,
+                      eqn::AbstractSolutionData, opts::Dict,
+                      res::Abstract3DArray, t = 0.0)
 
   throw(ErrorException("Generic fallback evalHomotopy reached: did you forget to extend evalHomotopy() with a new method for your AbstractSolutionData?"))
 
@@ -92,6 +95,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
+
 """
   Evaluates the Jacobian of the [`evalHomotopy`](@ref) multiplied by the
   homotopy parameter lambda.  Conceptually similar to [`evalJacobian`](@ref).
@@ -123,6 +127,7 @@ function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 
   return nothing
 end
+
 
 """
   This function evaluates the Jacobian of the strong form of the spatial
@@ -196,7 +201,16 @@ end
   computed and calls a mid level functional-type specific function for the 
   actual evaluation.
 
-  The functional is evaluated at the state in eqn.q_vec.
+  This is the method physics modules must implemented.  Users should call
+  the other method, which takes care of starting parallel communication.
+  On entry, `eqn.q` will contain the solution.  If the
+  functional requires parallel communication of the solution, it will have
+  been started before this function is called, and this function is responsible
+  for finishing parallel communication by calling [`finishExchangeData`](@ref).
+
+  This function should perform any global reduction required (ex. calling
+  `MPI.Allreduce`).
+
 
   **Arguments**
 
@@ -208,20 +222,25 @@ end
                         This type determines the functional being computed and
                         holds all the relevant data.
 """
-function evalFunctional(mesh::AbstractMesh{Tmsh},
+function _evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
             functionalData::AbstractFunctional) where {Tmsh, Tsol}
 
-  error("Generic fallback for evalFunctional() reached: did you forget to extend evalFunctional() with a new method for you AbstractSolutionData")
+  error("Generic fallback for _evalFunctional() reached: did you forget to extend evalFunctional() with a new method for you AbstractSolutionData")
 
 end
 
+
 """
   Performs reverse-mode differentiation of a functional with respect to the
-  metrics.  The `_bar` fields of the mesh are updated with the result.
+  metrics.  When this function is called, the solution will be in `eqn.q` and
+  parallel communication will already have started if required by the functional.
+  This function should update the `_bar` fields of the mesh.  These fields
+  should never be overwritten.
   It is the callers responsiblity to zero out these fields beforehand, if
   required.  Mesh implementation should provide a function `zeroBarArrays`
-  to do this.
+  to do this.  See the documentation of [`_evalFunctional`](@ref) for
+  information on parallel communication.
 
   **Inputs**
 
@@ -231,7 +250,7 @@ end
    * opts
    * functionalData: the [`AbstractIntegralFunctional`](@ref)
 """
-function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::AbstractFunctional
@@ -244,9 +263,10 @@ end
 
 
 """
-  Computes a 3D array of hte derivative of a functional wrt eqn.q.
+  Computes a 3D array of the derivative of a functional wrt eqn.q.
 
-  The derivative is evaluated at the state in eqn.q_vec.
+  The derivative is evaluated at the state in eqn.q.  See the documentation
+  for [`_evalFunctional`](@ref) for information on parallel communication.
 
   **Inputs**
 
@@ -259,13 +279,14 @@ end
   **Inputs/Outputs**
 
    * func_deriv_arr: array to hold derivative of function wrt eqn.q, same
-                     size as equation.q
+                     size as equation.q.  To be overwritten.
 
   **Options Keys**
 
-  This funciton is not compatible with `precompute_q_bndry` = false
+  This function is not compatible with `precompute_q_bndry` = false in most
+  cases
 """
-function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::AbstractIntegralFunctional,
@@ -274,6 +295,7 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
   error("Generic fallback for evalFunctionalDeriv_q() reached: did you forget to extend evalFunctionalDeriv_q() with a new method for you AbstractSolutionData")
 
 end
+
 
 """
   This function recalculates all quantities that depend on the mesh metrics.
@@ -301,6 +323,7 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
 
 """
   This function takes fully initialzed objects and solves the partial

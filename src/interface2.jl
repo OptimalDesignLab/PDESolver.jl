@@ -26,6 +26,7 @@ function createObjects(fname::AbstractString)
   return createObjects(opts)
 end
 
+
 """
   Method for creating objects from an options dictionary
 
@@ -44,6 +45,7 @@ function createObjects(opts::Dict)
 
   return _createObjects(opts)
 end
+
 
 """
   This method constructs a new equation object for the given mesh, sbp
@@ -70,6 +72,7 @@ function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
   return _createObjects(mesh, sbp, opts)
 end
 
+
 """
   Additional methods for `solvePDE`, allows solving the PDE starting
   with either a file name or options dictionary.
@@ -92,6 +95,7 @@ function solvePDE(opts::Union{Dict, AbstractString})
   mesh, sbp, eqn, opts, pmesh = createObjects(opts)
   return solvePDE(mesh, sbp, eqn, opts, pmesh)
 end
+
 
 """
   Creates a functional object, using the data described in the options
@@ -124,6 +128,136 @@ function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
   return createFunctional(mesh, sbp, eqn, opts, functional_name, functional_bcs)
 end
 
+
+"""
+  The functional is evaluated at the state in eqn.q_vec.  Parallel
+  communication will be started if required by the functional.
+
+  **Inputs**
+
+   * `mesh` :  Abstract mesh object
+   * `sbp`  : Summation-By-Parts operator
+   * `eqn`  : AbstractSolutionData object
+   * `opts` : Options dictionary
+   * `functionalData` : `AbstractFunctional` to be evaluated
+
+  **Outputs**
+
+   * val: the functional value
+
+  **Keyword Arguments**
+
+   * start_comm: if true, parallel communication will be started if required
+                 by the functional.  If false, it will not be started, even
+                 if required by the functional.  This argument gives the caller
+                 a way to improve performance if parallel communication has
+                 already been done.  As a side effect, `eqn.q_vec` will not
+                 be unpacked into `eqn.q` in this case (because parallel
+                 communication is based on `eqn.q`, so they must already be
+                 consistent).  Default true
+
+"""
+function evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
+            functionalData::AbstractFunctional; start_comm=true) where {Tmsh, Tsol}
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+
+  return _evalFunctional(mesh, sbp, eqn, opts, functionalData)
+end
+
+
+
+"""
+  Performs reverse-mode differentiation of a functional with respect to the
+  metrics.  The functional is evaluated in the state at `eqn.q_vec`.
+  The `_bar` fields of the mesh are updated with the result
+  It is the callers responsiblity to zero out these fields beforehand, if
+  required.  Mesh implementation should provide a function `zeroBarArrays`
+  to do this.  The fields of the mesh that are updated are:
+
+   * `dxidx_bar`
+   * `jac_bar`
+   * `nrm_bndry_bar`
+   * `nrm_face_bar`
+   * `coords_bndry_bar`
+   * `coords_bar`
+   * `nrm_sharedface_bar`
+
+  **Inputs**
+
+   * mesh: `_bar` fields are updated
+   * sbp
+   * eqn
+   * opts
+   * functionalData: [`AbstractFunctional`](@ref) to compute the derivative of
+
+  **Keyword Arguments**
+
+   * start_comm: see [`evalFunctional`](@ref)
+
+"""
+function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           functionalData::AbstractFunctional;
+                           start_comm=true
+                           ) where {Tmsh, Tsol}
+
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, functionalData)
+
+  return nothing
+end
+
+
+"""
+  Computes the derivative of the functional with respect to the solution.
+  The derivative will be evaluated at the state in `eqn.q_vec`.
+
+  **Inputs**
+   
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * functionalData: the [`AbstractFunctional`](@ref) to compute the derivative
+                     of
+
+  **Inputs/Outputs**
+
+   * func_deriv_arr: array, same shape as `eqn.q` to overwrite with the
+                     derivative of the functional wrt the 3D array form
+                     of the solution
+
+  **Keyword Arguments**
+
+   * start_comm: see [`evalFunctional`](@ref)
+"""
+function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractSBP,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           functionalData::AbstractIntegralFunctional,
+                           func_deriv_arr::Abstract3DArray;
+                           start_comm=true) where {Tmsh, Tsol}
+ 
+  @assert size(func_deriv_arr, 1) == mesh.numDofPerNode
+  @assert size(func_deriv_arr, 2) == mesh.numNodesPerElement
+  @assert size(func_deriv_arr, 3) == mesh.numEl
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  setupFunctional(mesh, sbp, eqn, opts, functionalData)
+  _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
+
+  return nothing
+end
+
+
 """
   This method allows the user to supply a 1D vector as the seed values for
   reverse mode with respect to the metrics.  See the other method for details
@@ -151,6 +285,7 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
 
 """
   This function allows the user to supply 1D input and output vectors for

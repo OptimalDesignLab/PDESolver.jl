@@ -1,5 +1,5 @@
 
-import PDESolver.evalFunctional
+import PDESolver._evalFunctional
 
 @doc """
 ### EulerEquationMod.evalFunctional
@@ -23,15 +23,10 @@ evaluation.
 
  * val: functional value
 """->
-function evalFunctional(mesh::AbstractMesh{Tmsh},
+function _evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
             functionalData::AbstractBoundaryFunctional) where {Tmsh, Tsol}
-#=
-  if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-  end
-=#
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -42,8 +37,6 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
   val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
   return val
-  # return functionalData.val  # this doesn't work because val does not
-                                   # always exist
 end
 
 @doc """
@@ -65,7 +58,6 @@ to the if statement to further extend this function.
 *  `functionalName` : Name of the functional being evaluated.
 
 """->
-
 function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
                         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
                         functionalData::AbstractBoundaryFunctional,

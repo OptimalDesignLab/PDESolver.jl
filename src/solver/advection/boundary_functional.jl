@@ -1,6 +1,6 @@
 # Calculate boundary "forces" in advection
 
-import PDESolver.evalFunctional
+import PDESolver._evalFunctional
 
 @doc """
 ### AdvectionEquationMod.evalFunctional
@@ -18,23 +18,12 @@ mid level type specific function for the actual functional evaluation.
 *  `opts` : Options dictionary
 *  `functionalData` : Object of the functional being computed.
 """->
-function evalFunctional(mesh::AbstractMesh{Tmsh},
+function _evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
             functionalData::AbstractBoundaryFunctional) where {Tmsh, Tsol}
-#=
-  if opts["parallel_type"] == 1
-
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
-
-  end
-=#
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
-
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
 
   calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
 
