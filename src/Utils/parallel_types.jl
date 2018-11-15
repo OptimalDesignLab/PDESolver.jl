@@ -542,6 +542,31 @@ end
 
 
 """
+  Like [`waitAnyReceive`](@ref), but waits for any send.
+"""
+function waitAnySend(shared_data::Vector{SharedFaceData{T}}) where T
+
+  npeers = length(shared_data)
+  if length(_waitany_reqs) != npeers
+    resize!(_waitany_reqs, npeers)
+  end
+
+  for i=1:npeers
+    _waitany_reqs[i] = shared_data[i].send_req
+  end
+
+  idx, stat = MPI.Waitany!(_waitany_reqs)
+ 
+  shared_data[idx].send_req = MPI.REQUEST_NULL  # make sure this request is not
+                                                # used again
+  shared_data[idx].send_status = stat
+  shared_data[idx].send_waited = true
+
+  return idx
+end
+
+
+"""
   Wait for a specific receive.  Prefer [`waitAnyReceive`](@ref) whenever
   possible.
 
@@ -560,6 +585,21 @@ function waitReceive(shared_data::Vector{SharedFaceData{T}}, idx::Integer) where
 
   return nothing
 end
+
+
+"""
+  Like [`waitReceive`](@ref), but waits on a send
+"""
+function waitSend(shared_data::Vector{SharedFaceData{T}}, idx::Integer) where {T}
+
+  stat = MPI.Wait!(shared_data[idx].send_req)
+  shared_data[idx].send_req = MPI.REQUEST_NULL
+  shared_data[idx].send_status = stat
+  shared_data[idx].send_waited = true
+
+  return nothing
+end
+
 
 
 """

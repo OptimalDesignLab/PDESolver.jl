@@ -31,6 +31,8 @@ function test_jac_parallel_long()
 
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
+    f = open("testlog_$myrank.dat", "w")
+
     # SBPGamma
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -39,7 +41,8 @@ function test_jac_parallel_long()
     end
     MPI.Barrier(MPI.COMM_WORLD)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname2)
-#=
+
+
     # SBPDiagonalE
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -71,24 +74,29 @@ function test_jac_parallel_long()
     end
     MPI.Barrier(MPI.COMM_WORLD)
     mesh7, sbp7, eqn7, opts7 = run_solver(fname2)
-=#
+
 
     opts4_tmp = copy(opts4)
-#    test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
-#    test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
-    test_revm_product(mesh4, sbp4, eqn4, opts4)
+    test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
+    test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
+    test_revm_product(mesh4, sbp4, eqn4, opts4, f)
 
-#=
-    test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+#    test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
     # run test twice to make sure arrays are zeroed out correctly
     test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+
+    test_revm_product(mesh5, sbp5, eqn5, opts5, f)
 
     test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
 
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
-=#
+
+    println(f, "\nrunning test 7")
+    test_revm_product(mesh7, sbp7, eqn7, opts7, f)
+    close(f)
   end
 
   return nothing
@@ -274,7 +282,9 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 end
 
 
-function test_revm_product(mesh, sbp, eqn, opts)
+function test_revm_product(mesh, sbp, eqn, opts, f::IO)
+
+  srand(1234)  # reproducable results
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -282,7 +292,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+  eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
                                      # interfaces non-zero
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
@@ -348,15 +358,18 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
 #  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
 
-  println(eqn.params.f, "val = ", real(val))
-  println(eqn.params.f, "val2 = ", real(val2))
-  println(eqn.params.f, "max dxidx_bar = ", maximum(abs.(mesh.dxidx_bar)))
-  println(eqn.params.f, "max jac_bar = ", maximum(abs.(mesh.jac_bar)))
-  println(eqn.params.f, "max nrm_bndry_bar = ", maximum(abs.(mesh.nrm_bndry_bar)))
-  println(eqn.params.f, "max nrm_face_bar = ", maximum(abs.(mesh.nrm_face_bar)))
-  println(eqn.params.f, "max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
+  println(f, "val = ", real(val))
+  println(f, "val2 = ", real(val2))
+  println(f, "diff = ", real(val - val2))
+  println(f, "max dxidx_bar = ", maximum(abs.(mesh.dxidx_bar)))
+  println(f, "max jac_bar = ", maximum(abs.(mesh.jac_bar)))
+  println(f, "max nrm_bndry_bar = ", maximum(abs.(mesh.nrm_bndry_bar)))
+  println(f, "max nrm_face_bar = ", maximum(abs.(mesh.nrm_face_bar)))
+  println(f, "max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
   for i=1:mesh.npeers
-    println(eqn.params.f, "max nrm_sharedface ", i, " = ", maximum(abs.(mesh.nrm_sharedface_bar[i])))
+    println(f, "sum nrm_sharedface_bar ", i, " = ", sum(mesh.nrm_sharedface_bar[i]))
+    println(f, "sum(nrm_sharedface) ", i, " = ", sum(mesh.nrm_sharedface[i]))
+    println(f, "sum(q_recv) ", i, " = ", sum(eqn.shared_data[i].q_recv))
   end
   @test abs(val - val2) < 1e-12
 

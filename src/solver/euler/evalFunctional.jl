@@ -171,7 +171,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     # figure out which paralle function to call
     if opts["parallel_data"] == "face"
       pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, flux_functor)
-    elseif opts["paralle_data"] == "element"
+    elseif opts["parallel_data"] == "element"
       pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_elemen_inner(mesh, sbp, eqn, opts, data, flux_functor)
     else
       error("unregonized parallel data: $(opts["parallel_data"])")

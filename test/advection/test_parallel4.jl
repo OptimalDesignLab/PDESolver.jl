@@ -1,4 +1,5 @@
 # run tests in parallel (np=4)
+
 """
   Test the parallel communication primatives in the Utils module
 """
@@ -59,7 +60,17 @@ function test_parallel2_comm()
 
     testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
 
+
     # test finishExchangeData_rev
+
+    fill!(eqn.q_bar, 0)
+    #TODO: fill recv buffers with random values to test zeroing out
+    startSolutionExchange(mesh, sbp, eqn, opts)
+    exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func_rev)
+    testSharedDataElement_rev(mesh, sbp, eqn, opts)
+
+
+    #=
     calc_func2 = (mesh, sbp, eqn, opts, data, data2) -> return nothing
     setParallelData(shared_data, "face")
     setParallelData(shared_data_bar, "face")
@@ -96,42 +107,57 @@ function test_parallel2_comm()
     testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
 
-
-
-#=
-    # test exchangeElementData
-  #  fill!(eqn.q, 42)
-    for i=1:mesh.npeers
-      mesh.local_element_lists[i] = [i]
-      data_i = shared_data[i]
-      data_i.q_send = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
-      data_i.q_recv = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, 1)
-
-      eqn.q[:,:, i] = i + myrank
-    end
-    fill!(mesh.recv_waited, true)
-    fill!(mesh.send_waited, true)
-
-
-    exchangeData(mesh, sbp, eqn, opts, shared_data, Utils.getSendDataElement, wait=true)
-
-    data = shared_data[1].q_recv
-    for j in data
-      @test ( j )== peer_down + 2
-    end
-    data = shared_data[2].q_recv
-    for j in data
-      @test ( j )== peer_up + 1
-    end
 =#
-    # test exchangeElementData_rev
-
-
 
   end  # end facts block
 
   return nothing
 end
+
+function calc_func_rev(mesh, sbp, eqn, opts, data::SharedFaceData, data_bar::SharedFaceData)
+
+  # use Remote metrics to add the polynomial + comm_rank to q_recv
+  idx = data_bar.peeridx
+  coords = mesh.remote_metrics[idx].coords
+  myrank = mesh.myrank
+
+  
+  for i=1:size(coords, 3)
+    for j=1:size(coords, 2)
+      coords_j = sview(coords, :, j, i)
+      q_exact = AdvectionEquationMod.calc_p1(eqn.params, coords_j, 0.0) + myrank
+      data_bar.q_recv[1, j, i] += q_exact
+    end
+  end
+
+  return nothing
+end
+
+
+function testSharedDataElement_rev(mesh, sbp, eqn, opts)
+
+  # test that each element of eqn.q_bar has the sum of the contributions of
+  # each remote process
+
+  q_bar2 = zeros(eqn.q_bar)
+  for i=1:mesh.npeers
+    peer = mesh.peer_parts[i]
+    for el in mesh.local_element_lists[i]
+      for j=1:mesh.numNodesPerElement
+        coords_j = sview(mesh.coords, :, j, el)
+        q_exact = AdvectionEquationMod.calc_p1(eqn.params, coords_j, 0.0) + peer
+        q_bar2[1, j, el] += q_exact
+      end
+    end
+  end
+
+  println(eqn.params.f, "sum(q_bar) = ", sum(eqn.q_bar))
+  println(eqn.params.f, "sum(q_bar2) = ", sum(q_bar2))
+  @test maximum(abs.(q_bar2 - eqn.q_bar)) < 1e-13
+
+  return nothing
+end
+
 
 
 """

@@ -138,6 +138,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   t::Float64
   res_type::DataType  # type of res
   q::Array{Tsol, 3}
+  q_bar::Array{Tres, 3}  # for testing
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables
   flux_parametric::Array{Tsol,4}  # flux in xi direction
@@ -150,6 +151,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
                           # the boundaries with boundary conditions
   shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI data, including send and receive
+  shared_data_bar::Array{SharedFaceData{Tres}, 1}
 
                                          # buffers
 #  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
@@ -188,6 +190,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.q_bar = zeros(Tres, 1, sbp.numnodes, mesh.numEl)
     eqn.aux_vars = zeros(Tsol, 0, 0, 0)
 
     if opts["precompute_volume_flux"]
@@ -249,8 +252,11 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
     if mesh.isDG
       eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
                                           opts["parallel_data"])
+      eqn.shared_data_bar = getSharedFaceData(Tres, mesh, sbp, opts, "element")
+
     else
       eqn.shared_data = Array{SharedFaceData{Tsol}}(0)
+      eqn.shared_data_bar = Array{SharedFaceData{Tres}}(0)
     end
 
     return eqn
