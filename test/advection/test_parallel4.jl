@@ -64,9 +64,13 @@ function test_parallel2_comm()
     # test finishExchangeData_rev
 
     fill!(eqn.q_bar, 0)
+    for i=1:mesh.npeers
+      rand!(eqn.shared_data_bar[i].q_recv)
+    end
     #TODO: fill recv buffers with random values to test zeroing out
     startSolutionExchange(mesh, sbp, eqn, opts)
     exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func_rev)
+    finishSolutionBarExchange(mesh, sbp, eqn, opts)
     testSharedDataElement_rev(mesh, sbp, eqn, opts)
 
 

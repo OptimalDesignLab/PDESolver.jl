@@ -444,7 +444,7 @@ function finishExchangeData_rev(mesh, sbp, eqn, opts,
                             populate_buffer_rev::Function) where T
 
 
-  npeers = length(shared_data)
+  npeers = length(shared_data_bar)
   val = assertSendsConsistent(shared_data_bar)
  
   for i=1:npeers
@@ -454,7 +454,7 @@ function finishExchangeData_rev(mesh, sbp, eqn, opts,
       idx = i
     end
 
-    data_idx = shared_data[idx]
+    data_idx = shared_data_bar[idx]
 
     # to support PARALLEL_DATA_FACE: add permutation function here
 
@@ -484,7 +484,7 @@ function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractSBP,
     return nothing
   end
 
-  pdata = eqn.shared_data[1].pdata  # assume all are same
+  pdata = eqn.shared_data_bar[1].pdata  # assume all are same
   if pdata == PARALLEL_DATA_FACE
     error("PARALLEL_DATA_FACE not supported")
   elseif pdata == PARALLEL_DATA_ELEMENT
@@ -683,7 +683,7 @@ end
 
 
 """
-  Reverse mode of [`getSendDataElement`](@ref).  Takes data from the receive
+  Reverse mode of [`getSendDataElement`](@ref).  Takes data from the send
   buffer of `data` and adds it to `eqn.q_bar`
 """
 function getSendDataElement_rev(mesh::AbstractMesh, sbp::AbstractSBP,
@@ -692,12 +692,12 @@ function getSendDataElement_rev(mesh::AbstractMesh, sbp::AbstractSBP,
   # copy data into send buffer
   idx = data.peeridx
   local_els = mesh.local_element_lists[idx]
-  recv_buff = data.q_recv
+  send_buff = data.q_send
   for j=1:length(local_els)
     el_j = local_els[j]
     for k=1:size(eqn.q, 2)
       for p=1:size(eqn.q, 1)
-        eqn.q_bar[p, k, j] += recv_buff[p, k, el_j]
+        eqn.q_bar[p, k, el_j] += send_buff[p, k, j]
       end
     end
   end
