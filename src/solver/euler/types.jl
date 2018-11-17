@@ -650,7 +650,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     eqn.viscous_flux_func = functorThatErrors()
 
     if opts["need_adjoint"]
-      println(eqn.params.f, "initializing adjoint fields")
       eqn.q_bar = zeros(eqn.q)
       eqn.q_face_bar = zeros(eqn.q_face)
       eqn.q_bndry_bar = zeros(eqn.q_bndry)

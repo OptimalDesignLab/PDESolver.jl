@@ -23,8 +23,6 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-  println(eqn.params.f, "entered evalResidual_revm")
-
   # Forward sweep
   time.t_dataprep += @elapsed dataPrep_for_revm(mesh, sbp, eqn, opts)
 
@@ -53,17 +51,7 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
-  println(eqn.params.f, "\nafter evalSharedFaceIntegrals_revm")
-  for i=1:mesh.npeers
-    println(eqn.params.f,  "  max nrm_sharedface_bar $i = ", maximum(abs.(mesh.nrm_sharedface_bar[i])))
-  end
-
   time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
-
-  println(eqn.params.f, "\nafter evalSourceTerm_revm")
-  for i=1:mesh.npeers
-    println(eqn.params.f,  "  max nrm_sharedface_bar $i = ", maximum(abs.(mesh.nrm_sharedface_bar[i])))
-  end
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -72,12 +60,6 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
 
   time.t_dataprep += @elapsed dataPrep_revm(mesh, sbp, eqn, opts)
-
-  println(eqn.params.f, "\nafter dataPreps_revm")
-  for i=1:mesh.npeers
-    println(eqn.params.f,  "  max nrm_sharedface_bar $i = ", maximum(abs.(mesh.nrm_sharedface_bar[i])))
-  end
-
 
   return nothing
 end  # end evalResidual

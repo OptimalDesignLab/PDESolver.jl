@@ -31,8 +31,6 @@ function test_jac_parallel_long()
 
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)
 
-    f = open("testlog_$myrank.dat", "w")
-
     # SBPGamma
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -70,9 +68,6 @@ function test_jac_parallel_long()
       opts_tmp["Flux_name"] = "IRFlux"
       opts_tmp["face_integral_type"] = 2
       opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
-#      opts_tmp["addBoundaryIntegrals"] = false # DEBUGGING
-#      opts_tmp["addVolumeIntegrals"] = false
-#      opts_tmp["addFaceIntegrals"] = false
       make_input(opts_tmp, fname2)
     end
     MPI.Barrier(MPI.COMM_WORLD)
@@ -82,8 +77,8 @@ function test_jac_parallel_long()
     opts4_tmp = copy(opts4)
     test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
     test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
-    test_revm_product(mesh4, sbp4, eqn4, opts4, f)
-    test_revq_product(mesh4, sbp4, eqn4, opts4, f)
+    test_revm_product(mesh4, sbp4, eqn4, opts4)
+    test_revq_product(mesh4, sbp4, eqn4, opts4)
 
 
     test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
@@ -91,17 +86,15 @@ function test_jac_parallel_long()
     # run test twice to make sure arrays are zeroed out correctly
     test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
-    test_revm_product(mesh5, sbp5, eqn5, opts5, f)
+    test_revm_product(mesh5, sbp5, eqn5, opts5)
 
     test_jac_parallel_inner(mesh6, sbp6, eqn6, opts6)
 
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
 
-    println(f, "\nrunning test 7")
-    test_revm_product(mesh7, sbp7, eqn7, opts7, f)
-    test_revq_product(mesh7, sbp7, eqn7, opts7, f)
-    close(f)
+    test_revm_product(mesh7, sbp7, eqn7, opts7)
+    test_revq_product(mesh7, sbp7, eqn7, opts7)
   end
 
   return nothing
@@ -306,7 +299,7 @@ end
 
 
 
-function test_revm_product(mesh, sbp, eqn, opts, f::IO)
+function test_revm_product(mesh, sbp, eqn, opts)
 
   srand(1234)  # reproducable results
 
@@ -382,19 +375,6 @@ function test_revm_product(mesh, sbp, eqn, opts, f::IO)
 
 #  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
 
-  println(f, "val = ", real(val))
-  println(f, "val2 = ", real(val2))
-  println(f, "diff = ", real(val - val2))
-  println(f, "max dxidx_bar = ", maximum(abs.(mesh.dxidx_bar)))
-  println(f, "max jac_bar = ", maximum(abs.(mesh.jac_bar)))
-  println(f, "max nrm_bndry_bar = ", maximum(abs.(mesh.nrm_bndry_bar)))
-  println(f, "max nrm_face_bar = ", maximum(abs.(mesh.nrm_face_bar)))
-  println(f, "max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
-  for i=1:mesh.npeers
-    println(f, "sum nrm_sharedface_bar ", i, " = ", sum(mesh.nrm_sharedface_bar[i]))
-    println(f, "sum(nrm_sharedface) ", i, " = ", sum(mesh.nrm_sharedface[i]))
-    println(f, "sum(q_recv) ", i, " = ", sum(eqn.shared_data[i].q_recv))
-  end
   @test abs(val - val2) < 1e-12
 
 
@@ -402,7 +382,7 @@ function test_revm_product(mesh, sbp, eqn, opts, f::IO)
 end
 
 
-function test_revq_product(mesh, sbp, eqn, opts, f::IO)
+function test_revq_product(mesh, sbp, eqn, opts)
 
   srand(1234)
   h = 1e-20
@@ -410,69 +390,22 @@ function test_revq_product(mesh, sbp, eqn, opts, f::IO)
 
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-#  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
                                      # interfaces non-zero
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
   res_vec_bar = rand_realpart(mesh.numDof)
-#  res_vec_bar = zeros(Complex128, mesh.numDof)
   q_vec_dot = rand_realpart(mesh.numDof)
-#  q_vec_dot = zeros(Complex128, mesh.numDof)
   q_vec_bar = zeros(Complex128, mesh.numDof)
-
-#  zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
-#  zeroSharedElements(mesh, sbp, eqn, opts, q_vec_dot)
-
-
-#=  
-  if mesh.myrank == 0
-    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
-    zeroSharedElements(mesh, sbp, eqn, opts, q_vec_dot)
-
-    #for el in mesh.local_element_lists[1]
-    el = 11
-      for j=1:mesh.numNodesPerElement
-        for k=1:mesh.numDofPerNode
-          res_vec_bar[mesh.dofs[k, j, el]] = j + k
-          q_vec_dot[mesh.dofs[k, j, el]] = j + k
-        end
-      end
-#    end
-  end
-
-
-  if mesh.myrank == 1
-    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
-  end
-
-  if mesh.myrank == 2
-    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
-  end
-
-  if mesh.myrank == 3
-    
-    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
-    zeroSharedElements(mesh, sbp, eqn, opts, q_vec_dot)
-
-
-    #for j=1:mesh.numNodesPerElement
-    #  for k=1:mesh.numDofPerNode
-    #    res_vec_bar[mesh.dofs[k, j, 2]] = j + k + mesh.myrank
-    #    q_vec_dot[mesh.dofs[k, j, 2]] = j + k + mesh.myrank
-    #  end
-    #end
-    
-  end
-=#  
 
   fill!(eqn.res, 0)
   eqn.q_vec .+= pert*q_vec_dot
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   if opts["parallel_type"] != 1
-    println(f, "starting solution exchange")
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
@@ -489,9 +422,6 @@ function test_revq_product(mesh, sbp, eqn, opts, f::IO)
   val2 = sum(q_vec_bar .* q_vec_dot)
   val2 = MPI.Allreduce(val2, MPI.SUM, mesh.comm)
 
-  println(f, "val = ", val)
-  println(f, "val2 = ", val2)
-  println(f, "diff = ", abs(val - val2))
   @test abs(val - val2) < 1e-12
 
   return nothing

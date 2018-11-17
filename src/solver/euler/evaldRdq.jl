@@ -9,21 +9,16 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-  println(eqn.params.f, "on entry, sum(eqn.q_bar) = ", sum(eqn.q_bar))
   # parallel data exchange must be started before this function is called
 
 
   # Forward sweep
   time.t_dataprep += @elapsed dataPrep_for_revq(mesh, sbp, eqn, opts)
 
-  println(eqn.params.f, "after dataPrep, sum(eqn.q_bar) = ", sum(eqn.q_bar))
-
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  println(eqn.params.f, "after volume integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
- 
   if opts["use_GLS"]
     error("GLS not supported for revq product")
   end
@@ -32,15 +27,11 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalBoundaryIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  println(eqn.params.f, "after boundary integral, sum(eqn.q_bar) = ", sum(eqn.q_bar))
-
   # do this here as a compromise: give some time for communication of q
   # to finish, but still leave some time for q_bar to finish afterwards
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
   end
-
-  println(eqn.params.f, "after shared face integral, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   # time.t_stab += @elapsed if opts["addStabilization"]
   #   addStabilization(mesh, sbp, eqn, opts)
@@ -50,11 +41,7 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  println(eqn.params.f, "after face integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
-
   time.t_source += @elapsed evalSourceTerm_revq(mesh, sbp, eqn, opts)
-
-  println(eqn.params.f, "after source term, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -66,12 +53,9 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   time.t_dataprep += @elapsed dataPrep_revq(mesh, sbp, eqn, opts)
 
   # finish the paralell communication of q_bar
-  println(eqn.params.f, "before finishing shared face integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
   time.t_sharedface += @elapsed if mesh.commsize > 1
-    println(eqn.params.f, "finishing solutionBar exchange")
     finishSolutionBarExchange(mesh, sbp, eqn, opts)
   end
-  println(eqn.params.f, "after finishing shared face integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   return nothing
 
@@ -240,8 +224,6 @@ function evalSharedFaceIntegrals_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
     error("""parallel data setting must be "element" """)
   end
-
-  println(eqn.params.f, "evaluating shared face integrals revq")
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1

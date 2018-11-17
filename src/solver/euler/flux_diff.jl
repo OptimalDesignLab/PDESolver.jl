@@ -925,7 +925,6 @@ function calcSharedFaceElementIntegrals_element_inner_revq(
   params = eqn.params
   # we don't care about elementR here, so use this throwaway array
   resR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-#  qL_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement) #DEBUGGING
 
   # get the data for the parallel interface
   idx = data.peeridx
@@ -935,13 +934,7 @@ function calcSharedFaceElementIntegrals_element_inner_revq(
   qR_arr_bar = data_q_bar.q_recv
   nrm_face_arr = mesh.nrm_sharedface[idx]
 
-  @assert size(qR_arr) == size(qR_arr_bar)
-
-  writedlm("qR$(data.peernum)_$(mesh.myrank)_revm.dat", real(qR_arr))
   start_elnum = mesh.shared_element_offsets[idx]
-
-  #TODO: temporarily disable parallel communication
-  #qR_arr_bar = zeros(Tres, size(qR_arr_bar))
 
   # compute the integrals
   for j=1:length(interfaces)
@@ -954,26 +947,10 @@ function calcSharedFaceElementIntegrals_element_inner_revq(
     nrm_face = ro_sview(nrm_face_arr, :, :, j)
     resL_bar = ro_sview(eqn.res_bar, :, :, elL)
 
-
-    #=
-    for k=1:mesh.numNodesPerElement
-      for p=1:mesh.numDofPerNode
-        qL_bar[p, k] += resL_bar[p, k]
-        qR_bar[p, k] += resL_bar[p, k]
-      end
-    end
-    =#
-
-
-
     calcFaceElementIntegral_revq(face_integral_functor, params, mesh.sbpface,
                             iface_j, qL, qL_bar, qR,  qR_bar, aux_vars,
                             nrm_face, flux_functor_revq, resL_bar, resR_bar)
   end  # end loop j
-
-  println(eqn.params.f, "finished populating buffer to be send to $(data_q_bar.peernum), sum(q_recv) = ", sum(qR_arr_bar))
-  #TODO: make really sure the bar part is zero
-  #fill!(data_q_bar.q_recv, 0)
 
   return nothing
 end

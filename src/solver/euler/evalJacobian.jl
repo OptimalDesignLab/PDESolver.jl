@@ -325,7 +325,6 @@ end
 function evalSharedFaceIntegrals_diff(mesh::AbstractDGMesh, sbp, eqn, opts,
                                       assembler::AssembleElementData)
 
-#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   eqn.assembler = assembler  # stash this here to get retrieved later
   if face_integral_type == 1
