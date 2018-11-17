@@ -5,38 +5,24 @@ import PDESolver.evalResidual_revq
 function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
                      opts::Dict, t::Number=0.0)
 
-  @assert mesh.commsize == 1
-
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-  # TODO: Is this needed??
-  # time.t_send += @elapsed if opts["parallel_type"] == 1
-  #   println(eqn.params.f, "starting data exchange")
-  #   #TODO: update this to use new parallel primatives
-  #   startDataExchange(mesh, opts, eqn.res_bar,  eqn.q_face_send, eqn.q_face_recv, eqn.params.f)
-  # end
+  println(eqn.params.f, "on entry, sum(eqn.q_bar) = ", sum(eqn.q_bar))
+  # parallel data exchange must be started before this function is called
 
-  println("initially:")
-  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
-  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
-  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
-
-  # !!!! MAKE SURE TO DO DATA EXCHANGE BEFORE !!!!
 
   # Forward sweep
   time.t_dataprep += @elapsed dataPrep_for_revq(mesh, sbp, eqn, opts)
 
+  println(eqn.params.f, "after dataPrep, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_revq(mesh, sbp, eqn, opts)
   end
-  println("after volume integrals:")
-  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
-  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
-  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
 
+  println(eqn.params.f, "after volume integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
  
   if opts["use_GLS"]
     error("GLS not supported for revq product")
@@ -46,11 +32,15 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalBoundaryIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  println("after boundary integrals:")
-  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
-  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
-  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
+  println(eqn.params.f, "after boundary integral, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
+  # do this here as a compromise: give some time for communication of q
+  # to finish, but still leave some time for q_bar to finish afterwards
+  time.t_sharedface += @elapsed if mesh.commsize > 1
+    evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
+  end
+
+  println(eqn.params.f, "after shared face integral, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   # time.t_stab += @elapsed if opts["addStabilization"]
   #   addStabilization(mesh, sbp, eqn, opts)
@@ -60,18 +50,11 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalFaceIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  println("after face integrals:")
-  println("  max imag(q) = ", maximum(abs.(imag(eqn.q))))
-  println("  max imag(res_bar) = ", maximum(abs.(imag(eqn.res_bar))))
-  println("  max imag(q_bar) = ", maximum(abs.(imag(eqn.q_bar))))
-
- 
-  time.t_sharedface += @elapsed if mesh.commsize > 1
-    evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
-  end
+  println(eqn.params.f, "after face integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   time.t_source += @elapsed evalSourceTerm_revq(mesh, sbp, eqn, opts)
 
+  println(eqn.params.f, "after source term, sum(eqn.q_bar) = ", sum(eqn.q_bar))
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
@@ -82,7 +65,16 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_dataprep += @elapsed dataPrep_revq(mesh, sbp, eqn, opts)
 
+  # finish the paralell communication of q_bar
+  println(eqn.params.f, "before finishing shared face integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
+  time.t_sharedface += @elapsed if mesh.commsize > 1
+    println(eqn.params.f, "finishing solutionBar exchange")
+    finishSolutionBarExchange(mesh, sbp, eqn, opts)
+  end
+  println(eqn.params.f, "after finishing shared face integrals, sum(eqn.q_bar) = ", sum(eqn.q_bar))
+
   return nothing
+
 end  # end evalResidual
 
 
@@ -124,11 +116,7 @@ function dataPrep_for_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
 end
 
 
-
-
-
-@doc """
-### EulerEquationMod.dataPrep_revq
+"""
 
 Reverse mode of dataPrep w.r.t mesh metrics
 
@@ -137,7 +125,7 @@ Reverse mode of dataPrep w.r.t mesh metrics
 * eqn   : an EulerData object
 * opts  : options dictionary
 
-"""->
+"""
 function dataPrep_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
                    eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
@@ -146,8 +134,8 @@ function dataPrep_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-@doc """
-### EulerEquationMod.evalVolumeIntegrals_revq
+
+"""
 
 Reverse mode of evalVolumeIntegrals with respect to the mesh metrics ∂ξ/∂x
 
@@ -158,7 +146,7 @@ Reverse mode of evalVolumeIntegrals with respect to the mesh metrics ∂ξ/∂x
 * eqn   : an EulerData object
 * opts  : options dictionary
 
-"""->
+"""
 function evalVolumeIntegrals_revq(mesh::AbstractMesh{Tmsh},
                              sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
 
@@ -179,7 +167,7 @@ function evalVolumeIntegrals_revq(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end evalVolumeIntegrals
 
-@doc """
+"""
 ### EulerEquationMod.evalBoundaryIntegrals_revq
 
 Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂x
@@ -191,8 +179,7 @@ Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂
 * eqn   : an EulerData object
 * opts  : options dictionary
 
-"""->
-
+"""
 function evalBoundaryIntegrals_revq(mesh::AbstractMesh{Tmsh},
                                sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -202,8 +189,8 @@ function evalBoundaryIntegrals_revq(mesh::AbstractMesh{Tmsh},
 
 end  # end evalBoundaryIntegrals
 
-@doc """
-### EulerEquationMod.evalFaceIntegrals_revq
+
+"""
 
 Reverse mode of evalFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
 
@@ -214,7 +201,7 @@ Reverse mode of evalFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
 * eqn   : an EulerData object
 * opts  : options dictionary
 
-"""->
+"""
 function evalFaceIntegrals_revq(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
@@ -238,7 +225,45 @@ end
 
 
 """
-### EulerEquationMod.evalSourceTerm_revq
+
+  Reverse mode evalSharedFaceIntegrals with respect to q
+
+"""
+function evalSharedFaceIntegrals_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+  if mesh.npeers == 0
+    return nothing
+  end
+
+  if getParallelData(eqn.shared_data) != "element" ||
+     getParallelData(eqn.shared_data_bar) != "element"
+
+    error("""parallel data setting must be "element" """)
+  end
+
+  println(eqn.params.f, "evaluating shared face integrals revq")
+
+  face_integral_type = opts["face_integral_type"]
+  if face_integral_type == 1
+
+    exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar,
+                     calcSharedFaceIntegrals_element_revq)
+
+  elseif face_integral_type == 2
+    
+    exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar,
+                     calcSharedFaceElementIntegrals_element_revq)
+  else
+    throw(ErrorException("unsupported face integral type = $face_integral_type"))
+  end
+
+  return nothing
+end
+
+
+
+
+"""
 
 Reverse mode of evalSourceTerm w.r.t mesh metrics.
 

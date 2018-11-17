@@ -684,6 +684,23 @@ end
 
 
 """
+  Returns the string describing the parallel data setting of the object
+
+  **Inputs**
+
+   * shared_data: a [`SharedFaceData`](@ref) object
+
+  **Outputs**
+
+   * string
+"""
+function getParallelData(shared_data::SharedFaceData)
+
+  return getParallelDataString(shared_data.pdata)
+end
+
+
+"""
   Sets a new MPI tag for the vector of [`SharedFaceData`](@ref) objects.
 
   **Inputs**

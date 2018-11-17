@@ -70,6 +70,9 @@ function test_jac_parallel_long()
       opts_tmp["Flux_name"] = "IRFlux"
       opts_tmp["face_integral_type"] = 2
       opts_tmp["FaceElementIntegral_name"] = "ESLFFaceIntegral"
+#      opts_tmp["addBoundaryIntegrals"] = false # DEBUGGING
+#      opts_tmp["addVolumeIntegrals"] = false
+#      opts_tmp["addFaceIntegrals"] = false
       make_input(opts_tmp, fname2)
     end
     MPI.Barrier(MPI.COMM_WORLD)
@@ -80,9 +83,10 @@ function test_jac_parallel_long()
     test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
     test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
     test_revm_product(mesh4, sbp4, eqn4, opts4, f)
+    test_revq_product(mesh4, sbp4, eqn4, opts4, f)
 
 
-#    test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
+    test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
     # run test twice to make sure arrays are zeroed out correctly
     test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
@@ -96,6 +100,7 @@ function test_jac_parallel_long()
 
     println(f, "\nrunning test 7")
     test_revm_product(mesh7, sbp7, eqn7, opts7, f)
+    test_revq_product(mesh7, sbp7, eqn7, opts7, f)
     close(f)
   end
 
@@ -282,6 +287,25 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 end
 
 
+#DEBUGGING
+function zeroSharedElements(mesh, sbp, eqn, opts, qvec)
+
+  for i=1:mesh.npeers
+    for el in mesh.local_element_lists[i]
+      for j=1:mesh.numNodesPerElement
+        for k=1:mesh.numDofPerNode
+          qvec[mesh.dofs[k, j, el]] = 0
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+
+
+
 function test_revm_product(mesh, sbp, eqn, opts, f::IO)
 
   srand(1234)  # reproducable results
@@ -373,6 +397,102 @@ function test_revm_product(mesh, sbp, eqn, opts, f::IO)
   end
   @test abs(val - val2) < 1e-12
 
+
+  return nothing
+end
+
+
+function test_revq_product(mesh, sbp, eqn, opts, f::IO)
+
+  srand(1234)
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+#  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
+                                     # interfaces non-zero
+
+  # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
+
+  res_vec_bar = rand_realpart(mesh.numDof)
+#  res_vec_bar = zeros(Complex128, mesh.numDof)
+  q_vec_dot = rand_realpart(mesh.numDof)
+#  q_vec_dot = zeros(Complex128, mesh.numDof)
+  q_vec_bar = zeros(Complex128, mesh.numDof)
+
+#  zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
+#  zeroSharedElements(mesh, sbp, eqn, opts, q_vec_dot)
+
+
+#=  
+  if mesh.myrank == 0
+    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
+    zeroSharedElements(mesh, sbp, eqn, opts, q_vec_dot)
+
+    #for el in mesh.local_element_lists[1]
+    el = 11
+      for j=1:mesh.numNodesPerElement
+        for k=1:mesh.numDofPerNode
+          res_vec_bar[mesh.dofs[k, j, el]] = j + k
+          q_vec_dot[mesh.dofs[k, j, el]] = j + k
+        end
+      end
+#    end
+  end
+
+
+  if mesh.myrank == 1
+    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
+  end
+
+  if mesh.myrank == 2
+    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
+  end
+
+  if mesh.myrank == 3
+    
+    zeroSharedElements(mesh, sbp, eqn, opts, res_vec_bar)
+    zeroSharedElements(mesh, sbp, eqn, opts, q_vec_dot)
+
+
+    #for j=1:mesh.numNodesPerElement
+    #  for k=1:mesh.numDofPerNode
+    #    res_vec_bar[mesh.dofs[k, j, 2]] = j + k + mesh.myrank
+    #    q_vec_dot[mesh.dofs[k, j, 2]] = j + k + mesh.myrank
+    #  end
+    #end
+    
+  end
+=#  
+
+  fill!(eqn.res, 0)
+  eqn.q_vec .+= pert*q_vec_dot
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  if opts["parallel_type"] != 1
+    println(f, "starting solution exchange")
+    startSolutionExchange(mesh, sbp, eqn, opts)
+  end
+
+  evalResidual(mesh, sbp, eqn, opts)
+  eqn.q_vec .-= pert*q_vec_dot
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val = sum(res_vec_bar .* imag(eqn.res_vec)/h)
+  val = MPI.Allreduce(val, MPI.SUM, mesh.comm)
+
+
+  evalResidual_revq(mesh, sbp, eqn, opts, res_vec_bar, q_vec_bar)
+  val2 = sum(q_vec_bar .* q_vec_dot)
+  val2 = MPI.Allreduce(val2, MPI.SUM, mesh.comm)
+
+  println(f, "val = ", val)
+  println(f, "val2 = ", val2)
+  println(f, "diff = ", abs(val - val2))
+  @test abs(val - val2) < 1e-12
 
   return nothing
 end

@@ -373,19 +373,17 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
                      zero_output=true, start_comm=true)
 
 
-  @assert mesh.commsize == 1
-
   fill!(eqn.q_bar, 0)
   array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
+
   # do parallel communication
   eqn.params.time.t_send += @elapsed if eqn.commsize > 1
-    setParallelData(eqn.shared_data_res_bar, "element")
     if start_comm || getParallelData(eqn.shared_data) != "element"
       array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
       setParallelData(eqn.shared_data, "element")
+      startSolutionExchange(mesh, sbp, eqn, opts)
     end
 
-    startSolutionExchange_rev(mesh, sbp, eqn, opts, send_q=start_comm)
   end
 
 
@@ -399,7 +397,7 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
     if start_comm 
       assertReceivesWaited(eqn.shared_data)
     end
-    assertReceivesWaited(eqn.shared_data_res_bar)
+    assertSendsWaited(eqn.shared_data_bar)
   end
 
 

@@ -46,7 +46,7 @@ function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
-
+#=
 """
   Similar to [`startSolutionExchange`](@ref), this function starts
   communciation of the solution `eqn.res_bar` and possibly `eqn.q`.
@@ -99,7 +99,7 @@ function startSolutionExchange_rev(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
-
+=#
 
 
 """
@@ -302,6 +302,7 @@ function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
     tag = data_bar_i.tag
 
     if data_i.pdata == PARALLEL_DATA_FACE && val == 0
+      println(eqn.params.f, "permuting received data")
       # permute the received nodes to be in the elementR orientation
       permuteinterface!(mesh.sbpface, data_i.interfaces, data_i.q_recv)
     end
@@ -689,10 +690,13 @@ end
 function getSendDataElement_rev(mesh::AbstractMesh, sbp::AbstractSBP,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
+  println(eqn.params.f, "unpacking buffer from $(data.peernum), sum(q_send) = ", sum(data.q_send))
+
   # copy data into send buffer
   idx = data.peeridx
   local_els = mesh.local_element_lists[idx]
   send_buff = data.q_send
+  println(eqn.params.f, "local element numbers = ", local_els)
   for j=1:length(local_els)
     el_j = local_els[j]
     for k=1:size(eqn.q, 2)

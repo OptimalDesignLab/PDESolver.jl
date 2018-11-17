@@ -1243,7 +1243,7 @@ function (obj::Rho1E2U3BC_revq)(params::ParamType,
   @unpack data qg qg_bar
   fill!(qg_bar, 0)
 
-  calcRho1E2U3BC(params, coords, qg)
+  calcRho1Energy2U3(params, coords, qg)
   RoeSolver_revq(params, q, q_bar,  qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
 
   return nothing

@@ -73,7 +73,8 @@ export startSolutionExchange, startSolutionExchange_rev, exchangeData,
        exchangeData_rev,
        finishExchangeData, finishExchangeData_rev, finishSolutionBarExchange,
        @mpi_master, @time_all, print_time_all, verifyReceiveCommunication,
-       MPITagManager, getNextTag, markTagUsed, freeTag, assertReceivesWaited
+       MPITagManager, getNextTag, markTagUsed, freeTag, assertReceivesWaited,
+       assertSendsWaited
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,

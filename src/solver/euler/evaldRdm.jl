@@ -233,7 +233,6 @@ function evalFaceIntegrals_revm(mesh::AbstractDGMesh{Tmsh},
 end
 
 @doc """
-### EulerEquationMod.evalSharedFaceIntegrals_revm
 
 Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics
 
@@ -241,19 +240,12 @@ Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics
 
 function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  # only element parallel is supported (for both q and res_bar
-  if getParallelData(eqn.shared_data) != getParallelData(eqn.shared_data_res_bar)
-    error("parallel data setting of eqn.shared_data and eqn.shared_data_res_bar must be the same")
-  end
-
   if getParallelData(eqn.shared_data) != "element"
     error("""parallel data setting must be "element" """)
   end
 
 
-  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
-  println(eqn.params.f, "face integral type = ", face_integral_type)
   if face_integral_type == 1
 
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element_revm)

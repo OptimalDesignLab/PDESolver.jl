@@ -139,6 +139,7 @@ function getFaceElementIntegral(
 
   params = eqn.params
   nfaces = length(interfaces)
+ 
   for i=1:nfaces
     iface = interfaces[i]
     elL = iface.elementL
@@ -154,7 +155,7 @@ function getFaceElementIntegral(
                             qR, aux_vars, nrm_face, flux_functor, resL, resR)
 
   end
-
+  
   return nothing
 end
 
@@ -265,7 +266,7 @@ function calcSharedFaceIntegrals_nopre_inner(
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if opts["parallel_data"] != "face"
+  if getParallelData(data) != "face"
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end
 
@@ -445,7 +446,7 @@ function calcSharedFaceElementIntegrals_element_inner(
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if opts["parallel_data"] != "element"
+  if getParallelData(data) != "element"
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -463,8 +464,10 @@ function calcSharedFaceElementIntegrals_element_inner(
   qR_arr = data.q_recv
   nrm_face_arr = mesh.nrm_sharedface[idx]
 
-  start_elnum = mesh.shared_element_offsets[idx]
+  writedlm("qR$(data.peernum)_$(mesh.myrank)_primal.dat", real(qR_arr))
 
+  start_elnum = mesh.shared_element_offsets[idx]
+  #TODO debugging
   # compute the integrals
   for j=1:length(interfaces)
     iface_j = interfaces[j]
@@ -475,6 +478,14 @@ function calcSharedFaceElementIntegrals_element_inner(
     aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
     nrm_face = ro_sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
+
+    #=
+    for k=1:mesh.numNodesPerElement
+      for p=1:mesh.numDofPerNode
+        resL[p, k] += qL[p, k] + qR[p, k]
+      end
+    end
+    =#
 
     calcFaceElementIntegral(face_integral_functor, eqn.params, mesh.sbpface,
                             iface_j, qL, qR, aux_vars,
@@ -516,7 +527,7 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if opts["parallel_data"] != "element"
+  if getParallelData(data) != "element"
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
