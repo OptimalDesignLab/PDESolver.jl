@@ -403,13 +403,6 @@ function test_revq_product(mesh, sbp, eqn, opts)
   q_vec_dot = rand_realpart(mesh.numDof)
   q_vec_bar = zeros(Complex128, mesh.numDof)
 
-#=
-  if !(mesh.myrank == 0)
-    fill!(res_vec_bar, 0)
-    fill!(q_vec_dot, 0)
-  end
-=#
-
   fill!(eqn.res, 0)
   eqn.q_vec .+= pert*q_vec_dot
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
@@ -428,6 +421,20 @@ function test_revq_product(mesh, sbp, eqn, opts)
 
 
   evalResidual_revq(mesh, sbp, eqn, opts, res_vec_bar, q_vec_bar)
+  val2 = sum(q_vec_bar .* q_vec_dot)
+  val2 = MPI.Allreduce(val2, MPI.SUM, mesh.comm)
+
+  @test abs(val - val2) < 1e-12
+
+  # test accumulation
+  q_vec_bar_orig = copy(q_vec_bar)
+  evalResidual_revq(mesh, sbp, eqn, opts, res_vec_bar, q_vec_bar, zero_output=false)
+
+  @test maximum(abs.(2.*q_vec_bar_orig - q_vec_bar)) < 1e-13
+
+  # test start_comm = false
+  fill!(q_vec_bar, 0)
+  evalResidual_revq(mesh, sbp, eqn, opts, res_vec_bar, q_vec_bar, start_comm=false)
   val2 = sum(q_vec_bar .* q_vec_dot)
   val2 = MPI.Allreduce(val2, MPI.SUM, mesh.comm)
 

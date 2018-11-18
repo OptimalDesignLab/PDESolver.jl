@@ -122,11 +122,14 @@ function finishExchangeData_rev2(mesh, sbp, eqn, opts,
   npeers = length(shared_data)
   @assert npeers == length(shared_data_bar)
   val = assertReceivesConsistent(shared_data)
-  val_bar = assertReceivesConsistent(shared_data)
+  val_bar = assertReceivesConsistent(shared_data_bar)
+
+  println(eqn.params.f, "entered finishExchangeData_rev2")
+  println(eqn.params.f, "val = ", val, ", val_bar = ", val_bar)
 
   for i=1:npeers
 
-    #TODO: there is a slightly better algorithm for waiting on two sets os
+    #TODO: there is a slightly better algorithm for waiting on two sets of
     #      Requestions: Waitany on the first, check if the corresponding
     #      entry in the second set has finished.  If not, Waitany on the 
     #      second set.  Continue ping-ponging back and forth unitil a matched
