@@ -113,9 +113,17 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
   if typeof(mesh.sbpface) <: DenseFace
     @assert opts["parallel_data"] == "element"
 
-    # local part
     face_integral_functor = functionalData.func
     flux_functor = ErrorFlux()  # not used, but required by the interface
+
+    # parallel part
+    if mesh.commsize > 1
+      setParallelData(eqn.shared_data_bar, "element")
+      #TODO: finish this
+    end
+
+
+    # local part
     getFaceElementIntegral_revm(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
  
     #TODO: parallel part

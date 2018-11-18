@@ -61,7 +61,7 @@ function test_parallel2_comm()
     testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
 
 
-    # test finishExchangeData_rev
+    # test finishExchangeData_rev2
 
     fill!(eqn.q_bar, 0)
     for i=1:mesh.npeers
@@ -74,7 +74,7 @@ function test_parallel2_comm()
     testSharedDataElement_rev(mesh, sbp, eqn, opts)
 
 
-    #=
+    
     calc_func2 = (mesh, sbp, eqn, opts, data, data2) -> return nothing
     setParallelData(shared_data, "face")
     setParallelData(shared_data_bar, "face")
@@ -86,10 +86,11 @@ function test_parallel2_comm()
     populate_buffer = Utils.getSendDataFace
     populate_buffer_rev = Utils.getSendDataFace_resbar
 
+    #TODO: repalce with startSolutionExchange_rev2
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
     exchangeData(mesh, sbp, eqn, opts, shared_data_bar, populate_buffer_rev)
 
-    finishExchangeData_rev(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
+    finishExchangeData_rev2(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
                            calc_func2)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
@@ -105,18 +106,19 @@ function test_parallel2_comm()
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
     exchangeData(mesh, sbp, eqn, opts, shared_data_bar, populate_buffer_rev)
 
-    finishExchangeData_rev(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
+    finishExchangeData_rev2(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
                            calc_func2)
 
     testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
 
-=#
+
 
   end  # end facts block
 
   return nothing
 end
+
 
 function calc_func_rev(mesh, sbp, eqn, opts, data::SharedFaceData, data_bar::SharedFaceData)
 
@@ -155,8 +157,6 @@ function testSharedDataElement_rev(mesh, sbp, eqn, opts)
     end
   end
 
-  println(eqn.params.f, "sum(q_bar) = ", sum(eqn.q_bar))
-  println(eqn.params.f, "sum(q_bar2) = ", sum(q_bar2))
   @test maximum(abs.(q_bar2 - eqn.q_bar)) < 1e-13
 
   return nothing

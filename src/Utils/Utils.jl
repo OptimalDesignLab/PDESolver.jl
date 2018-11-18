@@ -69,9 +69,11 @@ export SharedFaceData, getSharedFaceData, setParallelData, getParallelData,
        setNewTag
 
 # parallel.jl
-export startSolutionExchange, startSolutionExchange_rev, exchangeData,
+export startSolutionExchange, startSolutionExchange_rev,
+       startSolutionExchange_rev2, exchangeData,
        exchangeData_rev,
-       finishExchangeData, finishExchangeData_rev, finishSolutionBarExchange,
+       finishExchangeData, finishExchangeData_rev, finishExchangeData_rev2,
+       finishSolutionBarExchange,
        @mpi_master, @time_all, print_time_all, verifyReceiveCommunication,
        MPITagManager, getNextTag, markTagUsed, freeTag, assertReceivesWaited,
        assertSendsWaited
