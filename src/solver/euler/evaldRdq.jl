@@ -10,6 +10,7 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   myrank = mesh.myrank
 
   # parallel data exchange must be started before this function is called
+  # (both q and res_bar)
 
 
   # Forward sweep
@@ -27,12 +28,6 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     evalBoundaryIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  # do this here as a compromise: give some time for communication of q
-  # to finish, but still leave some time for q_bar to finish afterwards
-  time.t_sharedface += @elapsed if mesh.commsize > 1
-    evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
-  end
-
   # time.t_stab += @elapsed if opts["addStabilization"]
   #   addStabilization(mesh, sbp, eqn, opts)
   # end
@@ -43,19 +38,17 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_source += @elapsed evalSourceTerm_revq(mesh, sbp, eqn, opts)
 
+  time.t_sharedface += @elapsed if mesh.commsize > 1
+    evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
+  end
+
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
     error("use_Minv not supported for revq product")
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
-
   time.t_dataprep += @elapsed dataPrep_revq(mesh, sbp, eqn, opts)
-
-  # finish the paralell communication of q_bar
-  time.t_sharedface += @elapsed if mesh.commsize > 1
-    finishSolutionBarExchange(mesh, sbp, eqn, opts)
-  end
 
   return nothing
 
@@ -210,7 +203,10 @@ end
 
 """
 
-  Reverse mode evalSharedFaceIntegrals with respect to q
+  Reverse mode evalSharedFaceIntegrals with respect to q.  Note that this
+  uses the parallel approach of [`finishExchangeData_rev2`](@ref), so the
+  functions called here are not precisely the reverse mode of the primal
+  functions.
 
 """
 function evalSharedFaceIntegrals_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
@@ -227,14 +223,11 @@ function evalSharedFaceIntegrals_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
-
-    exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar,
-                     calcSharedFaceIntegrals_element_revq)
-
+    finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data,
+                      eqn.shared_data_bar, calcSharedFaceIntegrals_element_revq)
   elseif face_integral_type == 2
-    
-    exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar,
-                     calcSharedFaceElementIntegrals_element_revq)
+    finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data,
+                      eqn.shared_data_bar, calcSharedFaceElementIntegrals_element_revq)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end

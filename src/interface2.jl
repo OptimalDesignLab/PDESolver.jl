@@ -308,14 +308,11 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
 
   array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
   # do parallel communication
-  eqn.params.time.t_send += @elapsed if eqn.commsize > 1
-#    setParallelData(eqn.shared_data_res_bar, "element")
-    if start_comm || getSharedData(eqn.shared_data) != "element"
-      array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-      setParallelData(eqn.shared_data, "element")
-      startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-    end
-
+  start_comm_q = start_comm || getSharedData(eqn.shared_data) != "element"
+  eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+    setParallelData(eqn.shared_data, "element")
+    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 
 
@@ -325,10 +322,9 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # verify evalResidual_revm finished communication
   if eqn.commsize > 1
-    if start_comm || getSharedData(eqn.shared_data) != "element"
+    if start_comm_q
       assertReceivesWaited(eqn.shared_data)
     end
-    #assertReceivesWaited(eqn.shared_data_res_bar)
   end
 
   return nothing
@@ -364,7 +360,9 @@ end
 
    * zero_output: is true, overwrite the output array, if false, sum into it,
                   default true
-   * start_comm: see [`evalResidual_revm`](@ref)
+   * start_comm: see [`evalResidual_revm`](@ref).  Parallel communication
+                 is always started for `eqn.res_bar` (because the `input_array`
+                  needs to be scattered).
 """
 function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
                      eqn::AbstractSolutionData,
@@ -373,20 +371,19 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
                      zero_output=true, start_comm=true)
 
 
-  fill!(eqn.q_bar, 0)
-  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
-
-  # do parallel communication
-  eqn.params.time.t_send += @elapsed if eqn.commsize > 1
-    if start_comm || getParallelData(eqn.shared_data) != "element"
-      array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-      setParallelData(eqn.shared_data, "element")
-      startSolutionExchange(mesh, sbp, eqn, opts)
-    end
-
+  # start parallel communication
+  start_comm_q = start_comm || getParallelData(eqn.shared_data) != "element"
+  if start_comm_q
+    setParallelData(eqn.shared_data, "element")
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   end
 
+  fill!(eqn.q_bar, 0)
+  array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
+  setParallelData(eqn.shared_data_bar, "element")
+  startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=start_comm_q)
 
+  # do reverse mode calculation
   evalResidual_revq(mesh, sbp, eqn, opts, t)
 
   # accumulate into output array
@@ -394,10 +391,10 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # verify evalResidual_revq finished communication
   if eqn.commsize > 1
-    if start_comm 
+    if start_comm_q
       assertReceivesWaited(eqn.shared_data)
     end
-    assertSendsWaited(eqn.shared_data_bar)
+    assertReceivesWaited(eqn.shared_data_bar)
   end
 
 

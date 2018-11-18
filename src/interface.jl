@@ -398,9 +398,9 @@ end
   to true in the options dictionary used to create them.
 
   This function must finish parallel communication for `eqn.shared_data` and
-  `eqn.shared_data_res_bar` by calling either [`finishExchangeData`](@ref) or
+  `eqn.shared_data_bar` by calling either [`finishExchangeData`](@ref) or
   [`finishExchangeData_rev`](@ref).  The parallel data setting of
-  `eqn.shared_data` and `eqn.shared_data_res_bar` are always the same, and
+  `eqn.shared_data` and `eqn.shared_data_bar` are always the same, and
   (currently) always equal to "element".
 
   **Inputs**
@@ -415,8 +415,7 @@ end
   See the other method of this function if the seed vector is in 1D form.
 """
 function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
-                           eqn::AbstractSolutionData, opts::Dict, t=0.0
-                          )
+                           eqn::AbstractSolutionData, opts::Dict, t=0.0)
 
   error("Generic fallback for evalResidual_revm: did you forget to extend evalResidual_revm with a new method for your AbstractSolutionData")
 
@@ -433,9 +432,15 @@ end
   to true in the options dictionary used to create them.
 
   This function must finish parallel communication for `eqn.shared_data` and
-  `eqn.shared_data_res_bar` by calling either [`finishExchangeData`](@ref) or
-  [`finishExchangeData_rev`](@ref).  The parallel data setting of
-  `eqn.shared_data` and `eqn.shared_data_res_bar` are always the same.
+  `eqn.shared_data_bar` by calling [`finishExchangeData_rev2`](@ref).
+  The parallel data setting of`eqn.shared_data` and `eqn.shared_data_bar` are
+  always the same.
+
+  In this function `eqn.shared_data_bar` contains the part of `res_bar`
+  that is sent in parallel, not `q_bar`.  This allows each process to compute
+  the *local* contribution to `eqn.q_bar`, and makes hte parallel communication
+  more efficient.  This function should call [`finishExchangeData_rev2`](@ref)
+  to finish the parallel comunication.
 
 
   **Inputs**
@@ -449,8 +454,7 @@ end
 
 """
 function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
-                           eqn::AbstractSolutionData, opts::Dict, t=0.0
-                          )
+                           eqn::AbstractSolutionData, opts::Dict, t=0.0)
 
 
   error("Generic fallback for evalResidual_revq: did you forget to extend evalResidual_revq with a new method for your AbstractSolutionData")

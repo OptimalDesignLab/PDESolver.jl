@@ -428,7 +428,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
   shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI send and receive buffers
-  shared_data_bar::Array{SharedFaceData{Tres}, 1} # adjoint part (for eqn.q_bar)
+  shared_data_bar::Array{SharedFaceData{Tres}, 1} # adjoint part (for eqn.q_bar
+                                                  # or eqn.res_bar)
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
   res::Array{Tres, 3}             # result of computation

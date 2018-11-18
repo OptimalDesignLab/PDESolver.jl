@@ -30,7 +30,7 @@ function test_jac_parallel_long()
     fname2 = "input_vals_jac_tmp.jl"
 
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-
+    
     # SBPGamma
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -79,8 +79,8 @@ function test_jac_parallel_long()
     test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
     test_revm_product(mesh4, sbp4, eqn4, opts4)
     test_revq_product(mesh4, sbp4, eqn4, opts4)
-
-
+  
+    
     test_jac_parallel_inner(mesh5, sbp5, eqn5, opts5)
 
     # run test twice to make sure arrays are zeroed out correctly
@@ -94,7 +94,9 @@ function test_jac_parallel_long()
     test_jac_parallel_inner(mesh7, sbp7, eqn7, opts7)
 
     test_revm_product(mesh7, sbp7, eqn7, opts7)
+    
     test_revq_product(mesh7, sbp7, eqn7, opts7)
+    
   end
 
   return nothing
@@ -400,6 +402,13 @@ function test_revq_product(mesh, sbp, eqn, opts)
   res_vec_bar = rand_realpart(mesh.numDof)
   q_vec_dot = rand_realpart(mesh.numDof)
   q_vec_bar = zeros(Complex128, mesh.numDof)
+
+#=
+  if !(mesh.myrank == 0)
+    fill!(res_vec_bar, 0)
+    fill!(q_vec_dot, 0)
+  end
+=#
 
   fill!(eqn.res, 0)
   eqn.q_vec .+= pert*q_vec_dot
