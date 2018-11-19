@@ -12,9 +12,9 @@ import PDESolver._evalFunctionalDeriv_m
 """
 function _evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
-            functionalData::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
+            func::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
 
-  val = calcFunctional(mesh, sbp, eqn, opts, functionalData)
+  val = calcFunctional(mesh, sbp, eqn, opts, func)
   val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
 
   return val
@@ -25,11 +25,11 @@ end
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::EulerData{Tsol, Tres}, opts,
-                           functionalData::EntropyPenaltyFunctional,
+                           func::EntropyPenaltyFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
 
   # this is a trick to populate eqn.res (the forward sweep of reverse mode)
-  calcFunctional(mesh, sbp, eqn, opts, functionalData)
+  calcFunctional(mesh, sbp, eqn, opts, func)
 
   # compute reverse mode of the contraction, take val_bar = 1
   w_j = zeros(Tsol, mesh.numDofPerNode)
@@ -66,7 +66,7 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     @assert opts["parallel_data"] == "element"
 
     # local part
-    face_integral_functor = functionalData.func
+    face_integral_functor = func.func
     flux_functor = ErrorFlux_revq()  # not used, but required by the interface
     getFaceElementIntegral_revq(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 
@@ -75,7 +75,7 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
       calcSharedFaceElementIntegrals_element_inner_revq(mesh, sbp, eqn, opts,
                             data, data_bar, face_integral_functor, flux_functor)
   else # SparseFace
-    flux_functor_revq = functionalData.func_sparseface_revq
+    flux_functor_revq = func.func_sparseface_revq
     calcFaceIntegral_nopre_revq(mesh, sbp, eqn, opts, flux_functor_revq,
                                 mesh.interfaces)
     # define anonymous functions for parallel faces
@@ -98,7 +98,7 @@ end
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           functionalData::EntropyPenaltyFunctional
+                           func::EntropyPenaltyFunctional
                            ) where {Tmsh, Tsol}
 
   # compute reverse mode of the contraction, take val_bar = 1
@@ -123,7 +123,7 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
   if typeof(mesh.sbpface) <: DenseFace
     @assert opts["parallel_data"] == "element"
 
-    face_integral_functor = functionalData.func
+    face_integral_functor = func.func
     flux_functor = ErrorFlux()  # not used, but required by the interface
 
     # local part
@@ -134,7 +134,7 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
       calcSharedFaceElementIntegrals_element_inner_revm(mesh, sbp, eqn, opts,
                             data, face_integral_functor, flux_functor)
   else # SparseFace
-    flux_functor_revm = functionalData.func_sparseface_revm
+    flux_functor_revm = func.func_sparseface_revm
     calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, flux_functor_revm,
                                 mesh.interfaces)
 
@@ -156,7 +156,7 @@ end
 
 function calcFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
-            functionalData::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
+            func::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
 
 
   fill!(eqn.res, 0.0)
@@ -167,7 +167,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     @assert opts["parallel_data"] == "element"
 
     # local part
-    face_integral_functor = functionalData.func
+    face_integral_functor = func.func
     flux_functor = ErrorFlux()  # not used, but required by the interface
     getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 
@@ -184,7 +184,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     # restore eqn object to original state
     eqn.face_element_integral_func = face_integral_functor_orig
   else  # SparseFace
-    flux_functor = functionalData.func_sparseface
+    flux_functor = func.func_sparseface
     calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor, mesh.interfaces)
 
     # parallel part

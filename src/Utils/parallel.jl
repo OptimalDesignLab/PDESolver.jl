@@ -99,12 +99,7 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # post the receives first
   for i=1:npeers
-    data_i = shared_data[i]
-    peer_i = data_i.peernum
-    tag = data_i.tag
-    recv_buff = data_i.q_recv
-    data_i.recv_req = MPI.Irecv!(recv_buff, peer_i, tag, data_i.comm)
-    data_i.recv_waited = false
+    Irecv!(shared_data[i])
   end
 
   # verify the sends are consistent
@@ -127,19 +122,14 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
 
     # wait on the previous send if it hasn't been waited on yet
     if !data_i.send_waited
-      waitSend(shared_data, idx)
-#      MPI.Wait!(data_i.send_req)
-#      data_i.send_waited = true
+      waitSend(data_i)
     end
 
     # move data to send buffer
     populate_buffer(mesh, sbp, eqn, opts, data_i)
 
     # post the send
-    peer_i = data_i.peernum
-    send_buff = data_i.q_send
-    data_i.send_req = MPI.Isend(send_buff, peer_i, tag, data_i.comm)
-    data_i.send_waited = false
+    Isend(data_i)
   end
 
   if wait

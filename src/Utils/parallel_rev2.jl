@@ -137,10 +137,6 @@ function finishExchangeData_rev2(mesh, sbp, eqn, opts,
       idx = i
     end
 
-    if val == 0
-      waitReceive(shared_data, idx)
-    end
-
 
     data_bar_idx = shared_data_bar[idx]
     if data_bar_idx.pdata == PARALLEL_DATA_FACE && val_bar == 0
@@ -149,6 +145,10 @@ function finishExchangeData_rev2(mesh, sbp, eqn, opts,
     end
 
     data_idx = shared_data[idx]
+    if val == 0
+      waitReceive(data_idx)
+    end
+
     if data_idx.pdata == PARALLEL_DATA_FACE && val == 0
       # permute the received nodes to be in the elementR orientation
       permuteinterface!(mesh.sbpface, data_idx.interfaces, data_idx.q_recv)

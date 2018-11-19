@@ -568,20 +568,21 @@ end
 
 """
   Wait for a specific receive.  Prefer [`waitAnyReceive`](@ref) whenever
-  possible.
+  possible.  Unlike the standard `MPI_Wait`, it *is* safe to call this
+  function even if the receive has already been waited on.
 
   **Inputs**
 
-   * shared_data: vector of [`SharedFaceData`](@ref) objects
-   * idx: index into the `shared_data` array specifying which receive to wait
-          on
+   * data: vector of [`SharedFaceData`](@ref) objects
 """
-function waitReceive(shared_data::Vector{SharedFaceData{T}}, idx::Integer) where {T}
+function waitReceive(data::SharedFaceData{T}) where {T}
 
-  stat = MPI.Wait!(shared_data[idx].recv_req)
-  shared_data[idx].recv_req = MPI.REQUEST_NULL
-  shared_data[idx].recv_status = stat
-  shared_data[idx].recv_waited = true
+  if !data.recv_waited
+    stat = MPI.Wait!(data.recv_req)
+    data.recv_req = MPI.REQUEST_NULL
+    data.recv_status = stat
+    data.recv_waited = true
+  end
 
   return nothing
 end
@@ -590,16 +591,122 @@ end
 """
   Like [`waitReceive`](@ref), but waits on a send
 """
-function waitSend(shared_data::Vector{SharedFaceData{T}}, idx::Integer) where {T}
+function waitSend(data::SharedFaceData{T}) where {T}
 
-  stat = MPI.Wait!(shared_data[idx].send_req)
-  shared_data[idx].send_req = MPI.REQUEST_NULL
-  shared_data[idx].send_status = stat
-  shared_data[idx].send_waited = true
+  if !data.send_waited
+    stat = MPI.Wait!(data.send_req)
+    data.send_req = MPI.REQUEST_NULL
+    data.send_status = stat
+    data.send_waited = true
+  end
 
   return nothing
 end
 
+import MPI: Isend, Irecv!
+
+"""
+  Extends `Isend` for [`SharedFaceData`](@ref)
+
+  **Inputs**
+
+   * data: `SharedFaceData`
+
+  **Outputs**
+
+   * none
+"""
+function Isend(data::SharedFaceData)
+
+  @assert data.send_waited
+
+  peer = data.peernum
+  send_buff = data.q_send
+  tag = data.tag
+  data.send_req = MPI.Isend(send_buff, peer, tag, data.comm)
+  data.send_waited = false
+
+  return nothing
+end
+
+
+"""
+  Performs an `Isend` using the *receive` buffer rather than the send buffer.
+  Useful for reverse-mode communication patterns.
+
+  **Inputs**
+
+   * data: `SharedFaceData
+
+  **Outputs**
+
+   * none
+"""
+function Isend_rev(data::SharedFaceData)
+
+  @assert data.recv_waited
+
+  peer = data.peernum
+  recv_buff = data.q_recv
+  tag = data.tag
+  data.recv_req = MPI.Isend(recv_buff, peer, tag, data.comm)
+  data.recv_waited = false
+
+  return nothing
+end
+
+
+
+"""
+  Extends `Irecv` for [`SharedFaceData`](@ref).  An exception will be
+  thrown if the previous receive has not been waited on already.
+
+  **Inputs**
+
+   * data: `SharedFaceData`
+
+  **Outputs**
+
+   * none
+"""
+function Irecv!(data::SharedFaceData)
+
+  @assert data.recv_waited
+
+  peer = data.peernum
+  tag = data.tag
+  recv_buff = data.q_recv
+  data.recv_req = MPI.Irecv!(recv_buff, peer, tag, data.comm)
+  data.recv_waited = false
+
+  return nothing
+end
+
+
+"""
+  Performs an `Irecv` using the *send* buffer rather than the receive buffer.
+  Useful for reverse-mode communication patterns.
+
+  **Inputs**
+
+   * data: `SharedFaceData`
+
+  **Outputs**
+
+   * none
+"""
+function Irecv_rev!(data::SharedFaceData)
+
+  @assert data.send_waited
+
+  peer = data.peernum
+  tag = data.tag
+  send_buff = data.q_send
+  data.send_req = MPI.Irecv!(send_buff, peer, tag, data.comm)
+  data.send_waited = false
+
+  return nothing
+end
 
 
 """

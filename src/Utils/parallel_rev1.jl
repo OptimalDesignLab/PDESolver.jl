@@ -83,12 +83,7 @@ function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # post the receives first
   for i=1:npeers
-    data_i = shared_data_bar[i]
-    peer_i = data_i.peernum
-    tag = data_i.tag
-    send_buff = data_i.q_send
-    data_i.send_req = MPI.Irecv!(send_buff, peer_i, tag, data_i.comm)
-    data_i.send_waited = false
+    Irecv_rev!(shared_data_bar[i])
   end
 
   # verify the sends are consistent
@@ -116,9 +111,7 @@ function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
     # wait on the previous bar send if it hasn't been waited on yet
     # this should have completed long ago
     if !data_bar_i.recv_waited
-      waitReceive(shared_data_bar, idx)
-#      MPI.Wait!(data_bar_i.recv_req)
-#      data_bar_i.recv_waited = true
+      waitReceive(data_bar_i)
     end
     fill!(data_bar_i.q_recv, 0)
 
@@ -126,10 +119,7 @@ function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
     calc_func(mesh, sbp, eqn, opts, data_i, data_bar_i)
 
     # post the bar send
-    peer_i = data_bar_i.peernum
-    recv_buff = data_bar_i.q_recv
-    data_bar_i.recv_req = MPI.Isend(recv_buff, peer_i, tag, data_bar_i.comm)
-    data_bar_i.recv_waited = false
+    Isend_rev(data_i)
   end
 
   if wait
