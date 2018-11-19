@@ -1,6 +1,7 @@
 # API functions for physics modules that are supplied automatically (and
 # therefore do not need to be extended by each physics)
 
+include("interface2_helper.jl")
 
 """
   This function returns the fully initialized objects needed to solve an
@@ -139,7 +140,7 @@ end
    * `sbp`  : Summation-By-Parts operator
    * `eqn`  : AbstractSolutionData object
    * `opts` : Options dictionary
-   * `functionalData` : `AbstractFunctional` to be evaluated
+   * `func` : `AbstractFunctional` to be evaluated
 
   **Outputs**
 
@@ -159,24 +160,14 @@ end
 """
 function evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
-            functionalData::AbstractFunctional; start_comm=true) where {Tmsh, Tsol}
+            func::AbstractFunctional; start_comm=true) where {Tmsh, Tsol}
 
-  # start communication
-  pdata = getParallelDataString(getParallelData(functionalData))
-  start_comm_q = start_comm || (pdata != getParallelData(eqn.shared_data) &&
-                                pdata != "none")
-
-  if start_comm 
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
-      setParallelData(eqn.shared_data, pdata)
-      startSolutionExchange(mesh, sbp, eqn, opts)
-    end
-  end
+  start_comm_q = startCommunicationFunctional(mesh, sbp, eqn, opts,
+                                              func, start_comm)
 
   # evaluate functional
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
-  val = _evalFunctional(mesh, sbp, eqn, opts, functionalData)
+  setupFunctional(mesh, sbp, eqn, opts, func)
+  val = _evalFunctional(mesh, sbp, eqn, opts, func)
 
   # verify implementation finished communication
   if start_comm_q
@@ -209,7 +200,7 @@ end
    * sbp
    * eqn
    * opts
-   * functionalData: [`AbstractFunctional`](@ref) to compute the derivative of
+   * func: [`AbstractFunctional`](@ref) to compute the derivative of
 
   **Keyword Arguments**
 
@@ -219,26 +210,16 @@ end
 function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           functionalData::AbstractFunctional;
+                           func::AbstractFunctional;
                            start_comm=true
                            ) where {Tmsh, Tsol}
 
-  # start communication
-  pdata = getParallelDataString(getParallelData(functionalData))
-  start_comm_q = start_comm || (pdata != getParallelData(eqn.shared_data) &&
-                                pdata != "none")
-
-  if start_comm 
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
-      setParallelData(eqn.shared_data, pdata)
-      startSolutionExchange(mesh, sbp, eqn, opts)
-    end
-  end
+  start_comm_q = startCommunicationFunctional(mesh, sbp, eqn, opts, func,
+                                              start_comm)
 
   # evaluate the functional derivative
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
-  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, functionalData)
+  setupFunctional(mesh, sbp, eqn, opts, func)
+  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func)
 
   # verify implementation finished communication
   if start_comm_q
@@ -259,7 +240,7 @@ end
    * sbp
    * eqn
    * opts
-   * functionalData: the [`AbstractFunctional`](@ref) to compute the derivative
+   * func: the [`AbstractFunctional`](@ref) to compute the derivative
                      of
 
   **Inputs/Outputs**
@@ -275,7 +256,7 @@ end
 function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractSBP,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           func::AbstractIntegralFunctional,
                            func_deriv_arr::Abstract3DArray;
                            start_comm=true) where {Tmsh, Tsol}
  
@@ -283,22 +264,12 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
   @assert size(func_deriv_arr, 2) == mesh.numNodesPerElement
   @assert size(func_deriv_arr, 3) == mesh.numEl
 
-  # start communication
-  pdata = getParallelDataString(getParallelData(functionalData))
-  start_comm_q = start_comm || (pdata != getParallelData(eqn.shared_data) &&
-                                pdata != "none")
-
-  if start_comm 
-    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
-      setParallelData(eqn.shared_data, pdata)
-      startSolutionExchange(mesh, sbp, eqn, opts)
-    end
-  end
+  start_comm_q = startCommunicationFunctional(mesh, sbp, eqn, opts, func,
+                                              start_comm)
 
   # evaluate functional derivative
-  setupFunctional(mesh, sbp, eqn, opts, functionalData)
-  _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
+  setupFunctional(mesh, sbp, eqn, opts, func)
+  _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func, func_deriv_arr)
 
   # verify the implementation finished communication
   if start_comm_q

@@ -33,3 +33,5 @@ change argument order for common_funcs.jl, BCs, flux functions to be
   11/18 - JC: add dR/dq and dR/dm products.  Changed some of the existing code
               to be precompute=false by default.  Remove precompute=true
               versions of shared face integrals.
+  11/18 - JC: add dJ/dq and dR/dm products.  Make better interface for
+              functions to support parallel communication

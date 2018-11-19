@@ -28,12 +28,8 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
                            functionalData::EntropyPenaltyFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
 
-  println(eqn.params.f, "entered _evalFunctionalDeriv for functional functionalData")
-
   # this is a trick to populate eqn.res (the forward sweep of reverse mode)
   calcFunctional(mesh, sbp, eqn, opts, functionalData)
-
-  println(eqn.params.f, "maximum(abs(res) = ", maximum(abs.(eqn.res)))
 
   # compute reverse mode of the contraction, take val_bar = 1
   w_j = zeros(Tsol, mesh.numDofPerNode)
@@ -61,9 +57,6 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     end
   end
     
-  println(eqn.params.f, "initial back propigation, q_bar = ", real(eqn.q_bar))
-  println(eqn.params.f, "initial back propigation, res = ", real(eqn.res_bar))
-
   setParallelData(eqn.shared_data_bar, "element")
   startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=false)
 
@@ -77,8 +70,6 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     flux_functor = ErrorFlux_revq()  # not used, but required by the interface
     getFaceElementIntegral_revq(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 
-    println(eqn.params.f, "after local face integrals, q_bar = ", real(eqn.q_bar))
- 
     # define anonymous function for parallel faces
     calc_func = (mesh, sbp, eqn, opts, data, data_bar) ->
       calcSharedFaceElementIntegrals_element_inner_revq(mesh, sbp, eqn, opts,
@@ -96,9 +87,6 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
 
   # do the parallel face calculations
   finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func)
-
-
-  println(eqn.params.f, "after shared face integrals, q_bar = ", real(eqn.q_bar))
 
   copy!(func_deriv_arr, eqn.q_bar)
 
@@ -214,31 +202,19 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, pfunc)
   end
 
-  println(eqn.params.f, "real(eqn.res) = ", real(eqn.res))
-  println(eqn.params.f, "max(abs(real(eqn.res))) = ", maximum(abs.(real(eqn.res))))
-  println(eqn.params.f, "imag(eqn.res) = ", imag(eqn.res))
-  println(eqn.params.f, "max(abs(imag(eqn.res))) = ", maximum(abs.(imag(eqn.res))))
   # compute the contraction
   val = zero(Tres)
   w_j = zeros(Tsol, mesh.numDofPerNode)
   for i=1:mesh.numEl
-    println(eqn.params.f, "i = ", i)
     for j=1:mesh.numNodesPerElement
-      println(eqn.params.f, "  j = ", j)
       q_j = sview(eqn.q, :, j, i)
       convertToIR(eqn.params, q_j, w_j)
       for k=1:mesh.numDofPerNode
-        println(eqn.params.f, "    k = ", k)
         val += w_j[k]*eqn.res[k, j, i]
-        println(eqn.params.f, "    w = ", w_j[k])
-        println(eqn.params.f, "    res = ", eqn.res[k, j, i])
-        println(eqn.params.f, "    contribution = ", w_j[k]*eqn.res[k, j, i])
-        println(eqn.params.f, "    val = ", val)
 
       end
     end
   end
 
-  println(eqn.params.f, "functional value = ", val)
   return val
 end

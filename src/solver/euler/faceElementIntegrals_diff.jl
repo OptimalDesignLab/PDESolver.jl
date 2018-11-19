@@ -126,21 +126,18 @@ function calcECFaceIntegral_revm(
 
   # loop over the nodes of "left" element that are in the stencil of interp
   for i = 1:sbpface.stencilsize
-    println(params.f, "node ", i)
     p_i = sbpface.perm[i, iface.faceL]
     qi = ro_sview(qL, :, p_i)
     aux_vars_i = ro_sview(aux_vars, :, p_i)  # !!!! why no aux_vars_j???
 
     # loop over the nodes of "right" element that are in the stencil of interp
     for j = 1:sbpface.stencilsize
-      println(params.f, "  other node ", j)
       p_j = sbpface.perm[j, iface.faceR]
       qj = ro_sview(qR, :, p_j)
 
       # compute flux and add contribution to left and right elements
       functor(params, qi, qj, aux_vars_i, nrmD, fluxD)
 
-      println(params.f, "  fluxD = ", fluxD)
       @simd for dim = 1:Tdim  # move this inside the j loop, at least
         # accumulate entry p_i, p_j of E
         #Eij = zero(Tres)
@@ -161,8 +158,6 @@ function calcECFaceIntegral_revm(
           Eij_bar -= fluxD[p, dim]*resL_bar[p, p_i]
           Eij_bar += fluxD[p, dim]*resR_bar[p, p_j]
         end
-
-        println(params.f, "Eij_bar = ", Eij_bar)
 
         @simd for k=1:sbpface.numnodes
           kR = sbpface.nbrperm[k, iface.orient]
@@ -342,11 +337,9 @@ function calcESFaceIntegral_revm(
 
   calcECFaceIntegral_revm(params, sbpface, iface, qL, qR, aux_vars, nrm_face, 
                      nrm_face_bar, functor, resL_bar, resR_bar)
-  println(params.f, "after calcECFaceIntegral, nrm_bar = ", nrm_face_bar)
   calcEntropyPenaltyIntegral_revm(params, sbpface, iface, kernel, qL, qR, aux_vars, 
                                nrm_face, nrm_face_bar, resL_bar, resR_bar)
 
-  println(params.f, "after calcEntropyPenaltyIntegral, nrm_bar = ", nrm_face_bar)
   return nothing
 end
 

@@ -103,7 +103,9 @@ function test_jac_parallel_long()
 #     func_ctor = EulerEquationMod.FunctionalDict["entropydissipation"]
       func = func_ctor(Complex128, mesh4, sbp4, eqn4, opts4, [1, 2, 3])
       if getParallelData(func) != PARALLEL_DATA_NONE
-        println("testing functional ", func_ctor)
+        if mesh4.myrank == 0
+          println("testing functional ", func_ctor)
+        end
         test_functional_comm(mesh4, sbp4, eqn4, opts4, func)
         test_functional_deriv_q(mesh4, sbp4, eqn4, opts4, func)
         test_functional_deriv_m(mesh4, sbp4, eqn4, opts4, func)
@@ -215,8 +217,6 @@ end
 
 function test_jac_homotopy(mesh, sbp, eqn, opts)
 
-  println("\nTesting homotopy jacobian")
-
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -228,9 +228,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 
   res1 = zeros(eqn.res)
   res2 = zeros(eqn.res)
-  println("\ncomputing regular homotopy dissipation")
 #  EulerEquationMod.calcHomotopyDiss(mesh, sbp, eqn, opts, res1)
-  println("\ncomputing new homotopy dissipation")
   h = 1e-20
   pert = Complex128(0, h)
   eqn.q[1] += pert
@@ -245,11 +243,9 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 =#
   startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
 
-  println("constructing first operator")
   opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
 
-  println("constructing second operator")
   opts["calc_jac_explicit"] = true
   pc2, lo2 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
 
@@ -263,7 +259,6 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   end
 
   ctx_residual = (_evalHomotopy,)
-  println("\nevaluating jacobians")
 
   opts["calc_jac_explicit"] = false
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
@@ -497,29 +492,18 @@ function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
   eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
-  println(eqn.params.f, "q_vec = ", eqn.q_vec)
-  println(eqn.params.f, "maximum(abs(q_vec)) = ", maximum(abs.(eqn.q_vec)))
-
   q_dot = rand(size(eqn.q))
-#  q_dot = zeros(eqn.q)
-#  q_dot[1, 1, 1] = 100
   q_bar = zeros(eqn.q)
-
-  println(eqn.params.f, "\nDoing complex step")
 
   eqn.q_vec .+= pert*vec(q_dot)
   f = evalFunctional(mesh, sbp, eqn, opts, func)
   val = imag(f)/h
-  println(eqn.params.f, "local val = ", val)
   # evalFunctional does the Allreduce, don't duplicate
-  println(eqn.params.f, "global val = ", val)
   eqn.q_vec .-= pert*vec(q_dot)
 
   evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func, q_bar)
   val2 = sum(q_bar .* q_dot)
-  println(eqn.params.f, "local val2 = ", val2)
   val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
-  println(eqn.params.f, "global val2 = ", val2)
 
 
    @test abs(val - val2) < 1e-12
@@ -536,7 +520,6 @@ end
 
 function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
 
-  println(eqn.params.f, "\n\ntesting functional deriv m for functional ", typeof(func))
   h = 1e-20
   pert = Complex128(0, h)
 
@@ -598,8 +581,6 @@ function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
   # the functional does an allreduce, so do it here too
   val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
 
-  println(eqn.params.f, "val = ", val)
-  println(eqn.params.f, "val2 = ", val2)
   @test abs(val - val2) < 1e-12
 
   return nothing
