@@ -96,7 +96,25 @@ function test_jac_parallel_long()
     test_revm_product(mesh7, sbp7, eqn7, opts7)
     
     test_revq_product(mesh7, sbp7, eqn7, opts7)
-    
+
+
+    # test functional that require parallel communication
+    for func_ctor in values(EulerEquationMod.FunctionalDict)
+#     func_ctor = EulerEquationMod.FunctionalDict["entropydissipation"]
+      func = func_ctor(Complex128, mesh4, sbp4, eqn4, opts4, [1, 2, 3])
+      if getParallelData(func) != PARALLEL_DATA_NONE
+        println("testing functional ", func_ctor)
+        test_functional_comm(mesh4, sbp4, eqn4, opts4, func)
+        test_functional_deriv_q(mesh4, sbp4, eqn4, opts4, func)
+        test_functional_deriv_m(mesh4, sbp4, eqn4, opts4, func)
+
+        test_functional_comm(mesh7, sbp7, eqn7, opts7, func)
+        test_functional_deriv_q(mesh7, sbp7, eqn7, opts7, func)
+        test_functional_deriv_m(mesh7, sbp7, eqn7, opts7, func)
+      end
+    end
+
+
   end
 
   return nothing
@@ -303,15 +321,13 @@ end
 
 function test_revm_product(mesh, sbp, eqn, opts)
 
-  srand(1234)  # reproducable results
-
   h = 1e-20
   pert = Complex128(0, h)
 
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
                                      # interfaces non-zero
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
@@ -442,3 +458,152 @@ function test_revq_product(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+
+"""
+  Test functional with start_comm=true and false
+"""
+function test_functional_comm(mesh, sbp, eqn, opts, func)
+
+  h = 1e-60
+  pert = Complex128(0, h)
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+
+  f = evalFunctional(mesh, sbp, eqn, opts, func)
+  f2 = evalFunctional(mesh, sbp, eqn, opts, func, start_comm=false)
+
+  @test abs(f - f2) < 1e-13
+
+  return nothing
+end
+
+"""
+  Test functional derivative wrt q against complex step
+"""
+function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
+
+  h = 1e-60
+  pert = Complex128(0, h)
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  println(eqn.params.f, "q_vec = ", eqn.q_vec)
+  println(eqn.params.f, "maximum(abs(q_vec)) = ", maximum(abs.(eqn.q_vec)))
+
+  q_dot = rand(size(eqn.q))
+#  q_dot = zeros(eqn.q)
+#  q_dot[1, 1, 1] = 100
+  q_bar = zeros(eqn.q)
+
+  println(eqn.params.f, "\nDoing complex step")
+
+  eqn.q_vec .+= pert*vec(q_dot)
+  f = evalFunctional(mesh, sbp, eqn, opts, func)
+  val = imag(f)/h
+  println(eqn.params.f, "local val = ", val)
+  # evalFunctional does the Allreduce, don't duplicate
+  println(eqn.params.f, "global val = ", val)
+  eqn.q_vec .-= pert*vec(q_dot)
+
+  evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func, q_bar)
+  val2 = sum(q_bar .* q_dot)
+  println(eqn.params.f, "local val2 = ", val2)
+  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
+  println(eqn.params.f, "global val2 = ", val2)
+
+
+   @test abs(val - val2) < 1e-12
+
+  # test start_comm = false
+  q_bar_orig = copy(q_bar)
+  evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func, q_bar, start_comm=false)
+
+  @test maximum(abs.(q_bar - q_bar_orig)) < 1e-13
+
+  return nothing
+end
+
+
+function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
+
+  println(eqn.params.f, "\n\ntesting functional deriv m for functional ", typeof(func))
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+                                     # interfaces non-zero
+
+  # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
+
+  res_bar = rand_realpart(mesh.numDof)
+
+  dxidx_dot       = rand_realpart(size(mesh.dxidx))
+  jac_dot         = rand_realpart(size(mesh.jac))
+  nrm_bndry_dot   = rand_realpart(size(mesh.nrm_bndry))
+  nrm_face_dot    = rand_realpart(size(mesh.nrm_face_bar))
+  coords_bndry_dot = rand_realpart(size(mesh.coords_bndry))
+  nrm_sharedface_dot = Array{Array{Complex128, 3}}(mesh.npeers)
+  for i=1:mesh.npeers
+    nrm_sharedface_dot[i] = rand_realpart(size(mesh.nrm_sharedface[i]))
+  end
+
+  zeroBarArrays(mesh)
+
+  mesh.dxidx        .+= pert*dxidx_dot
+  mesh.jac          .+= pert*jac_dot
+  mesh.nrm_bndry    .+= pert*nrm_bndry_dot
+  mesh.nrm_face     .+= pert*nrm_face_dot
+  mesh.coords_bndry .+= pert*coords_bndry_dot
+  for i=1:mesh.npeers
+    mesh.nrm_sharedface[i] .+= pert*nrm_sharedface_dot[i]
+  end
+
+  f = evalFunctional(mesh, sbp, eqn, opts, func)
+  val = imag(f)/h
+
+  mesh.dxidx        .-= pert*dxidx_dot
+  mesh.jac          .-= pert*jac_dot
+  mesh.nrm_bndry    .-= pert*nrm_bndry_dot
+  mesh.nrm_face     .-= pert*nrm_face_dot
+  mesh.coords_bndry .-= pert*coords_bndry_dot
+  for i=1:mesh.npeers
+    mesh.nrm_sharedface[i] .-= pert*nrm_sharedface_dot[i]
+  end
+
+  evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func)
+
+  val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
+         sum(mesh.jac_bar .* jac_dot)                  +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
+         sum(mesh.nrm_face_bar .* nrm_face_dot)        +
+         sum(mesh.coords_bndry_bar .* coords_bndry_dot)
+
+  for i=1:mesh.npeers
+    val2 += sum(mesh.nrm_sharedface_bar[i] .* nrm_sharedface_dot[i])
+  end
+
+  # the functional does an allreduce, so do it here too
+  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
+
+  println(eqn.params.f, "val = ", val)
+  println(eqn.params.f, "val2 = ", val2)
+  @test abs(val - val2) < 1e-12
+
+  return nothing
+end
+
+
+

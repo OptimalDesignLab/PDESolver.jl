@@ -1,6 +1,8 @@
 # functional definitions
 
 import PDESolver.createFunctional
+import ODLCommonTools.getParallelData
+
 
 @doc """
 ###EulerEquationMod.BoundaryForceData
@@ -186,6 +188,10 @@ function EntropyJumpConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+function getParallelData(obj::EntropyPenaltyFunctional)
+  return PARALLEL_DATA_ELEMENT
+end
+
 
 """
   Creates a functional object.
@@ -210,6 +216,7 @@ function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return objective
 end
+
 
 """
   Maps functional names to their outer constructors.

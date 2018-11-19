@@ -516,7 +516,7 @@ function applyEntropyKernel_diagE(
                       aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
-  q_avg = params.apply_entropy_kernel_diagE_data.q_avg
+   q_avg = params.apply_entropy_kernel_diagE_data.q_avg
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end

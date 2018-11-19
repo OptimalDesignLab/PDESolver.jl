@@ -54,12 +54,21 @@ function test_functionals()
   testEntropyDissFunctional(mesh, sbp, eqn, opts)
 
   # test derivative of all functionals
+
   for funcname in keys(EulerEquationMod.FunctionalDict)
     println("testing functional", funcname)
     obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
+    if typeof(obj) <: EulerEquationMod.EntropyPenaltyFunctional
+      test_functional_zero(mesh, sbp, eqn, opts, obj)
+    end
+
     test_functional_deriv_q(mesh, sbp, eqn, opts, obj)
   end
-
+#=
+  obj = createFunctional(mesh3, sbp3, eqn3, opts3, "entropydissipation", [1])
+  test_functional_zero(mesh3, sbp3, eqn3, opts3, obj)
+  test_functional_deriv_q(mesh3, sbp3, eqn3, opts3, obj)
+=#
   functional_revm_names = ["entropydissipation"]
 
   for funcname in functional_revm_names
@@ -78,8 +87,9 @@ end
   Test the entropy dissipation functional.  This function is defined over all
   faces, rather than a boundary, so it is a bit special
 """
-function testEntropyDissFunctional(mesh, sbp, eqn, opts)
+function testEntropyDissFunctional(mesh, sbp, eqn, _opts)
 
+  opts = copy(_opts)
   opts2 = read_input_file("input_vals_channel.jl")
   opts2["Flux_name"] = "RoeFlux"
   opts2["use_DG"] = true
@@ -115,29 +125,44 @@ end
 
 
 """
+  Test that a constant state -> functional value = 0
+"""
+function test_functional_zero(mesh, sbp, eqn, opts, func)
+
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  f = evalFunctional(mesh, sbp, eqn, opts, func)
+
+  @test abs(f) < 1e-13
+
+  return nothing
+end
+
+
+"""
   Test the derivative of a boundary functional wrt to q
 
   The eqn object must have been created with Tsol = Complex128 for this to work
 """
 function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
 
+  println("testing functional deriv q for functional ", typeof(func))
   h = 1e-20
   pert = Complex128(0, h)
 
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
-  eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  #eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   q_dot = rand(size(eqn.q))
-#  q_dot = zeros(eqn.q)
-#  q_dot[1, 1, 1] = 100
   q_bar = zeros(eqn.q)
 
   evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func, q_bar)
   val = sum(q_bar .* q_dot)
-
 
   eqn.q_vec .+= pert*vec(q_dot)
   f = evalFunctional(mesh, sbp, eqn, opts, func)
@@ -148,6 +173,7 @@ function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
 
   return nothing
 end
+
 
 function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
 

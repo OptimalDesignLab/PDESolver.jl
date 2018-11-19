@@ -161,13 +161,30 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
             functionalData::AbstractFunctional; start_comm=true) where {Tmsh, Tsol}
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  # start communication
+  pdata = getParallelDataString(getParallelData(functionalData))
+  start_comm_q = start_comm || (pdata != getParallelData(eqn.shared_data) &&
+                                pdata != "none")
 
+  if start_comm 
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
+      setParallelData(eqn.shared_data, pdata)
+      startSolutionExchange(mesh, sbp, eqn, opts)
+    end
+  end
+
+  # evaluate functional
   setupFunctional(mesh, sbp, eqn, opts, functionalData)
+  val = _evalFunctional(mesh, sbp, eqn, opts, functionalData)
 
-  return _evalFunctional(mesh, sbp, eqn, opts, functionalData)
+  # verify implementation finished communication
+  if start_comm_q
+    assertReceivesWaited(eqn.shared_data)
+  end
+
+  return val
 end
-
 
 
 """
@@ -206,11 +223,27 @@ function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
                            start_comm=true
                            ) where {Tmsh, Tsol}
 
+  # start communication
+  pdata = getParallelDataString(getParallelData(functionalData))
+  start_comm_q = start_comm || (pdata != getParallelData(eqn.shared_data) &&
+                                pdata != "none")
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  if start_comm 
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
+      setParallelData(eqn.shared_data, pdata)
+      startSolutionExchange(mesh, sbp, eqn, opts)
+    end
+  end
 
+  # evaluate the functional derivative
   setupFunctional(mesh, sbp, eqn, opts, functionalData)
   _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, functionalData)
+
+  # verify implementation finished communication
+  if start_comm_q
+    assertReceivesWaited(eqn.shared_data)
+  end
 
   return nothing
 end
@@ -250,9 +283,27 @@ function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
   @assert size(func_deriv_arr, 2) == mesh.numNodesPerElement
   @assert size(func_deriv_arr, 3) == mesh.numEl
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  # start communication
+  pdata = getParallelDataString(getParallelData(functionalData))
+  start_comm_q = start_comm || (pdata != getParallelData(eqn.shared_data) &&
+                                pdata != "none")
+
+  if start_comm 
+    array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
+      setParallelData(eqn.shared_data, pdata)
+      startSolutionExchange(mesh, sbp, eqn, opts)
+    end
+  end
+
+  # evaluate functional derivative
   setupFunctional(mesh, sbp, eqn, opts, functionalData)
   _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
+
+  # verify the implementation finished communication
+  if start_comm_q
+    assertReceivesWaited(eqn.shared_data)
+  end
 
   return nothing
 end
@@ -312,7 +363,7 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
   eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
     setParallelData(eqn.shared_data, "element")
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
+    startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
 
