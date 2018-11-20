@@ -119,7 +119,7 @@ function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
     calc_func(mesh, sbp, eqn, opts, data_i, data_bar_i)
 
     # post the bar send
-    Isend_rev(data_i)
+    Isend_rev(data_bar_i)
   end
 
   if wait
@@ -177,15 +177,12 @@ function finishExchangeData_rev(mesh, sbp, eqn, opts,
   npeers = length(shared_data_bar)
   val = assertSendsConsistent(shared_data_bar)
 
-  println(eqn.params.f, "val = ", val); flush(eqn.params.f)
   for i=1:npeers
-    println(eqn.params.f, "i = ", i); flush(eqn.params.f)
     if val == 0  # request have not been waited on previously
       eqn.params.time.t_wait += @elapsed idx = waitAnySend(shared_data_bar)
     else
       idx = i
     end
-    println(eqn.params.f, "idx = ", idx); flush(eqn.params.f)
 
     data_idx = shared_data_bar[idx]
 

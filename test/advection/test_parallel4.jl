@@ -43,12 +43,9 @@ function test_parallel2_comm()
     shared_data = getSharedFaceData(Float64, mesh, sbp, opts, opts["parallel_data"])
     shared_data_bar = getSharedFaceData(Float64, mesh, sbp, opts, opts["parallel_data"])
 
-    println(eqn.params.f, "finished creating shared_data arrays"); flush(eqn.params.f)
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
-    println(eqn.params.f, "finished exchangeData 1")
     calc_func = (mesh, sbp, eqn, opts, data) -> return nothing
     finishExchangeData(mesh, sbp, eqn, opts, shared_data, calc_func)
-    println(eqn.params.f, "finished finishExchangeData 1"); flush(eqn.params.f)
 
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data)
 
@@ -57,10 +54,8 @@ function test_parallel2_comm()
     populate_buffer = Utils.getSendDataElement
 
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
-    println(eqn.params.f, "finished exchangeData 2"); flush(eqn.params.f)
     calc_func = (mesh, sbp, eqn, opts, data) -> return nothing
     finishExchangeData(mesh, sbp, eqn, opts, shared_data, calc_func)
-    println(eqn.params.f, "finished finishExchangeData 2"); flush(eqn.params.f)
 
 
     testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
@@ -74,11 +69,8 @@ function test_parallel2_comm()
     end
     #TODO: fill recv buffers with random values to test zeroing out
     startSolutionExchange(mesh, sbp, eqn, opts)
-    println(eqn.params.f, "finished startSolutionExchange 3"); flush(eqn.params.f)
     exchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func_rev)
-    println(eqn.params.f, "finished exchangeData_rev 3"); flush(eqn.params.f)
     finishSolutionBarExchange(mesh, sbp, eqn, opts)
-    println(eqn.params.f, "finished finishSolutionBarExchange 3"); flush(eqn.params.f)
     testSharedDataElement_rev(mesh, sbp, eqn, opts)
 
 
@@ -96,13 +88,10 @@ function test_parallel2_comm()
 
     #TODO: repalce with startSolutionExchange_rev2
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
-    println(eqn.params.f, "finished exchangeData 4"); flush(eqn.params.f)
     exchangeData(mesh, sbp, eqn, opts, shared_data_bar, populate_buffer_rev)
-    println(eqn.params.f, "finished second exchangeData 4"); flush(eqn.params.f)
 
     finishExchangeData_rev2(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
                            calc_func2)
-    println(eqn.params.f, "finished finishExchangeData_rev2 4"); flush(eqn.params.f)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
 
@@ -115,19 +104,13 @@ function test_parallel2_comm()
     populate_buffer_rev = Utils.getSendDataFace_resbar
 
     exchangeData(mesh, sbp, eqn, opts, shared_data, populate_buffer)
-    println(eqn.params.f, "finished exchangeData 5"); flush(eqn.params.f)
     exchangeData(mesh, sbp, eqn, opts, shared_data_bar, populate_buffer_rev)
-    println(eqn.params.f, "finished second exchangeData 5"); flush(eqn.params.f)
 
     finishExchangeData_rev2(mesh, sbp, eqn, opts, shared_data, shared_data_bar,
                            calc_func2)
 
-    println(eqn.params.f, "finished finishExchangeData 5"); flush(eqn.params.f)
     testSharedDataElement(mesh, sbp, eqn, opts, shared_data)
     testSharedDataFace(mesh, sbp, eqn, opts, shared_data_bar, 1)
-
-    println(eqn.params.f, "finished 5"); flush(eqn.params.f)
-
 
   end  # end facts block
 
