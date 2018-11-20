@@ -182,15 +182,16 @@ function SharedFaceData(::Type{T}, mesh::AbstractMesh, peeridx::Integer,
                            _q_recv_element, _send_buff, _recv_buff)
 end
 
-
+#=
 function SharedFaceData(::Type{T}, mesh::AbstractMesh, peeridx::Integer,
-                        pdata::String, tag::Integer) where T
+                        pdata::Integer, tag::Integer) where T
 
-  pdata_enum = getParallelDataEnum(pdata)
-  return SharedFaceData(T, mesh, peeridx, pdata_enum, tag)
+  return SharedFaceData(T, mesh, peeridx, pdata, tag)
 end
+=#
 
 import Base.copy
+
 """
   Copy function for SharedFaceData.  Note that this does *not* retain the
   send_req/send_status (and similarly for the recceive) state
@@ -311,10 +312,10 @@ end
   although it can be used to create additional vectors of SharedFaceData
   objects.
 
-  if `pdata` == "face", then the send and receive buffers
+  if `pdata` == PARALLEL_DATA_FACE, then the send and receive buffers
   are numDofPerNode x numNodesPerFace x number of shared faces.
 
-  if `pdata` == "element", the send and receive buffers are
+  if `pdata` == PARALLEL_DATA_ELEMENT, the send and receive buffers are
     numDofPerNode x numNodesPerElement x number of elements that share the
     faces.  Note that the number of elements that share the faces can be
     different for the send and receive buffers.
@@ -325,7 +326,8 @@ end
    * mesh: an AbstractMesh object
    * sbp: an SBP operator
    * opts: the options dictonary
-   * pdata: string describing what data is shared in parallel
+   * pdata: Enum such as `PARALLEL_DATA_FACE` describing what data will
+            be shared in parallel
 
   **Keyword Arguments**
 
@@ -341,12 +343,11 @@ end
                mesh.peer_parts[i]
 """
 function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP,
-                           opts, pdata::String; tag::Integer=-1) where Tsol
+                           opts, pdata::Integer; tag::Integer=-1) where Tsol
 # return the vector of SharedFaceData used by the equation object constructor
 
   @assert mesh.isDG
 
-  pdata_enum = getParallelDataEnum(pdata)
   data_vec = Array{SharedFaceData{Tsol}}(mesh.npeers)
 
   if tag < 0
@@ -356,7 +357,7 @@ function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP,
   end
 
   for i=1:mesh.npeers
-    data_vec[i] = SharedFaceData(Tsol, mesh, i, pdata_enum, tag)
+    data_vec[i] = SharedFaceData(Tsol, mesh, i, pdata, tag)
   end
 
   # it would be nice to have a finalizer to free the MPI tag, but finalizers
@@ -734,7 +735,8 @@ function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::Integer
                                    # buffer (even after a buffer change).
 
 
-  if length(shared_data) == 0 || pdata == shared_data[1].pdata
+  if length(shared_data) == 0 || pdata == shared_data[1].pdata ||
+     pdata == PARALLEL_DATA_NONE
     return nothing
   end
 
@@ -757,12 +759,13 @@ function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::Integer
   return nothing
 end
 
-
+#=
 function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::String
                         ) where {T}
   pdata_enum = getParallelDataEnum(pdata)
   setParallelData(shared_data, pdata_enum)
 end
+=#
 
 
 """
@@ -781,12 +784,12 @@ end
 function getParallelData(shared_data::Vector{SharedFaceData{T}}) where {T}
 
   if length(shared_data) == 0
-    pdata_enum = PARALLEL_DATA_NONE
+    pdata = PARALLEL_DATA_NONE
   else
-    pdata_enum = shared_data[1].pdata
+    pdata = shared_data[1].pdata
   end
 
-  return getParallelDataString(pdata_enum)
+  return pdata
 end
 
 
@@ -803,7 +806,7 @@ end
 """
 function getParallelData(shared_data::SharedFaceData)
 
-  return getParallelDataString(shared_data.pdata)
+  return shared_data.pdata
 end
 
 

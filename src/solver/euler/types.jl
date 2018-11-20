@@ -660,8 +660,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
       if mesh.isDG
-        eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts, "element")
-        #eqn.shared_data_res_bar = getSharedFaceData(Tres, mesh, sbp, opts, "element")
+        eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts, PARALLEL_DATA_ELEMENT)
+        #eqn.shared_data_res_bar = getSharedFaceData(Tres, mesh, sbp, opts, PARALLEL_DATA_ELEMENT)
       else
         # eqn.shared_data_res_bar = zeros(SharedFaceData, 0)
         eqn.shared_data_bar = Array{SharedFaceData{Tres}}(0)

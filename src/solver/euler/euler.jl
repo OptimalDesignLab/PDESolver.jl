@@ -935,9 +935,9 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
 
-    if opts["parallel_data"] == "face"
+    if opts["parallel_data"] == PARALLEL_DATA_FACE
       finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals)
-    elseif opts["parallel_data"] == "element"
+    elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
       finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element)
 #      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)

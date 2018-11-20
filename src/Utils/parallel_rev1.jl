@@ -60,7 +60,7 @@
   before being passed to `calc_func`.
 
 
-  Currently `shared_data_bar` must have a `parallel_data` setting of "element"
+  Currently `shared_data_bar` must have a `parallel_data` setting of PARALLEL_DATA_ELEMENT
 """
 function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
                       eqn::AbstractSolutionData, opts,
@@ -176,13 +176,16 @@ function finishExchangeData_rev(mesh, sbp, eqn, opts,
 
   npeers = length(shared_data_bar)
   val = assertSendsConsistent(shared_data_bar)
- 
+
+  println(eqn.params.f, "val = ", val); flush(eqn.params.f)
   for i=1:npeers
+    println(eqn.params.f, "i = ", i); flush(eqn.params.f)
     if val == 0  # request have not been waited on previously
       eqn.params.time.t_wait += @elapsed idx = waitAnySend(shared_data_bar)
     else
       idx = i
     end
+    println(eqn.params.f, "idx = ", idx); flush(eqn.params.f)
 
     data_idx = shared_data_bar[idx]
 
@@ -210,6 +213,7 @@ end
 function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractSBP,
                                    eqn::AbstractSolutionData, opts)
 
+  println(eqn.params.f, "entered finishSolutionBarExchange"); flush(eqn.params.f)
   if mesh.npeers == 0
     return nothing
   end
@@ -223,6 +227,7 @@ function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractSBP,
     throw(ErrorException("unsupported parallel_type = $(getParallelDataString(pdata))"))
   end
 
+  println(eqn.params.f, "pdata = ", pdata); flush(eqn.params.f)
   finishExchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data_bar, populate_buffer_rev)
 
   return nothing

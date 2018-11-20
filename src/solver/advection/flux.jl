@@ -182,7 +182,7 @@ end
 
   This function calculates the shared face integrals for the faces shared
   with a single peer process.  This function is for
-  opts["parallel_type"] == "face" and regular face integrals (ie. not the
+  opts["parallel_type"] == PARALLEL_DATA_FACE and regular face integrals (ie. not the
   entropy-stable face integrals) only.
 
   Inputs:
@@ -200,7 +200,7 @@ function calcSharedFaceIntegrals_inner( mesh::AbstractDGMesh{Tmsh},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 # calculate the face flux and do the integration for the shared interfaces
 
-  if opts["parallel_data"] != "face"
+  if opts["parallel_data"] != PARALLEL_DATA_FACE
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end
 
@@ -251,7 +251,7 @@ function calcSharedFaceIntegrals_inner_nopre(
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 # calculate the face flux and do the integration for the shared interfaces
 
-  if opts["parallel_data"] != "face"
+  if opts["parallel_data"] != PARALLEL_DATA_FACE
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end
 
@@ -326,7 +326,7 @@ function calcSharedFaceIntegrals_element_inner(
   @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
   @debug2 flush(eqn.params.f)
 
-  if opts["parallel_data"] != "element"
+  if opts["parallel_data"] != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use getSharedFaceIntegrals_elemenet without parallel element data"))
   end
 
@@ -409,7 +409,7 @@ function calcSharedFaceIntegrals_element_inner_nopre(
   @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
   @debug2 flush(eqn.params.f)
 
-  if opts["parallel_data"] != "element"
+  if opts["parallel_data"] != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use getSharedFaceIntegrals_elemenet without parallel element data"))
   end
 

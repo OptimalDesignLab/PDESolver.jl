@@ -330,11 +330,13 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
 
   array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
   # do parallel communication
-  start_comm_q = start_comm || getSharedData(eqn.shared_data) != "element"
-  eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
+  start_comm_q = start_comm || getSharedData(eqn.shared_data) != PARALLEL_DATA_ELEMENT
+  if start_comm
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-    setParallelData(eqn.shared_data, "element")
-    startSolutionExchange(mesh, sbp, eqn, opts)
+    eqn.params.time.t_send += @elapsed if eqn.commsize > 1 && start_comm_q
+      setParallelData(eqn.shared_data, PARALLEL_DATA_ELEMENT)
+      startSolutionExchange(mesh, sbp, eqn, opts)
+    end
   end
 
 
@@ -394,15 +396,17 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
 
 
   # start parallel communication
-  start_comm_q = start_comm || getParallelData(eqn.shared_data) != "element"
-  if start_comm_q
-    setParallelData(eqn.shared_data, "element")
+  start_comm_q = start_comm || getParallelData(eqn.shared_data) != PARALLEL_DATA_ELEMENT
+  if start_comm
     array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+    if start_comm_q
+      setParallelData(eqn.shared_data, PARALLEL_DATA_ELEMENT)
+    end
   end
 
   fill!(eqn.q_bar, 0)
   array1DTo3D(mesh, sbp, eqn, opts, input_array, eqn.res_bar)
-  setParallelData(eqn.shared_data_bar, "element")
+  setParallelData(eqn.shared_data_bar, PARALLEL_DATA_ELEMENT)
   startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=start_comm_q)
 
   # do reverse mode calculation

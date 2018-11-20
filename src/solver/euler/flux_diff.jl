@@ -504,7 +504,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_revm(
                             functor_revm::FluxType_revm
                            ) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     error("element parallel data required")
   end
 
@@ -598,7 +598,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_revq(
                             functor_revq::FluxType_revq
                            ) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     error("element parallel data required")
   end
 
@@ -684,7 +684,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_revq(
                             functor_revq::FluxType_revq
                            ) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     error("element parallel data required")
   end
 
@@ -813,7 +813,7 @@ function calcSharedFaceElementIntegrals_element_inner_diff(
                             flux_functor::FluxType_diff,
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element_diff without parallel element data"))
   end
 
@@ -919,7 +919,7 @@ function calcSharedFaceElementIntegrals_element_inner_revm(
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -1004,7 +1004,7 @@ function calcSharedFaceElementIntegrals_element_inner_revq(
                             flux_functor_revq::FluxType_revq
                             ) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element" || getParallelData(data_q_bar) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT || getParallelData(data_q_bar) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -1056,7 +1056,7 @@ function calcSharedFaceElementIntegrals_element_inner_revq(
                             flux_functor_revq::FluxType_revq
                             ) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element" || getParallelData(data_q_bar) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT || getParallelData(data_q_bar) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 

@@ -266,7 +266,7 @@ function calcSharedFaceIntegrals_nopre_inner(
                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "face"
+  if getParallelData(data) != PARALLEL_DATA_FACE
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end
 
@@ -446,7 +446,7 @@ function calcSharedFaceElementIntegrals_element_inner(
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -527,7 +527,7 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if getParallelData(data) != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -624,7 +624,7 @@ function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_data"] == "face"
+  if opts["parallel_data"] == PARALLEL_DATA_FACE
     for peer=1:mesh.npeers
       q_vals_p = eqn.shared_data[peer].q_send
       aux_vars = eqn.aux_vars_sharedface[peer]

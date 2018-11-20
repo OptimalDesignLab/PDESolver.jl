@@ -120,7 +120,7 @@ function test_parallel_mpi()
     end
 
     # test changing buffers
-    @test getParallelData(shared_data) == "face"
+    @test getParallelData(shared_data) == PARALLEL_DATA_FACE
     @test size(data_i.q_send, 1) == mesh.numDofPerNode
     @test size(data_i.q_send, 2) == mesh.numNodesPerFace
     @test size(data_i.q_send, 3) == mesh.peer_face_counts[1]
@@ -129,8 +129,8 @@ function test_parallel_mpi()
     @test size(data_i.q_recv, 2) == mesh.numNodesPerFace
     @test size(data_i.q_recv, 3) == mesh.peer_face_counts[1]
 
-    setParallelData(shared_data, "element")
-    @test getParallelData(shared_data) == "element"
+    setParallelData(shared_data, PARALLEL_DATA_ELEMENT)
+    @test getParallelData(shared_data) == PARALLEL_DATA_ELEMENT
     @test size(data_i.q_send, 1) == mesh.numDofPerNode
     @test size(data_i.q_send, 2) == mesh.numNodesPerElement
     @test size(data_i.q_send, 3) == mesh.local_element_counts[1]
@@ -277,7 +277,7 @@ function test_parallel_serialpart()
   opts["jac_method"] = 2
   opts["jac_type"] = 3
   opts["parallel_type"] = 2
-  opts["parallel_data"] = "element"
+  opts["parallel_data"] = PARALLEL_DATA_ELEMENT
   make_input(opts, string("./newton_3d/parallel/", "input_vals_parallel"))
 
   opts["smb_name"] = "SRCMESHES/tet8cube.smb"

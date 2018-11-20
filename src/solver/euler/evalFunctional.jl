@@ -57,13 +57,13 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     end
   end
     
-  setParallelData(eqn.shared_data_bar, "element")
+  setParallelData(eqn.shared_data_bar, PARALLEL_DATA_ELEMENT)
   startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=false)
 
 
   # do reverse mode of the face integrals
   if typeof(mesh.sbpface) <: DenseFace
-    @assert opts["parallel_data"] == "element"
+    @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
     # local part
     face_integral_functor = func.func
@@ -121,7 +121,7 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 
   # do reverse mode of the face integrals
   if typeof(mesh.sbpface) <: DenseFace
-    @assert opts["parallel_data"] == "element"
+    @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
     face_integral_functor = func.func
     flux_functor = ErrorFlux()  # not used, but required by the interface
@@ -164,7 +164,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   # contract it with the entropy variables afterwards
 
   if typeof(mesh.sbpface) <: DenseFace
-    @assert opts["parallel_data"] == "element"
+    @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
     # local part
     face_integral_functor = func.func
@@ -190,9 +190,9 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     # parallel part
 
     # figure out which paralle function to call
-    if opts["parallel_data"] == "face"
+    if opts["parallel_data"] == PARALLEL_DATA_FACE
       pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, flux_functor)
-    elseif opts["parallel_data"] == "element"
+    elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
       pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_elemen_inner(mesh, sbp, eqn, opts, data, flux_functor)
     else
       error("unregonized parallel data: $(opts["parallel_data"])")

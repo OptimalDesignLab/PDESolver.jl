@@ -222,8 +222,8 @@ Reverse mode evalSharedFaceIntegrals with respect to the mesh metrics
 
 function evalSharedFaceIntegrals_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  if getParallelData(eqn.shared_data) != "element"
-    error("""parallel data setting must be "element" """)
+  if getParallelData(eqn.shared_data) != PARALLEL_DATA_ELEMENT
+    error("""parallel data setting must be PARALLEL_DATA_ELEMENT """)
   end
 
 
@@ -259,7 +259,7 @@ function calcSharedFaceIntegrals_revm( mesh::AbstractDGMesh{Tmsh},
   # calculate the face flux and do the integration for the shared interfaces
 
   #TODO: update this to use the new parallel communication primatives
-  if opts["parallel_data"] != "face"
+  if opts["parallel_data"] != PARALLEL_DATA_FACE
     throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
   end
 

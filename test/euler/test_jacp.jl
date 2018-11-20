@@ -122,7 +122,7 @@ function test_jac_parallel_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
 
 #------------------------------------------------------------------------------
 # functions that run individual tests

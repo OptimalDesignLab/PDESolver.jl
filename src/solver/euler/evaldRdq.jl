@@ -215,10 +215,10 @@ function evalSharedFaceIntegrals_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
     return nothing
   end
 
-  if getParallelData(eqn.shared_data) != "element" ||
-     getParallelData(eqn.shared_data_bar) != "element"
+  if getParallelData(eqn.shared_data) != PARALLEL_DATA_ELEMENT ||
+     getParallelData(eqn.shared_data_bar) != PARALLEL_DATA_ELEMENT
 
-    error("""parallel data setting must be "element" """)
+    error("""parallel data setting must be PARALLEL_DATA_ELEMENT """)
   end
 
   face_integral_type = opts["face_integral_type"]

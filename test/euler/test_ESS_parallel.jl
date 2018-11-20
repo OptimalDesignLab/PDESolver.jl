@@ -11,7 +11,6 @@ function test_ESS_parallel()
 
     fname = "input_vals_ESS_parallel.jl"
     mesh, sbp, eqn, opts = solvePDE(fname)
-
     data = readdlm("entropy.dat")
 
     npts, ncols = size(data)
@@ -33,4 +32,4 @@ function test_ESS_parallel()
 end
 
 #test_ESS_parallel()
-add_func1!(EulerTests, test_ESS_parallel, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ESS_parallel, [TAG_SHORTTEST, TAG_TMP])

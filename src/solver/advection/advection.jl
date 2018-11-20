@@ -551,11 +551,11 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
     throw(ErrorException("unsupported face integral type"))
   end
 
-  if opts["parallel_data"] == "face"
+  if opts["parallel_data"] == PARALLEL_DATA_FACE
 #    println(eqn.params.f, "doing face integrals using face data")
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data,
                        calcSharedFaceIntegrals)
-  elseif opts["parallel_data"] == "element"
+  elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 #    println(eqn.params.f, "doing face integrals using element data")
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data,
                        calcSharedFaceIntegrals_element)

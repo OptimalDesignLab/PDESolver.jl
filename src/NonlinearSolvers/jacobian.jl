@@ -446,7 +446,7 @@ end  # end function
   on each element according to a mask.
 
   Because this is element based perturbation, opts["parallel_data"] must
-  be "element".
+  be PARALLEL_DATA_ELEMENT.
 
   Inputs:
     mesh: an AbstractMesh

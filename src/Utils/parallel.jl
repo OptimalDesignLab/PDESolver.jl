@@ -149,7 +149,7 @@ end
 
   This function (efficiently) waits for a receive to finish and calls
   a function to do calculations for on that data. If `PARALLEL_DATA_FACE`
-  == "face", it also permutes the data in the receive buffers to agree
+  == PARALLEL_DATA_FACE, it also permutes the data in the receive buffers to agree
   with the ordering of elementL.  For `PARALLEL_DATA_ELEMENT,
   users should call SummationByParts.interiorFaceInterpolate to interpolate
   the data to the face while ensuring proper permutation.

@@ -401,7 +401,7 @@ end
   `eqn.shared_data_bar` by calling either [`finishExchangeData`](@ref) or
   [`finishExchangeData_rev`](@ref).  The parallel data setting of
   `eqn.shared_data` and `eqn.shared_data_bar` are always the same, and
-  (currently) always equal to "element".
+  (currently) always equal to PARALLEL_DATA_ELEMENT.
 
   **Inputs**
 
