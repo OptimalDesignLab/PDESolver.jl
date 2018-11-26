@@ -565,8 +565,9 @@ function findStablePerturbation!(Jac::AbstractMatrix,
 
 
 
-  # Don't need to scale Jac here!
-  scale!(Jac, (1/scale_u)^4)      # need to unscale Jacpert by the amount used to scale u, to the 4th power
+  # JEH meeting 20181004: Don't need to scale Jac here. u is already scaled??? Think about it.
+
+  # scale!(Jac, (1/scale_u)^4)      # need to unscale Jacpert by the amount used to scale u, to the 4th power
   # scale!(Jacpert, (1/scale_u)^4)      # need to unscale Jacpert by the amount used to scale u, to the 4th power
                                       # this comes from:
                                       #   A = f(u^2)

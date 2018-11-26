@@ -291,11 +291,16 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     fac = b_coeffs[1]
     for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
+      if opts["stabilize_v"]
+        # dq_vec[j] += delta_t*Bv[j]*im     # minus or plus? TODO
+        dq_vec[j] -= delta_t*Bv[j]*im     # trying minus 20181005
+      end
       q_vec[j] += fac*dq_vec[j]
     end
 
     # div by (fac*delta_t) ---- put v_energy calc here
 
+    #=
     if opts["stabilize_v"]
 
       # Stage 1: stabilize q_vec (this only affects the imaginary part of q_vec)
@@ -313,6 +318,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
       @mpi_master println(f_stabilize_v, "i: $i   stage: 1   sum of stab update:", update_tmp)
     end
+    =#
 
     # for visualization of element level DS energy
     if opts["write_L2vnorm"]
@@ -375,9 +381,14 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       fac2 = b_coeffs[stage]
       for j=1:length(q_vec)
         dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
+        if opts["stabilize_v"]
+          # dq_vec[j] += delta_t*Bv[j]*im     # minus or plus? TODO
+          dq_vec[j] -= delta_t*Bv[j]*im     # trying minus 20181005
+        end
         q_vec[j] += fac2*dq_vec[j]
       end
 
+      #=
       if opts["stabilize_v"]
         # Stages 2-5: get B*v
 
@@ -396,6 +407,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
         end
         @mpi_master println(f_stabilize_v, "i: $i   stage: $stage   sum of stab update:", update_tmp)
       end
+      =#
 
 
 
@@ -648,6 +660,9 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
 
   # does Bv = B*imag(q_vec)
   diagMatVec(stab_A, mesh, imag(eqn.q_vec), Bv)     # Prof H thinks stab_A needs to be real       # TODO TODO imag(q_vec) needs to have cplx perturbation applied to it???
+
+  # TESTING 20181004
+  scale!(Bv, 4) # TODO TODO TODO TODO TODO TODO
 
   # application of Bv to q_vec happens outside of this function.
 
