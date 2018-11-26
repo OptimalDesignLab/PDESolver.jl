@@ -272,12 +272,6 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
-    #------------------------------------------------------------------------------
-    # stabilize q_vec: needs to be before q_vec update
-    if opts["stabilize_v"]
-      # Stage 1: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
-    end
 
     if opts["write_L2vnorm"]
       # for visualization of element level DS energy
@@ -287,15 +281,24 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       end
     end
 
+
     # Stage 1 update
     fac = b_coeffs[1]
     for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
-      if opts["stabilize_v"]
-        dq_vec[j] -= delta_t*Bv[j]*im     # needs to be -=
-      end
       q_vec[j] += fac*dq_vec[j]
     end
+
+    #------------------------------------------------------------------------------
+    # stabilize q_vec: needs to be before q_vec update (NO, it needs to be after, according to Lorenz LSERK)
+    if opts["stabilize_v"]
+      # Stage 1: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+      for j=1:length(q_vec)
+        q_vec[j] -= fac*delta_t*Bv[j]*im     # needs to be -=
+      end
+    end
+
 
     # div by (fac*delta_t) ---- put v_energy calc here
 
@@ -370,21 +373,23 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       timing.t_func += @elapsed f( ctx..., opts, treal)           # evalResidual call
       post_func(ctx..., opts, calc_norm=false)
 
-      # call to calcStabilizedQUpdate should be HERE, before the update to q_vec at this stage
-      if opts["stabilize_v"]
-        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
-      end
-
       # LSERK solution update
       fac = a_coeffs[stage]
       fac2 = b_coeffs[stage]
       for j=1:length(q_vec)
         dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
-        if opts["stabilize_v"]
-          dq_vec[j] -= delta_t*Bv[j]*im     # needs to be -=
-        end
         q_vec[j] += fac2*dq_vec[j]
       end
+
+      # call to calcStabilizedQUpdate should be HERE, before the update to q_vec at this stage
+      # NO, it needs to be after according to Lorenz LSERK
+      if opts["stabilize_v"]
+        calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+        for j=1:length(q_vec)
+          q_vec[j] -= fac2*delta_t*Bv[j]*im     # needs to be -=
+        end
+      end
+
 
       #=
       if opts["stabilize_v"]
