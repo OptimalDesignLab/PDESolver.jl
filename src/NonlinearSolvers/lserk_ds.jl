@@ -292,8 +292,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     for j=1:length(q_vec)
       dq_vec[j] = delta_t*res_vec[j]
       if opts["stabilize_v"]
-        # dq_vec[j] += delta_t*Bv[j]*im     # minus or plus? TODO
-        dq_vec[j] -= delta_t*Bv[j]*im     # trying minus 20181005
+        dq_vec[j] -= delta_t*Bv[j]*im     # needs to be -=
       end
       q_vec[j] += fac*dq_vec[j]
     end
@@ -382,8 +381,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
       for j=1:length(q_vec)
         dq_vec[j] = fac*dq_vec[j] + delta_t*res_vec[j]
         if opts["stabilize_v"]
-          # dq_vec[j] += delta_t*Bv[j]*im     # minus or plus? TODO
-          dq_vec[j] -= delta_t*Bv[j]*im     # trying minus 20181005
+          dq_vec[j] -= delta_t*Bv[j]*im     # needs to be -=
         end
         q_vec[j] += fac2*dq_vec[j]
       end
@@ -661,8 +659,7 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
   # does Bv = B*imag(q_vec)
   diagMatVec(stab_A, mesh, imag(eqn.q_vec), Bv)     # Prof H thinks stab_A needs to be real       # TODO TODO imag(q_vec) needs to have cplx perturbation applied to it???
 
-  # TESTING 20181004
-  scale!(Bv, 4) # TODO TODO TODO TODO TODO TODO
+  # Note: here is where you can scale Bv to increase its effect, say by a factor of 4
 
   # application of Bv to q_vec happens outside of this function.
 
