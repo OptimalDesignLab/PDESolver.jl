@@ -368,7 +368,10 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
     # eigenvalues
     for j=1:blocksize
       for i=1:blocksize
-        Ablock[i, j] = -A.A[i, j, k]
+        # Ablock[i, j] = -A.A[i, j, k]
+        Ablock[i, j] = A.A[i, j, k]
+        # TODO: need to figure out which - 
+        #     think it needs to be positive because we need to clip the positive eigenvalues
       end
     end
 
@@ -383,7 +386,8 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
     end
 
     # findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
-    findStablePerturbation!(Ablock, ublock, workvec)
+    # findStablePerturbation!(Ablock, ublock, workvec)
+    clipJac!(Ablock)
 #    removeUnstableModes!(Ablock, u_k)
 
     # println("++++++++++++")
@@ -458,6 +462,44 @@ function removeUnstableModes!(Jac::AbstractMatrix,
   end
 
   return nothing
+end
+
+function clipJac!(Jac::AbstractMatrix)
+                  # u::AbstractVector,
+                  # A::AbstractVector{T}) where T
+
+  # scale_u = 1e100
+
+  #------------------------------------------------------------------------------
+  # new clipping method
+  # n = size(Jac,1)
+
+  λ, E = eig(0.5*(Jac+Jac.'))
+  n = length(λ)
+
+  #------------------------------------------------------------------------------
+  # Original clipping process
+  for i = 1:n
+    if λ[i] > 0.0
+      λ[i] = 0.0
+    end
+  end
+  D = diagm(λ)
+  Jac[:,:] -= E*D*E.'
+
+  #------------------------------------------------------------------------------
+  # Faster (?) clipping process
+  #   don't use diagm, use 'row scaling' (?)
+
+  #------------------------------------------------------------------------------
+  # Speed:
+  # 1) Petsc has MatMatMatMult
+  #     for diag, can do row scaling
+  #     Maybe investigate later
+  # 2) take a look at ODLCommonTools: src/misc.jl
+  #     smallmatmat!()
+
+
 end
 
 """
