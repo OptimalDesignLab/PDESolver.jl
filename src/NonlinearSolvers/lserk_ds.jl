@@ -634,35 +634,34 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
   fill!(tmp_imag, 0.0)
   for j = 1:length(eqn.q_vec)
     tmp_imag[j] = imag(eqn.q_vec[j])
-    # eqn.q_vec[j] = real(eqn.q_vec[j])
-    eqn.q_vec[j] = complex(real(eqn.q_vec[j]), 0.0)
+
+    # commenting out did not fix negative density
+    # eqn.q_vec[j] = complex(real(eqn.q_vec[j]), 0.0)   
+
+    # for array assignment, julia will elevate the real to complex, so this is cleaner
+    eqn.q_vec[j] = real(eqn.q_vec[j])     
   end
 
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)     # calcs Qx*Ax + Qy*Ay     # TODO: is stab_assembler.A complex or real
 
-  # YOU'VE ALREADY ZEROED OUT THE IMAG COMPONENT! USE TMP_IMAG
-  #   -> still want to answer why NaN
   filterDiagJac(mesh, real(tmp_imag), stab_A)        # stab_A is now B in the derivation
-  # filterDiagJac(mesh, imag(eqn.q_vec), stab_A)        # stab_A is now B in the derivation
-  # filterDiagJac(mesh, eqn.q_vec, stab_A)        # stab_A is now B in the derivation
-  # TODO TODO 20180911: stabilize on v_vec! not q_vec?
 
   # Putting the imaginary component back
   for j = 1:length(eqn.q_vec)
     # println(" j: $j, real(eqn.q_vec[j]): ", real(eqn.q_vec[j]), " tmp_imag[j]: ", tmp_imag[j])
+
+    # commenting out did not fix negative density
     eqn.q_vec[j] = complex(real(eqn.q_vec[j]), tmp_imag[j])
   end
 
-  # println(" mean(eqn.q_vec): ", mean(eqn.q_vec))
-
-
-
-  # -> TODO make sure q_vec has its complex part back!!!
-
   # Bv fill! to 0's is not required here. See diagMatVec code. Bv is assigned straight into, no += or anything
+
+  # TODO: in filterDiagJac, ublock is taken as q_vec[mesh.dofs[i,j,k]]. 
+  #       Is this equivalent to the diagMatVec below?
 
   # does Bv = B*imag(q_vec)
   diagMatVec(stab_A, mesh, imag(eqn.q_vec), Bv)     # Prof H thinks stab_A needs to be real       # TODO TODO imag(q_vec) needs to have cplx perturbation applied to it???
+  println(" vecnorm(Bv): ", vecnorm(Bv))
 
   # Note: here is where you can scale Bv to increase its effect, say by a factor of 4
 
@@ -670,9 +669,12 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A,
 
   # The mass matrix needs to be applied to Bv, as it is part of the residual.
   #   see pde_post_func in rk4.jl
-  for j = 1:length(Bv)
-    Bv[j] = eqn.Minv[j]*Bv[j]
-  end
+  # for j = 1:length(Bv)
+    # Bv[j] = eqn.Minv[j]*Bv[j]
+  # end
+
+  # Testing Bv
+
 
   return nothing
 
