@@ -316,7 +316,7 @@ end
 """
   Outer constructor for [`NewtonMatPC`](@ref)
 """
-function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractOperator,
                     eqn::AbstractSolutionData, opts::Dict)
 
 
@@ -334,7 +334,7 @@ function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   return NewtonMatPC(pc_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
 end
 
-function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -371,7 +371,7 @@ end
   Outer constructor for [`NewtonDenseLO`](@ref)
 """
 function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
@@ -400,7 +400,7 @@ end
   Outer constructor for [`NewtonSparseDirectLO`](@ref)
 """
 function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = SparseDirectLO(pc, mesh, sbp, eqn, opts)
 
@@ -431,7 +431,7 @@ end
   Outer constructor for [`NewtonPetscMatLO`](@ref)
 """
 function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = PetscMatLO(pc, mesh, sbp, eqn, opts)
 
@@ -471,7 +471,7 @@ end
    * rhs_func: rhs_func from [`newtonInner`](@ref)
 """
 function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   res_norm_i = 0.0
@@ -509,7 +509,7 @@ const NewtonLinearObject = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPets
 
 
 function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
    
@@ -529,7 +529,7 @@ function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
 end
 
 function calcLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
   if opts["newton_globalize_euler"]
@@ -543,7 +543,7 @@ end
 
 
 function applyLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
-                       sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                       sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol},
                        opts::Dict, ctx_residual, t, x::AbstractVector, 
                        b::AbstractVector) where Tsol
 
@@ -576,7 +576,7 @@ end
 
 function applyLinearOperatorTranspose(lo::NewtonPetscMatFreeLO, 
                              mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol},
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector) where Tsol
 

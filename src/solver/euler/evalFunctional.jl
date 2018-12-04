@@ -11,7 +11,7 @@ import PDESolver._evalFunctionalDeriv_m
   Note that this function may overwrite eqn.res.
 """
 function _evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
+            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres}, opts,
             func::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
 
   val = calcFunctional(mesh, sbp, eqn, opts, func)
@@ -23,7 +23,7 @@ end
 
 # derivative of functional wrt q
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol, Tres}, opts,
                            func::EntropyPenaltyFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
@@ -96,7 +96,7 @@ end
 
 
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            func::EntropyPenaltyFunctional
                            ) where {Tmsh, Tsol}
@@ -155,7 +155,7 @@ end
 # Implementation for each functional
 
 function calcFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres}, opts,
+            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres}, opts,
             func::EntropyPenaltyFunctional) where {Tmsh, Tsol, Tres}
 
 

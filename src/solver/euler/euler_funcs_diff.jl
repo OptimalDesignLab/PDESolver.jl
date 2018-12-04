@@ -53,7 +53,7 @@ end
 """
 function calcVolumeIntegrals_nopre_diff(
                                    mesh::AbstractMesh{Tmsh},
-                                   sbp::AbstractSBP,
+                                   sbp::AbstractOperator,
                                    eqn::EulerData{Tsol, Tres, Tdim},
                                    opts,
                                    assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
@@ -109,7 +109,7 @@ end  # end function
 """
 function calcVolumeIntegrals_nopre_revm(
            mesh::AbstractMesh{Tmsh},
-           sbp::AbstractSBP,
+           sbp::AbstractOperator,
            eqn::EulerData{Tsol, Tres, Tdim},
            opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -182,7 +182,7 @@ end  # end function
 """
 function calcVolumeIntegrals_nopre_revq(
            mesh::AbstractMesh{Tmsh},
-           sbp::AbstractSBP,
+           sbp::AbstractOperator,
            eqn::EulerData{Tsol, Tres, Tdim},
            opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -268,7 +268,7 @@ end  # end function
 """
 function calcVolumeIntegralsStrong_nopre_diff(
                                    mesh::AbstractMesh{Tmsh},
-                                   sbp::AbstractSBP,
+                                   sbp::AbstractOperator,
                                    eqn::EulerData{Tsol, Tres, Tdim},
                                    opts,
                                    assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
@@ -329,7 +329,7 @@ end  # end function
 """
 function calcVolumeIntegralsSplitForm_diff(
                 mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 eqn::EulerData{Tsol, Tres, Tdim}, opts,
                 functor::FluxType_diff,
                 assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
@@ -362,7 +362,7 @@ end
  
 """
 function calcVolumeIntegralsSplitFormCurvilinear_diff(
-                mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+                mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                 eqn::EulerData{Tsol, Tres, Tdim}, opts,
                 functor::FluxType_diff,
                 assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
@@ -432,7 +432,7 @@ end
 
 function calcVolumeIntegralsSplitForm_revm(
                 mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 eqn::EulerData{Tsol, Tres, Tdim}, opts,
                 functor::FluxType,
                 functor_revm::FluxType_revm) where {Tmsh, Tsol, Tres, Tdim}
@@ -455,7 +455,7 @@ end
 
 function calcVolumeIntegralsSplitForm_revq(
                 mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 eqn::EulerData{Tsol, Tres, Tdim}, opts,
                 functor::FluxType,
                 functor_revq::FluxType_revq) where {Tmsh, Tsol, Tres, Tdim}
@@ -493,7 +493,7 @@ end
 """
 function calcVolumeIntegralsSplitFormLinear_revm(
                                         mesh::AbstractMesh{Tmsh},
-                                        sbp::AbstractSBP,
+                                        sbp::AbstractOperator,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType,
                                         functor_revm::FluxType_revm) where {Tmsh, Tsol, Tres, Tdim}
@@ -577,7 +577,7 @@ end
 """
 function calcVolumeIntegralsSplitFormLinear_revq(
                                         mesh::AbstractMesh{Tmsh},
-                                        sbp::AbstractSBP,
+                                        sbp::AbstractOperator,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType,
                                         functor_revq::FluxType_revq) where {Tmsh, Tsol, Tres, Tdim}
@@ -648,7 +648,7 @@ end
 """
 function calcVolumeIntegralsSplitFormCurvilinear_revm(
                       mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
+                      sbp::AbstractOperator,
                       eqn::EulerData{Tsol, Tres, Tdim}, opts,
                       functor::FluxType,
                       functor_revm::FluxType_revm) where {Tmsh, Tsol, Tres, Tdim}
@@ -717,7 +717,7 @@ end
 """
 function calcVolumeIntegralsSplitFormCurvilinear_revq(
                       mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
+                      sbp::AbstractOperator,
                       eqn::EulerData{Tsol, Tres, Tdim}, opts,
                       functor::FluxType,
                       functor_revq::FluxType_revq) where {Tmsh, Tsol, Tres, Tdim}

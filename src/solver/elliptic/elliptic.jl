@@ -3,7 +3,7 @@
 import PDESolver.evalResidual
 
 function init(mesh::AbstractMesh{Tmsh},
-              sbp::AbstractSBP,
+              sbp::AbstractOperator,
               eqn::AbstractEllipticData{Tsol, Tres},
               opts,
               pmesh=mesh) where {Tmsh, Tsol, Tres}
@@ -43,7 +43,7 @@ function init(mesh::AbstractMesh{Tmsh},
 end
 
 function evalResidual(mesh::AbstractMesh,
-                      sbp::AbstractSBP,
+                      sbp::AbstractOperator,
                       eqn::EllipticData,
                       opts::Dict,
                       t=0.0)
@@ -74,7 +74,7 @@ end
 
 
 function dataPrep(mesh::AbstractMesh{Tmsh},
-                         sbp::AbstractSBP,
+                         sbp::AbstractOperator,
                          eqn::AbstractEllipticData{Tsol, Tres},
                          opts) where {Tmsh, Tsol, Tres}
   #
@@ -141,7 +141,7 @@ function dataPrep(mesh::AbstractMesh{Tmsh},
 end
 
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP,
+                             sbp::AbstractOperator,
                              eqn::EllipticData{Tsol, Tres, Tdim},
                              opts) where {Tmsh, Tsol, Tres, Tdim}
   #
@@ -153,7 +153,7 @@ function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
 end
 
 function strongintegrate(mesh::AbstractMesh{Tmsh},
-                         sbp::AbstractSBP{Tsbp},
+                         sbp::AbstractOperator{Tsbp},
                          f::AbstractArray{Tflx,3},
                          res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tflx, Tres}
   for elem = 1:mesh.numEl
@@ -170,7 +170,7 @@ end
 # where Λ is matrix coefficient
 #
 function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
-                                    sbp::AbstractSBP{Tsbp},
+                                    sbp::AbstractOperator{Tsbp},
                                     eqn::EllipticData{Tsol, Tres, Tdim},
                                     q_grad::AbstractArray{Tflx,4},
                                     res::AbstractArray{Tres,3}) where {Tmsh, Tsbp,Tflx,Tsol, Tres, Tdim}
@@ -222,7 +222,7 @@ end
 #
 function evalFaceIntegrals(
                                   mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP,
+                                  sbp::AbstractOperator,
                                   eqn::EllipticData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -300,7 +300,7 @@ function evalFaceIntegrals(
 end
 
 function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP,
+                               sbp::AbstractOperator,
                                eqn::EllipticData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, eqn.flux_bndry, eqn.res)
 
@@ -358,7 +358,7 @@ end  # end evalBoundaryIntegrals
 # Compute Dx
 #
 function calcDx(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 elem::Int,
                 Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
@@ -386,7 +386,7 @@ function calcDx(mesh::AbstractMesh{Tmsh},
 end
 
 function calcQx(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 elem::Int,
                 Qx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Qx, 1) == mesh.numNodesPerElement)

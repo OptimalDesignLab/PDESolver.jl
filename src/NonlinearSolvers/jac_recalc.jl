@@ -59,7 +59,7 @@ end
 """
 function doRecalculation(policy::RecalculationPolicy, itr::Integer,
                          ls::LinearSolver,
-                         mesh::AbstractMesh, sbp::AbstractSBP,
+                         mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts,
                          ctx_residual, t)
 

@@ -26,7 +26,7 @@ import PDESolver: updateMetricDependents, evalResidual
                 module's [`AbstractSolutionData`](@ref) object.
 """
 # high level functions
-function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
               eqn::NSData{Tsol, Tres}, opts, pmesh=mesh;
               init_mesh=true) where {Tmsh, Tsol, Tres}
 
@@ -54,7 +54,7 @@ end
 
 
 
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData,
+function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::NSData,
                      opts::Dict, t=0.0)
 
   @assert eqn.commsize == 1
@@ -116,7 +116,7 @@ end
 
   This is a high level function.
 """
-function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                    eqn::NSData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   # do the Euler part
@@ -145,7 +145,7 @@ end
   result again.
 """
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::NSData{Tsol, Tres, Tdim},
+                             sbp::AbstractOperator, eqn::NSData{Tsol, Tres, Tdim},
                              opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   EulerEquationMod.evalVolumeIntegrals(mesh, sbp, eqn.euler_eqn, opts)
@@ -177,7 +177,7 @@ end
 
 """
 function evalSourceTerm(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::NSData{Tsol, Tres, Tdim},
+                     sbp::AbstractOperator, eqn::NSData{Tsol, Tres, Tdim},
                      opts) where {Tmsh, Tsol, Tres, Tdim}
 
 
@@ -191,7 +191,7 @@ function evalSourceTerm(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 
-function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
                                 eqn::NSData, opts)
 
   # all the arrays are aliased, so use the Euler version
@@ -203,7 +203,7 @@ end
 
 function majorIterationCallback(itr::Integer,
                                 mesh::AbstractMesh,
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::NSData, opts, f::IO)
 
   # the Euler callback does useful things and doesn't have anything incorrect

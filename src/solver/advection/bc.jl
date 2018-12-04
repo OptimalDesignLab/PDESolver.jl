@@ -10,7 +10,7 @@
   Inputs:
 
   mesh : AbstractMesh
-  sbp : AbstractSBP
+  sbp : AbstractOperator
   eqn : AdvectionEquation
   functor : a callable object that calculates the boundary flux at a node
   idx_range: the Range describing which Boundaries have the current BC
@@ -37,7 +37,7 @@
 """->
 # mid level function
 function calcBoundaryFlux( mesh::AbstractCGMesh{Tmsh}, 
-       sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+       sbp::AbstractOperator, eqn::AdvectionData{Tsol}, 
        functor::BCType, idx_range::UnitRange,
        bndry_facenums::AbstractArray{Boundary,1}, 
        bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -72,7 +72,7 @@ end
 
 # DG version
 function calcBoundaryFlux( mesh::AbstractDGMesh{Tmsh}, 
-       sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+       sbp::AbstractOperator, eqn::AdvectionData{Tsol}, 
        functor::BCType, idx_range::UnitRange,
        bndry_facenums::AbstractArray{Boundary,1}, 
        bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -109,7 +109,7 @@ end
   See calcBoundaryFlux for the meaning of the arguments
 """
 function calcBoundaryFlux_nopre( mesh::AbstractDGMesh{Tmsh}, 
-                          sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+                          sbp::AbstractOperator, eqn::AdvectionData{Tsol}, 
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}, 
                           bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -703,7 +703,7 @@ This is a high level function.
 
 """->
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function getBCFunctors(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
      eqn::AdvectionData{Tsol, Tdim}, opts) where {Tmsh, Tsol, Tdim}
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 

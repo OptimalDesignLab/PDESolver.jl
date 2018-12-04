@@ -24,7 +24,7 @@ evaluation.
  * val: functional value
 """->
 function _evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
+            sbp::AbstractOperator, eqn::EulerData{Tsol}, opts,
             func::AbstractBoundaryFunctional) where {Tmsh, Tsol}
 
   if mesh.isDG
@@ -60,7 +60,7 @@ to the if statement to further extend this function.
 
 """->
 function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
+                        sbp::AbstractOperator, eqn::EulerData{Tsol}, opts,
                         func::AbstractBoundaryFunctional,
                         functionalName::String) where {Tmsh, Tsol}
 
@@ -128,7 +128,7 @@ Compute the complete derivative of a functional w.r.t angle of attack
 
 """->
 
-function eval_dJdaoa(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function eval_dJdaoa(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                      eqn::EulerData{Tsol}, opts,
                      func::BoundaryForceData,
                      functionalName::String,
@@ -162,7 +162,7 @@ end
   each boundary node and computes the integral.
 """
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
      opts, func::AbstractBoundaryFunctional) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
@@ -228,7 +228,7 @@ boundary functional type or parameters.
 
 """->
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
      opts, func::BoundaryForceData) where {Tmsh, Tsol, Tres, Tdim}
 
   local_functional_val = zeros(Tsol, func.ndof) # Local processor share
@@ -302,7 +302,7 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
 end
 
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
      opts, func::LiftCoefficient) where {Tmsh, Tsol, Tres, Tdim}
 
   val = calcBndryFunctional(mesh, sbp, eqn, opts, func.lift)
@@ -338,7 +338,7 @@ lines indicate the line being reverse diffed.
 """
 
 function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
-               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+               sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                opts, func::BoundaryForceData,
                bndry_force_bar::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
 

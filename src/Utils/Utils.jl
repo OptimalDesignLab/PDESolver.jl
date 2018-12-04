@@ -129,7 +129,7 @@ end
 # mid level function (although it doesn't need Tdim)
 function array1DTo3D(mesh::AbstractCGMesh, sbp,
                           eqn::AbstractSolutionData, opts,
-                          q_vec::AbstractArray{T, 1},
+                          q_vec::AbstractVector,
                           q_arr::AbstractArray{T, 3}) where T
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
@@ -149,7 +149,7 @@ end
 
 function array1DTo3D(mesh::AbstractDGMesh, sbp,
                           eqn::AbstractSolutionData, opts,
-                          q_vec::AbstractArray{T, 1},
+                          q_vec::AbstractVector,
                           q_arr::AbstractArray{T, 3}) where T
 
   # we assume the memory layouts of q_arr and q_vec are the same
@@ -220,8 +220,8 @@ end
 # mid level function (although it doesn't need Tdim)
 function array3DTo1D(mesh::AbstractCGMesh{Tmsh},
        sbp, eqn::AbstractSolutionData{Tsol}, opts,
-       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1};
-       zero_resvec=true) where {Tmsh, Tsol, Tres}
+       res_arr::Abstract3DArray, res_vec::AbstractVector;
+       zero_resvec=true) where {Tmsh, Tsol}
 # arr is the array to be assembled into res_vec
 
 #  println("in array3DTo1D")
@@ -246,8 +246,8 @@ end
 
 function array3DTo1D(mesh::AbstractDGMesh{Tmsh},
        sbp, eqn::AbstractSolutionData{Tsol}, opts,
-       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1};
-       zero_resvec=true) where {Tmsh, Tsol, Tres}
+       res_arr::Abstract3DArray, res_vec::AbstractVector;
+       zero_resvec=true) where {Tmsh, Tsol}
 
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(res_arr) != pointer(res_vec)
@@ -355,7 +355,7 @@ end
    * eqn
    * opts
 """
-function removeComplex(mesh::AbstractMesh, sbp::AbstractSBP,
+function removeComplex(mesh::AbstractMesh, sbp::AbstractOperator,
                        eqn::AbstractSolutionData, opts)
 
   for i=1:mesh.numDof

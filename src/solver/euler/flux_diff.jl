@@ -5,7 +5,7 @@
 
 function calcFaceIntegral_nopre_diff(
                                 mesh::AbstractDGMesh{Tmsh},
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                                 opts,
                                 functor::FluxType_diff,
@@ -104,7 +104,7 @@ end
 """
 function calcFaceIntegral_nopre_revm(
         mesh::AbstractDGMesh{Tmsh},
-        sbp::AbstractSBP,
+        sbp::AbstractOperator,
         eqn::EulerData{Tsol, Tres, Tdim, :conservative},
         opts,
         functor_revm::FluxType_revm,
@@ -167,7 +167,7 @@ end
 """
 function calcFaceIntegral_nopre_revq(
         mesh::AbstractDGMesh{Tmsh},
-        sbp::AbstractSBP,
+        sbp::AbstractOperator,
         eqn::EulerData{Tsol, Tres, Tdim, :conservative},
         opts,
         functor_revq::FluxType_revq,
@@ -230,7 +230,7 @@ end
 
 function getFaceElementIntegral_diff(
                            mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType_diff,
                            sbpface::AbstractFace,
@@ -299,7 +299,7 @@ end
 """
 function getFaceElementIntegral_revm(
                            mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
                            sbpface::AbstractFace,
@@ -334,7 +334,7 @@ end
 """
 function getFaceElementIntegral_revq(
                            mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor_revq::FluxType_revq,
                            sbpface::AbstractFace,
@@ -376,7 +376,7 @@ end
 """
 function calcSharedFaceIntegrals_element_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
     calcSharedFaceIntegrals_nopre_element_inner_diff(mesh, sbp, eqn, opts, data, eqn.flux_func_diff, eqn.assembler)
@@ -392,7 +392,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_element_inner_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType_diff,
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
@@ -484,7 +484,7 @@ end
   Reverse mode wrt metrics of [`calcSharedFaceIntegrals_element`](@ref)
 """
  function calcSharedFaceIntegrals_element_revm(mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   calcSharedFaceIntegrals_nopre_element_inner_revm(mesh, sbp, eqn, opts, data, eqn.flux_func_revm)
@@ -499,7 +499,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_element_inner_revm(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             functor_revm::FluxType_revm
                            ) where {Tmsh, Tsol, Tres}
@@ -574,7 +574,7 @@ end
   Reverse mode wrt q of [`calcSharedFaceIntegrals_element`](@ref)
 """
  function calcSharedFaceIntegrals_element_revq(mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData,
                             data_bar::SharedFaceData) where {Tmsh, Tsol}
 
@@ -592,7 +592,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_element_inner_revq(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             data_bar::SharedFaceData,
                             functor_revq::FluxType_revq
@@ -678,7 +678,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_element_inner_revq(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             data_bar::SharedFaceData,
                             functor_revq::FluxType_revq
@@ -774,7 +774,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
 
   if opts["use_staggered_grid"]
@@ -807,7 +807,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType_diff,
@@ -885,7 +885,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_revm(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
 
   if opts["use_staggered_grid"]
@@ -914,7 +914,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner_revm(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
@@ -964,7 +964,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_revq(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             data_bar::SharedFaceData) where {Tmsh, Tsol, Tres}
 
@@ -997,7 +997,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner_revq(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts,
                             data::SharedFaceData, data_q_bar::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
@@ -1049,7 +1049,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner_revq(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts,
                             data::SharedFaceData, data_q_bar::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,

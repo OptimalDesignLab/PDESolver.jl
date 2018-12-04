@@ -30,7 +30,7 @@
 
   #TODO: list required options keys
 """
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
+function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
 
   throw(ErrorException("Generic fallback evalResidual reached: did you forget to extend evalResidual() with a new method for your AbstractSolutionData?"))
 
@@ -38,7 +38,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutio
 end
 
 
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::AbstractSolutionData, opts::Dict,
                       res::Abstract3DArray, t = 0.0)
 
@@ -85,7 +85,7 @@ end
   TODO: describe the key that controls whether this function gets called
         or not.
 """
-function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::AbstractSolutionData, opts::Dict, 
                       assembler::AssembleElementData, t=0.0;
                       start_comm=false)
@@ -103,14 +103,14 @@ end
   **Inputs**
 
    * mesh: an AbstractMesh
-   * sbp: an AbstractSBP
+   * sbp: an AbstractOperator
    * eqn: an AbstractSolutionData (physics modules should specialize this
           argument)
    * opts: options dictionary
    * assembler: an object used to assemble contributions into the Jacobian
    * lambda: the homotopy parameter
 """
-function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractOperator,
                               eqn::AbstractSolutionData, opts::Dict, 
                               assembler::AssembleElementData, lambda::Number)
 
@@ -121,7 +121,7 @@ function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 #TODO: debugging
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict, t = 0.0)
 
   evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
 
@@ -150,7 +150,7 @@ end
    * assembler: object that must be passed to `assembleElement` and 
                 `assembleInterface`
 """
-function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::AbstractSolutionData, opts::Dict, 
                       assembler::AssembleElementData, t=0.0;
                       start_comm=false)
@@ -183,7 +183,7 @@ end
                  [`AbstractIntegralFunctional`](@ref), although this is not
                  required.
 """
-function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+function createFunctional(mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts,
                         functional_name::AbstractString,
                         functional_bcs::Vector{I}) where I<:Integer
@@ -223,7 +223,7 @@ end
                         holds all the relevant data.
 """
 function _evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
+            sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol}, opts,
             functionalData::AbstractFunctional) where {Tmsh, Tsol}
 
   error("Generic fallback for _evalFunctional() reached: did you forget to extend evalFunctional() with a new method for you AbstractSolutionData")
@@ -248,10 +248,10 @@ end
    * sbp
    * eqn
    * opts
-   * functionalData: the [`AbstractIntegralFunctional`](@ref)
+   * functionalData: the [`AbstractFunctional`](@ref)
 """
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            functionalData::AbstractFunctional
                            ) where {Tmsh, Tsol}
@@ -274,7 +274,7 @@ end
    * sbp
    * eqn
    * opts
-   * functionalData: AbstractIntegralFunctional to evaluate
+   * functionalData: `AbstractFunctional` to evaluate
 
   **Inputs/Outputs**
 
@@ -287,9 +287,9 @@ end
   cases
 """
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           functionalData::AbstractFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   error("Generic fallback for evalFunctionalDeriv_q() reached: did you forget to extend evalFunctionalDeriv_q() with a new method for you AbstractSolutionData")
@@ -315,7 +315,7 @@ end
    * eqn
    * opts
 """
-function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
                                  eqn::AbstractSolutionData, opts)
 
 
@@ -370,7 +370,7 @@ end
 
 
 """
-function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractSolutionData,
                   opts::Dict, pmesh::AbstractMesh=mesh)
 
   error("Generic fallback for solvePDE() reaches: did you forget to extend solvePDE with a new method for your AbstractSolutionData?")
@@ -414,7 +414,7 @@ end
 
   See the other method of this function if the seed vector is in 1D form.
 """
-function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator,
                            eqn::AbstractSolutionData, opts::Dict, t=0.0)
 
   error("Generic fallback for evalResidual_revm: did you forget to extend evalResidual_revm with a new method for your AbstractSolutionData")
@@ -453,7 +453,7 @@ end
    * t: optional argument giving current time value
 
 """
-function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
                            eqn::AbstractSolutionData, opts::Dict, t=0.0)
 
 

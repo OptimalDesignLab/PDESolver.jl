@@ -342,7 +342,7 @@ end
    * data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
                mesh.peer_parts[i]
 """
-function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP,
+function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractOperator,
                            opts, pdata::Integer; tag::Integer=-1) where Tsol
 # return the vector of SharedFaceData used by the equation object constructor
 

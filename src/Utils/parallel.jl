@@ -26,7 +26,7 @@ include("parallel_rev2.jl")
 
    * wait: wait for sends and receives to finish before exiting
 """
-function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
+function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractOperator,
                                   eqn::AbstractSolutionData, opts;
                                   wait=false)
 
@@ -79,7 +79,7 @@ end
     wait: wait for the sends and receives to finish before returning.  This
           is a debugging option only.  It will kill parallel performance.
 """
-function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
+function exchangeData(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::AbstractSolutionData, opts,
                       shared_data::Vector{SharedFaceData{T}},
                       populate_buffer::Function;
@@ -246,7 +246,7 @@ end
   Inputs/Outputs:
     data: a SharedFaceData.  data.q_send will be overwritten
 """
-function getSendDataFace(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataFace(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
 
@@ -273,7 +273,7 @@ end
 
     data: a SharedFaceData.  data.q_send will be overwritten
 """
-function getSendDataElement(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataElement(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
   # copy data into send buffer

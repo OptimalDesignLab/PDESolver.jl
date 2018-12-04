@@ -25,7 +25,7 @@ import PDESolver._evalFunctionalDeriv_q
   This function is not compatible with `precompute_q_bndry` = false
 """
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
                            func::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
@@ -66,7 +66,7 @@ mesh nodes.
 
 """->
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
                            func::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
@@ -103,6 +103,7 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
 
+  fill!(func_deriv_arr, 0)
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, integrand, func_deriv_arr)
 
   return nothing
@@ -114,7 +115,7 @@ end  # End function calcFunctionalDeriv
   Lift functional.
 """
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
                            func::LiftCoefficient,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}

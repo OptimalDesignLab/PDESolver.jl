@@ -307,7 +307,7 @@ end
 """
 function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
                          mesh::AbstractMesh,
-                         sbp::AbstractSBP, eqn::AbstractSolutionData,
+                         sbp::AbstractOperator, eqn::AbstractSolutionData,
                          opts, checkpoint_data::AbstractCheckpointData)
 
   @assert checkpoint > 0
@@ -418,7 +418,7 @@ end
 """
 function loadCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
                         mesh::AbstractMesh,
-                        sbp::AbstractSBP, eqn::AbstractSolutionData,
+                        sbp::AbstractOperator, eqn::AbstractSolutionData,
                         opts)
 
   @assert checkpoint > 0
@@ -658,7 +658,7 @@ end
 """
 function saveNextFreeCheckpoint(checkpointer::Checkpointer,
                                 mesh::AbstractMesh,
-                                sbp::AbstractSBP, eqn::AbstractSolutionData,
+                                sbp::AbstractOperator, eqn::AbstractSolutionData,
                                 opts, checkpoint_data::AbstractCheckpointData)
 
   checkpoint = getNextFreeCheckpoint(checkpointer)
@@ -688,7 +688,7 @@ end
 """
 function loadLastCheckpoint(checkpointer::Checkpointer,
                             mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts)
 
   checkpoint = getLastCheckpoint(checkpointer)

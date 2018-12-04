@@ -46,7 +46,7 @@ global const NullBoundaryNode = BoundaryNode(Boundary(0, 0), 0, 0)
   
 """
 # this is a mid level function
-function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFluxes(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
   #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
@@ -184,7 +184,7 @@ end
 
   Inputs:
   mesh : AbstractMesh
-  sbp : AbstractSBP
+  sbp : AbstractOperator
   eqn : EulerEquation
   functor : a callable object that calculates the boundary flux at a node
   idx_range: the Range describing which Boundaries have the current BC
@@ -206,7 +206,7 @@ end
 """
 # mid level function
 function calcBoundaryFlux( mesh::AbstractCGMesh{Tmsh},
-       sbp::AbstractSBP, eqn::EulerData{Tsol},
+       sbp::AbstractOperator, eqn::EulerData{Tsol},
        functor::BCType, idx_range::UnitRange,
        bndry_facenums::AbstractArray{Boundary,1},
        bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -249,7 +249,7 @@ end
 
 # DG version
 function calcBoundaryFlux( mesh::AbstractDGMesh{Tmsh},
-       sbp::AbstractSBP, eqn::EulerData{Tsol},
+       sbp::AbstractOperator, eqn::EulerData{Tsol},
        functor::BCType, idx_range::UnitRange,
        bndry_facenums::AbstractArray{Boundary,1},
        bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -288,7 +288,7 @@ end
   than storing the flux.
 """
 function calcBoundaryFlux_nopre( mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
@@ -333,7 +333,7 @@ end
 """
 function calcBoundaryFlux_nopre(mesh_s::AbstractDGMesh{Tmsh},
                           mesh_f::AbstractDGMesh{Tmsh},
-                          sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                          sbp_s::AbstractOperator, sbp_f::AbstractOperator,
                           eqn::EulerData{Tsol, Tres},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
@@ -1802,7 +1802,7 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
 """
 
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFunctors(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
 #  println("Entered getBCFunctors")
@@ -1863,7 +1863,7 @@ global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
     Foo(mesh::AbstractMesh, eqn::EulerData)
   ```
 """
-function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 
   for i = 1:mesh.numBC
     key_i = string("BC", i, "_name")
@@ -1930,7 +1930,7 @@ global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
     Foo(mesh::AbstractMesh, eqn::EulerData)
   ```
 """
-function getBCFunctors_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFunctors_revq(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 
   for i = 1:mesh.numBC
     key_i = string("BC", i, "_name")

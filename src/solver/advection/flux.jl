@@ -30,7 +30,7 @@
 
 """
 function calcFaceFlux( mesh::AbstractDGMesh{Tmsh}, 
-       sbp::AbstractSBP, eqn::AdvectionData{Tsol}, 
+       sbp::AbstractOperator, eqn::AdvectionData{Tsol}, 
        functor::FluxType, 
        interfaces::AbstractArray{Interface,1}, 
        face_flux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -69,7 +69,7 @@ end
     flux_func: the flux functor that computes the face flux at a node
 """
 function calcFaceIntegrals_nopre(
-         mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+         mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
          eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
          flux_func::FluxType) where {Tsol, Tres, Tmsh, Tdim}
 
@@ -102,8 +102,8 @@ end
 function calcFaceIntegralsStaggered_nopre(
                   mesh_s::AbstractDGMesh{Tmsh},
                   mesh_f::AbstractDGMesh{Tmsh},
-                  sbp_s::AbstractSBP,
-                  sbp_f::AbstractSBP,
+                  sbp_s::AbstractOperator,
+                  sbp_f::AbstractOperator,
                   eqn::AdvectionData{Tsol, Tres, Tdim},
                   opts,
                   flux_func::FluxType) where {Tsol, Tres, Tmsh, Tdim}
@@ -164,7 +164,7 @@ end
   [`calcSharedFaceIntegrals_inner`](@ref) for the integral that is computed.
 """
 function calcSharedFaceIntegrals( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            sbp::AbstractOperator, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   if opts["precompute_face_flux"]
@@ -196,7 +196,7 @@ end
 
 """->
 function calcSharedFaceIntegrals_inner( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            sbp::AbstractOperator, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 # calculate the face flux and do the integration for the shared interfaces
 
@@ -247,7 +247,7 @@ end
 """
 function calcSharedFaceIntegrals_inner_nopre(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            sbp::AbstractOperator, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 # calculate the face flux and do the integration for the shared interfaces
 
@@ -298,7 +298,7 @@ end
   [`calcSharedFaceIntegrals_inner`](@ref) for the integral that is computed.
 """
 function calcSharedFaceIntegrals_element(mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            sbp::AbstractOperator, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   if opts["precompute_face_flux"]
@@ -320,7 +320,7 @@ end
 """
 function calcSharedFaceIntegrals_element_inner( 
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol},
+                            sbp::AbstractOperator, eqn::AdvectionData{Tsol},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
 
   @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")
@@ -403,7 +403,7 @@ end
 """
 function calcSharedFaceIntegrals_element_inner_nopre( 
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
 
   @debug2 println(eqn.params.f, "entered calcSharedFaceIntegrals_element")

@@ -8,7 +8,7 @@ import PDESolver.evalHomotopy
 """
   This function calls the appropriate homotopy function for the Euler module.
 """
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
 
   
   calcHomotopyDiss(mesh, sbp, eqn, opts, res)

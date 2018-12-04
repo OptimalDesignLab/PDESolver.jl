@@ -72,7 +72,7 @@ end
   Sets all components of the solution to zero
 """->
 function ICZero(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -115,7 +115,7 @@ end  # end function
 """->
 
 function ICOnes(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts,
+operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, opts,
 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   numEl = mesh.numEl
@@ -155,7 +155,7 @@ end # end function ICOnes
   Sets all density values to 1.0 and energy values to 2.0
 """
 function ICRho1E2(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values
 # this is a template for all other initial conditions
@@ -232,7 +232,7 @@ end  # end function
   other components to zero.
 """->
 function ICsmoothHeavisideder(mesh::AbstractMesh{Tmsh}, 
-            operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol},
+            operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol},
             opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # calculate the value of the smooth heaviside function derivative at a location x
 # x0 is specified within this function
@@ -282,7 +282,7 @@ end
 
 """->
 function ICsmoothHeaviside(mesh::AbstractMesh{Tmsh}, 
-                           operator::AbstractSBP{Tsbp}, 
+                           operator::AbstractOperator{Tsbp}, 
                            eqn::EulerData{Tsol}, 
                            opts, u0::AbstractArray{Tsol, 1}) where {Tmsh, Tsbp, Tsol}
   # calculate the value of the smooth heaviside function at a location x
@@ -339,7 +339,7 @@ Sets the solution to the steady isentropic vortex solution.
 
 """->
 function ICIsentropicVortexWithNoise(mesh::AbstractMesh{Tmsh},
-                   operator::AbstractSBP{Tsbp}, 
+                   operator::AbstractOperator{Tsbp}, 
                    eqn::EulerData{Tsol}, 
                    opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
@@ -385,7 +385,7 @@ end  # end function
   The subsonic inflow and subsonic outflow boundary conditions.
 """
 function ICInvChannel(mesh::AbstractMesh{Tmsh}, 
-        operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, 
+        operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, 
         opts, u0::AbstractArray{Tsol}) where {Tmsh, Tsbp, Tsol}
 
   sol = zeros(Tsol, mesh.numDofPerNode)
@@ -419,7 +419,7 @@ end
 
 """->
 function ICFile(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractSBP{Tsbp}, eqn::EulerData{Tsol}, opts, 
+operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values from a disk file
   # the file name comes from opts["ICfname"]

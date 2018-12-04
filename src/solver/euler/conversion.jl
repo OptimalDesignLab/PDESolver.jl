@@ -363,7 +363,7 @@ end
 """->
 #3D array entropy -> conservative
 function convertToConservative(mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP, 
+       sbp::AbstractOperator, 
        eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
        opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -379,7 +379,7 @@ end
 
 # 3D array conservative -> conservative
 function convertToConservative(mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP, 
+       sbp::AbstractOperator, 
        eqn::EulerData{Tsol, Tres, Tdim, :conservative},
        opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -389,7 +389,7 @@ end
 
 # q_vec conversion entropy -> conservative
 function convertToConservative(mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP, 
+       sbp::AbstractOperator, 
        eqn::EulerData{Tsol, Tres, Tdim, :entropy}, 
        opts, q_vec::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -403,7 +403,7 @@ end
 
 # q_vec conversion conservative -> conservative
 function convertToConservative(mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP, 
+       sbp::AbstractOperator, 
        eqn::EulerData{Tsol, Tres, Tdim, :conservative},
        opts, q_arr::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -510,7 +510,7 @@ end
 """->
 # 3D array conservative -> entropy
 function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
   opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -529,7 +529,7 @@ end
 
 # 3D array entropy -> entropy
 function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
   q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -540,7 +540,7 @@ end
 
 # q_vec conversion conservative -> entropy
 function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts,
   q_vec::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -554,7 +554,7 @@ end
 
 # q_vec conversion entropy -> entropy
 function convertToEntropy(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts, 
   q_arr::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -569,7 +569,7 @@ end
   convert 3D array of conservative variables to IR (inplace)
 """
 function convertToIR(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :conservative}, 
   opts, q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -589,7 +589,7 @@ end
 #=
 # 3D array entropy -> entropy
 function convertToIR(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, IR}, opts, 
   q_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -603,7 +603,7 @@ end
   convert an eqn.q_vec shaped vector of conservative variables to IR (inplace)
 """
 function convertToIR(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts,
   q_vec::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 
@@ -618,7 +618,7 @@ end
 #=
 # q_vec conversion entropy -> entropy
 function convertToIR(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, 
+  sbp::AbstractOperator, 
   eqn::EulerData{Tsol, Tres, Tdim, :IT}, opts, 
   q_arr::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tdim, Tres}
 

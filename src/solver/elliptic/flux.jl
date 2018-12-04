@@ -5,7 +5,7 @@ export interpolateFace
 #
 
 function calcGradient(mesh::AbstractDGMesh{Tmsh},
-                      sbp::AbstractSBP{Tsbp},
+                      sbp::AbstractOperator{Tsbp},
                       eqn::EllipticData{Tsol, Tres, Tdim},
                       q::AbstractArray{Tsol, 3},
                       q_grad::AbstractArray{Tsol, 4}) where {Tmsh, Tsol, Tres, Tdim, Tsbp}
@@ -72,7 +72,7 @@ end
 # Calculate flux at edge cubature points using face-based form.
 #
 function calcFaceFlux(mesh::AbstractDGMesh{Tmsh},
-                             sbp::AbstractSBP,
+                             sbp::AbstractOperator,
                              eqn::EllipticData{Tsol, Tres, Tdim},
                              opts,
                              interfaces::AbstractArray{Interface,1},

@@ -55,7 +55,7 @@
 function predictorCorrectorHomotopy(physics_func::Function,
                   g_func::Function,
                   mesh::AbstractMesh{Tmsh}, 
-                  sbp::AbstractSBP, 
+                  sbp::AbstractOperator, 
                   eqn::AbstractSolutionData{Tsol, Tres}, 
                   opts; pmesh=mesh) where {Tsol, Tres, Tmsh}
 
@@ -433,7 +433,7 @@ mutable struct HomotopyMatPC <: AbstractPetscMatPC
   lambda::Float64  # homotopy parameter
 end
 
-function HomotopyMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+function HomotopyMatPC(mesh::AbstractMesh, sbp::AbstractOperator,
                     eqn::AbstractSolutionData, opts::Dict)
 
 
@@ -443,7 +443,7 @@ function HomotopyMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   return HomotopyMatPC(pc_inner, lambda)
 end
 
-function calcPC(pc::HomotopyMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::HomotopyMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   # compute the Jacobian of the Newton PC
@@ -474,7 +474,7 @@ mutable struct HomotopyDenseLO <: AbstractDenseLO
 end
 
 function HomotopyDenseLO(pc::PCNone, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
   lambda = 1.0
@@ -487,7 +487,7 @@ mutable struct HomotopySparseDirectLO <: AbstractSparseDirectLO
 end
 
 function HomotopySparseDirectLO(pc::PCNone, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)
   lambda = 1.0
@@ -502,7 +502,7 @@ end
 
 
 function HomotopyPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonPetscMatLO(pc, mesh, sbp, eqn, opts)
   lambda = 1.0
@@ -529,7 +529,7 @@ end
    * rhs_func: rhs_func from [`newtonInner`](@ref)
 """
 function HomotopyPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   lambda = 1.0
@@ -545,7 +545,7 @@ const HomotopyMatLO = Union{HomotopyDenseLO, HomotopySparseDirectLO, HomotopyPet
 
 
 function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
    
@@ -569,7 +569,7 @@ end
 
 
 function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -583,7 +583,7 @@ end
 
 
 function applyLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
-                       sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                       sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol},
                        opts::Dict, ctx_residual, t, x::AbstractVector, 
                        b::AbstractVector) where Tsol
 
@@ -598,7 +598,7 @@ end
 
 function applyLinearOperatorTranspose(lo::HomotopyPetscMatFreeLO, 
                              mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol},
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector) where Tsol
 

@@ -61,7 +61,7 @@ end
   See the generic method for docs.
 """
 function createFunctional(mesh::AbstractMesh,
-                  sbp::AbstractSBP,
+                  sbp::AbstractOperator,
                   eqn::AdvectionData{Tsol}, opts,
                   functional_name::AbstractString,
                   functional_bcs::Vector{I}) where {Tsol, I<:Integer}

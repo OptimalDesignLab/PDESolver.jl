@@ -62,7 +62,7 @@
 
   Currently `shared_data_bar` must have a `parallel_data` setting of PARALLEL_DATA_ELEMENT
 """
-function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractSBP,
+function exchangeData_rev(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::AbstractSolutionData, opts,
                       shared_data::Vector{SharedFaceData{T}},
                       shared_data_bar::Vector{SharedFaceData{T}},
@@ -207,7 +207,7 @@ end
    * eqn: communication for `eqn.shared_data_bar` completed
    * opts
 """
-function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractSBP,
+function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractOperator,
                                    eqn::AbstractSolutionData, opts)
 
   println(eqn.params.f, "entered finishSolutionBarExchange"); flush(eqn.params.f)
@@ -235,7 +235,7 @@ end
   Reverse mode of [`getSendDataElement`](@ref).  Takes data from the send
   buffer of `data` and adds it to `eqn.q_bar`
 """
-function getSendDataElement_rev(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataElement_rev(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
   # copy data into send buffer

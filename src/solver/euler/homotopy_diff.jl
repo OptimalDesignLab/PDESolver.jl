@@ -1,7 +1,7 @@
 # differentiated version of homotopy.jl
 import PDESolver.evalHomotopyJacobian
 
-function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractOperator,
                               eqn::EulerData, opts::Dict, 
                               assembler::AssembleElementData, lambda::Number)
 

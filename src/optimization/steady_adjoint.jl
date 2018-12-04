@@ -28,7 +28,7 @@ using PETSc2
                  default false
 """
 function calcAdjoint(mesh::AbstractDGMesh{Tmsh},
-                  sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol, Tres}, opts,
+                  sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol, Tres}, opts,
                   ls::LinearSolver, functionalData::AbstractFunctional,
                   adjoint_vec::Array{Tsol,1}; recalc_jac=false,
                   recalc_pc=false, start_comm=false) where {Tmsh, Tsol, Tres}
@@ -111,7 +111,7 @@ end
                  linear operator for the adjoint solve, default true
 """
 function calcAdjoint(mesh::AbstractDGMesh{Tmsh},
-                  sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol, Tres}, opts,
+                  sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol, Tres}, opts,
                   functionalData::AbstractFunctional,
                   adjoint_vec::Array{Tsol,1}; start_comm=true) where {Tmsh, Tsol, Tres}
 

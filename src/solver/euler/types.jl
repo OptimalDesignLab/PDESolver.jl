@@ -482,7 +482,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   file_dict::Dict{String, IO}  # dictionary of all files used for logging
 
  # inner constructor
-  function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
+  function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractOperator, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
 
     myrank = mesh.myrank
     @mpi_master begin
@@ -787,7 +787,7 @@ end
    * opts: the options dictionary
 
 """
-function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function cleanup(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 
   for f in values(eqn.file_dict)
     close(f)
@@ -844,7 +844,7 @@ end
 
 import PDESolver.updateMetricDependents
 
-function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
                                  eqn::EulerData, opts)
 
   #TODO: don't reallocate the arrays, update in place

@@ -13,7 +13,7 @@
    * opts
    * assembler: AssembleElementData
 """
-function getBCFluxes_diff(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+function getBCFluxes_diff(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
                           opts, assembler::AssembleElementData)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
@@ -46,7 +46,7 @@ Reverse mode of getBCFluxes w.r.t mesh metrics
 * opts  : options dictionary
 
 """
-function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFluxes_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
 #  fill!(mesh.dxidx_bndry_bar, 0.0)
@@ -71,7 +71,7 @@ end
   Reverse mode of [`getBCFluxes`](@ref) wrt the solution.  `eqn.res_bar` is the
   input and `eqn.q_bar` is updated with the result
 """
-function getBCFluxes_revq(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFluxes_revq(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
 #  fill!(mesh.dxidx_bndry_bar, 0.0)
@@ -122,7 +122,7 @@ end
   with dual numbers eventually
 """
 function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol1, Tres1},
+                          sbp::AbstractOperator, eqn::EulerData{Tsol1, Tres1},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1},
                           assembler::AssembleElementData) where {Tsol1, Tres1, Tmsh}
@@ -211,7 +211,7 @@ end
   Reverse mode wrt metrics of [`calcBoundaryFlux_nopre`](@ref)
 """
 function calcBoundaryFlux_nopre_revm( mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                           functor_bar::BCType_revm, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
@@ -260,7 +260,7 @@ end
   Reverse mode wrt metrics of [`calcBoundaryFlux_nopre`](@ref)
 """
 function calcBoundaryFlux_nopre_revq( mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                           functor_bar::BCType_revq, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the

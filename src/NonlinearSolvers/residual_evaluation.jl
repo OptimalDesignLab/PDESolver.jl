@@ -17,7 +17,7 @@ import Utils.array1DTo3D
   **Inputs**
   
    * mesh: an AbstractMesh
-   * sbp: an AbstractSBP
+   * sbp: an AbstractOperator
    * eqn: an AbstractSolutionData (may be modified during this function)
    * opts: the options dictionary
    * ctx_residual: a tuple of values.  ctx_residual[1] must be a function

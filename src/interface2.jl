@@ -57,14 +57,14 @@ end
   **Inputs**
 
    * mesh: an `AbstractMesh`
-   * sbp: an `AbstractSBP`
+   * sbp: an `AbstractOperator`
    * opts: options dictionary
 
   **Outputs**
 
    same as other method
 """
-function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+function createObjects(mesh::AbstractMesh, sbp::AbstractOperator, opts::Dict)
 
   # make sure this options dictionary has all the default values
   read_input(opts)
@@ -117,7 +117,7 @@ end
    same as other method
 
 """
-function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+function createFunctional(mesh::AbstractMesh, sbp::AbstractOperator,
                                     eqn::AbstractSolutionData, opts,
                                     functional_number::Int=1)
 
@@ -159,7 +159,7 @@ end
 
 """
 function evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, opts,
+            sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol}, opts,
             func::AbstractFunctional; start_comm=true) where {Tmsh, Tsol}
 
   start_comm_q = startCommunicationFunctional(mesh, sbp, eqn, opts,
@@ -208,7 +208,7 @@ end
 
 """
 function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            func::AbstractFunctional;
                            start_comm=true
@@ -254,9 +254,9 @@ end
    * start_comm: see [`evalFunctional`](@ref)
 """
 function evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           func::AbstractIntegralFunctional,
+                           func::AbstractFunctional,
                            func_deriv_arr::Abstract3DArray;
                            start_comm=true) where {Tmsh, Tsol}
  
@@ -323,7 +323,7 @@ end
                  `eqn.q`.  Parallel communication is started for `eqn.res_bar`
                  in either case.
 """
-function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator,
                      eqn::AbstractSolutionData, opts::Dict,
                      input_array::AbstractArray{T, 1}, t::Number=0.0;
                      start_comm=true) where {T}
@@ -388,7 +388,7 @@ end
                  is always started for `eqn.res_bar` (because the `input_array`
                   needs to be scattered).
 """
-function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
                      eqn::AbstractSolutionData,
                      opts::Dict, input_array::AbstractVector,
                      output_array::AbstractVector, t::Number=0.0;

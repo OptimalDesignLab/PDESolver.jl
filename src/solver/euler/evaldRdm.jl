@@ -16,7 +16,7 @@ Reverse mode of evalResidual with respect to the mesh metrics ∂ξ/∂x
 
 """->
 
-function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
                      opts::Dict, t::Number=0.0)
 
   time = eqn.params.time
@@ -69,7 +69,7 @@ end  # end evalResidual
   Dataprep-type function that should be called at the beginning of a reverse
   mode product, rather than the regular `dataPrep` function.
 """
-function dataPrep_for_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep_for_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                    eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   # apply filtering to input
@@ -115,7 +115,7 @@ Reverse mode of dataPrep w.r.t mesh metrics
 * opts  : options dictionary
 
 """->
-function dataPrep_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                    eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   # nothing to do here
@@ -137,7 +137,7 @@ Reverse mode of evalVolumeIntegrals with respect to the mesh metrics ∂ξ/∂x
 
 """->
 function evalVolumeIntegrals_revm(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
+                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
   if integral_type == 1
@@ -171,7 +171,7 @@ Reverse mode of evalBoundaryIntegrals with respect to the mesh metrics ∂ξ/∂
 """->
 
 function evalBoundaryIntegrals_revm(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
+                               sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   getBCFluxes_revm(mesh, sbp, eqn, opts)
 
@@ -194,7 +194,7 @@ Reverse mode of evalFaceIntegrals with respect to the mesh metrics ∂ξ/∂x
 """->
 
 function evalFaceIntegrals_revm(mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
+                           sbp::AbstractOperator, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -254,7 +254,7 @@ Reverse mode of calcSharedFaceIntegrals w.r.t mesh metrics, ∂ξ/∂x.
 """
 
 function calcSharedFaceIntegrals_revm( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, functor_revm::FluxType) where {Tmsh, Tsol}
   # calculate the face flux and do the integration for the shared interfaces
 
@@ -331,7 +331,7 @@ documentation as and when this code is developed*
 
 """
 function evalSourceTerm_revm(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                      opts) where {Tmsh, Tsol, Tres, Tdim}
 
 
@@ -359,7 +359,7 @@ Pumi mesh object
 
 """->
 
-function updatePumiMesh(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+function updatePumiMesh(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractOperator,
                         volNodes::AbstractArray{Tmsh, 2}) where Tmsh
 
   for i = 1:mesh.numEl

@@ -64,6 +64,16 @@ function test_functionals()
 
     test_functional_deriv_q(mesh, sbp, eqn, opts, obj)
   end
+
+  
+  func1 = createFunctional(mesh, sbp, eqn, opts, "massflow", [1, 3])
+  func2 = createFunctional(mesh, sbp, eqn, opts, "lift", [1, 3])
+  test_compositefunctional(mesh, sbp, eqn, opts, func1, func2)
+ 
+  func1 = createFunctional(mesh, sbp, eqn, opts, "entropydissipation", [0])
+  func2 = createFunctional(mesh, sbp, eqn, opts, "entropyjump", [0])
+  test_compositefunctional(mesh, sbp, eqn, opts, func1, func2, test_revm=true)
+ 
 #=
   obj = createFunctional(mesh3, sbp3, eqn3, opts3, "entropydissipation", [1])
   test_functional_zero(mesh3, sbp3, eqn3, opts3, obj)
@@ -235,5 +245,55 @@ function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
   return nothing
 end
 
+
+function test_compositefunctional(mesh, sbp, eqn, opts,
+                      func1::AbstractFunctional, func2::AbstractFunctional;
+                      test_revm=false)
+  println("testing CompositeFunctional")
+
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  eqn.q_vec .+= 0.1*rand_realpart(length(eqn.q_vec))
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+
+  func3 = CompositeFunctional(func1, func2)
+  J1 = evalFunctional(mesh, sbp, eqn, opts, func1)
+  J2 = evalFunctional(mesh, sbp, eqn, opts, func2)
+  J3 = evalFunctional(mesh, sbp, eqn, opts, func3)
+
+  @test abs(J3 - (J1 + J2)) < 1e-13
+
+  dJdq1 = zeros(eqn.q)
+  dJdq2 = zeros(eqn.q)
+  dJdq3 = zeros(eqn.q)
+
+  evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func1, dJdq1)
+  evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func2, dJdq2)
+  evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func3, dJdq3)
+
+  @test maximum(abs.(dJdq3 - (dJdq1 + dJdq2))) < 1e-13
+
+  if test_revm
+    zeroBarArrays(mesh)
+    evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func1)
+    evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func2)
+
+    dxidx_bar = copy(mesh.dxidx_bar)
+    jac_bar = copy(mesh.jac_bar)
+    nrm_face_bar = copy(mesh.nrm_face_bar)
+    nrm_bndry_bar = copy(mesh.nrm_bndry_bar)
+    coords_bndry_bar = copy(mesh.coords_bndry_bar)
+
+    zeroBarArrays(mesh)
+    evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func3)
+
+    @test maximum(abs.(mesh.dxidx_bar - dxidx_bar)) < 1e-13
+    @test maximum(abs.(mesh.jac_bar - jac_bar)) < 1e-13
+    @test maximum(abs.(mesh.nrm_face_bar - nrm_face_bar)) < 1e-13
+    @test maximum(abs.(mesh.nrm_bndry_bar - nrm_bndry_bar)) < 1e-13
+    @test maximum(abs.(mesh.coords_bndry_bar - coords_bndry_bar)) < 1e-13
+  end
+end
 
 add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

@@ -3,7 +3,7 @@ import PDESolver: evalJacobian, evalJacobianStrong
 """
   Euler implementation of `evalJacobian`.
 """
-function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
   time = eqn.params.time
@@ -73,7 +73,7 @@ end
 
 
 
-function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
@@ -108,7 +108,7 @@ end
    * opts
 """
 function dataPrep_diff(mesh::AbstractMesh{Tmsh},
-                      sbp::AbstractSBP,
+                      sbp::AbstractOperator,
                       eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
@@ -174,7 +174,7 @@ end # end function dataPrep
    * assembler
 """
 function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
@@ -209,7 +209,7 @@ end  # end evalVolumeIntegrals
    * assembler.
 """
 function evalBoundaryIntegrals_diff(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP,
+                               sbp::AbstractOperator,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -237,7 +237,7 @@ end  # end evalBoundaryIntegrals
    * assembler
 """
 function addStabilization_diff(mesh::AbstractMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
+                          sbp::AbstractOperator, eqn::EulerData{Tsol}, opts,
                           assembler::AssembleElementData) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
@@ -284,7 +284,7 @@ end
    * assembler
 """
 function evalFaceIntegrals_diff(mesh::AbstractDGMesh{Tmsh},
-                    sbp::AbstractSBP,
+                    sbp::AbstractOperator,
                     eqn::EulerData{Tsol}, opts,
                     assembler::AssembleElementData) where {Tmsh, Tsol}
 
@@ -356,7 +356,7 @@ end
    * assembler
 """
 function evalSourceTerm_diff(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                      opts, assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 

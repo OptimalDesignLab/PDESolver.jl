@@ -35,7 +35,7 @@ mutable struct ArtificialViscosityType{Tsol, Tres, Tdim, Tmsh} <: AbstractSoluti
   stabscale::Array{Tsol, 2}         # stabilization scale factor
   Minv::Array{Float64, 1}           # inverse mass matrix
 
-  function ArtificialViscosityType(mesh::AbstractMesh, sbp::AbstractSBP, opts)
+  function ArtificialViscosityType(mesh::AbstractMesh, sbp::AbstractOperator, opts)
     eqn = new()  # incomplete initialization
     eqn.params = ParamType{Tdim}(opts)
   end

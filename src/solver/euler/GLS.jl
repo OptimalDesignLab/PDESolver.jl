@@ -18,7 +18,7 @@ implementation is only for steady problems and conservative variables
 * None
 
 """->
-function GLS(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function GLS(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
        eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   
   #  println("Entered GLS")
@@ -106,7 +106,7 @@ mesh. It uses conservative variables
 """->
 
 function parametricFluxJacobian(mesh::AbstractMesh{Tmsh}, 
-        sbp::AbstractSBP, 
+        sbp::AbstractOperator, 
         eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
 
 # Calculates the Flux Jacobian in the parametric space
@@ -217,7 +217,7 @@ Calculates the stabilization term tau for GLS
 * None
 """->
 function calcTau(mesh::AbstractMesh{Tmsh}, 
-sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
 tau::AbstractArray{Tsol,4}, order::Integer) where {Tmsh, Tsol, Tres, Tdim}
 
   # Using Glasby's Method Equation 26 & 27
@@ -511,7 +511,7 @@ implementation is only for steady problems
 """->
 
 # SUPG implementation
-function SUPG(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function SUPG(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
       eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
 
   FluxJacobian(mesh, sbp, eqn) # Calculate the euler flux jacobian  
@@ -602,7 +602,7 @@ Calculates the stabilization term tau for all the nodes in the mesh
 """->
 # Stabilization Term 3
 function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
-       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
        tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # Reference: http://enu.kz/repository/2010/AIAA-2010-1183.pdf, eqn 15
@@ -645,7 +645,7 @@ end # end calcStabilizationTerm
 #=
 # Stabilization Term 1
 function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                               sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # q in the parametric space. Since everything happens in this space
@@ -704,7 +704,7 @@ end # end calcStabilizationTerm
 #=
 # Stabilization term 2
 function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                               sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # Reference for stabilization: http://enu.kz/repository/2010/AIAA-2010-1183.pdf
@@ -741,7 +741,7 @@ end # end calcStabilizationTerm
 #=
 # Stabilization term 4
 function calcStabilizationTerm(mesh::AbstractMesh{Tmsh}, 
-                               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                               sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                                tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
 
   # Reference: Three-Dimensional Stabilized Finite Elements for Compressible 

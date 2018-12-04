@@ -45,8 +45,9 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 # load the modules
 using MPI
 using ODLCommonTools
-import ODLCommonTools: evalFunctional, evalFunctionalDeriv_m,
-                       evalFunctionalDeriv_q
+import ODLCommonTools: evalFunctional, _evalFunctional,
+                       evalFunctionalDeriv_m, _evalFunctionalDeriv_m,
+                       evalFunctionalDeriv_q, _evalFunctionalDeriv_q
 
 function finalizeMPI()
   if MPI.Initialized()

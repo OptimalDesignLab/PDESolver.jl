@@ -39,7 +39,7 @@ global const ExactDict = Dict{String, ExactSolutionType}(
 
 
 function calcErrorL2Norm(mesh::AbstractMesh{Tmsh},
-                         sbp::AbstractSBP,
+                         sbp::AbstractOperator,
                          eqn::AbstractEllipticData{Tsol, Tres},
                          opts) where {Tmsh, Tsol, Tres}
   l2norm::Float64 = 0.

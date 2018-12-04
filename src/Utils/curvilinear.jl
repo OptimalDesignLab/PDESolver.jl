@@ -5,7 +5,7 @@
   element.
 
   Inputs:
-    sbp: an AbstractSBP
+    sbp: an AbstractOperator
     dxidx: the scaled mapping jacobian, dxidx/|J| at every node, Tdim x Txim
            x numNodesPerElement
 
@@ -14,7 +14,7 @@
        x Tdim
 
 """
-function calcSCurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, S::AbstractArray{T, 3}) where {T, Tmsh}
+function calcSCurvilinear(sbp::AbstractOperator, dxidx::AbstractArray{Tmsh, 3}, S::AbstractArray{T, 3}) where {T, Tmsh}
 # calculate S in x, y, z directions
 
   Tdim = size(S, 3)
@@ -53,7 +53,7 @@ end
 
    * dxidx_bar: updated with reverse propigation of S_bar
 """
-function calcSCurvilinear_rev(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3},
+function calcSCurvilinear_rev(sbp::AbstractOperator, dxidx::AbstractArray{Tmsh, 3},
                                dxidx_bar::AbstractArray{Tmsh, 3},
                                S::AbstractArray{T, 3}, S_bar::AbstractArray{T, 3}) where {T, Tmsh}
 
@@ -94,7 +94,7 @@ end
   Note that this E is not symmetric
 
   Inputs:
-    sbp: an AbstractSBP
+    sbp: an AbstractOperator
     dxidx: the scaled mapping jacobian, dxidx/|J| at every node, Tdim x Txim
            x numNodesPerElement
 
@@ -103,7 +103,7 @@ end
        x Tdim
 
 """
-function calcECurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, E::AbstractArray{T, 3}) where {T, Tmsh}
+function calcECurvilinear(sbp::AbstractOperator, dxidx::AbstractArray{Tmsh, 3}, E::AbstractArray{T, 3}) where {T, Tmsh}
 # calculate E in x, y, z directions
 # this isn't the E actually used by the code, it is Ex =  E_xi*metrics_xi_x + 
 # E_eta*metrics_eta_x
@@ -131,7 +131,7 @@ end
   terms.  This is *not* the D used in the final curvilinear discretization.
 
   Inputs:
-    sbp: an AbstractSBP
+    sbp: an AbstractOperator
     dxidx: the scaled mapping jacobian, dxidx/|J| at every node, Tdim x Txim
            x numNodesPerElement
 
@@ -141,7 +141,7 @@ end
 
 """
 
-function calcDCurvilinear(sbp::AbstractSBP, dxidx::AbstractArray{Tmsh, 3}, D::AbstractArray{T, 3}) where {T, Tmsh}
+function calcDCurvilinear(sbp::AbstractOperator, dxidx::AbstractArray{Tmsh, 3}, D::AbstractArray{T, 3}) where {T, Tmsh}
 # calculate D in x, y, z directions
 # this isn't the D actually used by the code, it is Dx =  D_xi*metrics_xi_x + 
 # D_eta*metrics_eta_x

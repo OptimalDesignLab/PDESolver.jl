@@ -169,7 +169,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
+  function AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)

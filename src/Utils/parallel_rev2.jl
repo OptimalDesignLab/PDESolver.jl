@@ -44,7 +44,7 @@
   `res_bar`.  It would be slightly better to post all receives first and then
   all sends.
 """
-function startSolutionExchange_rev2(mesh::AbstractMesh, sbp::AbstractSBP,
+function startSolutionExchange_rev2(mesh::AbstractMesh, sbp::AbstractOperator,
                                   eqn::AbstractSolutionData, opts;
                                   send_q=true, wait=false)
 
@@ -167,7 +167,7 @@ end
   Like [`getSendDataFace`](@ref), but takes the data from `eqn.res_bar`
   and puts it in the send buffer.
 """
-function getSendDataFace_resbar(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataFace_resbar(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
 
@@ -194,7 +194,7 @@ end
 
     data: a SharedFaceData.  data.q_send will be overwritten
 """
-function getSendDataElement_resbar(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataElement_resbar(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
   # copy data into send buffer

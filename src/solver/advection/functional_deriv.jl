@@ -6,7 +6,7 @@ import PDESolver._evalFunctionalDeriv_q
   evalFunctionalDeriv_q for Advection
 """
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::AdvectionData{Tsol}, opts,
                            functionalData::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
@@ -45,7 +45,7 @@ mesh nodes.
 
 """->
 #=
-function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractSBP,
+function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractOperator,
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges,
                              functionalData, func_deriv_arr)
 
@@ -99,7 +99,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
 end
 =#
 # DG Version
-function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractOperator,
                  eqn::AdvectionData{Tsol}, opts,
                  functionalData::AbstractBoundaryFunctional,
                  func_deriv_arr) where {Tmsh, Tsol}

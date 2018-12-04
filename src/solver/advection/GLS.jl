@@ -17,7 +17,7 @@ implementation is only for steady problems and conservative variables
 * None
 
 """->
-function GLS(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function GLS(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
              eqn::AdvectionData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   
 
@@ -120,7 +120,7 @@ Calculates the stabilization term tau for GLS. It operates at the global level.
 * None
 """->
 function calcTau(mesh::AbstractMesh{Tmsh}, 
-sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
 tau::AbstractArray{Tsol,2}) where {Tmsh, Tsol, Tres, Tdim}
   
   # Using Glasby's implementation for advection equation
@@ -168,7 +168,7 @@ Calculates the shape function derivatives for a 2D problem
 *  None
 
 """->
-function calcShapefuncDeriv(sbp::AbstractSBP, 
+function calcShapefuncDeriv(sbp::AbstractOperator, 
                             shapefuncderiv::AbstractArray{Tsol,3}) where Tsol
 
   Tdim = 2  # For a 2D problem

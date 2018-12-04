@@ -874,7 +874,7 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
 
   function CalcVolumeIntegralsData{Tres, Tmsh}(numDofPerNode::Integer,
                   dim::Integer, numNodesPerElement_s::Integer,
-                  numNodesPerElement_f::Integer, sbp::AbstractSBP) where {Tres, Tmsh}
+                  numNodesPerElement_f::Integer, sbp::AbstractOperator) where {Tres, Tmsh}
 
     # calcVolumeIntegrals
     flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement_s, dim)

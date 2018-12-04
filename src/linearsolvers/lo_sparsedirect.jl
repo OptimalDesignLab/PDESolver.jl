@@ -35,7 +35,7 @@ end
    * eqn
    * opts
 """
-function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts::Dict)
 
   if typeof(mesh) <: AbstractCGMesh
@@ -88,7 +88,7 @@ end
 
 
 function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
@@ -98,7 +98,7 @@ function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
 end
 
 function applyLinearOperator(lo::AbstractSparseDirectLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData,
+                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
@@ -110,7 +110,7 @@ end
 
 
 function applyLinearOperatorTranspose(lo::AbstractSparseDirectLO, 
-                             mesh::AbstractMesh, sbp::AbstractSBP,
+                             mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)

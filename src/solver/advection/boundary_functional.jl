@@ -19,7 +19,7 @@ mid level type specific function for the actual functional evaluation.
 *  `functionalData` : Object of the functional being computed.
 """->
 function _evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
+            sbp::AbstractOperator, eqn::AdvectionData{Tsol}, opts,
             functionalData::AbstractBoundaryFunctional) where {Tmsh, Tsol}
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
@@ -51,7 +51,7 @@ different boundary functional type.
 """->
 #=  TODO: uncomment and run test when mesh.bndry_geo_nums gets added to CG meshes
 
-function calcBndryFunctional(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryFunctional(mesh::AbstractCGMesh{Tmsh},sbp::AbstractOperator,
                          eqn::AdvectionData{Tsol}, opts, functor, functional_edges) where {Tmsh, Tsol}
 
   # Specify the boundary conditions for the edge on which the force needs to be
@@ -114,7 +114,7 @@ end
 =#
 
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-          sbp::AbstractSBP,
+          sbp::AbstractOperator,
           eqn::AdvectionData{Tsol}, opts,
           functionalData::AbstractBoundaryFunctional{Topt}) where {Tmsh, Tsol, Topt}
 

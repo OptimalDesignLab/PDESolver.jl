@@ -21,8 +21,8 @@
 
    * q_new: the array to put the new solution into (overwritten)
 """
-function interpField(sbp_old::AbstractSBP, q_old::Abstract3DArray,
-                        sbp_new::AbstractSBP, q_new::Abstract3DArray)
+function interpField(sbp_old::AbstractOperator, q_old::Abstract3DArray,
+                        sbp_new::AbstractOperator, q_new::Abstract3DArray)
 
   @assert size(q_old, 3) == size(q_new, 3)
   @assert size(q_old, 1) == size(q_new, 1)

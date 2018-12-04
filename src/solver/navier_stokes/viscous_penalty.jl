@@ -10,7 +10,7 @@
    * pMat: penalty matrix
 """
 function cmptIPMat(mesh::AbstractMesh{Tmsh},
-                   sbp::AbstractSBP,
+                   sbp::AbstractOperator,
                    eqn::NSData{Tsol, Tres, Tdim},
                    opts,
                    iface::Int,
@@ -27,7 +27,7 @@ function cmptIPMat(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_SIPG(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP,
+                        sbp::AbstractOperator,
                         eqn::NSData{Tsol, Tres, 2},
                         opts,
                         iface::Int,
@@ -38,7 +38,7 @@ function cmptIPMat_SIPG(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_BR2(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
+                       sbp::AbstractOperator,
                        eqn::NSData{Tsol, Tres, 2},
                        opts,
                        iface::Int,
@@ -49,7 +49,7 @@ function cmptIPMat_BR2(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::NSData{Tsol, Tres, 2},
                            opts,
                            iface::Int,
@@ -170,7 +170,7 @@ function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::NSData{Tsol, Tres, 3},
                            opts,
                            iface::Int,
@@ -477,7 +477,7 @@ end
    * pMat: penalty matrix
 """
 function cmptBPMat(mesh::AbstractMesh{Tmsh},
-                   sbp::AbstractSBP,
+                   sbp::AbstractOperator,
                    eqn::NSData{Tsol, Tres, Tdim},
                    opts,
                    iface::Int,
@@ -493,7 +493,7 @@ function cmptBPMat(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_SIPG(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP,
+                        sbp::AbstractOperator,
                         eqn::NSData{Tsol, Tres, 2},
                         opts,
                         iface::Int,
@@ -503,7 +503,7 @@ function cmptBPMat_SIPG(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_BR2(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
+                       sbp::AbstractOperator,
                        eqn::NSData{Tsol, Tres, 2},
                        opts,
                        iface::Int,
@@ -513,7 +513,7 @@ function cmptBPMat_BR2(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::NSData{Tsol, Tres, 2},
                            opts,
                            iface::Int,
@@ -629,7 +629,7 @@ function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::NSData{Tsol, Tres, 3},
                            opts,
                            iface::Int,

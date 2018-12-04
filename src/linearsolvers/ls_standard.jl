@@ -25,7 +25,7 @@
                   parallel communication is started before calling this
                   function.
 """
-function calcPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t; start_comm=false)
 
   if typeof(ls.pc) <: PCNone
@@ -68,7 +68,7 @@ end
 
 """
 function calcLinearOperator(ls::StandardLinearSolver, mesh::AbstractMesh,
-                         sbp::AbstractSBP,
+                         sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts::Dict, ctx_residual, t;
                          start_comm=false)
 
@@ -109,7 +109,7 @@ end
 
 """
 function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
-                     sbp::AbstractSBP,
+                     sbp::AbstractOperator,
                      eqn::AbstractSolutionData, opts::Dict, ctx_residual, t;
                      start_comm=false)
 
@@ -151,7 +151,7 @@ end
   For direct methods, a linear solve is performed because there is no
   preconditioner.
 """
-function applyPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -170,7 +170,7 @@ end
   throws an error).
 """
 function applyPCTranspose(ls::StandardLinearSolver, mesh::AbstractMesh,
-                          sbp::AbstractSBP,
+                          sbp::AbstractOperator,
                           eqn::AbstractSolutionData, opts::Dict, t,
                           b::AbstractVector, x::AbstractVector)
   if typeof(ls.pc) <: PCNone

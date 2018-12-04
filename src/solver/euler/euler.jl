@@ -52,7 +52,7 @@
 ### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
 
-The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, 
+The high level functions take the mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerEquation, 
 and opts (options dictionary), They do not know the types their
 arguments are paramaterized on. There is only one method for each high level function.  
 All they do is call mid level functions.
@@ -108,7 +108,7 @@ import PDESolver.evalResidual
 """->
 # this function is what the timestepper calls
 # high level function
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
                      opts::Dict, t=0.0)
 
   time = eqn.params.time
@@ -193,7 +193,7 @@ end  # end evalResidual
                 module's [`AbstractSolutionData`](@ref) object.
 """
 # high level functions
-function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh; init_mesh=true) where {Tmsh, Tsol, Tres}
 
   # println("\nInitializing Euler module")
@@ -233,7 +233,7 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
   # Get functors for the boundary conditions
@@ -248,7 +248,7 @@ function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
-function init_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function init_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
   # Get functors for the boundary conditions
@@ -267,7 +267,7 @@ end
 
 function majorIterationCallback(itr::Integer,
                                 mesh::AbstractMesh{Tmsh},
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("Performing major Iteration Callback")
@@ -531,7 +531,7 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                    eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
@@ -719,7 +719,7 @@ end
   This is a mid level function.
 """
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                              opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
@@ -760,7 +760,7 @@ end  # end evalVolumeIntegrals
 
 """
 function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
+       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   #TODO: remove conditional
   if mesh.isDG
@@ -796,7 +796,7 @@ end  # end evalBoundaryIntegrals
 """->
 # mid level function
 function addStabilization(mesh::AbstractMesh{Tmsh},
-             sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh,  Tsol}
+             sbp::AbstractOperator, eqn::EulerData{Tsol}, opts) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
 
@@ -858,7 +858,7 @@ end
 
 """->
 function evalFaceIntegrals(mesh::AbstractDGMesh{Tmsh},
-               sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
+               sbp::AbstractOperator, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -977,7 +977,7 @@ end
 
 """
 function evalSourceTerm(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                      opts) where {Tmsh, Tsol, Tres, Tdim}
 
 

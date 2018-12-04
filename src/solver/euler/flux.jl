@@ -35,7 +35,7 @@
 
 """->
 function calcFaceFlux( mesh::AbstractDGMesh{Tmsh},
-  sbp::AbstractSBP,
+  sbp::AbstractOperator,
   eqn::EulerData{Tsol, Tres, Tdim, :conservative},
   functor::FluxType,
   interfaces::AbstractArray{Interface,1},
@@ -78,7 +78,7 @@ end
 """
 function calcFaceIntegral_nopre(
         mesh::AbstractDGMesh{Tmsh},
-        sbp::AbstractSBP,
+        sbp::AbstractOperator,
         eqn::EulerData{Tsol, Tres, Tdim, :conservative},
         opts,
         functor::FluxType,
@@ -131,7 +131,7 @@ end
 """
 function getFaceElementIntegral(
                            mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
                            sbpface::AbstractFace,
@@ -185,7 +185,7 @@ end
 function getFaceElementIntegral(
                            mesh_s::AbstractDGMesh{Tmsh},
                            mesh_f::AbstractDGMesh{Tmsh},
-                           sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                           sbp_s::AbstractOperator, sbp_f::AbstractOperator,
                            eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
@@ -247,7 +247,7 @@ end
   It present the interface needed by [`finishExchangeData`](@ref).
 """
 function calcSharedFaceIntegrals( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   # if there were other ways to doing the shared face integrals, there would
@@ -263,7 +263,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_inner(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
 
   if getParallelData(data) != PARALLEL_DATA_FACE
@@ -318,7 +318,7 @@ end
   It presents the interface required by [`finishExchangeData`](@ref)
 """
 function calcSharedFaceIntegrals_element(mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
   calcSharedFaceIntegrals_nopre_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
@@ -334,7 +334,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_element_inner(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
 
   q = eqn.q
@@ -406,7 +406,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
 
   if opts["use_staggered_grid"]
@@ -441,7 +441,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
@@ -521,7 +521,7 @@ end
 function calcSharedFaceElementIntegralsStaggered_element_inner(
                             mesh_s::AbstractDGMesh{Tmsh},
                             mesh_f::AbstractDGMesh{Tmsh},
-                            sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                            sbp_s::AbstractOperator, sbp_f::AbstractOperator,
                             eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,

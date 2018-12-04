@@ -206,7 +206,7 @@ end
  * `functional_bcs`: the boundary condition numbers the functional is
                      computed on.
 """
-function createFunctional(mesh::AbstractMesh, sbp::AbstractSBP,
+function createFunctional(mesh::AbstractMesh, sbp::AbstractOperator,
                   eqn::EulerData{Tsol}, opts,
                   functional_name::AbstractString,
                   functional_bcs::Vector{I}) where {Tsol, I<:Integer}
