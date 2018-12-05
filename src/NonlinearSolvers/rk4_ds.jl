@@ -179,6 +179,110 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     f1 = BufferedIO(_f1)
   end
 
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Start NEW
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #------------------------------------------------------------------------------
+  # splat ctx to get mesh, sbp, eqn
+  # (mesh, sbp, eqn) = ctx...
+  mesh = ctx[1]   # fastest way to grab mesh from ctx?
+  sbp = ctx[2]   # fastest way to grab mesh from ctx?
+  eqn = ctx[3]   # fastest way to grab mesh from ctx?
+
+  #------------------------------------------------------------------------------
+  # direct sensitivity of Cd wrt M : setup
+  if opts["perturb_Ma"]
+    term23 = zero(eqn.params.Ma)      # type stable version of 'term23 = 0.0'
+    Ma_pert_mag = opts["perturb_Ma_magnitude"]
+    Ma_pert = complex(0, Ma_pert_mag)
+
+    term2 = zeros(eqn.q)
+    term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+    @mpi_master println("Direct sensitivity setup done.")
+  end   # end if opts["perturb_Ma"]
+
+  #------------------------------------------------------------------------------
+  # capture direct sensitivity at the IC
+  # v is the direct sensitivity, du/dM
+  # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+  if opts["write_drag"]
+    objective = createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional num
+    drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+    # note about drag writing: file_dict populated and file opened in src/solver/euler/types.jl
+    @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+    @mpi_master println(f_drag, 1, " ", drag)
+    @mpi_master flush(f_drag)
+  end
+  if opts["write_L2vnorm"]
+    @mpi_master f_L2vnorm = eqn.file_dict[opts["write_L2vnorm_fname"]]
+  end
+
+  if opts["write_L2vnorm"]
+    # for visualization of element level DS energy
+    old_q_vec = zeros(q_vec)
+    R_stab = zeros(q_vec)
+    v_energy = zeros(q_vec)
+
+    @mpi_master f_v_energy = open("v_energy_data.dat", "w")
+  end
+  if opts["perturb_Ma"]
+
+    # this is the IC, so it gets the first time step's quad_weight
+    i = 1       # note that timestep loop below starts at i = 2
+    finaliter = calcFinalIter(t_steps, itermax)
+    quad_weight = calcQuadWeight(i, delta_t, finaliter)
+
+    #------------------------------------------------------------------------------
+    # allocation of objects for stabilization routine
+    if opts["stabilize_v"]
+      stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
+      stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
+      # Bv = zeros(Float64, length(q_vec), )
+      Bv = zeros(Complex128, length(q_vec))
+      tmp_imag = zeros(Float64, length(eqn.q_vec))
+      dqimag_vec = zeros(Bv)
+      @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
+
+    end
+
+    # Note: no stabilization of q_vec at the IC
+    #   no evalResidual yet, and hasn't entered the time-stepper yet
+    #   so no appropriate scaling factors like delta_t or fac or anything
+
+    v_vec = zeros(q_vec)      # direct sensitivity vector
+    for v_ix = 1:length(v_vec)
+      v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag
+    end
+    term2 = zeros(eqn.q)      # First allocation of term2. fill! used below, during timestep loop
+    # evalFunctional calls disassembleSolution, which puts q_vec into q
+    # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
+    # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+    evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+
+    # do the dot product of the two terms, and save
+    # this dot product is: dJdu*dudM
+    term2_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+    # assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
+    array3DTo1D(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
+
+    for v_ix = 1:length(v_vec)
+      # this accumulation occurs across all dofs and all time steps.
+      term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
+    end
+
+    if opts["write_L2vnorm"]
+      L2_v_norm = calcNorm(eqn, v_vec)
+      @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+    end
+
+  end   # end if opts["perturb_Ma"]
+
+  flush(BSTDOUT)
+
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # End NEW
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
   x_old = copy(q_vec)
   k1 = zeros(x_old)
   k2 = zeros(x_old)
@@ -196,7 +300,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #-----------------------------------------------------
   ### Main timestepping loop ###
   # beginning of RK4 time stepping loop
-  #TODO: make this loop 1-based
   # this loop is 2:(t_steps + 1) when not restarting
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
@@ -233,6 +336,10 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       flush(BSTDOUT)
     end
 
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # FAC = 1.0       # for making stabilization +=
+    FAC = -1.0       # for making stabilization -=  (needed for eig clipping?)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #------------------------------------------------------------------------------
     # Stage 1
@@ -246,6 +353,19 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       k1[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k1[j]
     end
+
+    # TODO TODO TODO TODO TODO: start here! stage 1 incomplete.
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # stabilize q_vec: needs to be before q_vec update (NO, it needs to be after, according to Lorenz LSERK)
+    if opts["stabilize_v"]
+      # Stage 1: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+      # TODO: need to pass in x_old if we go 
+      for j=1:length(q_vec)
+        q_vec[j] += FAC*h*Bv[j]*im     # needs to be -=, done w/ FAC
+      end
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # logging
     @mpi_master if i % 1 == 0
