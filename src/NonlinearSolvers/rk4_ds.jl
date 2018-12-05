@@ -349,21 +349,25 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     sol_norm = post_func(ctx..., opts)
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
 
-    for j=1:m
-      k1[j] = res_vec[j]
-      q_vec[j] = x_old[j] + (h/2)*k1[j]
-    end
+    # for j=1:m
+      # Old:
+      # k1[j] = res_vec[j]
+      # q_vec[j] = x_old[j] + (h/2)*k1[j]
+    # end
 
-    # TODO TODO TODO TODO TODO: start here! stage 1 incomplete.
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # stabilize q_vec: needs to be before q_vec update (NO, it needs to be after, according to Lorenz LSERK)
-    if opts["stabilize_v"]
+    if opts["stabilize_v"] && i != 2
       # Stage 1: get B*v
       calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
-      # TODO: need to pass in x_old if we go 
-      for j=1:length(q_vec)
-        q_vec[j] += FAC*h*Bv[j]*im     # needs to be -=, done w/ FAC
-      end
+      # for j=1:length(q_vec)
+        # q_vec[j] += FAC*h*Bv[j]*im     # needs to be -=, done w/ FAC
+      # end
+    end
+    for j = 1:m
+      k1[j] = h*res_vec[j]
+      k1[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      q_vec[j] = x_old[j] + 0.5*k1[j]
     end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -397,27 +401,56 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     #------------------------------------------------------------------------------
-    # Stage 2
+    # Stage 2: q_vec now contains the updated state after stage 1
     pre_func(ctx..., opts) 
     if real_time  treal = t + h/2 end
     timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 2
     post_func(ctx..., opts, calc_norm=false)
-    for j=1:m
-      k2[j] = res_vec[j]
-      q_vec[j] = x_old[j] + (h/2)*k2[j]
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if opts["stabilize_v"] && i != 2
+      # Stage 2: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
 
+    for j=1:m
+      # Old:
+      # k2[j] = res_vec[j]
+      # q_vec[j] = x_old[j] + (h/2)*k2[j]
+      k2[j] = dt*res_vec[j]
+      k2[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      q_vec[j] = x_old[j] + 0.5*k2[j]
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     #------------------------------------------------------------------------------
-    # Stage 3
+    # Stage 3: q_vec now contains the updated state after stage 2
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
     timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 3
     post_func(ctx..., opts, calc_norm=false)
 
-    for j=1:m
-      k3[j] = res_vec[j]
-      q_vec[j] = x_old[j] + h*k3[j]
+    # for j=1:m
+      # Old:
+      # k3[j] = res_vec[j]
+      # q_vec[j] = x_old[j] + h*k3[j]
+    # end
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if opts["stabilize_v"] && i != 2
+      # Stage 3: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
+
+    for j=1:m
+      # Old:
+      # k2[j] = res_vec[j]
+      # q_vec[j] = x_old[j] + (h/2)*k2[j]
+      k3[j] = dt*res_vec[j]
+      k3[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      q_vec[j] = x_old[j] + k3[j]
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #------------------------------------------------------------------------------
     # Stage 4
@@ -425,15 +458,92 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if real_time treal = t + h end
     timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 4
     post_func(ctx..., opts, calc_norm=false)
-    for j=1:m
-      k4[j] = res_vec[j]
+
+    # for j=1:m
+      # Old:
+      # k4[j] = res_vec[j]
+    # end
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if opts["stabilize_v"] && i != 2
+      # Stage 4: get B*v
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
+
+    for j=1:m
+      # Old:
+      # k2[j] = res_vec[j]
+      # q_vec[j] = x_old[j] + (h/2)*k2[j]
+      k4[j] = dt*res_vec[j]
+      k4[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # update
     for j=1:m
-      x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
+      # x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
+      x_old[j] = x_old[j] + (1/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])   # double check h/6 or 1/6 TODO
       q_vec[j] = x_old[j]
     end
+
+    #-----------------------------------------------------------------------------------------------
+    # End of RK4's stages
+    #-----------------------------------------------------------------------------------------------
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if opts["write_drag"]
+      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+      @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+      @mpi_master println(f_drag, i, " ", drag)
+      @mpi_master if (i % opts["output_freq"]) == 0
+        flush(f_drag)
+      end
+    end
+
+    #------------------------------------------------------------------------------
+    # direct sensitivity of Cd wrt M : calculation each time step
+    if opts["perturb_Ma"]
+
+      # v is the direct sensitivity, du/dM
+      # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+      for v_ix = 1:length(v_vec)
+        v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
+      end
+
+      # term2 is the partial deriv of the functional wrt the state: dCd/du
+      fill!(term2, 0.0)     # initialized before timestepping loop
+      # evalFunctional calls disassembleSolution, which puts q_vec into q
+      # should be calling evalFunctional, not calcFunctional.
+      #     disassemble isn't getting called. but it shouldn't matter b/c DG
+      # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+      evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+
+      # do the dot product of the two terms, and save
+      fill!(term2_vec, 0.0)     # not sure this is necessary
+      # assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
+      array3DTo1D(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
+
+      for v_ix = 1:length(v_vec)
+        # this accumulation occurs across all dofs and all time steps.
+        term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
+      end
+
+      #------------------------------------------------------------------------------
+      # here is where we should be calculating the 'energy' to show that it is increasing over time
+      #   'energy' = L2 norm of the solution
+      # JEH: So, at each time step, evaluate: sum_{i,j,k} q[i,j,k]*q[i,j,k]*sbp.w[j]*jac[j,k]
+      #      (here I assume jac is proportional to the element volume)
+      if opts["write_L2vnorm"]
+        L2_v_norm = calcNorm(eqn, v_vec)
+        @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+
+        if (i % opts["output_freq"]) == 0
+          @mpi_master flush(f_L2vnorm)
+        end
+      end
+
+    end   # end if opts["perturb_Ma"]
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   end   # end of RK4 time stepping loop
 
@@ -444,6 +554,81 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end
 
   flush(BSTDOUT)
+
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  @mpi_master begin
+    println("---------------------------------------------")
+    println("   RK4: final time step reached. t = $t")
+    println("---------------------------------------------")
+  end
+
+  if opts["perturb_Ma"]
+
+    @mpi_master if opts["stabilize_v"]
+      close(f_stabilize_v)
+    end
+
+    @mpi_master close(f_drag)
+
+    @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+    @mpi_master println(" Ma_pert: ", Ma_pert)
+    eqn.params.Ma -= Ma_pert      # need to remove perturbation now
+    @mpi_master println(" pert removed from Ma")
+    @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+
+    finaliter = calcFinalIter(t_steps, itermax)
+    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
+    term23 = term23 * 1.0/t     # final step of time average: divide by total time
+    global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
+    total_dCddM = dCddM + global_term23
+
+    # Cd calculations
+    @mpi_master begin
+      f_total_dCddM = open("total_dCddM.dat", "w")
+      println(f_total_dCddM, " dCd/dM: ", dCddM)
+      println(f_total_dCddM, " global_term23: ", global_term23)
+      println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
+      flush(f_total_dCddM)
+      close(f_total_dCddM)
+      println(" dCd/dM: ", dCddM)
+      println(" global_term23: ", global_term23)
+      println(" total dCd/dM: ", total_dCddM)
+    end
+
+  end   # end if opts["perturb_Ma"]
+
+  @mpi_master begin
+    f_Ma = open("Ma.dat", "w")
+    println(f_Ma, eqn.params.Ma)
+    close(f_Ma)
+    f_dt = open("delta_t.dat", "w")
+    println(f_dt, delta_t)
+    close(f_dt)
+
+    println(" ")
+    println(" run parameters that were used:")
+    if opts["perturb_Ma"]
+      println("    Ma: ", eqn.params.Ma + Ma_pert)
+    else
+      println("    Ma: ", eqn.params.Ma)
+    end
+    println("    delta_t: ", delta_t)
+    println("    a_inf: ", eqn.params.a_free)
+    println("    rho_inf: ", eqn.params.rho_free)
+    println("    c: ", 1.0)
+    println("    mesh.coord_order: ", mesh.coord_order)
+    println(" ")
+  end
+
+  if opts["write_L2vnorm"]
+    @mpi_master close(f_L2vnorm)
+    @mpi_master close(f_v_energy)
+  end
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+  flush(BSTDOUT)
+
 
   # should this be treal?
   return t

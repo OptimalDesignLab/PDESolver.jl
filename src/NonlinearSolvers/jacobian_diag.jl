@@ -411,9 +411,6 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
 end
 
 
-
-
-
 """
   modifies matrix `Jac` such that `u.'*sym(Jac)*u` is strictly positive
 
@@ -469,11 +466,7 @@ function clipJac!(Jac::AbstractMatrix)
                   # u::AbstractVector,
                   # A::AbstractVector{T}) where T
 
-  # scale_u = 1e100
-
-  #------------------------------------------------------------------------------
-  # new clipping method
-  # n = size(Jac,1)
+  # scale_u = 1e100   # NOTE: We do _not_ need to scale anything here.
 
   λ, E = eig(0.5*(Jac+Jac.'))
   n = length(λ)
@@ -487,19 +480,6 @@ function clipJac!(Jac::AbstractMatrix)
   end
   D = diagm(λ)
   Jac[:,:] -= E*D*E.'
-
-  #------------------------------------------------------------------------------
-  # Faster (?) clipping process
-  #   don't use diagm, use 'row scaling' (?)
-
-  #------------------------------------------------------------------------------
-  # Speed:
-  # 1) Petsc has MatMatMatMult
-  #     for diag, can do row scaling
-  #     Maybe investigate later
-  # 2) take a look at ODLCommonTools: src/misc.jl
-  #     smallmatmat!()
-
 
 end
 

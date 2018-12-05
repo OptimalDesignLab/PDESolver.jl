@@ -6,7 +6,6 @@
 # the classical rk4 file
 # Also borrows the RK$CheckpointData
 
-
 """
   This function implements the 5 stage, 4th order Low Storage Explicit Runge Kutta scheme of
   Carpenter and Kennedy
