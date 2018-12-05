@@ -234,13 +234,14 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
 
-    # stage 1
+    #------------------------------------------------------------------------------
+    # Stage 1
     pre_func(ctx..., opts)
     if real_time treal = t end
-    timing.t_func += @elapsed f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)     # evalResidual, stage 1
     sol_norm = post_func(ctx..., opts)
-
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
+
     for j=1:m
       k1[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k1[j]
@@ -275,20 +276,22 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
-    # stage 2
+    #------------------------------------------------------------------------------
+    # Stage 2
     pre_func(ctx..., opts) 
     if real_time  treal = t + h/2 end
-    timing.t_func += @elapsed f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 2
     post_func(ctx..., opts, calc_norm=false)
     for j=1:m
       k2[j] = res_vec[j]
       q_vec[j] = x_old[j] + (h/2)*k2[j]
     end
 
-    # stage 3
+    #------------------------------------------------------------------------------
+    # Stage 3
     pre_func(ctx..., opts)
     if real_time treal= t + h/2 end
-    timing.t_func += @elapsed f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 3
     post_func(ctx..., opts, calc_norm=false)
 
     for j=1:m
@@ -296,37 +299,21 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       q_vec[j] = x_old[j] + h*k3[j]
     end
 
-    # stage 4
+    #------------------------------------------------------------------------------
+    # Stage 4
     pre_func(ctx..., opts)
     if real_time treal = t + h end
-    timing.t_func += @elapsed f( ctx..., opts, treal)
+    timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 4
     post_func(ctx..., opts, calc_norm=false)
     for j=1:m
       k4[j] = res_vec[j]
     end
-
-#     println("k1 = \n", k1)
-#     println("k2 = \n", k2)
-#     println("k3 = \n", k3)
-#     println("k4 = \n", k4)
-
-#     println("q_old = \n", x_old)
 
     # update
     for j=1:m
       x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
       q_vec[j] = x_old[j]
     end
-
-#     println("q_vec = \n", q_vec)
-
-    #TODO: is this necessary?
-#    fill!(k1, 0.0)
-#    fill!(k2, 0.0)
-#    fill!(k3, 0.0)
-#    fill!(k4, 0.0)
-
-#    t = t + h
 
   end   # end of RK4 time stepping loop
 
