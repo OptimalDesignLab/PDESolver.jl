@@ -176,7 +176,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
-if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -664,9 +664,9 @@ end
   end
 
   # error if checkpointing not supported
-  checkpointing_run_types = [1, 30, 20, 31, 90]
+  checkpointing_run_types = [1, 100, 30, 20, 31, 90]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
-    error("checkpointing only supported with RK4 and LSERK and CN and explicit Euler")
+    error("checkpointing only supported with RK4, RK4 DS, LSERK, LSERK DS, CN, and explicit Euler")
   end
 
   if arg_dict["use_checkpointing"]

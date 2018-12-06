@@ -28,6 +28,8 @@ STAB_ctr_usmallandnotstabing = 0
 
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
+include("rk4_ds.jl")
+  export rk4_ds
 include("lserk.jl")
   export lserk54
 include("lserk_ds.jl")

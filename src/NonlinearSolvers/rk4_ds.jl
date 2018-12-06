@@ -1,7 +1,7 @@
-# rk4.jl
+# rk4_ds.jl
 # Runge Kutta 4th order solver for ODEs
 
-export rk4
+export rk4_ds
 
 # base RK4 method:
 # dxdt = f(t,x)
@@ -15,6 +15,10 @@ export rk4
 #   t_max:  length of time to step through
 # Outputs:
 #   x:      solved x at t_max
+
+#------------------------------------------------------------------------------
+# Commenting out repeated stuff from RK4
+#=
 
 """
   This type stores all the data RK4 needs to restart.  It is a subtype of
@@ -88,7 +92,7 @@ function explicit_checkpoint_setup(opts, myrank)
   return chkpointer, chkpointdata, skip_checkpoint
 end
 
-
+=#
 
 @doc """
 rk4
@@ -141,7 +145,7 @@ rk4
    Implementation Notes
      sol_norm check is only performed in real_time mode
 """->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, pre_func, 
              post_func, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), 
@@ -482,7 +486,9 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # update
     for j=1:m
       # x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
-      x_old[j] = x_old[j] + (1/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])   # double check h/6 or 1/6 TODO
+      # Note: factor in front of the k's needs to be 1/6: 
+      #       This DS code has factors of h in the k's, so we don't need to multiply by (h/6)
+      x_old[j] = x_old[j] + (1/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])   
       q_vec[j] = x_old[j]
     end
 
@@ -520,7 +526,6 @@ function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       # do the dot product of the two terms, and save
       fill!(term2_vec, 0.0)     # not sure this is necessary
-      # assembleSolution(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
       array3DTo1D(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
       for v_ix = 1:length(v_vec)
@@ -657,12 +662,12 @@ end
     res_tol
     real_time
 """->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
+function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat, 
              q_vec::AbstractVector, res_vec::AbstractVector, ctx, opts, timing::Timings=Timings(); 
              majorIterationCallback=((a...) -> (a...)), res_tol=-1.0, 
              real_time=false)
 
-    rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
+    rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat, q_vec::AbstractVector, 
         res_vec::AbstractVector, pde_pre_func, pde_post_func, ctx, opts; 
         majorIterationCallback=majorIterationCallback, res_tol =res_tol, real_time=real_time)
 
@@ -693,13 +698,17 @@ end
   for the pre and post functions, eqn.majorIterationCallback for the 
   majorIterationCallback, and (mesh, sbp, eqn) as the ctx
 """->
-function rk4(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
+function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, eqn, opts; res_tol=-1.0, real_time=false)
 
-  rk4(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
+  rk4_ds(f, h, t_max, eqn.q_vec, eqn.res_vec, pde_pre_func, pde_post_func,
       (mesh, sbp, eqn), opts, eqn.params.time;
       majorIterationCallback=eqn.majorIterationCallback, res_tol=res_tol, real_time=real_time)
 
 end
+
+#------------------------------------------------------------------------------
+# Commenting out repeated stuff from RK4
+#=
 
 @doc """
 ### NonlinearSolvers.pde_pre_func
@@ -757,3 +766,4 @@ function globalNorm(vec)
   global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, MPI.COMM_WORLD)
   return sqrt(global_norm)
 end
+=#

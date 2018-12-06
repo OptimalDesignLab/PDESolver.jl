@@ -118,6 +118,8 @@ end
 function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts::Dict, pmesh::AbstractMesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
+  println("Entered solvePDE()")
+
   myrank = mesh.myrank
   # flag determines whether to calculate u, dR/du, or dR/dx (1, 2, or 3)
   t_max = opts["t_max"]
@@ -235,6 +237,8 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, 
 
   writeVisFiles(mesh, "solution_ic")
   writedlm("solution_ic.dat", real(eqn.q_vec))
+  println("About to calc_dt.")
+  println(" opts[calc_dt]: ", opts["calc_dt"])
   if opts["calc_dt"]
     wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
     @mpi_master println("max wave speed = ", wave_speed)
@@ -250,6 +254,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, 
     loadRestartState(mesh, sbp, eqn, opts, pmesh)
   end
 
+  println("Now calling call_nlsolver().")
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
