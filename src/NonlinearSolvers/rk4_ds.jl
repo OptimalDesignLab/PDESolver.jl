@@ -241,12 +241,16 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #------------------------------------------------------------------------------
     # allocation of objects for stabilization routine
     if opts["stabilize_v"]
+
       stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
       stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
+      clipJacData = ClipJacData(mesh.numDofPerNode*mesh.numNodesPerElement)
+
       # Bv = zeros(Float64, length(q_vec), )
       Bv = zeros(Complex128, length(q_vec))
       tmp_imag = zeros(Float64, length(eqn.q_vec))
       dqimag_vec = zeros(Bv)
+
       @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
 
     end
@@ -365,7 +369,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # stabilize q_vec: needs to be before q_vec update (NO, it needs to be after, according to Lorenz LSERK)
     if opts["stabilize_v"] && i != 2
       # Stage 1: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, 
+                            stab_A, stab_assembler, clipJacData,
+                            treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
       # for j=1:length(q_vec)
         # q_vec[j] += FAC*h*Bv[j]*im     # needs to be -=, done w/ FAC
       # end
@@ -418,7 +424,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["stabilize_v"] && i != 2
       # Stage 2: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, 
+                            stab_A, stab_assembler, clipJacData,
+                            treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
 
     for j=1:m
@@ -449,7 +457,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["stabilize_v"] && i != 2
       # Stage 3: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, 
+                            stab_A, stab_assembler, clipJacData,
+                            treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
 
     for j=1:m
@@ -479,7 +489,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["stabilize_v"] && i != 2
       # Stage 4: get B*v
-      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, stab_A, stab_assembler, treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
+      calcStabilizedQUpdate!(mesh, sbp, eqn, opts, 
+                            stab_A, stab_assembler, clipJacData,
+                            treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
     end
 
     for j=1:m

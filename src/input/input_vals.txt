@@ -437,6 +437,11 @@ Note that any values associated with these options are shared with the regular
                         This is a real value, example: 1e-20.
                         It gets complexified later, in types.jl.
 "stabilize_v": turn on experimental stabilization of v, the direct sensitivity vector
+"stabilization_method": method of stabilization for chaotic problems
+                        Possible options:
+                          "quadprog"
+                          "clipJac"
+                          "clipJacFast"
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved

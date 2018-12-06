@@ -466,6 +466,7 @@ get!(arg_dict, "analytical_functional_val", 0.0)
 get!(arg_dict, "perturb_Ma", false)
 get!(arg_dict, "perturb_Ma_magnitude", 0.0)
 get!(arg_dict, "stabilize_v", false)
+get!(arg_dict, "stabilization_method", "null")
 
 #   This is commented out because of the new method of assigning objective functions.
 #   They are set like this:
@@ -710,6 +711,9 @@ end
   end
   if arg_dict["stabilize_v"] == true && arg_dict["perturb_Ma"] == false
     error("\n Direct sensitivity stabilization turned on, but perturb_Ma is false.")
+  end
+  if arg_dict["stabilize_v"] == true && arg_dict["stabilization_method"] == "null"
+    error("\n Direct sensitivity stabilization turned on, but no stabilization_method selected.")
   end
   if arg_dict["perturb_Ma"] == false && arg_dict["write_L2vnorm"] == true
     error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma set.")

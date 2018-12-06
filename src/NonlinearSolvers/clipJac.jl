@@ -34,7 +34,7 @@ function ClipJacData(m::Integer)
 end
 
 
-function clipJac2!(Jac::AbstractMatrix, data::ClipJacData)
+function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData)
 
   # compute the symmetric part of Jac
   m = size(Jac, 1)  # jac is square
@@ -82,5 +82,26 @@ function clipJac2!(Jac::AbstractMatrix, data::ClipJacData)
   end
 
   return nothing
+end
+
+function clipJac!(Jac::AbstractMatrix)
+                  # u::AbstractVector,
+                  # A::AbstractVector{T}) where T
+
+  # scale_u = 1e100   # NOTE: We do _not_ need to scale anything here.
+
+  λ, E = eig(0.5*(Jac+Jac.'))
+  n = length(λ)
+
+  #------------------------------------------------------------------------------
+  # Original clipping process
+  for i = 1:n
+    if λ[i] > 0.0
+      λ[i] = 0.0
+    end
+  end
+  D = diagm(λ)
+  Jac[:,:] -= E*D*E.'
+
 end
 

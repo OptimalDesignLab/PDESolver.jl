@@ -350,7 +350,8 @@ end
    * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
         have the unstable modes removed.
 """
-function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJac{T}) where {T, T2}
+function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2}, 
+                       clipJacData, A::DiagJac{T}) where {T, T2}
 
   blocksize, blocksize, nblock = size(A.A)
   T3 = promote_type(T, T2)
@@ -386,9 +387,14 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
     end
 
     # findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
-    # findStablePerturbation!(Ablock, ublock, workvec)
-    clipJac2!(Ablock)    # fast eigenvalue clipping stabilization
-    # clipJac!(Ablock)
+
+    if opts["stabilization_method"] == "quadprog"
+      findStablePerturbation!(Ablock, ublock, workvec)
+    elseif opts["stabilization_method"] == "clipJac"
+      clipJac!(Ablock)
+    elseif opts["stabilization_method"] == "clipJacFast"
+      clipJacFast!(Ablock, clipJacData)    # fast eigenvalue clipping stabilization
+    end
 #    removeUnstableModes!(Ablock, u_k)
 
     # println("++++++++++++")
@@ -460,27 +466,6 @@ function removeUnstableModes!(Jac::AbstractMatrix,
   end
 
   return nothing
-end
-
-function clipJac!(Jac::AbstractMatrix)
-                  # u::AbstractVector,
-                  # A::AbstractVector{T}) where T
-
-  # scale_u = 1e100   # NOTE: We do _not_ need to scale anything here.
-
-  λ, E = eig(0.5*(Jac+Jac.'))
-  n = length(λ)
-
-  #------------------------------------------------------------------------------
-  # Original clipping process
-  for i = 1:n
-    if λ[i] > 0.0
-      λ[i] = 0.0
-    end
-  end
-  D = diagm(λ)
-  Jac[:,:] -= E*D*E.'
-
 end
 
 """
