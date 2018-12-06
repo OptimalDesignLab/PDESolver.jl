@@ -147,7 +147,7 @@ function StandardLinearSolver(pc::T1, lo::T2, comm::MPI.Comm, opts) where {T1, T
                                     commsize, ksp, is_finalized,
                                     reltol, abstol, dtol, itermax)
 
-  atexit( () -> free(ls))  # make sure this gets destroyed eventually
+  finalizer(ls, free)
 
   return ls
 end
