@@ -387,8 +387,8 @@ function filterDiagJac(mesh::AbstractDGMesh, q_vec::AbstractVector{T2}, A::DiagJ
 
     # findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
     # findStablePerturbation!(Ablock, ublock, workvec)
-    clipJac!(Ablock)    # commenting out to see if we can get density to go negative
-                          # without this (because it's very slow)
+    clipJac2!(Ablock)    # fast eigenvalue clipping stabilization
+    # clipJac!(Ablock)
 #    removeUnstableModes!(Ablock, u_k)
 
     # println("++++++++++++")

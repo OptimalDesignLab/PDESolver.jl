@@ -151,6 +151,8 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
              majorIterationCallback=((a...) -> (a...)), 
              res_tol = -1.0, real_time=false)
 
+  dt = h      # for clarity, I use this everywhere
+
   myrank = MPI.Comm_rank(MPI.COMM_WORLD)  #???
   if myrank == 0
     println(BSTDOUT, "\nEntered rk4")
@@ -234,7 +236,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # this is the IC, so it gets the first time step's quad_weight
     i = 1       # note that timestep loop below starts at i = 2
     finaliter = calcFinalIter(t_steps, itermax)
-    quad_weight = calcQuadWeight(i, delta_t, finaliter)
+    quad_weight = calcQuadWeight(i, dt, finaliter)
 
     #------------------------------------------------------------------------------
     # allocation of objects for stabilization routine
@@ -283,7 +285,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   flush(BSTDOUT)
 
-  dt = h      # for clarity, I use this everywhere
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End NEW
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -591,7 +592,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
 
     finaliter = calcFinalIter(t_steps, itermax)
-    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, finaliter)   # will use eqn.params.Ma
+    Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter)   # will use eqn.params.Ma
     term23 = term23 * 1.0/t     # final step of time average: divide by total time
     global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
     total_dCddM = dCddM + global_term23
@@ -626,7 +627,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     else
       println("    Ma: ", eqn.params.Ma)
     end
-    println("    delta_t: ", dt)
+    println("    dt: ", dt)
     println("    a_inf: ", eqn.params.a_free)
     println("    rho_inf: ", eqn.params.rho_free)
     println("    c: ", 1.0)

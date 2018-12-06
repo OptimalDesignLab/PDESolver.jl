@@ -550,6 +550,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     else
       println("    Ma: ", eqn.params.Ma)
     end
+    println("    aoa: ", eqn.params.aoa)
     println("    delta_t: ", delta_t)
     println("    a_inf: ", eqn.params.a_free)
     println("    rho_inf: ", eqn.params.rho_free)
