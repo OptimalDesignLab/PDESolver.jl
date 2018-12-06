@@ -279,8 +279,10 @@ end  # end function
 """
 function postproc(mesh, sbp, eqn, opts)
 
+  myrank = mesh.myrank
+
   ##### Do postprocessing ######
-  println("\nDoing postprocessing")
+  @mpi_master println("\nDoing postprocessing")
 
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)

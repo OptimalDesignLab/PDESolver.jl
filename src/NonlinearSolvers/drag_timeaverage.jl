@@ -19,7 +19,7 @@
 """
 function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver)
 
-  println(BSTDOUT, "------------------------------- in calcDragTimeAverage")
+  # println(BSTDOUT, "------------------------------- in calcDragTimeAverage")
 
   dt = delta_t
 

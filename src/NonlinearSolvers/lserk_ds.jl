@@ -592,9 +592,9 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
   global STAB_ctr_prodgt0andnotstabing
   global STAB_ctr_prodle0andstabing
 
-  println(" STAB_ctr_usmallandnotstabing: ", STAB_ctr_usmallandnotstabing)
-  println(" STAB_ctr_prodgt0andnotstabing: ", STAB_ctr_prodgt0andnotstabing)
-  println(" STAB_ctr_prodle0andstabing: ", STAB_ctr_prodle0andstabing)
+  # println(" STAB_ctr_usmallandnotstabing: ", STAB_ctr_usmallandnotstabing)
+  # println(" STAB_ctr_prodgt0andnotstabing: ", STAB_ctr_prodgt0andnotstabing)
+  # println(" STAB_ctr_prodle0andstabing: ", STAB_ctr_prodle0andstabing)
 
   return t
 end  # end lserk54
