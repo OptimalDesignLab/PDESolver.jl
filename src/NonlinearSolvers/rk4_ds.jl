@@ -16,84 +16,6 @@ export rk4_ds
 # Outputs:
 #   x:      solved x at t_max
 
-#------------------------------------------------------------------------------
-# Commenting out repeated stuff from RK4
-#=
-
-"""
-  This type stores all the data RK4 needs to restart.  It is a subtype of
-  [`AbstractCheckpointData`](@ref Utils.AbstractCheckpointData).
-
-  **Fields**
-
-   * i: the current time step
-
-"""
-mutable struct RK4CheckpointData <: AbstractCheckpointData
-  i::Int  # current time step
-end
-
-"""
-  This constructor loads a RK4CheckpointData from the most recently saved
-  checkpoint.
-
-  **Inputs**
-
-   * chkpointer: a [`Checkpointer`](@ref Utils.Checkpointer)
-   * comm_rank: MPI rank of this process
-
-  **Outputs**
-
-   * chkpoint_data: a RK4CheckpointData object
-"""
-function RK4CheckpointData(chkpointer::Checkpointer, comm_rank::Integer)
-
-  chkpoint_data = readLastCheckpointData(chkpointer, comm_rank)
-
-  return chkpoint_data::RK4CheckpointData
-end
-
-"""
-  This function assists in setting up checkpoinging related things for
-  self-starting explicit time marching methods
-
-  **Inputs**
-
-   * opts: the options dictionary
-   * myrank: MPI rank of this process
-
-  **Outputs*
-
-   * chkpointer: a Checkpointer fully initialized
-   * chkpointdata: a RK4CheckpoinntData object, fully initialized
-   * skip_checkpoint: a bool indicating if the next checkpoint write should be
-                      skipped
-"""
-function explicit_checkpoint_setup(opts, myrank)
-  is_restart = opts["is_restart"]
-  ncheckpoints = opts["ncheckpoints"]
-
-  if !is_restart
-    # this is a new simulation, create all the stuff needed to checkpoint
-    # note that having zero checkpoints is valid
-    istart = 2
-    chkpointdata = RK4CheckpointData(istart)
-    chkpointer = Checkpointer(myrank, ncheckpoints)
-    skip_checkpoint = false
-  else  # this is a restart, load existing data
-    # using default value of 0 checkpoints is ok
-    chkpointer = Checkpointer(opts, myrank)
-    chkpointdata = RK4CheckpointData(chkpointer, myrank)
-    skip_checkpoint = true  # when restarting, don't immediately write a
-                            # checkpoint
-                            # doing so it not strictly incorrect, but not useful
-  end
-
-  return chkpointer, chkpointdata, skip_checkpoint
-end
-
-=#
-
 @doc """
 rk4
 
@@ -641,6 +563,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     else
       println("    Ma: ", eqn.params.Ma)
     end
+    println("    aoa: ", eqn.params.aoa)
     println("    dt: ", dt)
     println("    a_inf: ", eqn.params.a_free)
     println("    rho_inf: ", eqn.params.rho_free)
