@@ -531,11 +531,13 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     # Cd calculations
     @mpi_master begin
       f_total_dCddM = open("total_dCddM.dat", "w")
+      println(f_total_dCddM, " Cd: ", Cd)
       println(f_total_dCddM, " dCd/dM: ", dCddM)
       println(f_total_dCddM, " global_term23: ", global_term23)
       println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
       flush(f_total_dCddM)
       close(f_total_dCddM)
+      println(" Cd: ", Cd)
       println(" dCd/dM: ", dCddM)
       println(" global_term23: ", global_term23)
       println(" total dCd/dM: ", total_dCddM)

@@ -275,9 +275,9 @@ function majorIterationCallback(itr::Integer,
     vals = real(eqn.res_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     fname = string("residual_", itr)
-    @mpi_master println(BSTDOUT, "writing files ", fname)
-    @mpi_master println(BSTDOUT, "res_norm of vals = ", calcNorm(eqn, vals, strongres=true))
-    @mpi_master println(BSTDOUT, "res_norm of res_vec = ", calcNorm(eqn, eqn.res_vec, strongres=true))
+    # println(BSTDOUT, "writing files ", fname)
+    # println(BSTDOUT, "res_norm of vals = ", calcNorm(eqn, vals, strongres=true))
+    # println(BSTDOUT, "res_norm of res_vec = ", calcNorm(eqn, eqn.res_vec, strongres=true))
     writeVisFiles(mesh, fname)
     writedlm(string(fname, ".dat"), vals)
     writedlm("Minv.dat", real(eqn.Minv))
