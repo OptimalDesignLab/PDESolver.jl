@@ -21,7 +21,7 @@
 
 
 """->
-function applyFilter(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function applyFilter(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
          eqn::AbstractSolutionData{Tsol}, opts, 
          arr::Abstract3DArray; trans=false) where {Tmsh, Tsol}
 # applies filter to array arr
@@ -76,7 +76,7 @@ end
     F_ret: a numNodesPerElement x numNodesPerElement filter operator
 
 """->
-function calcFilter(sbp::AbstractSBP, filter_name::String, opts)
+function calcFilter(sbp::AbstractOperator, filter_name::String, opts)
 # calc the filter specified by filter_name
 
 
@@ -135,7 +135,7 @@ end
             Vandermonde matrix
 
 """->
-function calcModalTransformationOp(sbp::AbstractSBP)
+function calcModalTransformationOp(sbp::AbstractOperator)
 
   vtx = [-1. -1; 1 -1; -1 1]  # reference element
   x, y = SummationByParts.SymCubatures.calcnodes(sbp.cub, vtx)
@@ -200,7 +200,7 @@ end
     filt: an numNodesPerElement x numNodesPerElement diagonal filter matrix
 
 """->
-function calcRaisedCosineFilter(sbp::AbstractSBP, opts)
+function calcRaisedCosineFilter(sbp::AbstractOperator, opts)
 # calculates the 1D raised cosine filter
 # from Spectral Methods for the Euler Equations: Part I - Fourier Methods and
 # shock Capturing
@@ -288,7 +288,7 @@ end
     filt: numNodesPerElement x numNodesPerElement diagonal filter matrix
 
 """->
-function calcLowPassFilter(sbp::AbstractSBP, opts)
+function calcLowPassFilter(sbp::AbstractOperator, opts)
 
   filt = zeros(sbp.numnodes, sbp.numnodes)
   for i=1:sbp.numnodes

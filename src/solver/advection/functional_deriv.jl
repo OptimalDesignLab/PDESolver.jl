@@ -1,17 +1,16 @@
 # functional derivative computation
 
-import PDESolver.evalFunctionalDeriv
+import PDESolver._evalFunctionalDeriv_q
 
 """
-  evalFunctionalDeriv for Advection
+  evalFunctionalDeriv_q for Advection
 """
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP,
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractOperator,
                            eqn::AdvectionData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           functionalData::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -34,7 +33,7 @@ mesh nodes.
 *  `sbp`   : Summation-By-Parts operator
 *  `eqn`   : Advection equation object
 *  `opts`  : Options dictionary
-*  `functionalData` : Object of subtype of AbstractFunctional. This is
+*  `functionalData` : Object of subtype of AbstractBoundaryFunctional. This is
                       the type associated with the adjoint of the functional
                       being computed and holds all the necessary data.
 *  `func_deriv_arr` : 3D array that stors the derivative of functional w.r.t
@@ -46,7 +45,7 @@ mesh nodes.
 
 """->
 #=
-function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractSBP,
+function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::AbstractOperator,
                              eqn ::AdvectionData{Tsol}, opts, functor, functional_edges,
                              functionalData, func_deriv_arr)
 
@@ -100,9 +99,9 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractCGMesh{Tmsh}, sbp::Abstra
 end
 =#
 # DG Version
-function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractSBP,
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, sbp::AbstractOperator,
                  eqn::AdvectionData{Tsol}, opts,
-                 functionalData::AbstractIntegralFunctional,
+                 functionalData::AbstractBoundaryFunctional,
                  func_deriv_arr) where {Tmsh, Tsol}
 
   alpha_x = eqn.params.alpha_x
@@ -162,7 +161,7 @@ step to compute the derivative
 """->
 
 function calcIntegrandDeriv(opts, params::ParamType2, nx, ny, q,
-                            functionalData::AbstractIntegralFunctional)
+                            functionalData::AbstractBoundaryFunctional)
 
   pert = complex(0, 1e-20)  # complex perturbation
   q += pert

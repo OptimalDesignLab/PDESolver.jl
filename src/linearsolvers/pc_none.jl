@@ -22,7 +22,7 @@ end
    * eqn
    * opts
 """
-function PCNone(mesh::AbstractMesh, sbp::AbstractSBP,
+function PCNone(mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict)
 
   is_shared = false
@@ -34,14 +34,14 @@ function free(pc::PCNone)
   return nothing
 end
 
-function calcPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   return nothing
 end
 
 
-function applyPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -50,7 +50,7 @@ function applyPC(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 
-function applyPCTranspose(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPCTranspose(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 

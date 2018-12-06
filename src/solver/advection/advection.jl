@@ -22,7 +22,7 @@ Effectively updates eqn.res -- not eqn.res_vec. To make them consistent, use arr
 
 """->
 function evalResidual(mesh::AbstractMesh{Tmsh}, 
-sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
 opts::Dict, t=0.0) where {Tmsh, Tsol, Tres, Tdim}
 
   myrank = mesh.myrank
@@ -35,6 +35,7 @@ opts::Dict, t=0.0) where {Tmsh, Tsol, Tres, Tdim}
 
   # start communication right away
   params.time.t_send += @elapsed if opts["parallel_type"] == 1
+    setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
     #  println("send parallel data @time printed above")
   end
@@ -101,7 +102,7 @@ end
 
 """->
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
-                   sbp::AbstractSBP,
+                   sbp::AbstractOperator,
                    eqn::AdvectionData{Tsol, Tres, Tdim},
                    opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -200,8 +201,8 @@ end
 function calcVolumeIntegralsStaggered(
              mesh_s::AbstractDGMesh{Tmsh},
              mesh_f::AbstractDGMesh{Tmsh},
-             sbp_s::AbstractSBP,
-             sbp_f::AbstractSBP,
+             sbp_s::AbstractOperator,
+             sbp_f::AbstractOperator,
              eqn::AdvectionData{Tsol, Tres, Tdim},
              opts) where {Tmsh, Tsol, Tres, Tdim}
   q_f = eqn.params.qL_f
@@ -357,7 +358,7 @@ the result.
 
 """->
 function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh}, 
-                   sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
+                   sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("----- Entered evalBoundaryIntegrals -----")
 
@@ -410,7 +411,7 @@ end # end function evalBoundaryIntegrals
     opts
 
 """->
-function evalFaceIntegrals(mesh::AbstractDGMesh, sbp::AbstractSBP, eqn::AdvectionData,
+function evalFaceIntegrals(mesh::AbstractDGMesh, sbp::AbstractOperator, eqn::AdvectionData,
                       opts)
 
 #  println("----- Entered evalFaceIntegrals -----")
@@ -475,7 +476,7 @@ end
 
 """->
 function evalSRCTerm(mesh::AbstractMesh{Tmsh},
-sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, 
+sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, 
 opts) where {Tmsh, Tsol, Tres, Tdim}
 
 
@@ -550,11 +551,11 @@ function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
     throw(ErrorException("unsupported face integral type"))
   end
 
-  if opts["parallel_data"] == "face"
+  if opts["parallel_data"] == PARALLEL_DATA_FACE
 #    println(eqn.params.f, "doing face integrals using face data")
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data,
                        calcSharedFaceIntegrals)
-  elseif opts["parallel_data"] == "element"
+  elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 #    println(eqn.params.f, "doing face integrals using element data")
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data,
                        calcSharedFaceIntegrals_element)
@@ -581,7 +582,7 @@ end
 
   Aliasing restrictions: none
 """->
-function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
 eqn::AbstractAdvectionData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 
   println("Entering Advection Module")
@@ -625,7 +626,7 @@ end
 
 """->
 function majorIterationCallback(itr::Integer, mesh::AbstractMesh, 
-                                sbp::AbstractSBP, eqn::AbstractAdvectionData, opts, f::IO)
+                                sbp::AbstractOperator, eqn::AbstractAdvectionData, opts, f::IO)
 #=
   if mesh.myrank == 0
     println("Performing major Iteration Callback for iteration ", itr)
@@ -685,7 +686,7 @@ end
 """->
 #TODO: replace this with arrToVecAssign?
 function assembleArray(mesh::AbstractMesh{Tmsh}, 
-       sbp::AbstractSBP, eqn::AbstractAdvectionData{Tsol}, opts, 
+       sbp::AbstractOperator, eqn::AbstractAdvectionData{Tsol}, opts, 
        arr::Abstract3DArray, res_vec::AbstractArray{Tres,1}, 
        zero_resvec=true) where {Tmsh, Tsol, Tres}
 # arr is the array to be assembled into res_vec
@@ -741,14 +742,14 @@ end
 
 # functions needed to make it compatible with the NonLinearSolvers module
 function matVecA0inv(mesh::AbstractMesh{Tmsh}, 
-sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim},
+sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres, Tdim},
 opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end
 
 function matVecA0(mesh::AbstractMesh{Tmsh},
-sbp::AbstractSBP, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
+sbp::AbstractOperator, eqn::AdvectionData{Tsol, Tres, Tdim}, opts,
 res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing

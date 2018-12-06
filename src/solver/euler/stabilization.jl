@@ -58,7 +58,7 @@ For a 2-dimensional problem, it can be computed as follows:
       end
 
 """->
-function edgestabilize!(sbp::AbstractSBP{T}, ifaces::Array{Interface},
+function edgestabilize!(sbp::AbstractOperator{T}, ifaces::Array{Interface},
                   mesh::AbstractMesh,
                   u::AbstractArray{T,2}, x::AbstractArray{T,3},
                   dxidx::AbstractArray{T,4}, jac::AbstractArray{T,2},
@@ -140,7 +140,7 @@ end
 
 # for vector equations
 
-function edgestabilize!(sbp::AbstractSBP,
+function edgestabilize!(sbp::AbstractOperator,
      mesh::AbstractMesh,
      ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
      x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4},
@@ -241,7 +241,7 @@ end
 # for vector equations
 # WIP: uses res_edge
 #TODO: cleanup function signature
-function edgestabilize!(mesh, sbp::AbstractSBP, eqn,
+function edgestabilize!(mesh, sbp::AbstractOperator, eqn,
      ifaces::Array{Interface}, u::AbstractArray{Tsol,3}, 
      x::AbstractArray{Tmsh,3}, dxidx::AbstractArray{Tmsh,4}, 
      jac::AbstractArray{Tmsh,2}, 
@@ -556,7 +556,7 @@ function stabscale(q::AbstractArray{Tsol,1},
   This is a mid level function
 """->
 # mid level function
-function stabscale(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, 
+function stabscale(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, 
                    eqn::EulerData{Tsol}) where {Tmsh,  Tsol}
 # calculate stabscale for entire mesh
 
@@ -591,7 +591,7 @@ end
 # used by EulerData Constructor - not that that matters for any reason
 # mid level function
 function calcEdgeStabAlpha(mesh::AbstractMesh{Tmsh}, 
-  sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh,  Tsol, Tres, Tdim}
+  sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh,  Tsol, Tres, Tdim}
 # calculate alpha, needed by edge stabilization
 
   numEl = mesh.numEl

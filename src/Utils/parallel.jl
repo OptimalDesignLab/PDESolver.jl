@@ -1,10 +1,9 @@
 # parallel communication primatives
 
-# MPI tags
-"""
-  Default MPI tag used for sending and receiving solution variables.
-"""
-global const TAG_DEFAULT = 1
+include("tag_manager.jl")  # managment of MPI tags
+include("parallel_types.jl")  # datatype
+include("parallel_rev1.jl")
+include("parallel_rev2.jl")
 
 
 """
@@ -14,36 +13,44 @@ global const TAG_DEFAULT = 1
   eqn.shared_data *must* be passed into the corresponding finishDataExchange
   call.
 
-  Inputs:
-    mesh: an AbstractMesh
-    sbp: an SBP operator
-    eqn: an AbstractSolutionData
-    opts: options dictionary
+  It is safe to call this function in the serial case.
 
-  Keyword arguments:
-    tag: MPI tag to use for communication, defaults to TAG_DEFAULT
-    wait: wait for sends and receives to finish before exiting
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBP operator
+   * eqn: an AbstractSolutionData
+   * opts: options dictionary
+
+  **Keyword arguments**
+
+   * wait: wait for sends and receives to finish before exiting
 """
-function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractSBP,
+function startSolutionExchange(mesh::AbstractMesh, sbp::AbstractOperator,
                                   eqn::AbstractSolutionData, opts;
-                                  tag=TAG_DEFAULT, wait=false)
+                                  wait=false)
 
-  if opts["parallel_data"] == "face"
-    populate_buffer = getSendDataFace
-  elseif opts["parallel_data"] == "element"
-    populate_buffer = getSendDataElement
-  else
-    throw(ErrorException("unsupported parallel_type = $(opts["parallel_data"])"))
+  if mesh.npeers == 0
+    return nothing
   end
 
-  exchangeData(mesh, sbp, eqn, opts, eqn.shared_data, populate_buffer, tag=tag, wait=wait)
+  pdata = eqn.shared_data[1].pdata  # assume all are same
+  if pdata == PARALLEL_DATA_FACE
+    populate_buffer = getSendDataFace
+  elseif pdata == PARALLEL_DATA_ELEMENT
+    populate_buffer = getSendDataElement
+  else
+    throw(ErrorException("unsupported parallel_type = $(getParallelDataString(pdata))"))
+  end
+
+  exchangeData(mesh, sbp, eqn, opts, eqn.shared_data, populate_buffer, wait=wait)
 
   return nothing
 end
 
 
 """
-  This function posts the MPI sends and receives for a vector of SharedFaceData.  It works for both opts["parallel_data"] == "face" or "element".  The only
+  This function posts the MPI sends and receives for a vector of SharedFaceData.  It works for both `PARALLEL_DATA_FACE or `PARALLEL_DATA_ELEMENT.  The only
   difference between these two cases is the populate_buffer() function.
 
   The previous receives using these SharedFaceData objects should have
@@ -68,19 +75,15 @@ end
                  communication to be done
 
   Keyword Arguments:
-    tag: MPI tag to use for this communication, defaults to TAG_DEFAULT
-         This tag is typically used by the communication of the solution
-         variables to other processes.  Other users of this function should
-         provide their own tag
 
     wait: wait for the sends and receives to finish before returning.  This
           is a debugging option only.  It will kill parallel performance.
 """
-function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
+function exchangeData(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::AbstractSolutionData, opts,
                       shared_data::Vector{SharedFaceData{T}},
                       populate_buffer::Function;
-                      tag=TAG_DEFAULT, wait=false) where T
+                      wait=false) where T
 
   npeers = length(shared_data)
 
@@ -96,11 +99,7 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
 
   # post the receives first
   for i=1:npeers
-    data_i = shared_data[i]
-    peer_i = data_i.peernum
-    recv_buff = data_i.q_recv
-    data_i.recv_req = MPI.Irecv!(recv_buff, peer_i, tag, data_i.comm)
-    data_i.recv_waited = false
+    Irecv!(shared_data[i])
   end
 
   # verify the sends are consistent
@@ -117,26 +116,21 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
     # TODO: use 2 arrays for the Requests: old and new, so the WaitAny trick
     #       works
 
-
     idx = i
     data_i = shared_data[idx]
+    tag = data_i.tag
 
     # wait on the previous send if it hasn't been waited on yet
     if !data_i.send_waited
-      MPI.Wait!(data_i.send_req)
-      data_i.send_waited = true
+      waitSend(data_i)
     end
 
     # move data to send buffer
     populate_buffer(mesh, sbp, eqn, opts, data_i)
 
     # post the send
-    peer_i = data_i.peernum
-    send_buff = data_i.q_send
-    data_i.send_req = MPI.Isend(send_buff, peer_i, tag, data_i.comm)
-    data_i.send_waited = false
+    Isend(data_i)
   end
-
 
   if wait
     waitAllSends(shared_data)
@@ -146,14 +140,17 @@ function exchangeData(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
+
+
+
 """
   This is the counterpart of exchangeData.  This function finishes the
   receives started in exchangeData.
 
   This function (efficiently) waits for a receive to finish and calls
-  a function to do calculations for on that data. If opts["parallel_data"]
-  == "face", it also permutes the data in the receive buffers to agree
-  with the ordering of elementL.  For opts["parallel_data"] == "element",
+  a function to do calculations for on that data. If `PARALLEL_DATA_FACE`
+  == PARALLEL_DATA_FACE, it also permutes the data in the receive buffers to agree
+  with the ordering of elementL.  For `PARALLEL_DATA_ELEMENT,
   users should call SummationByParts.interiorFaceInterpolate to interpolate
   the data to the face while ensuring proper permutation.
 
@@ -161,17 +158,19 @@ end
   in between is supported.  In this case, it only waits for the MPI
   communication to finish the first time.
 
-  Inputs:
-    mesh: an AbstractMesh
-    sbp: an SBPOperator
-    eqn: an AbstractSolutionData
-    opts: the options dictonary
-    calc_func: function that does calculations for a set of shared faces
+  **Inputs**
+
+   * mesh: an AbstractMesh
+   * sbp: an SBPOperator
+   * eqn: an AbstractSolutionData
+   * opts: the options dictonary
+   * calc_func: function that does calculations for a set of shared faces
                described by a single SharedFaceData.  It must have the signature
                calc_func(mesh, sbp, eqn, opts, data::SharedFaceData)
 
-  Inputs/Outputs:
-    shared_data: vector of SharedFaceData, one for each peer process that
+  **Inputs/Outputs**
+
+   * shared_data: vector of SharedFaceData, one for each peer process that
                  needs to be communicated with.  By the time calc_func is
                  called, the SharedFaceData passed to it has its q_recv field
                  populated.  See note above about data permutation.
@@ -181,6 +180,11 @@ function finishExchangeData(mesh, sbp, eqn, opts,
                             calc_func::Function) where T
 
   npeers = length(shared_data)
+
+  if mesh.npeers == 0
+    return nothing
+  end
+
   val = assertReceivesConsistent(shared_data)
   
   for i=1:npeers
@@ -191,7 +195,7 @@ function finishExchangeData(mesh, sbp, eqn, opts,
     end
 
     data_idx = shared_data[idx]
-    if opts["parallel_data"] == "face" && val == 0
+    if data_idx.pdata == PARALLEL_DATA_FACE && val == 0
       # permute the received nodes to be in the elementR orientation
       permuteinterface!(mesh.sbpface, data_idx.interfaces, data_idx.q_recv)
     end
@@ -203,6 +207,8 @@ function finishExchangeData(mesh, sbp, eqn, opts,
   return nothing
 end
 
+
+ 
 @doc """
 ### Utils.verifyCommunication
 
@@ -228,8 +234,8 @@ function verifyReceiveCommunication(data::SharedFaceData{T}) where T
 end
 
 """
-  This function populates the send buffer from eqn.q for 
-  opts["parallle_data"]  == "face"
+  This function populates the send buffer from `eqn.q` for 
+  `PARALLEL_DATA_FACE`
 
   Inputs:
     mesh: a mesh
@@ -240,7 +246,7 @@ end
   Inputs/Outputs:
     data: a SharedFaceData.  data.q_send will be overwritten
 """
-function getSendDataFace(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataFace(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
 
@@ -251,9 +257,10 @@ function getSendDataFace(mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
+
 """
   This function populates the send buffer from eqn.q for 
-  opts["parallle_data"]  == "element"
+  `PARALLEL_DATA_ELEMENT`
 
   Inputs:
 
@@ -266,7 +273,7 @@ end
 
     data: a SharedFaceData.  data.q_send will be overwritten
 """
-function getSendDataElement(mesh::AbstractMesh, sbp::AbstractSBP,
+function getSendDataElement(mesh::AbstractMesh, sbp::AbstractOperator,
                          eqn::AbstractSolutionData, opts, data::SharedFaceData)
 
   # copy data into send buffer
@@ -284,6 +291,8 @@ function getSendDataElement(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
+
+
 
 
 @doc """

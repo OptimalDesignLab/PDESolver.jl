@@ -8,7 +8,7 @@ import PDESolver.evalHomotopy
 """
   This function calls the appropriate homotopy function for the Euler module.
 """
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
 
   
   calcHomotopyDiss(mesh, sbp, eqn, opts, res)
@@ -41,7 +41,7 @@ function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp,
 #  println("\nentered calcHomotopyDiss")
 
   # some checks for when parallelism is enabled
-  @assert opts["parallel_data"] == "element"
+  @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
   for i=1:mesh.npeers
     @assert eqn.shared_data[i].recv_waited
   end

@@ -16,7 +16,7 @@ objective function.
 *  `target_qFlux` : Target value for the functional qFlux
 
 """->
-mutable struct QfluxData{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct QfluxData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int,1}
   val::Topt
   target_qflux::Topt
@@ -41,7 +41,7 @@ end
    * val: the value of the functional, initially 0.0
 
 """
-mutable struct IntegralQData{Topt} <: AbstractIntegralFunctional{Topt}
+mutable struct IntegralQData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
   val::Topt
 end
@@ -61,7 +61,7 @@ end
   See the generic method for docs.
 """
 function createFunctional(mesh::AbstractMesh,
-                  sbp::AbstractSBP,
+                  sbp::AbstractOperator,
                   eqn::AdvectionData{Tsol}, opts,
                   functional_name::AbstractString,
                   functional_bcs::Vector{I}) where {Tsol, I<:Integer}

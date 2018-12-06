@@ -1,7 +1,7 @@
 # differentiated version of homotopy.jl
 import PDESolver.evalHomotopyJacobian
 
-function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractOperator,
                               eqn::EulerData, opts::Dict, 
                               assembler::AssembleElementData, lambda::Number)
 
@@ -12,7 +12,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
                           eqn::EulerData{Tsol, Tres}, opts, assembler, lambda) where {Tsol, Tres, Tmsh}
 
   # some checks for when parallelism is enabled
-  @assert opts["parallel_data"] == "element"
+  @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
   for i=1:mesh.npeers
     @assert eqn.shared_data[i].recv_waited
   end

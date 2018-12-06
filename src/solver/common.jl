@@ -14,7 +14,7 @@
 
   **Outputs**
 
-   * sbp : an AbstractSBP
+   * sbp : an AbstractOperator
    * mesh : an AbstractMesh
    * pmesh : an AbstractMesh, used for preconditioning, may be same object as
             mesh
@@ -399,7 +399,7 @@ end
 
   Note: comm is currently not passed to the mesh constructors.
 """
-function createMesh(opts::Dict, sbp::AbstractSBP, sbpface, shape_type, topo,
+function createMesh(opts::Dict, sbp::AbstractOperator, sbpface, shape_type, topo,
                     Tmsh, dofpernode, comm::MPI.Comm=MPI.COMM_WORLD, suffix="")
 
   myrank = MPI.Comm_rank(comm)
@@ -476,7 +476,7 @@ end
   **Inputs**
 
    * mesh: the mesh
-   * sbp: AbstractSBP
+   * sbp: AbstractOperator
    * eqn: AbstractSolutionData, eqn.q_vec is overwritten with the saved state
    * opts: options dictionary
 
@@ -488,7 +488,7 @@ end
      support mesh adaptation.  When this changes, this function will have to
      be updated.
 """
-function loadRestartState(mesh::AbstractMesh, sbp::AbstractSBP,
+function loadRestartState(mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts::Dict,
                         pmesh::AbstractMesh=mesh)
 
@@ -514,7 +514,7 @@ none
 Aliasing restrictions: none (specificaly, mesh and pmesh *can* be the same
 object)
 """
-function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
+function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
                        eqn::AbstractSolutionData, opts::Dict,
                        pmesh::AbstractMesh=mesh)
   flag = opts["run_type"]::Int
@@ -543,7 +543,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     elseif flag == 4 || flag == 5 || flag == 11
       @time newton(evalResidual, mesh, sbp, eqn, opts, pmesh)
 
-      printSolution("newton_solution.dat", eqn.res_vec)
+      #printSolution("newton_solution.dat", eqn.res_vec)
 
     elseif flag == 9
       # to non-pde rk4 run

@@ -21,7 +21,7 @@
 """->
 # mid level function
 function getEulerFlux(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 # calculate Euler flux in parametric coordinate directions, stores it in eqn.flux_parametric
 
@@ -91,7 +91,7 @@ end
 """->
 # this function is deprecated in favor of getEulerFlux()
 # useful for benchmarking purposes
-function getEulerFlux2(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function getEulerFlux2(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                        eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 # calculates the Euler flux for every node in the xi and eta directions
 # eqn is the equation type
@@ -157,7 +157,7 @@ end
 """
 function calcVolumeIntegrals_nopre(
            mesh::AbstractMesh{Tmsh},
-           sbp::AbstractSBP,
+           sbp::AbstractOperator,
            eqn::EulerData{Tsol, Tres, Tdim},
            opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -213,7 +213,7 @@ end  # end function
 """
 function calcVolumeIntegralsSplitForm(
                 mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 eqn::EulerData{Tsol, Tres, Tdim}, opts,
                 functor::FluxType) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -239,7 +239,7 @@ end
 """
 function calcVolumeIntegralsSplitFormLinear(
                                         mesh::AbstractMesh{Tmsh},
-                                        sbp::AbstractSBP,
+                                        sbp::AbstractOperator,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -294,7 +294,7 @@ end
 """
 function calcVolumeIntegralsSplitFormCurvilinear(
                                         mesh::AbstractMesh{Tmsh},
-                                        sbp::AbstractSBP,
+                                        sbp::AbstractOperator,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -419,8 +419,8 @@ end
 function calcVolumeIntegralsSplitFormCurvilinear(
                                         mesh_s::AbstractMesh{Tmsh},
                                         mesh_f::AbstractMesh{Tmsh},
-                                        sbp_s::AbstractSBP,
-                                        sbp_f::AbstractSBP,
+                                        sbp_s::AbstractOperator,
+                                        sbp_f::AbstractOperator,
                                         eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                         functor::FluxType) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -1474,7 +1474,7 @@ end
   Aliasing restrictions: none
 """->
 function matVecA0inv(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP,
+                     sbp::AbstractOperator,
                      eqn::EulerData{Tsol, Tres, Tdim, :entropy}, opts,
                      res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
@@ -1504,7 +1504,7 @@ end
 #TODO: move this to Utils?
 # no-op, because for conservative variables this is A0inv is the identity matrix
 function matVecA0inv(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP,
+                     sbp::AbstractOperator,
                      eqn::AbstractSolutionData,
                      opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol}
 
@@ -1519,7 +1519,7 @@ end
 
 """->
 function matVecA0(mesh::AbstractMesh{Tmsh},
-sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim, :entropy},
+sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim, :entropy},
 opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 # multiply a 3D array by inv(A0) in-place, useful for explicit time stepping
 # res_arr *can* alias eqn.q safely
@@ -1547,7 +1547,7 @@ opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 end
 
 #no-op
-function matVecA0(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
+function matVecA0(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim, :conservative}, opts, res_arr::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}
 
   return nothing
 end

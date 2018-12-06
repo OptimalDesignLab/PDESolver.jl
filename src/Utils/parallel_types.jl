@@ -1,57 +1,83 @@
 # declare some datatypes used for parallel communication
 
-# allow sending of arbitrary face/element-based data
+import ODLCommonTools.getParallelData
+
+"""
+  Default MPI tag manager
+"""
+global const TagManager = MPITagManager()
+
 
 """
   This type holds all the data necessary to perform MPI communication with
   a given peer process that shared mesh edges (2D) or faces (3D) with the
   current process.
 
-  Fields:
+  **Fields**
 
-    peernum: the MPI rank of the peer process
-    peeridx: the index of this peer in mesh.peer_parts
-    myrank: MPI rank of the current process
-    comm: MPI communicator used to define the above
+   * peernum: the MPI rank of the peer process
+   * peeridx: the index of this peer in mesh.peer_parts
+   * myrank: MPI rank of the current process
+   * comm: MPI communicator used to define the above
+   * pdata: enum describing if face or element data is sent in parallel
 
-    q_send: the send buffer, a 3D array of n x m x d.  While these dimensions
+   * q_send: the send buffer, a 3D array of n x m x d.  While these dimensions
             are arbitrary, there are two commonly used case.  If
-            opts["parallel_type"] == face, then m is mesh.numNodesPerFace and
+            `PARALLEL_DATA_FACE, then m is mesh.numNodesPerFace and
             d is the number of faces shared with peernum.
-            If opts["parallel_type"] == element, then 
+            If `PARALLEL_DATA_ELEMENT, then 
             m = mesh.numNodesPerElement and d is the number of elements that
             share faces with peernum.
-    q_recv: the receive buffer.  Similar to q_send, except the size needs to
+   * q_recv: the receive buffer.  Similar to q_send, except the size needs to
             to be the number of entities on the *remote* process.
 
-    send_waited: has someone called MPI.Wait() on send_req yet?  Some MPI
+   * send_waited: has someone called MPI.Wait() on send_req yet?  Some MPI
                  implementations complain if Wait() is called on a Request
                  more than once, so use this field to avoid doing so.
-    send_req: the MPI.Request object for the Send/Isend/whatever other type of
+   * send_req: the MPI.Request object for the Send/Isend/whatever other type of
               Send
-    send_status: the MPI.Status object returned by calling Wait() on send_req
+   * send_status: the MPI.Status object returned by calling Wait() on send_req
 
-    recv_waited: like send_waited, but for the receive
-    recv_req: like send_req, but for the receive
-    recv_status: like send_status, but for the receive
+   * recv_waited: like send_waited, but for the receive
+   * recv_req: like send_req, but for the receive
+   * recv_status: like send_status, but for the receive
 
-    bndries_local: Vector of Boundaries describing the faces from the local
+   * bndries_local: Vector of Boundaries describing the faces from the local
                    side of the interface
-    bndries_remote: Vector of Boundaries describing the facaes from the remote
+   * bndries_remote: Vector of Boundaries describing the facaes from the remote
                     side (see the documentation for PdePumiInterface before
                     using this field)
-    interfaces: Vector of Interfaces describing the faces from both sides (see
+   * interfaces: Vector of Interfaces describing the faces from both sides (see
                 the documentation for PdePumiInterfaces, particularly the
                 mesh.shared_interfaces field, before using this field
 
+   **Private Fields**
+
+    * _q_send_face: send buffer for face parallel mode.  This aliases a portion
+                   of `_send_buff`.  This lifetime of this array must be
+                   exactly the same as `_send_buff`.
+    * _q_send_element: send buffer for element parallel mode.  Same
+                       restrictions as `_q_send_face`
+    * _q_recv_face: receive buffer for face parallel mode.  Same restrictions
+                   as `_q_send_face`, but uses `_recv_buff`
+    * _q_recv_element: receive buffer for element parallel mode.  Same
+                       restrictions as `_q_recv_face`.
+    * _send_buff: the array that is used as the underlying memory for all send
+                  buffers
+    * _recv_buff: the array that is used as the underlying memory for all send
+                  buffers
 """
 mutable struct SharedFaceData{T} <: AbstractSharedFaceData{T}
   peernum::Int
   peeridx::Int
   myrank::Int
   comm::MPI.Comm
-  q_send::Array{T, 3}  # send buffer
-  q_recv::Array{T, 3}  # receive buffer
+  pdata::Int
+  tag::Cint
+  q_send::Array{T, 3}  # send buffer: always points to buffer associated with
+                       #              pdata
+  q_recv::Array{T, 3}  # receive buffer: always points to buffer associated with
+                       #                 pdata
   send_waited::Bool
   send_req::MPI.Request
   send_status::MPI.Status
@@ -64,6 +90,17 @@ mutable struct SharedFaceData{T} <: AbstractSharedFaceData{T}
   bndries_remote::Array{Boundary, 1}
   interfaces::Array{Interface, 1}
 
+  # private fields
+
+  # reshapes of the 1D buffer
+  _q_send_face::Array{T, 3}
+  _q_send_element::Array{T, 3}
+  _q_recv_face::Array{T, 3}
+  _q_recv_element::Array{T, 3}
+
+  _send_buff::Array{T, 1}
+  _recv_buff::Array{T, 1}  # the memory for the recv buffer
+
   # default inner constructor (for now)
 end
 
@@ -73,16 +110,18 @@ end
 """
   Outer constructor for SharedFaceData.
 
-  Inputs:
-
-    mesh: a mesh object
-    peeridx: the index of a peer in mesh.peer_parts
-    q_send: the send buffer
-    q_recv: the receive buffer
+  **Inputs**
+   * T: element type of send/recv buffers
+   * mesh: a mesh object
+   * peeridx: the index of a peer in mesh.peer_parts
+   * pdata: either integer enum or string describing what data is shared in
+            parallel
+   * tag: MPI tag to use for all communications, This tag must already have
+          been marked as used by the `TagManager`
 
 """
-function SharedFaceData(mesh::AbstractMesh, peeridx::Int,  
-                     q_send::Array{T, 3}, q_recv::Array{T, 3}) where T
+function SharedFaceData(::Type{T}, mesh::AbstractMesh, peeridx::Integer,
+                        pdata::Integer, tag::Integer) where T
 # create a SharedFaceData for a given peer
 
   peernum = mesh.peer_parts[peeridx]
@@ -101,19 +140,65 @@ function SharedFaceData(mesh::AbstractMesh, peeridx::Int,
   bndries_remote = mesh.bndries_remote[peeridx]
   interfaces = mesh.shared_interfaces[peeridx]
 
-  return SharedFaceData{T}(peernum, peeridx, myrank, comm,  q_send, q_recv,
+  # create the underlying buffer
+  send_face_dims =    (mesh.numDofPerNode, mesh.numNodesPerFace,
+                            mesh.peer_face_counts[peeridx])
+  send_element_dims = (mesh.numDofPerNode, mesh.numNodesPerElement,
+                            mesh.local_element_counts[peeridx])
+  recv_face_dims    = (mesh.numDofPerNode, mesh.numNodesPerFace,
+                            mesh.peer_face_counts[peeridx])
+  recv_element_dims = (mesh.numDofPerNode, mesh.numNodesPerElement,
+                            mesh.remote_element_counts[peeridx])
+
+  send_size = max(prod(send_face_dims), prod(send_element_dims))
+  recv_size = max(prod(recv_face_dims), prod(recv_element_dims))
+
+  _send_buff = Array{T}(send_size); psend = pointer(_send_buff)
+  _recv_buff = Array{T}(recv_size); precv = pointer(_recv_buff)
+
+  # make the reshaped versions
+  _q_send_face = unsafe_wrap(Array, psend, send_face_dims)
+  _q_send_element = unsafe_wrap(Array, psend, send_element_dims)
+  _q_recv_face = unsafe_wrap(Array, precv, recv_face_dims)
+  _q_recv_element = unsafe_wrap(Array, precv, recv_element_dims)
+
+  # set the externally visible buffer to the right internal buffer
+  if pdata == PARALLEL_DATA_FACE
+    q_send = _q_send_face
+    q_recv = _q_recv_face
+  elseif pdata == PARALLEL_DATA_ELEMENT
+    q_send = _q_send_element
+    q_recv = _q_recv_element
+  else
+    throw(ErrorException("Unsupported parallel type requested: $pdata"))
+  end
+
+  return SharedFaceData{T}(peernum, peeridx, myrank, comm, pdata, tag,
+                           q_send, q_recv,
                            send_waited, send_req, send_status,
                            recv_waited, recv_req, recv_status,
-                           bndries_local, bndries_remote, interfaces)
-
+                           bndries_local, bndries_remote, interfaces,
+                           _q_send_face, _q_send_element, _q_recv_face,
+                           _q_recv_element, _send_buff, _recv_buff)
 end
 
+#=
+function SharedFaceData(::Type{T}, mesh::AbstractMesh, peeridx::Integer,
+                        pdata::Integer, tag::Integer) where T
+
+  return SharedFaceData(T, mesh, peeridx, pdata, tag)
+end
+=#
+
 import Base.copy
+
 """
   Copy function for SharedFaceData.  Note that this does *not* retain the
   send_req/send_status (and similarly for the recceive) state
   of the original object.  Instead, they are initialized the same as the
-  constructor.
+  constructor.  The `tag` field is also copied.  User should carefully
+  consider if this tag needs to be changed before the object is used for
+  communication.
 
   This function may only be called after receiving is complete,
   otherwise an exception is thrown.
@@ -127,9 +212,8 @@ function copy(data::SharedFaceData{T}) where T
   peeridx = data.peeridx
   myrank = data.myrank
   comm = data.comm
-
-  q_send = copy(data.q_send)
-  q_recv = copy(data.q_recv)
+  pdata = data.pdata
+  tag = data.tag
 
   # don't copy the state of the MPI operations
   send_waited = true  # don't wait on the request
@@ -144,10 +228,52 @@ function copy(data::SharedFaceData{T}) where T
   bndries_remote = data.bndries_remote
   interfaces = data.interfaces
 
-  return SharedFaceData{T}(peernum, peeridx, myrank, comm, q_send, q_recv,
+  # create the underlying buffer
+  numDofPerNode = size(data._q_send_face, 1)
+  numNodesPerFace = size(data._q_send_face, 2)
+  peer_face_counts = size(data._q_send_face, 3)
+  numNodesPerElement = size(data._q_send_element, 2)
+  local_elements = size(data._q_send_element, 3)
+  remote_elements = size(data._q_recv_element, 3)
+
+  send_face_dims    = (numDofPerNode, numNodesPerFace, peer_face_counts)
+  send_element_dims = (numDofPerNode, numNodesPerElement, local_elements)
+  recv_face_dims    = (numDofPerNode, numNodesPerFace, peer_face_counts)
+  recv_element_dims = (numDofPerNode, numNodesPerElement, remote_elements)
+
+  send_size = max(prod(send_face_dims), prod(send_element_dims))
+  recv_size = max(prod(recv_face_dims), prod(recv_element_dims))
+
+  _send_buff = Array{T}(send_size); psend = pointer(_send_buff)
+  _recv_buff = Array{T}(recv_size); precv = pointer(_recv_buff)
+
+  # make the reshaped versions
+  _q_send_face = unsafe_wrap(Array, psend, send_face_dims)
+  _q_send_element = unsafe_wrap(Array, psend, send_element_dims)
+  _q_recv_face = unsafe_wrap(Array, precv, recv_face_dims)
+  _q_recv_element = unsafe_wrap(Array, precv, recv_element_dims)
+
+  # set the externally visible buffer to the right internal buffer
+  if pdata == PARALLEL_DATA_FACE
+    q_send = _q_send_face
+    q_recv = _q_recv_face
+  elseif pdata == PARALLEL_DATA_ELEMENT
+    q_send = _q_send_element
+    q_recv = _q_recv_element
+  else
+    throw(ErrorException("Unsupported parallel type requested: $pdata"))
+  end
+
+  q_send = copy(data.q_send)
+  q_recv = copy(data.q_recv)
+
+  return SharedFaceData{T}(peernum, peeridx, myrank, comm, pdata, tag,
+                           q_send, q_recv,
                            send_waited, send_req, send_status,
                            recv_waited, recv_req, recv_status,
-                           bndries_local, bndries_remote, interfaces)
+                           bndries_local, bndries_remote, interfaces,
+                           _q_send_face, _q_send_element, _q_recv_face,
+                           _q_recv_element, _send_buff, _recv_buff)
 end
 
 import Base.copy!
@@ -186,56 +312,65 @@ end
   although it can be used to create additional vectors of SharedFaceData
   objects.
 
-  if opts["parallel_data"] == "face", then the send and receive buffers
+  if `pdata` == PARALLEL_DATA_FACE, then the send and receive buffers
   are numDofPerNode x numNodesPerFace x number of shared faces.
 
-  if opts["parallel_data"] == "element", the send and receive buffers are
+  if `pdata` == PARALLEL_DATA_ELEMENT, the send and receive buffers are
     numDofPerNode x numNodesPerElement x number of elements that share the
     faces.  Note that the number of elements that share the faces can be
     different for the send and receive buffers.
 
-  Inputs:
+  **Inputs**
 
-    Tsol: element type of the arrays
-    mesh: an AbstractMesh object
-    sbp: an SBP operator
-    opts: the options dictonary
+   * Tsol: element type of the arrays
+   * mesh: an AbstractMesh object
+   * sbp: an SBP operator
+   * opts: the options dictonary
+   * pdata: Enum such as `PARALLEL_DATA_FACE` describing what data will
+            be shared in parallel
 
-  Outputs:
+  **Keyword Arguments**
 
-    data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
-              mesh.peer_parts[i]
+   * tag: integer specifying the MPI tag that will be used for all
+          communications by the returned objects.  If negative (default),
+          a new unused tag will be determined.  If the user supplies a
+          non-negative tag value, it must not be in use according to the
+          `TagManager`.
+    
+  **Outputs**
+
+   * data_vec: Vector{SharedFaceData}.  data_vec[i] corresponds to 
+               mesh.peer_parts[i]
 """
-function getSharedFaceData( ::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractSBP, opts) where Tsol
+function getSharedFaceData(::Type{Tsol}, mesh::AbstractMesh, sbp::AbstractOperator,
+                           opts, pdata::Integer; tag::Integer=-1) where Tsol
 # return the vector of SharedFaceData used by the equation object constructor
 
   @assert mesh.isDG
 
   data_vec = Array{SharedFaceData{Tsol}}(mesh.npeers)
-  if opts["parallel_data"] == "face"
-    dim2 =  mesh.numNodesPerFace
-    dim3_send = mesh.peer_face_counts
-    dim3_recv = mesh.peer_face_counts
-  elseif opts["parallel_data"] == "element"
-    dim2 = mesh.numNodesPerElement
-    dim3_send = mesh.local_element_counts
-    dim3_recv = mesh.remote_element_counts
+
+  if tag < 0
+    tag = getNextTag(TagManager)
   else
-    ptype = opts["parallel_type"]
-    throw(ErrorException("Unsupported parallel type requested: $ptype"))
+    markTagUsed(TagManager, tag)
   end
 
   for i=1:mesh.npeers
-    qsend = Array{Tsol}(mesh.numDofPerNode, dim2,dim3_send[i])
-    qrecv = Array{Tsol}(mesh.numDofPerNode, dim2, dim3_recv[i])
-    data_vec[i] = SharedFaceData(mesh, i, qsend, qrecv)
+    data_vec[i] = SharedFaceData(Tsol, mesh, i, pdata, tag)
   end
+
+  # it would be nice to have a finalizer to free the MPI tag, but finalizers
+  # don't run in a defined order, so its possible the MPI manager could be
+  # destroyed before the finalizer for the SharedFaceData is run.
+
 
   return data_vec
 end
 
 #------------------------------------------------------------------------------
 # API for SharedFaceData
+
 """
   This function verifies all the receives have been waited on for the 
   supplied SharedFaceData objects
@@ -251,6 +386,24 @@ function assertReceivesWaited(shared_data::Vector{SharedFaceData{T}}) where T
 
   return nothing
 end
+
+
+"""
+  This function verifies all the sends have been waited on for the 
+  supplied SharedFaceData objects
+"""
+function assertSendsWaited(shared_data::Vector{SharedFaceData{T}}) where T
+
+  for i=1:length(shared_data)
+    data_i = shared_data[i]
+    if !shared_data[i].send_waited
+      throw(ErrorException("Process $(data_i.myrank) has not yet completed send to proccess $(data_i.peernum)"))
+    end
+  end
+
+  return nothing
+end
+
 
 """
   Verify either all or none of the sends have been waited on.  Throw an
@@ -280,6 +433,7 @@ function assertSendsConsistent(shared_data::Vector{SharedFaceData{T}}) where T
 
   return val
 end
+
 
 """
   Like assertSendsConsistent, but for the receives
@@ -330,6 +484,7 @@ function waitAllSends(shared_data::Vector{SharedFaceData{T}}) where T
   return nothing
 end
 
+
 """
   This function is like MPI.Waitall, operating on the recvs of a vector of 
   SharedFaceData objects
@@ -359,7 +514,7 @@ end
 
 
 # static buffer of Request objects
-_waitall_reqs = Array{MPI.Request}(50)
+global const _waitany_reqs = Array{MPI.Request}(50)
 """
   Like MPI.WaitAny, but operates on the receives of  a vector of SharedFaceData.
   Only the index of the Request that was waited on is returned, 
@@ -368,13 +523,15 @@ _waitall_reqs = Array{MPI.Request}(50)
 function waitAnyReceive(shared_data::Vector{SharedFaceData{T}}) where T
 
   npeers = length(shared_data)
-  resize!(_waitall_reqs, npeers)
-
-  for i=1:npeers
-    _waitall_reqs[i] = shared_data[i].recv_req
+  if length(_waitany_reqs) != npeers
+    resize!(_waitany_reqs, npeers)
   end
 
-  idx, stat = MPI.Waitany!(_waitall_reqs)
+  for i=1:npeers
+    _waitany_reqs[i] = shared_data[i].recv_req
+  end
+
+  idx, stat = MPI.Waitany!(_waitany_reqs)
  
   shared_data[idx].recv_req = MPI.REQUEST_NULL  # make sure this request is not
                                                 # used again
@@ -383,3 +540,306 @@ function waitAnyReceive(shared_data::Vector{SharedFaceData{T}}) where T
 
   return idx
 end
+
+
+"""
+  Like [`waitAnyReceive`](@ref), but waits for any send.
+"""
+function waitAnySend(shared_data::Vector{SharedFaceData{T}}) where T
+
+  npeers = length(shared_data)
+  if length(_waitany_reqs) != npeers
+    resize!(_waitany_reqs, npeers)
+  end
+
+  for i=1:npeers
+    _waitany_reqs[i] = shared_data[i].send_req
+  end
+
+  idx, stat = MPI.Waitany!(_waitany_reqs)
+ 
+  shared_data[idx].send_req = MPI.REQUEST_NULL  # make sure this request is not
+                                                # used again
+  shared_data[idx].send_status = stat
+  shared_data[idx].send_waited = true
+
+  return idx
+end
+
+
+"""
+  Wait for a specific receive.  Prefer [`waitAnyReceive`](@ref) whenever
+  possible.  Unlike the standard `MPI_Wait`, it *is* safe to call this
+  function even if the receive has already been waited on.
+
+  **Inputs**
+
+   * data: vector of [`SharedFaceData`](@ref) objects
+"""
+function waitReceive(data::SharedFaceData{T}) where {T}
+
+  if !data.recv_waited
+    stat = MPI.Wait!(data.recv_req)
+    data.recv_req = MPI.REQUEST_NULL
+    data.recv_status = stat
+    data.recv_waited = true
+  end
+
+  return nothing
+end
+
+
+"""
+  Like [`waitReceive`](@ref), but waits on a send
+"""
+function waitSend(data::SharedFaceData{T}) where {T}
+
+  if !data.send_waited
+    stat = MPI.Wait!(data.send_req)
+    data.send_req = MPI.REQUEST_NULL
+    data.send_status = stat
+    data.send_waited = true
+  end
+
+  return nothing
+end
+
+import MPI: Isend, Irecv!
+
+"""
+  Extends `Isend` for [`SharedFaceData`](@ref)
+
+  **Inputs**
+
+   * data: `SharedFaceData`
+
+  **Outputs**
+
+   * none
+"""
+function Isend(data::SharedFaceData)
+
+  @assert data.send_waited
+
+  peer = data.peernum
+  send_buff = data.q_send
+  tag = data.tag
+  data.send_req = MPI.Isend(send_buff, peer, tag, data.comm)
+  data.send_waited = false
+
+  return nothing
+end
+
+
+"""
+  Performs an `Isend` using the *receive` buffer rather than the send buffer.
+  Useful for reverse-mode communication patterns.
+
+  **Inputs**
+
+   * data: `SharedFaceData
+
+  **Outputs**
+
+   * none
+"""
+function Isend_rev(data::SharedFaceData)
+
+  @assert data.recv_waited
+
+  peer = data.peernum
+  recv_buff = data.q_recv
+  tag = data.tag
+  data.recv_req = MPI.Isend(recv_buff, peer, tag, data.comm)
+  data.recv_waited = false
+
+  return nothing
+end
+
+
+
+"""
+  Extends `Irecv` for [`SharedFaceData`](@ref).  An exception will be
+  thrown if the previous receive has not been waited on already.
+
+  **Inputs**
+
+   * data: `SharedFaceData`
+
+  **Outputs**
+
+   * none
+"""
+function Irecv!(data::SharedFaceData)
+
+  @assert data.recv_waited
+
+  peer = data.peernum
+  tag = data.tag
+  recv_buff = data.q_recv
+  data.recv_req = MPI.Irecv!(recv_buff, peer, tag, data.comm)
+  data.recv_waited = false
+
+  return nothing
+end
+
+
+"""
+  Performs an `Irecv` using the *send* buffer rather than the receive buffer.
+  Useful for reverse-mode communication patterns.
+
+  **Inputs**
+
+   * data: `SharedFaceData`
+
+  **Outputs**
+
+   * none
+"""
+function Irecv_rev!(data::SharedFaceData)
+
+  @assert data.send_waited
+
+  peer = data.peernum
+  tag = data.tag
+  send_buff = data.q_send
+  data.send_req = MPI.Irecv!(send_buff, peer, tag, data.comm)
+  data.send_waited = false
+
+  return nothing
+end
+
+
+"""
+  Changes the vector of [`SharedFaceData`](@ref) object to a different parallel
+  data setting.  All receives must have completed before this function is
+  called.
+
+  **Inputs**
+
+   * shared_data: vector of `SharedFaceData` objects
+   * pdata: either a string or an integer enum specifying what data will be
+            sent in parallel
+"""
+function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::Integer
+                        ) where {T}
+
+
+  # can't change buffer while MPI might still write to the recv buffer
+  assertReceivesWaited(shared_data)
+  #assertSendsWaited(shared_data)  # this it not necessary because the old
+                                   # buffer still exists, so MPI can still
+                                   # read from it, and the communication
+                                   # functions check that the old send
+                                   # has finished before overwriting the
+                                   # buffer (even after a buffer change).
+
+
+  if length(shared_data) == 0 || pdata == shared_data[1].pdata ||
+     pdata == PARALLEL_DATA_NONE
+    return nothing
+  end
+
+  for i=1:length(shared_data)
+    data_i = shared_data[i]
+
+    if pdata == PARALLEL_DATA_FACE
+      data_i.q_send = data_i._q_send_face
+      data_i.q_recv = data_i._q_recv_face
+    elseif pdata == PARALLEL_DATA_ELEMENT
+      data_i.q_send = data_i._q_send_element
+      data_i.q_recv = data_i._q_recv_element
+    else
+      throw(ErrorException("Unsupported parallel type requested: $pdata"))
+    end
+
+    data_i.pdata = pdata
+  end
+
+  return nothing
+end
+
+#=
+function setParallelData(shared_data::Vector{SharedFaceData{T}}, pdata::String
+                        ) where {T}
+  pdata_enum = getParallelDataEnum(pdata)
+  setParallelData(shared_data, pdata_enum)
+end
+=#
+
+
+"""
+  Returns the string describing the data that will be sent in parallel according
+  to the current configuration of the [`SharedFaceData`](@ref) objects.  If the
+  array is length zero, returns `PARALLEL_DATA_NONE`.
+
+  **Inputs**
+
+   * shared_data: vector of `SharedFaceData` objects
+
+  **Outputs**
+
+   * string describing parallel data configuration
+"""
+function getParallelData(shared_data::Vector{SharedFaceData{T}}) where {T}
+
+  if length(shared_data) == 0
+    pdata = PARALLEL_DATA_NONE
+  else
+    pdata = shared_data[1].pdata
+  end
+
+  return pdata
+end
+
+
+"""
+  Returns the string describing the parallel data setting of the object
+
+  **Inputs**
+
+   * shared_data: a [`SharedFaceData`](@ref) object
+
+  **Outputs**
+
+   * string
+"""
+function getParallelData(shared_data::SharedFaceData)
+
+  return shared_data.pdata
+end
+
+
+"""
+  Sets a new MPI tag for the vector of [`SharedFaceData`](@ref) objects.
+
+  **Inputs**
+
+   * shared_data: vector of `SharedFaceData` objects
+
+  **Keyword Arguments**
+
+   * free_tag: if true, the old tag will be freed, otherwise it will not.
+                Default false
+
+  **Outputs**
+
+   * tag: the new MPI tag
+"""
+function setNewTag(shared_data::Vector{SharedFaceData{T}}; free_tag=false) where {T}
+
+  if free_tag
+    freeTag(TagManager, shared_data[1].tag)
+  end
+
+  tag = getNextTag(TagManager)
+  for i=1:length(shared_data)
+    shared_data[i].tag = tag
+  end
+
+  return tag
+end
+
+
+
+

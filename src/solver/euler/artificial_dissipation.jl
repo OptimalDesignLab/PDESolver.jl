@@ -23,7 +23,7 @@
 
 """->
 function applyDissipation(mesh::AbstractMesh{Tmsh}, 
-           sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol}, 
+           sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol}, 
            opts, arr::AbstractArray{T, 3}) where {Tmsh, Tsol, T}
 # applies the artificial dissipation to the array arr
 # arr must be mesh.numDofPerNode by sbp.numNodesPerElement by mesh.numEl
@@ -78,7 +78,7 @@ end
 
 """->
 function calcDissipationOperator(mesh::AbstractMesh{Tmsh}, 
-                     sbp::AbstractSBP, eqn::AbstractEulerData{Tsol},
+                     sbp::AbstractOperator, eqn::AbstractEulerData{Tsol},
                      opts, dissipation_name::String) where {Tmsh, Tsol}
 # calculates and returns the artificial dissipation operator array
 

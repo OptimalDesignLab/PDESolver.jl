@@ -36,7 +36,7 @@ separate directory called pressCoeff. The function deletes any existing
 """
 
 function writeSurfacePressureCoeff(mesh::AbstractDGMesh{Tmsh},
-         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts, g_edges, nodal_pressCoeff) where {Tmsh, Tsol}
+         sbp::AbstractOperator, eqn::EulerData{Tsol}, opts, g_edges, nodal_pressCoeff) where {Tmsh, Tsol}
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
@@ -95,7 +95,7 @@ function writeSurfacePressureCoeff(mesh::AbstractDGMesh{Tmsh},
 end # End evalSurfacePressureCoeff
 
 function readSurfacePressureCoeff(mesh::AbstractDGMesh{Tmsh},
-         sbp::AbstractSBP, eqn::EulerData{Tsol}, opts, g_edges, nodal_pressCoeff) where {Tmsh, Tsol}
+         sbp::AbstractOperator, eqn::EulerData{Tsol}, opts, g_edges, nodal_pressCoeff) where {Tmsh, Tsol}
 
   my_rank = MPI.Comm_rank(eqn.comm)  # Get the rank of the process
 

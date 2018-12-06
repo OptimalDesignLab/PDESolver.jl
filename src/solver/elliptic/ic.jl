@@ -19,7 +19,7 @@ Aliasing restrictions: none.
 
 """->
 function ICZero(mesh::AbstractMesh{Tmsh}, 
-                operator::AbstractSBP{Tsbp}, 
+                operator::AbstractOperator{Tsbp}, 
                 eqn::EllipticData{Tsol}, 
                 opts, 
                 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -65,7 +65,7 @@ Aliasing restrictions: none.
 """->
 
 function ICOnes(mesh::AbstractMesh{Tmsh}, 
-                operator::AbstractSBP{Tsbp}, 
+                operator::AbstractOperator{Tsbp}, 
                 eqn::EllipticData{Tsol}, 
                 opts,
                 u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -90,7 +90,7 @@ function ICOnes(mesh::AbstractMesh{Tmsh},
 end # end function ICOnes
 
 function ICRandom(mesh::AbstractMesh{Tmsh}, 
-                  operator::AbstractSBP{Tsbp}, 
+                  operator::AbstractOperator{Tsbp}, 
                   eqn::EllipticData{Tsol}, 
                   opts,
                   u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}

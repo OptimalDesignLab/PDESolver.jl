@@ -220,7 +220,6 @@ function calcEntropyPenaltyIntegral(
   data = params.calc_entropy_penalty_integral_data
   @unpack data wL wR wL_i wR_i qL_i qR_i delta_w q_avg flux
 
-#  qL[COMP, NODE] += Complex128(0, 1e-20)
   # convert to IR entropy variables
   for i=1:sbpface.stencilsize
     # apply sbpface.perm here
@@ -471,93 +470,6 @@ function applyEntropyKernel(obj::LFKernel, params::ParamType,
 end
 
 
-function applyEntropyKernel_revq(obj::LFKernel, params::ParamType, 
-                        q_avg::AbstractVector, q_bar::AbstractVector,
-                        delta_w::AbstractVector, delta_w_bar::AbstractVector,
-                        nrm::AbstractVector, flux::AbstractVector,
-                        flux_bar::AbstractVector)
-
-  @unpack obj t1 A0 t1_bar A0_bar
-
-  numDofPerNode = length(q_avg)
-  
-  getIRA0(params, q_avg, A0)
-  #for j=1:size(A0, 1)
-  #  A0[j, j] = 1
-  #end
-
-  lambda_max = getLambdaMax(params, q_avg, nrm)
-  # lambda_max * A0 * delta w
-
-  smallmatvec!(A0, delta_w, t1)
-  for i=1:length(flux)
-    flux[i] = lambda_max*t1[i]
-  end
-
-  # reverse sweep
-
-  # flux = t1*lambda_max
-  lambda_max_bar = zero(lambda_max)
-  for i=1:numDofPerNode
-    lambda_max_bar += flux_bar[i]*t1[i]
-    t1_bar[i] = flux_bar[i]*lambda_max
-  end
-
-  # t1 = A0*delta_w
-  for i=1:numDofPerNode
-    for j=1:numDofPerNode
-      A0_bar[j, i] = t1_bar[j]*delta_w[i]
-      delta_w_bar[i] += A0[j, i]*t1_bar[j]
-    end
-  end
-
-  getLambdaMax_revq(params, q_avg, q_bar, nrm, lambda_max_bar)
-
-  getIRA0_revq(params, q_avg, q_bar, A0, A0_bar)
-
-  return nothing
-end
-
-
-function applyEntropyKernel_revm(obj::LFKernel, params::ParamType, 
-                        q_avg::AbstractVector, delta_w::AbstractVector,
-                        nrm::AbstractVector, nrm_bar::AbstractVector,
-                        flux::AbstractVector,
-                        flux_bar::AbstractVector)
-
-
-  @unpack obj t1 A0 A0_bar
-  
-  numDofPerNode = length(q_avg)
-  
-  getIRA0(params, q_avg, A0)
-  #for j=1:size(A0, 1)
-  #  A0[j, j] = 1
-  #end
-
-  lambda_max = getLambdaMax(params, q_avg, nrm)
-  # lambda_max * A0 * delta w
-
-  smallmatvec!(A0, delta_w, t1)
-  for i=1:length(flux)
-    flux[i] = lambda_max*t1[i]
-  end
-
-  # reverse sweep
-
-  # flux = t1*lambda_max
-  lambda_max_bar = zero(lambda_max)
-  for i=1:numDofPerNode
-    lambda_max_bar += flux_bar[i]*t1[i]
-  end
-
-  getLambdaMax_revm(params, q_avg, nrm, nrm_bar, lambda_max_bar)
-
-  return nothing
-end
-
-
-
 """
   Use the identity matrix, ie. flux = delta_w
 """
@@ -604,7 +516,7 @@ function applyEntropyKernel_diagE(
                       aux_vars::AbstractArray{Tres},
                       dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
 
-  q_avg = params.apply_entropy_kernel_diagE_data.q_avg
+   q_avg = params.apply_entropy_kernel_diagE_data.q_avg
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end

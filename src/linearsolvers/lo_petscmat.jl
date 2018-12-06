@@ -42,7 +42,7 @@ end
    * opts
 """
 function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   pc2 = getBasePC(pc)
 
@@ -109,7 +109,7 @@ end
 
 
 function calcLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
 
@@ -121,7 +121,7 @@ end
 
 
 function applyLinearOperator(lo::AbstractPetscMatLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData,
+                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
@@ -141,7 +141,7 @@ end
 
 
 function applyLinearOperatorTranspose(lo::AbstractPetscMatLO, 
-                             mesh::AbstractMesh, sbp::AbstractSBP,
+                             mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)

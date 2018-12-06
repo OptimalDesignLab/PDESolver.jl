@@ -30,7 +30,7 @@ end
 
 
 function elementEigenValues(mesh::AbstractMesh{Tmsh}, 
-                sbp::AbstractSBP, 
+                sbp::AbstractOperator, 
                 eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh,Tsol, Tres, Tdim}
 
   res_0 = zeros(eqn.res_vec)

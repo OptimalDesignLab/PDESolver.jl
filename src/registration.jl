@@ -36,7 +36,7 @@ global const PhysicsModDict = Dict{String, Tuple{Module, Function, Function}}()
                       
                       If this physics modules supports solving on a submesh,
                       this function should also have a method
-                      `_createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)`
+                      `_createObjects(mesh::AbstractMesh, sbp::AbstractOperator, opts::Dict)`
                       to create a new equation object.  See [`createObjects`](@ref).
       
    * _checkOptions: physics-specific function for supplying default options and
@@ -128,7 +128,7 @@ end
   physics module.  The function must have the signature:
 
   ```
-   ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},
+   ICfunc(mesh::AbstractMesh, sbp::AbstractOperator, eqn:AbstractSolutionData{Tsol},
                 opts:Dict, q_vec::AbstractVector{Tsol})
   ```
 

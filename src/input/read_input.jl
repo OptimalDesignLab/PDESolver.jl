@@ -36,7 +36,7 @@ function read_input_file(fname::AbstractString, comm=MPI.COMM_WORLD)
   fpath = joinpath(pwd(), fname)
 
   # this uses eval, which is evil (and not statically compilable)
-  arg_dict = evalfile(fpath)  # include file in the users pwd()
+  arg_dict = include(fpath)  # include file in the users pwd()
 
   if !( typeof(arg_dict) <: Dict )
     throw(ErrorException("Input file does not contain a dictionary"))
@@ -241,12 +241,12 @@ end
 
 if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30
   if arg_dict["face_integral_type"] == 2  # entropy stable
-    get!(arg_dict, "parallel_data", "element")
+    get!(arg_dict, "parallel_data", PARALLEL_DATA_ELEMENT)
   else
-    get!(arg_dict, "parallel_data", "face")
+    get!(arg_dict, "parallel_data", PARALLEL_DATA_FACE)
   end
 else
-  get!(arg_dict, "parallel_data", "element")
+  get!(arg_dict, "parallel_data", PARALLEL_DATA_ELEMENT)
 end
 
 #-----------------------------------------------

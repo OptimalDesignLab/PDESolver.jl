@@ -206,7 +206,7 @@ mutable struct EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres,
   nstages::UInt8
   istage::UInt8
 
-  function EllipticData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
+  function EllipticData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstructing EllipticData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -276,7 +276,8 @@ mutable struct EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres,
         # eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         # numfacenodes, mesh.peer_face_counts[i])
       end
-      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
+                                          opts["parallel_data"])
     else
       eqn.shared_data = Array{SharedFaceData}(0)
     end
@@ -331,7 +332,7 @@ mutable struct EllipticData_{Tsol, Tres, Tdim, Tmsh} <: EllipticData{Tsol, Tres,
 end # end type
 
 function calcWetArea(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP,
+                     sbp::AbstractOperator,
                      eqn::EllipticData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, mesh.numNodesPerFace, Tdim)
@@ -400,7 +401,7 @@ end
 
 function majorIterationCallback(itr::Integer,
                                 mesh::AbstractMesh,
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::AbstractEllipticData,
                                 opts,
                                 f::IO)
@@ -415,7 +416,7 @@ function majorIterationCallback(itr::Integer,
 end
 
 function multiplyA0inv(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
+                       sbp::AbstractOperator,
                        eqn::EllipticData{Tsol, Tres, Tdim},
                        opts,
                        res::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tdim, Tres}

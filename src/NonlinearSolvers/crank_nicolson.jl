@@ -56,7 +56,7 @@ crank_nicolson
    will use its recalculation policy to recalculate the PC and jacobian.
 """->
 function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
-                        mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                        mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
 
   myrank = eqn.myrank
@@ -292,7 +292,7 @@ mutable struct CNMatPC <: AbstractPetscMatPC
   pc_inner::NewtonMatPC
 end
 
-function CNMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+function CNMatPC(mesh::AbstractMesh, sbp::AbstractOperator,
                     eqn::AbstractSolutionData, opts::Dict)
 
   pc_inner = NewtonMatPC(mesh, sbp, eqn, opts)
@@ -300,7 +300,7 @@ function CNMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
   return CNMatPC(pc_inner)
 end
 
-function calcPC(pc::CNMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::CNMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   calcPC(pc, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -331,7 +331,7 @@ function CNVolumePC(mesh::AbstractMesh, sbp,
   return CNVolumePC(pc_inner, other_pc)
 end
 
-function calcPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
 # eqn should be eqn_nextstep from the CN function
@@ -345,7 +345,7 @@ function calcPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
   return nothing
 end
 
-function applyPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -364,7 +364,7 @@ mutable struct CNDenseLO <: AbstractDenseLO
 end
 
 function CNDenseLO(pc::PCNone, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
 
@@ -376,7 +376,7 @@ mutable struct CNSparseDirectLO <: AbstractSparseDirectLO
 end
 
 function CNSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)
 
@@ -389,7 +389,7 @@ mutable struct CNPetscMatLO <: AbstractPetscMatLO
 end
 
 function CNPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonPetscMatLO(pc, mesh, sbp, eqn, opts)
 
@@ -403,7 +403,7 @@ const CNMatLO = Union{CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
 
 
 function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -420,7 +420,7 @@ mutable struct CNPetscMatFreeLO <: AbstractPetscMatFreeLO
 end
 
 function CNPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                      sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                      sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
 
@@ -434,7 +434,7 @@ const CNHasMat = Union{CNMatPC, CNDenseLO, CNSparseDirectLO, CNPetscMatLO}
 
 
 function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
   
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -445,7 +445,7 @@ function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
 end
 
 function applyLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
-                       sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                       sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol},
                        opts::Dict, ctx_residual, t, x::AbstractVector, 
                        b::AbstractVector) where Tsol
 
@@ -465,7 +465,7 @@ end
 
 function applyLinearOperatorTranspose(lo::CNPetscMatFreeLO,
                              mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData{Tsol},
+                             sbp::AbstractOperator, eqn::AbstractSolutionData{Tsol},
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector) where Tsol
 
@@ -529,7 +529,7 @@ end
   operations.
 """
 function cnCalcVolumePreconditioner(pc::CNVolumePC, mesh::AbstractDGMesh,
-               sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts,
+               sbp::AbstractOperator, eqn_nextstep::AbstractSolutionData, opts,
                ctx_residual, t)
   #TODO: is this ctx_residual?
   physics_func = ctx[1]
@@ -574,7 +574,7 @@ end
     h must be the third element
 
 """->
-function cnRhs(mesh::AbstractMesh, sbp::AbstractSBP, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
+function cnRhs(mesh::AbstractMesh, sbp::AbstractOperator, eqn_nextstep::AbstractSolutionData, opts, rhs_vec, ctx, t)
 
   # eqn comes in through ctx_residual, which is set up in CN before the newtonInner call
 

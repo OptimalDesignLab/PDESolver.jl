@@ -290,6 +290,12 @@ struct ApplyEntropyKernel_diagEData{Tsol, Tres}
   # diff method
   delta_w_dot::Matrix{Tsol}
 
+  # rev method
+  q_avg_bar::Vector{Tres}
+  delta_w::Vector{Tsol}
+  delta_w_bar::Vector{Tsol}
+  A0inv::Matrix{Tsol}
+
   function ApplyEntropyKernel_diagEData{Tsol, Tres}(numDofPerNode::Integer, nd::Integer) where {Tsol, Tres}
 
     q_avg = zeros(Tsol, numDofPerNode)
@@ -304,7 +310,16 @@ struct ApplyEntropyKernel_diagEData{Tsol, Tres}
 
     delta_w_dot = zeros(Tsol, numDofPerNode, nd)
 
-    obj = new(q_avg, q_avg_dot, F, F_dot, vL, vR, F_tmp, delta_w_dot)
+    # rev
+    q_avg_bar = zeros(Tres, numDofPerNode)
+    delta_w = zeros(Tsol, numDofPerNode)
+    delta_w_bar = zeros(Tsol, numDofPerNode)
+    A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
+
+
+
+    obj = new(q_avg, q_avg_dot, F, F_dot, vL, vR, F_tmp, delta_w_dot,
+              q_avg_bar, delta_w, delta_w_bar, A0inv)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
     return obj
@@ -439,6 +454,9 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
   fL_dot::Array{Tres, 2}
   fR_dot::Array{Tres, 2}
 
+  # rev methods
+  fluxD_bar::Matrix{Tres}
+
   function CalcECFaceIntegralData{Tres, Tmsh}(numDofPerNode::Integer, dim::Integer) where {Tres, Tmsh}
     fluxD = zeros(Tres, numDofPerNode, dim)
     nrmD = zeros(Tmsh, dim, dim)
@@ -450,7 +468,10 @@ struct CalcECFaceIntegralData{Tres, Tmsh}
     fL_dot = zeros(Tres, numDofPerNode, numDofPerNode)
     fR_dot = zeros(Tres, numDofPerNode, numDofPerNode)
 
-    obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot)
+    fluxD_bar = zeros(Tres, numDofPerNode, dim)
+
+    obj = new(fluxD, nrmD, flux_tmp, fL_dotD, fR_dotD, fL_dot, fR_dot,
+              fluxD_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 
@@ -492,6 +513,20 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
   A0invL::Matrix{Tsol}
   A0invR::Matrix{Tsol}
 
+  #---------------
+  # rev methods
+  flux_bar::Vector{Tres}
+  qL_bar_i::Vector{Tres}
+  qR_bar_i::Vector{Tres}
+  wL_bar_i::Vector{Tres}
+  wR_bar_i::Vector{Tres}
+  delta_w_bar::Vector{Tres}
+  q_avg_bar::Vector{Tres}
+  wL_bar::Matrix{Tres} 
+  wR_bar::Matrix{Tres}
+
+
+
 
   function CalcEntropyPenaltyIntegralData{Tsol, Tres}(numDofPerNode::Integer,
                               numNodesPerFace::Integer,
@@ -529,11 +564,26 @@ struct CalcEntropyPenaltyIntegralData{Tsol, Tres}
     A0invL = zeros(Tsol, numDofPerNode, numDofPerNode)
     A0invR = zeros(Tsol, numDofPerNode, numDofPerNode)
 
+    # rev methods
+    flux_bar = zeros(Tres, numDofPerNode)
+
+    qL_bar_i = zeros(Tres, numDofPerNode)
+    qR_bar_i = zeros(Tres, numDofPerNode)
+    wL_bar_i = zeros(Tres, numDofPerNode)
+    wR_bar_i = zeros(Tres, numDofPerNode)
+    delta_w_bar = zeros(Tres, numDofPerNode)
+    q_avg_bar = zeros(Tres, numDofPerNode)
+    wL_bar = zeros(Tres, numDofPerNode, stencilsize)
+    wR_bar = zeros(Tres, numDofPerNode, stencilsize)
+
+
 
     obj = new(wL, wR, wL_i, wR_i, qL_i, qR_i, flux, A0, delta_w, q_avg,
               res_vals,
              q_avg_dot, delta_w_dot, flux_dot_i, flux_dotL, flux_dotR,
-             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR)
+             jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp, A0invL, A0invR,
+             flux_bar, qL_bar_i, qR_bar_i, wL_bar_i, wR_bar_i, delta_w_bar,
+             q_avg_bar, wL_bar, wR_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 
@@ -599,6 +649,10 @@ struct BCData{Tsol, Tres}
   roe_vars::Vector{Tsol}
   euler_flux::Vector{Tres}
 
+  # reverse mode
+  q_bar::Vector{Tres}
+  qg_bar::Vector{Tres}
+
   function BCData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
 
     qg = zeros(Tsol, numDofPerNode)
@@ -608,7 +662,12 @@ struct BCData{Tsol, Tres}
     roe_vars = zeros(Tsol, numDofPerNode)
     euler_flux = zeros(Tres, numDofPerNode)
 
-    obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux)
+    # reverse mode
+    q_bar = zeros(Tres, numDofPerNode)
+    qg_bar = zeros(Tres, numDofPerNode)
+
+    obj = new(qg, v_vals, sat, dq, roe_vars, euler_flux,
+              q_bar, qg_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 
@@ -800,10 +859,14 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
   # calcVolumeIntegralsSplitFormLinear
   nrmD::Matrix{Tmsh}
   F_d::Matrix{Tres}
+  nrmD_bar::Matrix{Tmsh}
+  F_d_bar::Matrix{Tres}
+
   S::Array{Float64, 3}  # SBP S matrix (should elementtype really be Float64?)
 
   # calcVolumeIntegralsSplitFormCurvilinear
   Sx::Array{Tmsh, 3}
+  Sx_bar::Array{Tmsh, 3}
 
   # staggered grid methods
   res_s::Matrix{Tres}
@@ -811,7 +874,7 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
 
   function CalcVolumeIntegralsData{Tres, Tmsh}(numDofPerNode::Integer,
                   dim::Integer, numNodesPerElement_s::Integer,
-                  numNodesPerElement_f::Integer, sbp::AbstractSBP) where {Tres, Tmsh}
+                  numNodesPerElement_f::Integer, sbp::AbstractOperator) where {Tres, Tmsh}
 
     # calcVolumeIntegrals
     flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement_s, dim)
@@ -821,11 +884,16 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     # split form stuff
     nrmD = zeros(Tmsh, dim, dim)
     F_d = zeros(Tres, numDofPerNode, dim)
+    nrmD_bar = zeros(Tmsh, dim, dim)
+    F_d_bar = zeros(Tres, numDofPerNode, dim)
+
+
     # the staggered grid calculation only uses the curvilinear method, so
     # make S numNodesPerElement_s, to match the sbp operator on the solution
     # grid (S is not used if they don't match>
     S = zeros(Float64, numNodesPerElement_s, numNodesPerElement_s, dim)
     Sx = zeros(Tmsh, numNodesPerElement_f, numNodesPerElement_f, dim)
+    Sx_bar = zeros(Tmsh, numNodesPerElement_f, numNodesPerElement_f, dim)
 
     for i=1:dim
       S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
@@ -835,7 +903,7 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     res_f = zeros(Tres, numDofPerNode, numNodesPerElement_f)
 
     obj = new(flux_jac, res_jac, nrm,
-              nrmD, F_d, S, Sx, res_s, res_f)
+              nrmD, F_d, nrmD_bar, F_d_bar,  S, Sx, Sx_bar, res_s, res_f)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 

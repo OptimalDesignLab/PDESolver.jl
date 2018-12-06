@@ -14,7 +14,7 @@ Output:
 
 """->
 function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP,
+                                  sbp::AbstractOperator,
                                   eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -223,7 +223,7 @@ Output:
 
 """->
 function evalFaceIntegrals_vector(mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP,
+                                  sbp::AbstractOperator,
                                   eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
@@ -323,7 +323,7 @@ Output:
 
 """
 function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP{Tsbp},
+                             sbp::AbstractOperator{Tsbp},
                              eqn::NSData{Tsol, Tres, Tdim},
                              res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tsol, Tres, Tdim}
   @assert (sbp.numnodes ==  size(res,2))
@@ -392,7 +392,7 @@ mutable struct SIPGViscousFlux <: FluxType
 end
 
 function (obj::SIPGViscousFlux)(params::ParamType,
-              sbp::AbstractSBP,
+              sbp::AbstractOperator,
               sbpface,    # TODO: type
               uL::AbstractArray{Tsol,1},
               uR::AbstractArray{Tsol,1},

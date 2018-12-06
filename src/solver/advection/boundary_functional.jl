@@ -1,6 +1,6 @@
 # Calculate boundary "forces" in advection
 
-import PDESolver.evalFunctional
+import PDESolver._evalFunctional
 
 @doc """
 ### AdvectionEquationMod.evalFunctional
@@ -18,18 +18,9 @@ mid level type specific function for the actual functional evaluation.
 *  `opts` : Options dictionary
 *  `functionalData` : Object of the functional being computed.
 """->
-function evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::AdvectionData{Tsol}, opts,
-            functionalData::AbstractFunctional) where {Tmsh, Tsol}
-#=
-  if opts["parallel_type"] == 1
-
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-    @debug1 println(params.f, "-----entered if statement around startDataExchange -----")
-
-  end
-=#
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+function _evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractOperator, eqn::AdvectionData{Tsol}, opts,
+            functionalData::AbstractBoundaryFunctional) where {Tmsh, Tsol}
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -60,7 +51,7 @@ different boundary functional type.
 """->
 #=  TODO: uncomment and run test when mesh.bndry_geo_nums gets added to CG meshes
 
-function calcBndryFunctional(mesh::AbstractCGMesh{Tmsh},sbp::AbstractSBP,
+function calcBndryFunctional(mesh::AbstractCGMesh{Tmsh},sbp::AbstractOperator,
                          eqn::AdvectionData{Tsol}, opts, functor, functional_edges) where {Tmsh, Tsol}
 
   # Specify the boundary conditions for the edge on which the force needs to be
@@ -123,9 +114,9 @@ end
 =#
 
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-          sbp::AbstractSBP,
+          sbp::AbstractOperator,
           eqn::AdvectionData{Tsol}, opts,
-          functionalData::AbstractIntegralFunctional{Topt}) where {Tmsh, Tsol, Topt}
+          functionalData::AbstractBoundaryFunctional{Topt}) where {Tmsh, Tsol, Topt}
 
   # Specify the boundary conditions for the edge on which the force needs to be
   # computed separately. Use that boundary number to access the boundary

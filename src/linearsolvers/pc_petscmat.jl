@@ -38,7 +38,7 @@ end
    * eqn
    * opts
 """
-function PetscMatPC(mesh::AbstractMesh, sbp::AbstractSBP,
+function PetscMatPC(mesh::AbstractMesh, sbp::AbstractOperator,
                     eqn::AbstractSolutionData, opts::Dict)
 
   pc = createPetscPC(mesh, sbp, eqn, opts)
@@ -104,7 +104,7 @@ end
 
 
 
-function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   # compute the jacobian here
@@ -119,7 +119,7 @@ function calcPC(pc::PetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
 end
 
 
-function applyPC(pc::AbstractPetscMatPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::AbstractPetscMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -147,7 +147,7 @@ end
 
 
 function applyPCTranspose(pc::AbstractPetscMatPC, mesh::AbstractMesh,
-                 sbp::AbstractSBP,
+                 sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t,
                  b::AbstractVector, x::AbstractVector)
 

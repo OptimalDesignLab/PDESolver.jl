@@ -21,7 +21,7 @@ Aliasing restrictions: none.
 """->
 
 function ICPolynomial(mesh::AbstractMesh{Tmsh}, 
-                      sbp::AbstractSBP{Tsbp}, 
+                      sbp::AbstractOperator{Tsbp}, 
                       eqn::NSData{Tsol, Tsol, 3}, 
                       opts, 
                       u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -74,7 +74,7 @@ function ICPolynomial(mesh::AbstractMesh{Tmsh},
 end
 
 function ICPolynomial(mesh::AbstractMesh{Tmsh}, 
-                      sbp::AbstractSBP{Tsbp}, 
+                      sbp::AbstractOperator{Tsbp}, 
                       eqn::NSData{Tsol, Tsol, 2}, 
                       opts, 
                       u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -130,7 +130,7 @@ function ICPolynomial(mesh::AbstractMesh{Tmsh},
 end
 
 function ICChannel(mesh::AbstractMesh{Tmsh}, 
-                   operator::AbstractSBP{Tsbp}, 
+                   operator::AbstractOperator{Tsbp}, 
                    eqn::NSData{Tsol, Tsol, 3}, 
                    opts, 
                    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -197,7 +197,7 @@ function ICChannel(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICChannel(mesh::AbstractMesh{Tmsh}, 
-                   operator::AbstractSBP{Tsbp}, 
+                   operator::AbstractOperator{Tsbp}, 
                    eqn::NSData{Tsol, Tsol, 2}, 
                    opts, 
                    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -254,7 +254,7 @@ function ICChannel(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICDoubleSquare(mesh::AbstractMesh{Tmsh}, 
-                        operator::AbstractSBP{Tsbp}, 
+                        operator::AbstractOperator{Tsbp}, 
                         eqn::NSData{Tsol, Tsol, 2}, 
                         opts, 
                         u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -333,7 +333,7 @@ function ICDoubleSquare(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICTrigonometric(mesh::AbstractMesh{Tmsh}, 
-                         operator::AbstractSBP{Tsbp}, 
+                         operator::AbstractOperator{Tsbp}, 
                          eqn::NSData{Tsol, Tsol, 2}, 
                          opts, 
                          u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
@@ -402,7 +402,7 @@ function ICTrigonometric(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICTrigonometric(mesh::AbstractMesh{Tmsh}, 
-                         operator::AbstractSBP{Tsbp}, 
+                         operator::AbstractOperator{Tsbp}, 
                          eqn::NSData{Tsol, Tres, 3}, 
                          opts, 
                          u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}

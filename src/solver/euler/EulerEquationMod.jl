@@ -333,7 +333,7 @@ abstract type AbstractEntropyKernel end
 """
   Functionals that use entropy penalties
 """
-abstract type EntropyPenaltyFunctional{Topt} <: AbstractFunctional{Topt} end
+abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt} end
 
 
 # high level functions should take in an AbstractEulerData, remaining
@@ -371,8 +371,8 @@ include("eigensystem.jl")
 include("check_options.jl")
 include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function for invoking the solver
-include("dataprep_rev.jl")
 include("evaldRdm.jl")
+include("evaldRdq.jl")
 include("homotopy.jl")
 
 # Jacobian calculation

@@ -63,7 +63,7 @@ end
 # """->
 #
 function calcFvis_elem_direct(params::ParamType{2},
-                              sbp::AbstractSBP,
+                              sbp::AbstractOperator,
                               q::AbstractArray{Tsol, 2},
                               dxidx::AbstractArray{Tmsh, 3},
                               jac::AbstractArray{Tmsh, 1},
@@ -157,7 +157,7 @@ function calcFvis_elem_direct(params::ParamType{2},
 end
 
 function calcFvis_elem_direct(params::ParamType{3},
-                              sbp::AbstractSBP,
+                              sbp::AbstractOperator,
                               q::AbstractArray{Tsol, 2},
                               dxidx::AbstractArray{Tmsh, 3},
                               jac::AbstractArray{Tmsh, 1},
@@ -279,7 +279,7 @@ end
 
 """
 function calcFaceFvis(params::ParamType{Tdim},
-                      sbp::AbstractSBP,
+                      sbp::AbstractOperator,
                       sbpface::AbstractFace,
                       qL::AbstractArray{Tsol, 2},
                       qR::AbstractArray{Tsol, 2},
@@ -559,7 +559,7 @@ Output
   jac = viscous flux jacobian at each node, dimension = (dim+2, dim+2, dim, dim, numNodes)
 """->
 function calcFvis_elem(params::ParamType,
-                       sbp::AbstractSBP,
+                       sbp::AbstractOperator,
                        q::AbstractArray{Tsol, 2},
                        dxidx::AbstractArray{Tmsh, 3},
                        jac::AbstractArray{Tmsh, 1},

@@ -1,8 +1,11 @@
 # differentiated version of functions in flux.jl
 
+#------------------------------------------------------------------------------
+# calcFaceIntegral
+
 function calcFaceIntegral_nopre_diff(
                                 mesh::AbstractDGMesh{Tmsh},
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::EulerData{Tsol, Tres, Tdim, :conservative},
                                 opts,
                                 functor::FluxType_diff,
@@ -87,9 +90,147 @@ function calcFaceIntegral_nopre_diff(
 end
 
 
+"""
+  Reverse mode wrt metrics of [`calcFaceIntegral_nopre`](@ref)
+
+  **Inputs**
+
+   * mesh: bar fields are updated
+   * sbp
+   * eqn: res_bar fields in input
+   * opts
+   * functor_revm: reverse mode wrt metrics functor (`FluxType_revm`)
+   * interfaces
+"""
+function calcFaceIntegral_nopre_revm(
+        mesh::AbstractDGMesh{Tmsh},
+        sbp::AbstractOperator,
+        eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+        opts,
+        functor_revm::FluxType_revm,
+        interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  nfaces = length(interfaces)
+  params = eqn.params
+
+  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  # reverse sweep
+  for i=1:nfaces
+    iface_i = interfaces[i]
+
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
+    interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL,
+                             q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = sview(eqn.res_bar, :, :, iface_i.elementL)
+    resR_bar = sview(eqn.res_bar, :, :, iface_i.elementR)
+    interiorFaceIntegrate_rev!(mesh.sbpface, iface_i, flux_face_bar, resL_bar,
+                               resR_bar, SummationByParts.Subtract())
+
+    for j=1:mesh.numNodesPerFace
+      qL_j = ro_sview(q_faceL, :, j)
+      qR_j = ro_sview(q_faceR, :, j)
+
+      eqn.aux_vars_face[1, j, i] = calcPressure(params, qL_j)
+      aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
+
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
+      nrm_bar = sview(mesh.nrm_face_bar, :, j, i)
+      flux_bar_j = sview(flux_face_bar, :, j)
+
+      functor_revm(params, qL_j, qR_j, aux_vars, nrm_xy, nrm_bar, flux_bar_j)
+    end  # end loop j
+
+  end  # end loop i
+
+  return nothing
+end
+
+
+"""
+  Reverse mode wrt q of [`calcFaceIntegral_nopre`](@ref)
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: `res_bar` field as input, `q_bar` as output
+   * opts
+   * functor_revq: reverse mode wrt metrics functor (`FluxType_revq`)
+   * interfaces
+"""
+function calcFaceIntegral_nopre_revq(
+        mesh::AbstractDGMesh{Tmsh},
+        sbp::AbstractOperator,
+        eqn::EulerData{Tsol, Tres, Tdim, :conservative},
+        opts,
+        functor_revq::FluxType_revq,
+        interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  nfaces = length(interfaces)
+  params = eqn.params
+
+  q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = zeros(q_faceL)
+  q_faceL_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  # reverse sweep
+  for i=1:nfaces
+    iface_i = interfaces[i]
+
+    qL = ro_sview(eqn.q, :, :, iface_i.elementL)
+    qR = ro_sview(eqn.q, :, :, iface_i.elementR)
+    qL_bar = sview(eqn.q_bar, :, :, iface_i.elementL)
+    qR_bar = sview(eqn.q_bar, :, :, iface_i.elementR)
+    interiorFaceInterpolate!(mesh.sbpface, iface_i, qL, qR, q_faceL,
+                             q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = sview(eqn.res_bar, :, :, iface_i.elementL)
+    resR_bar = sview(eqn.res_bar, :, :, iface_i.elementR)
+    interiorFaceIntegrate_rev!(mesh.sbpface, iface_i, flux_face_bar, resL_bar,
+                               resR_bar, SummationByParts.Subtract())
+
+    fill!(q_faceL_bar, 0); fill!(q_faceR_bar, 0)
+    for j=1:mesh.numNodesPerFace
+      qL_j = ro_sview(q_faceL, :, j); qL_bar_j = sview(q_faceL_bar, :, j)
+      qR_j = ro_sview(q_faceR, :, j); qR_bar_j = sview(q_faceR_bar, :, j)
+
+      eqn.aux_vars_face[1, j, i] = calcPressure(params, qL_j)
+      aux_vars = ro_sview(eqn.aux_vars_face, :, j, i)
+
+      nrm_xy = sview(mesh.nrm_face, :, j, i)
+      flux_bar_j = sview(flux_face_bar, :, j)
+
+      functor_revq(params, qL_j, qL_bar_j, qR_j, qR_bar_j, aux_vars, nrm_xy, flux_bar_j)
+    end  # end loop j
+
+    interiorFaceInterpolate_rev!(mesh.sbpface, iface_i, qL_bar, qR_bar,
+                                 q_faceL_bar, q_faceR_bar)
+
+  end  # end loop i
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# getFaceElemenIntegral
+
+
+
 function getFaceElementIntegral_diff(
                            mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType_diff,
                            sbpface::AbstractFace,
@@ -153,9 +294,80 @@ function getFaceElementIntegral_diff(
 end
 
 
+"""
+  Reverse mode wrt metrics of [`getFaceElementIntegral`](@ref)
+"""
+function getFaceElementIntegral_revm(
+                           mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor::FluxType,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  params = eqn.params
+  nfaces = length(interfaces)
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = ro_sview(eqn.q, :, :, elL)
+    qR = ro_sview(eqn.q, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    nrm_face_bar = sview(mesh.nrm_face_bar, :, :, i)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+    resR_bar = ro_sview(eqn.res_bar, :, :, elR)
+
+    calcFaceElementIntegral_revm(face_integral_functor, params, sbpface, iface,
+                        qL, qR, aux_vars, nrm_face, nrm_face_bar, flux_functor,
+                        resL_bar, resR_bar)
+
+  end
+
+  return nothing
+end
+
+
+"""
+  Reverse mode wrt q of [`getFaceElementIntegral`](@ref)
+"""
+function getFaceElementIntegral_revq(
+                           mesh::AbstractDGMesh{Tmsh},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                           face_integral_functor::FaceElementIntegralType,
+                           flux_functor_revq::FluxType_revq,
+                           sbpface::AbstractFace,
+                           interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
+
+  params = eqn.params
+  nfaces = length(interfaces)
+  for i=1:nfaces
+    iface = interfaces[i]
+    elL = iface.elementL
+    elR = iface.elementR
+    qL = ro_sview(eqn.q, :, :, elL); qL_bar = sview(eqn.q_bar, :, :, elL)
+    qR = ro_sview(eqn.q, :, :, elR); qR_bar = sview(eqn.q_bar, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+    resR_bar = ro_sview(eqn.res_bar, :, :, elR)
+
+    calcFaceElementIntegral_revq(face_integral_functor, params, sbpface, iface,
+                        qL, qL_bar, qR, qR_bar, aux_vars, nrm_face,
+                        flux_functor_revq, resL_bar, resR_bar)
+
+  end
+
+  return nothing
+end
+
+
+
 
 #------------------------------------------------------------------------------
-# Shared face integrals
+# calcSharedFaceIntegrals_element (and _inner)
+
 
 """
   Differentiated version of
@@ -164,7 +376,7 @@ end
 """
 function calcSharedFaceIntegrals_element_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
                             opts, data::SharedFaceData) where {Tmsh, Tsol}
 
     calcSharedFaceIntegrals_nopre_element_inner_diff(mesh, sbp, eqn, opts, data, eqn.flux_func_diff, eqn.assembler)
@@ -180,7 +392,7 @@ end
 """
 function calcSharedFaceIntegrals_nopre_element_inner_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData, functor::FluxType_diff,
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
@@ -267,12 +479,302 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
   return nothing
 end
 
+
+"""
+  Reverse mode wrt metrics of [`calcSharedFaceIntegrals_element`](@ref)
+"""
+ function calcSharedFaceIntegrals_element_revm(mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
+                            opts, data::SharedFaceData) where {Tmsh, Tsol}
+
+  calcSharedFaceIntegrals_nopre_element_inner_revm(mesh, sbp, eqn, opts, data, eqn.flux_func_revm)
+
+  return nothing
+end
+
+
+"""
+  Reverse mode of [`calcSharedFaceIntegrals_nopre_element_inner`](@ref) wrt
+  the metrics
+"""
+function calcSharedFaceIntegrals_nopre_element_inner_revm(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            functor_revm::FluxType_revm
+                           ) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
+    error("element parallel data required")
+  end
+
+  q = eqn.q
+  params = eqn.params
+
+  # TODO: make these fields of params
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  idx = data.peeridx
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  bndries_remote = data.bndries_remote
+
+  # eqn.q_face_send should actually contain el
+  # data, but we want to use eqn.q because that's the canonical source
+  # qL_arr = eqn.q_face_send[i]      
+  qR_arr = data.q_recv
+#  resR_bar_arr = data_bar.q_recv
+  nrm_arr = mesh.nrm_sharedface[idx]
+  nrm_arr_bar = mesh.nrm_sharedface_bar[idx]
+  aux_vars_arr = eqn.aux_vars_sharedface[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    bndryL_j = bndries_local[j]
+    bndryR_j = bndries_remote[j]
+    fL = bndryL_j.face
+
+    # interpolate to face
+    qL = ro_sview(q, :, :, iface_j.elementL)
+    el_r = iface_j.elementR - start_elnum + 1
+    qR = ro_sview(qR_arr, :, :, el_r)
+    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = sview(eqn.res_bar, :, :, iface_j.elementL)
+    #resR_bar = sview(resR_bar_arr, :, :, el_r)
+    boundaryFaceIntegrate_rev!(mesh.sbpface, fL, flux_face_bar, resL_bar, SummationByParts.Subtract())
+
+    # calculate flux
+    for k=1:mesh.numNodesPerFace
+      qL_k = ro_sview(q_faceL, :, k)
+      qR_k = ro_sview(q_faceR, :, k)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
+      nrm_bar = sview(nrm_arr_bar, :, k, j)
+      flux_bar_k = sview(flux_face_bar, :, k)
+
+      parent(aux_vars)[1] = calcPressure(params, qL_k)
+
+      functor_revm(params, qL_k, qR_k, aux_vars, nrm_xy, nrm_bar, flux_bar_k)
+     end
+
+   end  # end loop over interfaces
+
+  return nothing
+end
+
+
+"""
+  Reverse mode wrt q of [`calcSharedFaceIntegrals_element`](@ref)
+"""
+ function calcSharedFaceIntegrals_element_revq(mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
+                            opts, data::SharedFaceData,
+                            data_bar::SharedFaceData) where {Tmsh, Tsol}
+
+  calcSharedFaceIntegrals_nopre_element_inner_revq(mesh, sbp, eqn, opts, data,
+                                                   data_bar, eqn.flux_func_revq)
+
+  return nothing
+end
+
+
+
+#=
+"""
+  Reverse mode of [`calcSharedFaceIntegrals_nopre_element_inner`](@ref) wrt q
+"""
+function calcSharedFaceIntegrals_nopre_element_inner_revq(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            data_bar::SharedFaceData,
+                            functor_revq::FluxType_revq
+                           ) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
+    error("element parallel data required")
+  end
+
+  q = eqn.q
+  params = eqn.params
+
+  # TODO: make these fields of params
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL_bar = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR_bar = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  idx = data.peeridx
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  bndries_remote = data.bndries_remote
+
+  # eqn.q_face_send should actually contain el
+  # data, but we want to use eqn.q because that's the canonical source
+  # qL_arr = eqn.q_face_send[i]      
+  qR_arr = data.q_recv
+  qR_arr_bar = data_bar.q_recv
+#  resR_bar_arr = data_bar.q_recv
+  nrm_arr = mesh.nrm_sharedface[idx]
+  aux_vars_arr = eqn.aux_vars_sharedface[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    bndryL_j = bndries_local[j]
+    bndryR_j = bndries_remote[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    fL = bndryL_j.face
+
+
+    # interpolate to face
+    qL = ro_sview(q, :, :, elL); qL_bar = sview(eqn.q_bar, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR); qR_bar = sview(qR_arr_bar, :, :, elR)
+    fill!(q_faceL_bar, 0); fill!(q_faceR_bar, 0)
+    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = sview(eqn.res_bar, :, :, iface_j.elementL)
+    #resR_bar = sview(resR_bar_arr, :, :, el_r)
+    boundaryFaceIntegrate_rev!(mesh.sbpface, fL, flux_face_bar, resL_bar, SummationByParts.Subtract())
+
+    # calculate flux
+    for k=1:mesh.numNodesPerFace
+      qL_k = ro_sview(q_faceL, :, k); qL_bar_k = sview(q_faceL_bar, :, k)
+      qR_k = ro_sview(q_faceR, :, k); qR_bar_k = sview(q_faceR_bar, :, k)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
+      flux_bar_k = sview(flux_face_bar, :, k)
+
+      parent(aux_vars)[1] = calcPressure(params, qL_k)
+
+      functor_revq(params, qL_k, qL_bar_k, qR_k, qR_bar_k, aux_vars, nrm_xy,
+                   flux_bar_k)
+     end
+
+     interiorFaceInterpolate_rev!(mesh.sbpface, iface_j, qL_bar, qR_bar,
+                                  q_faceL_bar, q_faceR_bar)
+
+   end  # end loop over interfaces
+
+  return nothing
+end
+=#
+
+
+"""
+  Reverse mode of [`calcSharedFaceIntegrals_nopre_element_inner`](@ref) wrt q
+"""
+function calcSharedFaceIntegrals_nopre_element_inner_revq(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            data_bar::SharedFaceData,
+                            functor_revq::FluxType_revq
+                           ) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
+    error("element parallel data required")
+  end
+
+  q = eqn.q
+  params = eqn.params
+
+  # TODO: make these fields of params
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceL_bar = Array{Tres}(mesh.numDofPerNode, mesh.numNodesPerFace)
+#  q_faceR_bar = Array{Tres}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  qR_bar_k = Array{Tres}(mesh.numDofPerNode)  # throwaway array
+#  q_faceR_bar = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_face_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  idx = data.peeridx
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  bndries_remote = data.bndries_remote
+
+  # eqn.q_face_send should actually contain el
+  # data, but we want to use eqn.q because that's the canonical source
+  # qL_arr = eqn.q_face_send[i]      
+  qR_arr = data.q_recv
+  resR_bar_arr = data_bar.q_recv
+  nrm_arr = mesh.nrm_sharedface[idx]
+  aux_vars_arr = eqn.aux_vars_sharedface[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    bndryL_j = bndries_local[j]
+    bndryR_j = bndries_remote[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    fL = bndryL_j.face
+
+
+    # interpolate to face
+    qL = ro_sview(q, :, :, elL); qL_bar = sview(eqn.q_bar, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR);
+    fill!(q_faceL_bar, 0);
+    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
+
+    fill!(flux_face_bar, 0)
+    resL_bar = ro_sview(eqn.res_bar, :, :,  elL)
+    resR_bar = ro_sview(resR_bar_arr, :, :, elR)
+    interiorFaceIntegrate_rev!(mesh.sbpface, iface_j, flux_face_bar, resL_bar,
+                               resR_bar, SummationByParts.Subtract())
+
+
+    # calculate flux
+    for k=1:mesh.numNodesPerFace
+      qL_k = ro_sview(q_faceL, :, k); qL_bar_k = sview(q_faceL_bar, :, k)
+      qR_k = ro_sview(q_faceR, :, k);
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
+      flux_bar_k = sview(flux_face_bar, :, k)
+
+      parent(aux_vars)[1] = calcPressure(params, qL_k)
+
+      functor_revq(params, qL_k, qL_bar_k, qR_k, qR_bar_k, aux_vars, nrm_xy,
+                   flux_bar_k)
+     end
+
+     boundaryFaceInterpolate_rev!(mesh.sbpface, fL, qL_bar, q_faceL_bar)
+
+
+   end  # end loop over interfaces
+
+  return nothing
+end
+
+
+
+
+
+
+
+#------------------------------------------------------------------------------
+# calcSharedFaceElementIntegrals_element
+
+
 """
   Differentiated version of [`calcSharedFaceElementIntegrals_element`](@ref)
 """
 function calcSharedFaceElementIntegrals_element_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
 
   if opts["use_staggered_grid"]
@@ -305,13 +807,13 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner_diff(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType_diff,
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
-  if opts["parallel_data"] != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element_diff without parallel element data"))
   end
 
@@ -376,6 +878,222 @@ function calcSharedFaceElementIntegrals_element_inner_diff(
 
   return nothing
 end
+
+
+"""
+  Reverse mode of [`calcSharedFaceElementIntegrals_element`](@ref) wrt metrics
+"""
+function calcSharedFaceElementIntegrals_element_revm(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
+
+  if opts["use_staggered_grid"]
+    error("staggered grid not supported for revm product")
+  else
+    calcSharedFaceElementIntegrals_element_inner_revm(mesh, sbp, eqn, opts, data,
+                            eqn.face_element_integral_func,  eqn.flux_func)
+  end
+
+  return nothing
+end
+
+
+"""
+  Reverse mode of [calcSharedFaceElementIntegrals_element_inner`](@ref)
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data
+   * face_integral_functor
+   * flux_functor: a `FluxType` object (not `FluxType_revm`)
+"""
+function calcSharedFaceElementIntegrals_element_inner_revm(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            face_integral_functor::FaceElementIntegralType,
+                            flux_functor::FluxType) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
+  q = eqn.q
+  params = eqn.params
+  # we don't care about elementR here, so use this throwaway array
+  resR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  # get the data for the parallel interface
+  idx = data.peeridx
+  interfaces = data.interfaces
+#    qL_arr = eqn.q_face_send[i]
+  qR_arr = data.q_recv
+  nrm_face_arr = mesh.nrm_sharedface[idx]
+  nrm_face_arr_bar = mesh.nrm_sharedface_bar[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  # compute the integrals
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    qL = ro_sview(q, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
+    nrm_bar = sview(nrm_face_arr_bar, :, :, j)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+
+    calcFaceElementIntegral_revm(face_integral_functor, eqn.params, mesh.sbpface,
+                            iface_j, qL, qR, aux_vars,
+                            nrm_face, nrm_bar, flux_functor, resL_bar, resR_bar)
+  end  # end loop j
+
+  return nothing
+end
+
+
+"""
+  Reverse mode of [`calcSharedFaceElementIntegrals_element`](@ref) wrt q
+"""
+function calcSharedFaceElementIntegrals_element_revq(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData,
+                            data_bar::SharedFaceData) where {Tmsh, Tsol, Tres}
+
+  if opts["use_staggered_grid"]
+    error("staggered grid not supported for revq product")
+  else
+    calcSharedFaceElementIntegrals_element_inner_revq(mesh, sbp, eqn, opts,
+          data, data_bar,  eqn.face_element_integral_func,  eqn.flux_func_revq)
+  end
+
+  return nothing
+end
+
+
+#=
+"""
+  Reverse mode of [calcSharedFaceElementIntegrals_element_inner`](@ref)
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data
+   * data_q_bar: a `SharedFaceData`.  `q_recv`, not `q_send` will be updated
+                 with the back-propigation of `eqn.res_bar`
+   * face_integral_functor
+   * flux_functor: a `FluxType_revq` object
+"""
+function calcSharedFaceElementIntegrals_element_inner_revq(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts,
+                            data::SharedFaceData, data_q_bar::SharedFaceData,
+                            face_integral_functor::FaceElementIntegralType,
+                            flux_functor_revq::FluxType_revq
+                            ) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT || getParallelData(data_q_bar) != PARALLEL_DATA_ELEMENT
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
+  q = eqn.q
+  params = eqn.params
+  # we don't care about elementR here, so use this throwaway array
+  resR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  # get the data for the parallel interface
+  idx = data.peeridx
+  interfaces = data.interfaces
+#    qL_arr = eqn.q_face_send[i]
+  qR_arr = data.q_recv
+  qR_arr_bar = data_q_bar.q_recv
+  nrm_face_arr = mesh.nrm_sharedface[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  # compute the integrals
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    qL = ro_sview(q, :, :, elL);      qL_bar = sview(eqn.q_bar, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR); qR_bar = sview(qR_arr_bar, :, :, elR)
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+
+    calcFaceElementIntegral_revq(face_integral_functor, params, mesh.sbpface,
+                            iface_j, qL, qL_bar, qR,  qR_bar, aux_vars,
+                            nrm_face, flux_functor_revq, resL_bar, resR_bar)
+  end  # end loop j
+
+  return nothing
+end
+=#
+
+
+"""
+  Reverse mode of [`calcSharedFaceElementIntegrals_element`](@ref) wrt q
+"""
+function calcSharedFaceElementIntegrals_element_inner_revq(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts,
+                            data::SharedFaceData, data_q_bar::SharedFaceData,
+                            face_integral_functor::FaceElementIntegralType,
+                            flux_functor_revq::FluxType_revq
+                            ) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT || getParallelData(data_q_bar) != PARALLEL_DATA_ELEMENT
+    throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
+  end
+
+  q = eqn.q
+  params = eqn.params
+  qR_bar = Array{Tres}(mesh.numDofPerNode, mesh.numNodesPerElement) # throwaway
+
+  # get the data for the parallel interface
+  idx = data.peeridx
+  interfaces = data.interfaces
+#    qL_arr = eqn.q_face_send[i]
+  qR_arr = data.q_recv
+  resR_arr_bar = data_q_bar.q_recv
+  nrm_face_arr = mesh.nrm_sharedface[idx]
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  # compute the integrals
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    elL = iface_j.elementL
+    elR = iface_j.elementR - start_elnum + 1
+    qL = ro_sview(q, :, :, elL);      qL_bar = sview(eqn.q_bar, :, :, elL)
+    qR = ro_sview(qR_arr, :, :, elR);
+    aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
+    nrm_face = ro_sview(nrm_face_arr, :, :, j)
+    resL_bar = ro_sview(eqn.res_bar, :, :, elL)
+    resR_bar = ro_sview(resR_arr_bar, :, :, elR)
+
+    calcFaceElementIntegral_revq(face_integral_functor, params, mesh.sbpface,
+                            iface_j, qL, qL_bar, qR,  qR_bar, aux_vars,
+                            nrm_face, flux_functor_revq, resL_bar, resR_bar)
+  end  # end loop j
+
+  return nothing
+end
+
 
 
 

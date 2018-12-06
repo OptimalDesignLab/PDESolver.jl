@@ -59,14 +59,14 @@ global const DiffnDict = Dict{String, AbstractDiffn}(
 )
 
 function getDiffnFunc(mesh::AbstractMesh,
-					  sbp::AbstractSBP,
+					  sbp::AbstractOperator,
 					  eqn::EllipticData,
 					  opts)
 	eqn.diffusion_func = DiffnDict[opts["Diffusion"]]
 end
 
 function calcDiffn(mesh::AbstractMesh{Tmsh},
-				   sbo::AbstractSBP,
+				   sbo::AbstractOperator,
 				   eqn::EllipticData{Tsol, Tres, Tdim},
 				   diffusion_func::AbstractDiffn,
 				   lambda::AbstractArray{Tres, 5} ) where {Tmsh, Tsol, Tres, Tdim}

@@ -117,7 +117,7 @@ mutable struct NSData_{Tsol, Tres, Tdim, Tmsh} <: NSData{Tsol, Tres, Tdim}
  
   file_dict::Dict{String, IO}  # dictionary of all files used for logging
 
-  function NSData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
+  function NSData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres, Tdim, Tmsh}
 
     eqn = new{Tsol, Tres, Tdim, Tmsh}()  # incomplete initialization
 

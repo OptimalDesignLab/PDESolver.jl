@@ -1,3 +1,18 @@
+# functions for doing complex step
+
+import Base: flipsign
+
+"""
+  Extends Base.flipsign with method for complex numbers
+"""
+function flipsign(a::T, b::Number) where {T <: Complex}
+
+  xreal = flipsign(real(a), b)
+  ximag = flipsign(imag(a), b)
+
+  return T(xreal, ximag)
+end
+
 @doc """
 ### EulerEquationMod.absvalue
 
@@ -9,9 +24,9 @@
 """
 function absvalue(x::T) where T <: Complex
 
-  c_part = flipsign(imag(x), real(x))
-  return T(abs(real(x)), c_part)
-
+#  c_part = flipsign(imag(x), real(x))
+#  return T(abs(real(x)), c_part)
+  return flipsign(x, real(x))
 end
 #=
   x2 = complex(real(x), imag(x))
@@ -38,6 +53,63 @@ function absvalue(x::AbstractArray{T}) where T
 
   return x2
 end
+
+
+function absvalue_rev(x::Number, x_bar::Number)
+
+#  if real(x) < 0
+#    x = -x
+#    x_bar = -x_bar
+#  end
+
+  # this function has the odd property that forward and reverse modes are
+  # equivalent
+  x2 = flipsign(x, real(x))
+  x2_bar = flipsign(x_bar, real(x))
+
+
+  return x2, x2_bar
+end
+
+@doc """
+###Utils.absvalue_deriv
+
+Computes the derivative of the absolute value of a variable w.r.t itself
+
+**Inputs**
+
+* `val` : The variable whose derivative needs to be computed e.r.t itself
+
+"""->
+
+function absvalue_deriv(val::Tval) where Tval
+
+  if val > zero(Tval)
+    return one(Tval)
+  elseif val < zero(Tval)
+    return -one(Tval)
+  else
+    return zero(Tval)
+  end
+
+end # End function absvalue_deriv
+
+function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
+
+  x_bar = zero(Tval)
+  y_bar = zero(Tval)
+  
+  if real(x) > real(y)
+    x_bar += max_val_bar
+  else
+    y_bar += max_val_bar
+  end
+
+  return x_bar, y_bar
+end # End function max_rev
+
+
+
 
 import Base.isless
 
@@ -102,6 +174,79 @@ end
 function atan2(y::T, x::Number) where {T<:Complex}
   return atan2(y, T(x))
 end
+
+
+
+"""
+  Reverse-mode differentiated version of atan2.
+
+  **Inputs**
+
+   * y
+   * x
+   * theta_bar
+
+  **Outputs**
+
+   * theta
+   * y_bar
+   * x_bar
+
+"""
+function atan2_rev(y::Number, x::Number, theta_bar::Number)
+
+  x2 = absvalue(x)
+  y2 = absvalue(y)
+  # avoid numerical problems if x -> 0
+  if x2 > y2
+    theta = atan(y2/x2)
+  else
+    theta = pi/2 - atan(x2/y2)
+  end
+
+  if x < 0
+    theta = pi - theta
+  end
+
+  if y < 0
+    theta = -theta
+  end
+
+  # reverse sweep
+  x_bar = zero(x)
+  y_bar = zero(y)
+  x2_bar = zero(x)
+  y2_bar = zero(y)
+
+  if y < 0
+    theta_bar = -theta_bar
+  end
+
+  if x < 0
+    theta_bar = -theta_bar
+  end
+
+  if x2 > y2
+    t1 = theta_bar/(1 + y2*y2/(x2*x2))
+    x2_bar += t1*-y2/(x2*x2)
+    y2_bar += t1/x2
+  else
+    t2 = -theta_bar/(1 + x2*x2/(y2*y2))
+    x2_bar += t2/y2
+    y2_bar += t2*-x2/(y2*y2)
+  end
+
+  # there is no += for functions that return multiple values
+  t3, t3_bar = absvalue_rev(x, x2_bar)
+  x_bar += t3_bar
+
+  t4, t4_bar = absvalue_rev(y, y2_bar)
+  y_bar += t4_bar
+
+  return theta, y_bar, x_bar
+end
+
+
 
 
 

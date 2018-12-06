@@ -1,5 +1,5 @@
 
-import PDESolver.evalFunctional
+import PDESolver._evalFunctional
 
 @doc """
 ### EulerEquationMod.evalFunctional
@@ -15,7 +15,7 @@ evaluation.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
+*  `func` : Object of type AbstractBoundaryFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 
@@ -23,27 +23,23 @@ evaluation.
 
  * val: functional value
 """->
-function evalFunctional(mesh::AbstractMesh{Tmsh},
-            sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-            functionalData::AbstractIntegralFunctional) where {Tmsh, Tsol}
-#=
-  if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-  end
-=#
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+function _evalFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractOperator, eqn::EulerData{Tsol}, opts,
+            func::AbstractBoundaryFunctional) where {Tmsh, Tsol}
+
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
+  setupFunctional(mesh, sbp, eqn, opts, func)
+
   # Calculate functional over edges
-  val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData)
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, func)
 
   return val
-  # return functionalData.val  # this doesn't work because val does not
-                                   # always exist
 end
 
+#=
 @doc """
 ### EulerEquationMod.evalFunctional_revm
 
@@ -57,28 +53,23 @@ to the if statement to further extend this function.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
+*  `func` : Object of type AbstractBoundaryFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `functionalName` : Name of the functional being evaluated.
 
 """->
-
 function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
-                        functionalData::AbstractIntegralFunctional,
+                        sbp::AbstractOperator, eqn::EulerData{Tsol}, opts,
+                        func::AbstractBoundaryFunctional,
                         functionalName::String) where {Tmsh, Tsol}
-
-
-  if opts["parallel_type"] == 1
-    startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-
-  end
 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
+
+  setupFunctional(mesh, sbp, eqn, opts, func)
 
   # Calculate functional over edges
   if functionalName == "lift"
@@ -91,7 +82,7 @@ function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
       bndry_force_bar[1] -= sin(eqn.params.aoa)
       bndry_force_bar[3] += cos(eqn.params.aoa)
     end
-    calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
+    calcBndryFunctional_revm(mesh, sbp, eqn, opts, func, bndry_force_bar)
 
   elseif functionalName == "drag"
 
@@ -103,7 +94,7 @@ function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
       bndry_force_bar[1] = cos(eqn.params.aoa)
       bndry_force_bar[3] = sin(eqn.params.aoa)
     end
-    calcBndryFunctional_revm(mesh, sbp, eqn, opts, functionalData, bndry_force_bar)
+    calcBndryFunctional_revm(mesh, sbp, eqn, opts, func, bndry_force_bar)
 
   else
     error("reverse mode of functional $functionalName not defined")
@@ -111,7 +102,7 @@ function evalFunctional_revm(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end
-
+=#
 
 @doc """
 ### EulerEquationMod.eval_dJdaoa
@@ -124,7 +115,7 @@ Compute the complete derivative of a functional w.r.t angle of attack
 * `sbp`  : Summation-By-Parts operator
 * `eqn`  : Euler equation object
 * `opts` : Options dictionary
-* `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
+* `func` : Object of type AbstractBoundaryFunctional. This is type is associated
                      with the functional being computed and holds all the
                      relevant data.
 * `functionalName` : Name of the functional being evaluated
@@ -137,16 +128,16 @@ Compute the complete derivative of a functional w.r.t angle of attack
 
 """->
 
-function eval_dJdaoa(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function eval_dJdaoa(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                      eqn::EulerData{Tsol}, opts,
-                     functionalData::BoundaryForceData,
+                     func::BoundaryForceData,
                      functionalName::String,
                      adjoint_vec::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
   if functionalName == "lift"
-    ∂J∂aoa = functionalData.dLiftdaoa
+    ∂J∂aoa = func.dLiftdaoa
   elseif functionalName == "drag"
-    ∂J∂aoa = functionalData.dDragdaoa
+    ∂J∂aoa = func.dDragdaoa
   end
 
   pert = 1e-20im
@@ -171,14 +162,14 @@ end
   each boundary node and computes the integral.
 """
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, functionalData::AbstractIntegralFunctional) where {Tmsh, Tsol, Tres, Tdim}
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, func::AbstractBoundaryFunctional) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
 
   # loop over boundary conditions that have this functional
-  for itr = 1:length(functionalData.bcnums)
-    bcnum = functionalData.bcnums[itr]
+  for itr = 1:length(func.bcnums)
+    bcnum = func.bcnums[itr]
 
     start_index = mesh.bndry_offsets[bcnum]
     end_index = mesh.bndry_offsets[bcnum+1]
@@ -187,7 +178,7 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
 
 
     nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
+    boundary_integrand = zeros(Tsol, func.ndof, mesh.sbpface.numnodes, nfaces)
  
     for i = 1:nfaces
       bndry_i = bndry_facenums[i]
@@ -202,7 +193,7 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
         b_integrand_ji = sview(boundary_integrand,:,j,i)
 
         calcBoundaryFunctionalIntegrand(eqn.params, q, aux_vars, phys_nrm,
-                                        node_info, functionalData, b_integrand_ji)
+                                        node_info, func, b_integrand_ji)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
@@ -211,9 +202,9 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
   end  # end loop itr
 
   # global sum
-  functionalData.val = MPI.allreduce(functional_val, MPI.SUM, eqn.comm)[1]
+  func.val = MPI.allreduce(functional_val, MPI.SUM, eqn.comm)[1]
 
-  return functionalData.val
+  return func.val
 end  # function calcBndryFunctional
 
 @doc """
@@ -231,23 +222,23 @@ boundary functional type or parameters.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object which is a subtype of Abstract OptimizationData.
+*  `func` : Object which is a subtype of Abstract OptimizationData.
                       This is type is associated with the functional being
                       computed and holds all the relevant data.
 
 """->
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, functionalData::BoundaryForceData) where {Tmsh, Tsol, Tres, Tdim}
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, func::BoundaryForceData) where {Tmsh, Tsol, Tres, Tdim}
 
-  local_functional_val = zeros(Tsol, functionalData.ndof) # Local processor share
-  bndry_force = functionalData.bndry_force
+  local_functional_val = zeros(Tsol, func.ndof) # Local processor share
+  bndry_force = func.bndry_force
   fill!(bndry_force, 0.0)
 #  phys_nrm = zeros(Tmsh, Tdim)
 
   # loop over boundary conditions that have this functional
-  for itr = 1:length(functionalData.bcnums)
-    bcnum = functionalData.bcnums[itr]
+  for itr = 1:length(func.bcnums)
+    bcnum = func.bcnums[itr]
 
     start_index = mesh.bndry_offsets[bcnum]
     end_index = mesh.bndry_offsets[bcnum+1]
@@ -255,7 +246,7 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
     bndry_facenums = sview(mesh.bndryfaces, idx_range) # faces on geometric edge i
 
     nfaces = length(bndry_facenums)
-    boundary_integrand = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
+    boundary_integrand = zeros(Tsol, func.ndof, mesh.sbpface.numnodes, nfaces)
     q2 = zeros(Tsol, mesh.numDofPerNode)
 
     for i = 1:nfaces
@@ -271,12 +262,12 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
         b_integrand_ji = sview(boundary_integrand,:,j,i)
 
         calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
-                                        node_info, functionalData, b_integrand_ji)
+                                        node_info, func, b_integrand_ji)
 
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
 
-    val_per_geom_edge = zeros(Tsol, functionalData.ndof)
+    val_per_geom_edge = zeros(Tsol, func.ndof)
 
     integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
                            boundary_integrand, val_per_geom_edge)
@@ -285,41 +276,41 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
 
   end # End for itr = 1:length(functional_edges)
 
-  for i = 1:functionalData.ndof
+  for i = 1:func.ndof
     bndry_force[i] = MPI.Allreduce(local_functional_val[i], MPI.SUM, eqn.comm)
   end
 
   # Compute lift, drag and their corresponding derivatives w.r.t alpha
   aoa = eqn.params.aoa # Angle of attack
   if mesh.dim == 2 # 2D Flow
-    functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
-    functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
-    functionalData.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
-    functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+    func.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
+    func.drag_val = bndry_force[1]*cos(aoa) + bndry_force[2]*sin(aoa)
+    func.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[2]*sin(aoa)
+    func.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[2]*cos(aoa)
   else # 3D Flow
-    functionalData.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
-    functionalData.drag_val = bndry_force[1]*cos(aoa) + bndry_force[3]*sin(aoa)
-    functionalData.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[3]*sin(aoa)
-    functionalData.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+    func.lift_val = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
+    func.drag_val = bndry_force[1]*cos(aoa) + bndry_force[3]*sin(aoa)
+    func.dLiftdaoa = -bndry_force[1]*cos(aoa) - bndry_force[3]*sin(aoa)
+    func.dDragdaoa = -bndry_force[1]*sin(aoa) + bndry_force[3]*cos(aoa)
   end
 
-  if functionalData.isLift
-    return functionalData.lift_val
+  if func.isLift
+    return func.lift_val
   else
-    return functionalData.drag_val
+    return func.drag_val
   end
 end
 
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, functionalData::LiftCoefficient) where {Tmsh, Tsol, Tres, Tdim}
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, func::LiftCoefficient) where {Tmsh, Tsol, Tres, Tdim}
 
-  val = calcBndryFunctional(mesh, sbp, eqn, opts, functionalData.lift)
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, func.lift)
   fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
 
-  functionalData.val = val/fac
+  func.val = val/fac
 
-  return functionalData.val
+  return func.val
 end
 
 
@@ -336,7 +327,7 @@ lines indicate the line being reverse diffed.
 *  `sbp`  : Summation-By-Parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Object of type AbstractIntegralFunctional. This is type is associated
+*  `func` : Object of type AbstractBoundaryFunctional. This is type is associated
                       with the functional being computed and holds all the
                       relevant data.
 *  `bndry_force_bar`: Seed for the reverse mode. This is typically the adjoint
@@ -347,26 +338,26 @@ lines indicate the line being reverse diffed.
 """
 
 function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
-               sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
-               opts, functionalData::BoundaryForceData,
+               sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+               opts, func::BoundaryForceData,
                bndry_force_bar::AbstractArray{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
 
 #  phys_nrm = zeros(Tmsh, Tdim)
   aoa = eqn.params.aoa # Angle of attack
 
   lift_bar = one(Tsol)
-#  nxny_bar = zeros(Tmsh, functionalData.ndof)
+#  nxny_bar = zeros(Tmsh, func.ndof)
 
   # TODO: Figure out the reverse of MPI.Allreduce. Is it even necessary
-  local_functional_val_bar = zeros(Tsol, functionalData.ndof)
-  # for i = 1:functionalData.ndof
+  local_functional_val_bar = zeros(Tsol, func.ndof)
+  # for i = 1:func.ndof
   #   local_function_val_bar[i] = MPI.bcast(bndry_force_bar[i], 0, eqn.comm)
   # end
   local_functional_val_bar[:] += bndry_force_bar[:]
 
   # loop over boundary conditions that have this functional
-  for itr = 1:length(functionalData.bcnums)
-    bcnum = functionalData.bcnums[itr]
+  for itr = 1:length(func.bcnums)
+    bcnum = func.bcnums[itr]
 
     start_index = mesh.bndry_offsets[bcnum]
     end_index = mesh.bndry_offsets[bcnum+1]
@@ -375,11 +366,11 @@ function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
 
 
     nfaces = length(bndry_facenums)
-    boundary_integrand_bar = zeros(Tsol, functionalData.ndof, mesh.sbpface.numnodes, nfaces)
+    boundary_integrand_bar = zeros(Tsol, func.ndof, mesh.sbpface.numnodes, nfaces)
     q2 = zeros(Tsol, mesh.numDofPerNode)
 
     # local_functional_val[:] += val_per_geom_edge[:]
-    val_per_geom_face_bar = zeros(Tsol, functionalData.ndof)
+    val_per_geom_face_bar = zeros(Tsol, func.ndof)
     val_per_geom_face_bar[:] += local_functional_val_bar[:]
     local_functional_val_bar[:] += local_functional_val_bar[:]
     integratefunctional_rev!(mesh.sbpface, mesh.bndryfaces[idx_range],
@@ -399,10 +390,10 @@ function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
         node_info = Int[itr,j,i]
         b_integrand_ji_bar = sview(boundary_integrand_bar, :, j, i)
         # calcBoundaryFunctionalIntegrand(eqn.params, q2, aux_vars, phys_nrm,
-        #                                node_info, functionalData, b_integrand_ji)
+        #                                node_info, func, b_integrand_ji)
         # fill!(nxny_bar, 0.0)
         calcBoundaryFunctionalIntegrand_revm(eqn.params, q2, aux_vars, phys_nrm,
-                                             node_info, functionalData,
+                                             node_info, func,
                                              phys_nrm_bar, b_integrand_ji_bar)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
@@ -418,7 +409,7 @@ end
 Computes the integrand for boundary functional at a surface SBP node. Every
 functional of a different type may need a corresponding method to compute the
 integrand. The type of the functional object, which is a subtype of
-`AbstractIntegralFunctional`.
+`AbstractBoundaryFunctional`.
 
 **Arguments**
 

@@ -4,7 +4,7 @@ mutable struct volumeAverage <: AbstractFunctional
 end
 function (obj::volumeAverage)(
               mesh::AbstractMesh{Tmsh},
-              sbp::AbstractSBP,
+              sbp::AbstractOperator,
               eqn::EllipticData{Tsol, Tres, Tdim},
               opts,
               val::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
@@ -28,7 +28,7 @@ mutable struct volumeEnergy <: AbstractFunctional
 end
 function (obj::volumeEnergy)(
               mesh::AbstractMesh{Tmsh},
-              sbp::AbstractSBP,
+              sbp::AbstractOperator,
               eqn::EllipticData{Tsol, Tres, Tdim},
               opts,
               val::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
@@ -54,7 +54,7 @@ end
 # IP Modification of target functional
 #
 function FunctionalModification(mesh::AbstractMesh{Tmsh},
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::EllipticData{Tsol, Tres, Tdim},
                                 otps::Array{Tsol, 1}) where {Tmsh, Tsol, Tres, Tdim}
   if haskey(opts, "FunctionalModification") && opts["FunctionalModification"] == "No"	
@@ -85,7 +85,7 @@ global const FunctionalDict = Dict{String, AbstractFunctional}(
 )
 
 function getFunctional(mesh::AbstractMesh,
-                       sbp::AbstractSBP,
+                       sbp::AbstractOperator,
                        eqn::EllipticData,
                        opts)
   eqn.functional = FunctionalDict[opts["Functional"]]

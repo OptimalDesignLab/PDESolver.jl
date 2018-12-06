@@ -35,7 +35,7 @@
 
 """->
 function calcFaceFlux( mesh::AbstractDGMesh{Tmsh},
-  sbp::AbstractSBP,
+  sbp::AbstractOperator,
   eqn::EulerData{Tsol, Tres, Tdim, :conservative},
   functor::FluxType,
   interfaces::AbstractArray{Interface,1},
@@ -78,7 +78,7 @@ end
 """
 function calcFaceIntegral_nopre(
         mesh::AbstractDGMesh{Tmsh},
-        sbp::AbstractSBP,
+        sbp::AbstractOperator,
         eqn::EulerData{Tsol, Tres, Tdim, :conservative},
         opts,
         functor::FluxType,
@@ -95,6 +95,7 @@ function calcFaceIntegral_nopre(
 
   for i=1:nfaces
     iface_i = interfaces[i]
+#    fill!(flux_face, 0)
 
     qL = ro_sview(eqn.q, :, :, iface_i.elementL)
     qR = ro_sview(eqn.q, :, :, iface_i.elementR)
@@ -130,17 +131,15 @@ end
 """
 function getFaceElementIntegral(
                            mesh::AbstractDGMesh{Tmsh},
-                           sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                           sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
                            sbpface::AbstractFace,
                            interfaces::AbstractArray{Interface, 1}) where {Tmsh, Tsol, Tres, Tdim}
 
   params = eqn.params
-#  sbpface = mesh.sbpface
   nfaces = length(interfaces)
-#  resL2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-#  resR2 = zeros(resL2)
+ 
   for i=1:nfaces
     iface = interfaces[i]
     elL = iface.elementL
@@ -156,9 +155,11 @@ function getFaceElementIntegral(
                             qR, aux_vars, nrm_face, flux_functor, resL, resR)
 
   end
-
+  
   return nothing
 end
+
+
 
 """
   This function loops over interfaces and computes a face integral that
@@ -184,7 +185,7 @@ end
 function getFaceElementIntegral(
                            mesh_s::AbstractDGMesh{Tmsh},
                            mesh_f::AbstractDGMesh{Tmsh},
-                           sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                           sbp_s::AbstractOperator, sbp_f::AbstractOperator,
                            eqn::EulerData{Tsol, Tres, Tdim},
                            face_integral_functor::FaceElementIntegralType,
                            flux_functor::FluxType,
@@ -236,7 +237,167 @@ function getFaceElementIntegral(
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# parallel face integrals (face parallel)
+
                          
+"""
+  This function is a thin wrapper around calcSharedFaceIntegrals_inner.
+  It present the interface needed by [`finishExchangeData`](@ref).
+"""
+function calcSharedFaceIntegrals( mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
+                            opts, data::SharedFaceData) where {Tmsh, Tsol}
+
+  # if there were other ways to doing the shared face integrals, there would
+  # be a conditional here
+  calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+  return nothing
+end
+
+"""
+  Like [`calcSharedFaceIntegrals_inner`](@ref), but performs the integration and
+  updates eqn.res rather than computing the flux and storing it in
+  eqn.flux_sharedface
+"""
+function calcSharedFaceIntegrals_nopre_inner(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
+
+  if getParallelData(data) != PARALLEL_DATA_FACE
+    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
+  end
+
+
+  params = eqn.params
+
+  # calculate the flux
+  idx = data.peeridx
+  interfaces = data.interfaces
+  qL_arr = data.q_send
+  qR_arr = data.q_recv
+  aux_vars_arr = eqn.aux_vars_sharedface[idx]
+  nrm_arr = mesh.nrm_sharedface[idx]
+  flux_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  for j=1:length(interfaces)
+    interface_i = interfaces[j]
+    eL = interface_i.elementL
+    fL = interface_i.faceL
+
+    # compute the flux
+    for k=1:mesh.numNodesPerFace
+      qL = ro_sview(qL_arr, :, k, j)
+      qR = ro_sview(qR_arr, :, k, j)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      parent(aux_vars)[1] = calcPressure(params, qL)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
+      flux_k = sview(flux_j, :, k)
+      functor(params, qL, qR, aux_vars, nrm_xy, flux_k)
+    end
+    
+    # do the integration
+    res_j = sview(eqn.res, :, :, eL)
+    boundaryFaceIntegrate!(mesh.sbpface, fL, flux_j, res_j, SummationByParts.Subtract())
+
+  end
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# parallel face integrals (element parallel)
+
+
+"""
+  This function is a thin wrapper around
+  [`calcSharedFaceIntegrals_element_inner`](@ref).
+  It presents the interface required by [`finishExchangeData`](@ref)
+"""
+function calcSharedFaceIntegrals_element(mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol},
+                            opts, data::SharedFaceData) where {Tmsh, Tsol}
+
+  calcSharedFaceIntegrals_nopre_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
+
+  return nothing
+end
+
+
+"""
+  Like [`calcSharedFaceIntegrals_element_inner`](@ref), but performs the integration and
+  updates eqn.res rather than computing the flux only and storing it in
+  eqn.flux_sharedface
+"""
+function calcSharedFaceIntegrals_nopre_element_inner(
+                            mesh::AbstractDGMesh{Tmsh},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
+                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
+
+  q = eqn.q
+  params = eqn.params
+
+  # TODO: make these fields of params
+  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  idx = data.peeridx
+  interfaces = data.interfaces
+  bndries_local = data.bndries_local
+  bndries_remote = data.bndries_remote
+
+  # eqn.q_face_send should actually contain el
+  # data, but we want to use eqn.q because that's the canonical source
+  # qL_arr = eqn.q_face_send[i]      
+  qR_arr = data.q_recv               
+  nrm_arr = mesh.nrm_sharedface[idx]
+  aux_vars_arr = eqn.aux_vars_sharedface[idx]
+  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  start_elnum = mesh.shared_element_offsets[idx]
+
+  for j=1:length(interfaces)
+    iface_j = interfaces[j]
+    bndryL_j = bndries_local[j]
+    bndryR_j = bndries_remote[j]
+    fL = bndryL_j.face
+
+    # interpolate to face
+    qL = ro_sview(q, :, :, iface_j.elementL)
+    el_r = iface_j.elementR - start_elnum + 1
+    qR = ro_sview(qR_arr, :, :, el_r)
+    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
+
+    # calculate flux
+    for k=1:mesh.numNodesPerFace
+      qL_k = ro_sview(q_faceL, :, k)
+      qR_k = ro_sview(q_faceR, :, k)
+      aux_vars = ro_sview(aux_vars_arr, :, k, j)
+      nrm_xy = ro_sview(nrm_arr, :, k, j)
+      flux_k = sview(flux_face, :, k)
+
+      parent(aux_vars)[1] = calcPressure(params, qL_k)
+
+      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
+     end
+
+     # do the integration
+     res_j = sview(eqn.res, :, :, bndryL_j.element)
+     boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())
+
+   end  # end loop over interfaces
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# parallel face element integrals
+
+
 """
   This function is a thin wrapper around
   [`calcSharedFaceElementIntegrals_element_inner`](@ref),
@@ -245,7 +406,7 @@ end
 """
 function calcSharedFaceElementIntegrals_element(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData) where {Tmsh, Tsol, Tres}
 
   if opts["use_staggered_grid"]
@@ -280,12 +441,12 @@ end
 """
 function calcSharedFaceElementIntegrals_element_inner(
                             mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if opts["parallel_data"] != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -303,8 +464,10 @@ function calcSharedFaceElementIntegrals_element_inner(
   qR_arr = data.q_recv
   nrm_face_arr = mesh.nrm_sharedface[idx]
 
-  start_elnum = mesh.shared_element_offsets[idx]
+  writedlm("qR$(data.peernum)_$(mesh.myrank)_primal.dat", real(qR_arr))
 
+  start_elnum = mesh.shared_element_offsets[idx]
+  #TODO debugging
   # compute the integrals
   for j=1:length(interfaces)
     iface_j = interfaces[j]
@@ -315,6 +478,14 @@ function calcSharedFaceElementIntegrals_element_inner(
     aux_vars = ro_sview(eqn.aux_vars, :, :, elL)
     nrm_face = ro_sview(nrm_face_arr, :, :, j)
     resL = sview(eqn.res, :, :, elL)
+
+    #=
+    for k=1:mesh.numNodesPerElement
+      for p=1:mesh.numDofPerNode
+        resL[p, k] += qL[p, k] + qR[p, k]
+      end
+    end
+    =#
 
     calcFaceElementIntegral(face_integral_functor, eqn.params, mesh.sbpface,
                             iface_j, qL, qR, aux_vars,
@@ -350,13 +521,13 @@ end
 function calcSharedFaceElementIntegralsStaggered_element_inner(
                             mesh_s::AbstractDGMesh{Tmsh},
                             mesh_f::AbstractDGMesh{Tmsh},
-                            sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                            sbp_s::AbstractOperator, sbp_f::AbstractOperator,
                             eqn::EulerData{Tsol, Tres},
                             opts, data::SharedFaceData,
                             face_integral_functor::FaceElementIntegralType,
                             flux_functor::FluxType) where {Tmsh, Tsol, Tres}
 
-  if opts["parallel_data"] != "element"
+  if getParallelData(data) != PARALLEL_DATA_ELEMENT
     throw(ErrorException("cannot use calcSharedFaceIntegrals_element without parallel element data"))
   end
 
@@ -413,325 +584,6 @@ function calcSharedFaceElementIntegralsStaggered_element_inner(
   return nothing
 end
 
-"""
-  This function is a thin wrapper around calcSharedFaceIntegrals_inner.
-  It present the interface needed by [`finishExchangeData`](@ref).
-"""
-function calcSharedFaceIntegrals( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
-                            opts, data::SharedFaceData) where {Tmsh, Tsol}
-
-  if opts["precompute_face_flux"]
-    calcSharedFaceIntegrals_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
-  else
-    calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
-  end
-
-  return nothing
-end
-
-
-@doc """
-### EulerEquationMod.calcSharedFaceIntegrals
-
-  This function calculates the shared face integrals over a given set of
-  faces.
-
-  **Inputs**:
-
-   * mesh
-   * sbp
-   * eqn
-   * opts
-   * data: the SharedFaceData specifying which faces to compute
-   * functor: the FluxType to use for the face flux
-
-"""->
-function calcSharedFaceIntegrals_inner( mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
-                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
-# calculate the face flux and do the integration for the shared interfaces
-
-  if opts["parallel_data"] != "face"
-    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
-  end
-
-
-  params = eqn.params
-
-  # calculate the flux
-  idx = data.peeridx
-  interfaces = data.interfaces
-  bndries_local = data.bndries_local
-  qL_arr = data.q_send
-  qR_arr = data.q_recv
-  aux_vars_arr = eqn.aux_vars_sharedface[idx]
-  nrm_arr = mesh.nrm_sharedface[idx]
-  flux_arr = eqn.flux_sharedface[idx]
-
-  for j=1:length(interfaces)
-    interface_i = interfaces[j]
-    for k=1:mesh.numNodesPerFace
-      eL = interface_i.elementL
-      fL = interface_i.faceL
-
-      qL = ro_sview(qL_arr, :, k, j)
-      qR = ro_sview(qR_arr, :, k, j)
-      aux_vars = ro_sview(aux_vars_arr, :, k, j)
-      nrm_xy = ro_sview(nrm_arr, :, k, j)
-      flux_j = sview(flux_arr, :, k, j)
-      functor(params, qL, qR, aux_vars, nrm_xy, flux_j)
-    end
-  end
-  # end flux calculation
-
-  # do the integration
-  boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
-
-  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_arr, qR_arr)
-
-  return nothing
-end
-
-"""
-  Like [`calcSharedFaceIntegrals_inner`](@ref), but performs the integration and
-  updates eqn.res rather than computing the flux and storing it in
-  eqn.flux_sharedface
-"""
-function calcSharedFaceIntegrals_nopre_inner(
-                            mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
-                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
-
-  if opts["parallel_data"] != "face"
-    throw(ErrorException("cannot use calcSharedFaceIntegrals without parallel face data"))
-  end
-
-
-  params = eqn.params
-
-  # calculate the flux
-  idx = data.peeridx
-  interfaces = data.interfaces
-  bndries_local = data.bndries_local
-  qL_arr = data.q_send
-  qR_arr = data.q_recv
-  aux_vars_arr = eqn.aux_vars_sharedface[idx]
-  nrm_arr = mesh.nrm_sharedface[idx]
-  flux_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-
-  for j=1:length(interfaces)
-    interface_i = interfaces[j]
-    eL = interface_i.elementL
-    fL = interface_i.faceL
-
-    # compute the flux
-    for k=1:mesh.numNodesPerFace
-      qL = ro_sview(qL_arr, :, k, j)
-      qR = ro_sview(qR_arr, :, k, j)
-      aux_vars = ro_sview(aux_vars_arr, :, k, j)
-      parent(aux_vars)[1] = calcPressure(params, qL)
-      nrm_xy = ro_sview(nrm_arr, :, k, j)
-      flux_k = sview(flux_j, :, k)
-      functor(params, qL, qR, aux_vars, nrm_xy, flux_k)
-    end
-    
-    # do the integration
-    res_j = sview(eqn.res, :, :, eL)
-    boundaryFaceIntegrate!(mesh.sbpface, fL, flux_j, res_j, SummationByParts.Subtract())
-
-  end
-
-  return nothing
-end
- 
-"""
-  This function is a thin wrapper around
-  [`calcSharedFaceIntegrals_element_inner`](@ref).
-  It presents the interface required by [`finishExchangeData`](@ref)
-"""
-function calcSharedFaceIntegrals_element(mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
-                            opts, data::SharedFaceData) where {Tmsh, Tsol}
-
-  if opts["precompute_face_flux"]
-    calcSharedFaceIntegrals_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
-  else
-    calcSharedFaceIntegrals_nopre_element_inner(mesh, sbp, eqn, opts, data, eqn.flux_func)
-  end
-
-  return nothing
-end
-
-
-
-# element parallel version
-"""
-  This function calculates the shared face integrals for a given set of faces,
-  using the MPI receive buffer to get the data for the right element.
-  This function expects the receive buffer to contain the solution for the
-  entire element, not just the face.
-  This enables calculating a sparse jacobian with minimal parallel
-  communication.
-
-  **Inputs**:
-
-   * mesh
-   * sbp
-   * eqn
-   * opts
-   * data: a SharedFaceData specifying the faces to calculate
-   * functor: the flux functor
-
-"""
-function calcSharedFaceIntegrals_element_inner(
-                            mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol},
-                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol}
-
-  q = eqn.q
-  params = eqn.params
-
-  @debug2 begin
-    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
-                                     mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
-                                     mesh.peer_face_counts[i])
-  end 
-
-  @unpack params.calc_face_integrals_data q_faceL q_faceR
-
-  idx = data.peeridx
-  interfaces = data.interfaces
-  bndries_local = data.bndries_local
-  bndries_remote = data.bndries_remote
-#    qL_arr = eqn.q_face_send[i]
-  qR_arr = data.q_recv
-  nrm_arr = mesh.nrm_sharedface[idx]
-  aux_vars_arr = eqn.aux_vars_sharedface[idx]
-  flux_arr = eqn.flux_sharedface[idx]
-
-  start_elnum = mesh.shared_element_offsets[idx]
-
-  @debug2 flush(params.f)
-  for j=1:length(interfaces)
-    iface_j = interfaces[j]
-    bndryL_j = bndries_local[j]
-    bndryR_j = bndries_remote[j]
-    fL = bndryL_j.face
-
-    # interpolate to face
-    qL = ro_sview(q, :, :, iface_j.elementL)
-    el_r = iface_j.elementR - start_elnum + 1
-    qR = ro_sview(qR_arr, :, :, el_r)
-    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
-
-    @debug2 qL_face_arr[:, :, j] = q_faceL
-    @debug2 qR_face_arr[:, :, j] = q_faceR
-
-    # calculate flux
-    for k=1:mesh.numNodesPerFace
-      qL_k = ro_sview(q_faceL, :, k)
-      qR_k = ro_sview(q_faceR, :, k)
-      aux_vars = ro_sview(aux_vars_arr, :, k, j)
-      nrm_xy = ro_sview(nrm_arr, :, k, j)
-      flux_k = sview(flux_arr, :, k, j)
-
-      parent(aux_vars)[1] = calcPressure(params, qL_k)
-
-      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
-     end
-   end  # end loop over interfaces
-
-  # evaluate integral
-  boundaryintegrate!(mesh.sbpface, bndries_local, flux_arr, eqn.res, SummationByParts.Subtract())
-
-  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
-
-  return nothing
-end
-
-"""
-  Like [`calcSharedFaceIntegrals_element_inner`](@ref), but performs the integration and
-  updates eqn.res rather than computing the flux only and storing it in
-  eqn.flux_sharedface
-"""
-function calcSharedFaceIntegrals_nopre_element_inner(
-                            mesh::AbstractDGMesh{Tmsh},
-                            sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
-                            opts, data::SharedFaceData, functor::FluxType) where {Tmsh, Tsol, Tres}
-
-  q = eqn.q
-  params = eqn.params
-
-  @debug2 begin       # probably don't work anymore. only used for sharedFaceLogging at the end of this function
-    qL_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
-                                     mesh.peer_face_counts[i])
-    qR_face_arr[i] = Array{Tsol}( mesh.numDofPerNode, mesh.numNodesPerFace,
-                                     mesh.peer_face_counts[i])
-  end 
-
-  # TODO: make these fields of params
-  q_faceL = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-  q_faceR = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-
-  idx = data.peeridx
-  interfaces = data.interfaces
-  bndries_local = data.bndries_local
-  bndries_remote = data.bndries_remote
-#    qL_arr = eqn.q_face_send[i]      # we don't need this because we need el data (unlike face data
-                                      #    above), so we don't want the interpolated values. 
-                                      #   (note, eqn.q_face_send should actually contain el
-                                      #    data, but we want to use eqn.q because that's the canonical source)
-  qR_arr = data.q_recv              # AA: used below to set qR
-  nrm_arr = mesh.nrm_sharedface[idx]
-  aux_vars_arr = eqn.aux_vars_sharedface[idx]
-  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-
-  start_elnum = mesh.shared_element_offsets[idx]
-
-  @debug2 flush(params.f)
-  for j=1:length(interfaces)
-    iface_j = interfaces[j]
-    bndryL_j = bndries_local[j]
-    bndryR_j = bndries_remote[j]
-    fL = bndryL_j.face
-
-    # interpolate to face
-    qL = ro_sview(q, :, :, iface_j.elementL)
-    el_r = iface_j.elementR - start_elnum + 1
-    qR = ro_sview(qR_arr, :, :, el_r)
-    interiorFaceInterpolate!(mesh.sbpface, iface_j, qL, qR, q_faceL, q_faceR)
-
-    @debug2 qL_face_arr[:, :, j] = q_faceL
-    @debug2 qR_face_arr[:, :, j] = q_faceR
-
-    # calculate flux
-    for k=1:mesh.numNodesPerFace
-      qL_k = ro_sview(q_faceL, :, k)
-      qR_k = ro_sview(q_faceR, :, k)
-      aux_vars = ro_sview(aux_vars_arr, :, k, j)
-      nrm_xy = ro_sview(nrm_arr, :, k, j)
-      flux_k = sview(flux_face, :, k)
-
-      parent(aux_vars)[1] = calcPressure(params, qL_k)
-
-      functor(params, qL_k, qR_k, aux_vars, nrm_xy, flux_k)
-     end
-
-     # do the integration
-     res_j = sview(eqn.res, :, :, bndryL_j.element)
-     boundaryFaceIntegrate!(mesh.sbpface, fL, flux_face, res_j, SummationByParts.Subtract())      
-        # AA: subtract b/c of the negative sign resulting from integration by parts
-        # AA: why boundary over interior? because boundaryFaceIntegrate is the one-sided version of interiorFaceIntegrate
-   end  # end loop over interfaces
-
-  @debug2 sharedFaceLogging(mesh, sbp, eqn, opts, data, qL_face_arr, qR_face_arr)
-
-  return nothing
-end
-
-
 
 
 @doc """
@@ -772,7 +624,7 @@ function interpolateFace(mesh::AbstractDGMesh, sbp, eqn, opts,
     end
   end
 
-  if opts["parallel_data"] == "face"
+  if opts["parallel_data"] == PARALLEL_DATA_FACE
     for peer=1:mesh.npeers
       q_vals_p = eqn.shared_data[peer].q_send
       aux_vars = eqn.aux_vars_sharedface[peer]
@@ -811,6 +663,37 @@ function (obj::ErrorFlux)(params::ParamType,
   error("ErrorFlux called.")
   return nothing
 end
+
+
+mutable struct ErrorFlux_revm <: FluxType_revm
+end
+
+function (obj::ErrorFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  error("ErrorFlux_revm called")
+
+  return nothing
+end
+
+mutable struct ErrorFlux_revq <: FluxType_revq
+end
+
+function (obj::ErrorFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  error("ErrorFlux_revq called")
+
+  return nothing
+end
+
+
 
 """
   This flux function sets F = q.  Useful for testing
@@ -1015,6 +898,43 @@ function (obj::IRSLFFlux)(params::ParamType,
   return nothing
 end
 
+
+mutable struct IRSLFFlux_revm <: FluxType_revm
+end
+
+function (obj::IRSLFFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  calcEulerFlux_IR_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+  applyEntropyKernel_diagE_revm(params, kernel, qL, qR, aux_vars, nrm, nrm_bar,
+                                F_bar)
+
+  return nothing
+end
+
+mutable struct IRSLFFlux_revq <: FluxType_revq
+end
+
+function (obj::IRSLFFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  calcEulerFlux_IR_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm,
+                        F_bar)
+  applyEntropyKernel_diagE_revq(params, kernel, qL, qL_bar, qR, qR_bar,
+                                aux_vars, nrm, F_bar)
+  return nothing
+end
+
+
+
 """
   Computes only the penalty term from the [`IRSLFFlux`](@ref)
 """
@@ -1029,8 +949,41 @@ function (obj::LFPenalty)(params::ParamType,
               F::AbstractVector{Tres}) where {Tsol, Tres}
 
   kernel = params.entropy_lf_kernel
+  fill!(F, 0)  # fluxes must *overwrite* the F array
   applyEntropyKernel_diagE(params, kernel, uL, uR, aux_vars, nrm, F)
 
+  return nothing
+end
+
+
+mutable struct LFPenalty_revm <: FluxType_revm
+end
+
+
+function (obj::LFPenalty_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE_revm(params, kernel, qL, qR, aux_vars, nrm, nrm_bar,
+                                F_bar)
+  return nothing
+end
+
+mutable struct LFPenalty_revq <: FluxType_revq
+end
+
+function (obj::LFPenalty_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  kernel = params.entropy_lf_kernel
+  applyEntropyKernel_diagE_revq(params, kernel, qL, qL_bar, qR, qR_bar,
+                                aux_vars, nrm, F_bar)
   return nothing
 end
 
@@ -1050,6 +1003,28 @@ end
   In general, these functors call similarly-named function in bc_solvers.jl.
   It is recommened to look at the documentation for those functions.
 
+  Each functor must be callable as:
+
+  ```
+  function (obj::FunctorName)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+  ```
+
+  **Inputs**
+
+   * params: ParamType
+   * uL: vector containing the left state, length `numDofPerNode`
+   * ur: vector containing the right state, length `numDofPerNode`
+   * aux_vars: vector of auxiliary variables for the left state
+   * nrm: scaled normal vector in xy space, length `mesh.dim`
+
+  **Inputs/Outputs**
+
+   * F: vector to overwrite with the flux, length `numDofPerNode`
   TODO: document signature of the functors here
 
 """->
@@ -1089,26 +1064,88 @@ function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
   return nothing
 end
 
+"""
+  Dictionary to put all the reverse mode wrt metric flux functors in.
 
+  Each functor should be callable as:
+
+  ```
+  function (obj::FunctorName_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+  ```
+
+  The arguments are similar to the regular functor, the only differences are:
+
+  * F_bar: input vector, same length as `F`
+  * nrm_bar: vector to be updated with the back-propigation of `F_bar`, same
+             length as `nrm`
+
+
+"""
 global const FluxDict_revm = Dict{String, FluxType_revm}(
+"ErrorFlux" => ErrorFlux_revm(),
 "RoeFlux" => RoeFlux_revm(),
 "IRFlux" => IRFlux_revm(),
+"IRSLFFlux" => IRSLFFlux_revm(),
+"LFPenalty" => LFPenalty_revm(),
 )
 
+"""
+  Populates the fields of the eqn object that need reverse mode flux functors.
+  If opts["need_adjoint"] is false, the error flux functor is used instead.
+"""
 function getFluxFunctors_revm(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  name = opts["Flux_name"]
-  eqn.flux_func_bar = FluxDict_revm[name]
+  if opts["need_adjoint"]
+    name = opts["Flux_name"]
+  else
+    name = "ErrorFlux"
+  end
+  eqn.flux_func_revm = FluxDict_revm[name]
 
-  assertFieldsConcrete(eqn.flux_func_bar)
+  if opts["need_adjoint"]
+    name = opts["Volume_flux_name"]
+  else
+    name = "ErrorFlux"
+  end
+  eqn.volume_flux_func_revm = FluxDict_revm[name]
+
+  assertFieldsConcrete(eqn.flux_func_revm)
+  assertFieldsConcrete(eqn.volume_flux_func_revm)
 
   return nothing
 end # End function getFluxFunctors_revm
 
+"""
+  Dictionary to put all the reverse mode wrt the solution functors
 
+  Each functor should be callable as
+
+  ```
+  function (obj::IRFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+  ```
+
+  The arguments are similar to the regular functors, the only differences are:
+
+   * F_bar: input vector, same length as `F`
+   * qL_bar: vector corresponding to `qL`, to be updated with the back
+             propigation of `F_bar`
+   * qR_bar: vector corresponding to `qR`, to be updated with back
+             propigation of `F_bar`
+"""
 global const FluxDict_revq = Dict{String, FluxType_revq}(
+"ErrorFlux" => ErrorFlux_revq(),
 "RoeFlux" => RoeFlux_revq(),
 "IRFlux" => IRFlux_revq(),
+"IRSLFFlux" => IRSLFFlux_revq(),
+"LFPenalty" => LFPenalty_revq(),
 )
 
 """
@@ -1123,8 +1160,25 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 """
 function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-  name = opts["Flux_name"]
-  eqn.flux_func_barq = FluxDict_revq[name]
+  if opts["need_adjoint"]
+    name = opts["Flux_name"]
+  else
+    name = "ErrorFlux"
+  end
+  eqn.flux_func_revq = FluxDict_revq[name]
+
+  if opts["need_adjoint"]
+    name = opts["Volume_flux_name"]
+  else
+    name = "ErrorFlux"
+  end
+
+  eqn.volume_flux_func_revq = FluxDict_revq[name]
+
+  assertFieldsConcrete(eqn.flux_func_revq)
+  assertFieldsConcrete(eqn.volume_flux_func_revq)
+
+
 
   return nothing
 end # End function getFluxFunctors_revq

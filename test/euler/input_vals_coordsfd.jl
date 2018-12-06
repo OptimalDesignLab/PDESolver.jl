@@ -41,4 +41,5 @@ arg_dict = Dict{Any, Any}(
 "exact_soln_func" => "ICIsentropicVortex",
 "force_solution_complex" => true,
 "force_mesh_complex" => true,
+"need_adjoint" => true,
 )

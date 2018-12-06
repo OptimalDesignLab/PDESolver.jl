@@ -37,7 +37,7 @@ end
 """
 function PetscMatFreeLO(pc::Union{AbstractPetscMatPC, AbstractPetscMatFreePC},
                     mesh::AbstractMesh,
-                    sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
+                    sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   A = createPetscMatShell(mesh, sbp, eqn, opts)
 
@@ -119,7 +119,7 @@ end
    * t
 """
 function setLOCtx(lo::AbstractPetscMatFreeLO, mesh::AbstractMesh,
-                  sbp::AbstractSBP,
+                  sbp::AbstractOperator,
                   eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   lo2 = getBaseLO(lo)
@@ -206,7 +206,7 @@ function checkLOCtx(ctx)
 
   lo2 = getBaseLO(lo)
   @assert typeof(mesh) <: AbstractMesh
-  @assert typeof(sbp) <: AbstractSBP
+  @assert typeof(sbp) <: AbstractOperator
   @assert typeof(eqn) <: AbstractSolutionData
   @assert typeof(lo) <: AbstractPetscMatFreeLO
   @assert typeof(lo2) <: PetscMatFreeLO

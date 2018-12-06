@@ -13,7 +13,7 @@ Output:
 
 """->
 function evalBoundaryIntegrals_vector(mesh::AbstractMesh{Tmsh},
-                                      sbp::AbstractSBP,
+                                      sbp::AbstractOperator,
                                       eqn::NSData{Tsol, Tres, Tdim},
                                       opts) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -86,7 +86,7 @@ end  # end evalBoundaryIntegrals_vector
 
 
 function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
-                                  sbp::AbstractSBP,
+                                  sbp::AbstractOperator,
                                   eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
   # freestream info
@@ -762,7 +762,7 @@ global const BCDict = Dict{String, BCType}(
   This is a high level function.
 """
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::NSData, opts)
+function getBCFunctors(mesh::AbstractMesh, sbp::AbstractOperator, eqn::NSData, opts)
 
   # the boundary conditions should switch over to the same model as the 
   # other physics modules, but for now `calcViscousFlux_boundary` internally

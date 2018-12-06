@@ -2,7 +2,7 @@
 
 #------------------------------------------------------------------------------
 # AbstractPC Interface
-function calcPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
@@ -12,7 +12,7 @@ function calcPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
   factorVolumePreconditioner(pc, mesh, sbp, eqn, opts)
 end
 
-function applyPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 

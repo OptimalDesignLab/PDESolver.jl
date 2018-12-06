@@ -52,7 +52,7 @@
 ### EulerEquationMod General Description
 This module is organized into 3 levels of functions: high, middle, and low.
 
-The high level functions take the mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerEquation, 
+The high level functions take the mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerEquation, 
 and opts (options dictionary), They do not know the types their
 arguments are paramaterized on. There is only one method for each high level function.  
 All they do is call mid level functions.
@@ -108,7 +108,7 @@ import PDESolver.evalResidual
 """->
 # this function is what the timestepper calls
 # high level function
-function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
+function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
                      opts::Dict, t=0.0)
 
   time = eqn.params.time
@@ -117,6 +117,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
 #  println("entered evalResidual")
   time.t_send += @elapsed if opts["parallel_type"] == 1
+    setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
@@ -126,7 +127,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_volume += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals(mesh, sbp, eqn, opts)
-#    println("volume integral @time printed above")
+    #println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]
@@ -135,7 +136,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
-#    println("boundary integral @time printed above")
+    #println("boundary integral @time printed above")
   end
 
   time.t_stab += @elapsed if opts["addStabilization"]
@@ -145,7 +146,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("face integral @time printed above")
+    #println("face integral @time printed above")
   end
 
 
@@ -192,7 +193,7 @@ end  # end evalResidual
                 module's [`AbstractSolutionData`](@ref) object.
 """
 # high level functions
-function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh; init_mesh=true) where {Tmsh, Tsol, Tres}
 
   # println("\nInitializing Euler module")
@@ -226,11 +227,13 @@ function init(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   end
 
 
+  init_revm(mesh, sbp, eqn, opts, pmesh)
+  init_revq(mesh, sbp, eqn, opts, pmesh)
 
   return nothing
 end
 
-function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
               eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
 
   # Get functors for the boundary conditions
@@ -245,9 +248,26 @@ function init_revm(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
   return nothing
 end
 
+function init_revq(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
+              eqn::AbstractEulerData{Tsol, Tres}, opts, pmesh=mesh) where {Tmsh, Tsol, Tres}
+
+  # Get functors for the boundary conditions
+  getBCFunctors_revq(mesh, sbp, eqn, opts)
+  getBCFunctors_revq(pmesh, sbp, eqn, opts)
+
+  if mesh.isDG
+    # For element interface flux
+    getFluxFunctors_revq(mesh, sbp, eqn, opts)
+  end
+
+  return nothing
+end
+
+
+
 function majorIterationCallback(itr::Integer,
                                 mesh::AbstractMesh{Tmsh},
-                                sbp::AbstractSBP,
+                                sbp::AbstractOperator,
                                 eqn::EulerData{Tsol, Tres, Tdim}, opts, f::IO) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("Performing major Iteration Callback")
@@ -511,44 +531,13 @@ end
   This is a high level function
 """
 # high level function
-function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
+function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
                    eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 # this is almost the exact list of everything we *shouldn't* be storing, but
 # rather recalculating on the fly
 
-#println("Entered dataPrep()")
-
-#  println("typeof(eqn) = ", typeof(eqn))
-#  println("typeof(eqn.params) = ", typeof(eqn.params))
-#  println("eqn.q[:, :, 10180] = \n", eqn.q[:, :, 10180])
-#  println("coords = \n", mesh.coords[:, :, 10180])
-
-#=
-  # replace abnormally small density values with element average
-  # this is a really terrible idea
-  q_tmp = zeros(Tsol, mesh.numDofPerNode)
-
-  for i=1:mesh.numEl
-    avg_val = zero(Tsol)
-    for j=1:mesh.numNodesPerElement
-      avg_val += eqn.q[1, j, i]
-    end
-    avg_val /= mesh.numNodesPerElement
-
-    for j=1:mesh.numNodesPerElement
-      if eqn.q[1, j, i] < 0.5*avg_val
-        coords_j = sview(mesh.coords, :, j, i)
-        calcFreeStream(eqn.params, coords_j, q_tmp)
-        println("replacing value for element ", i, ", node ", j)
-        for k=1:mesh.numDofPerNode
-          eqn.q[k, j, i] = q_tmp[k]
-        end
-      end
-    end
-  end
-=#
 
   # apply filtering to input
   if eqn.params.use_filter
@@ -583,6 +572,8 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractSBP,
     end
   end
 
+  #TODO: consider setting precompute_volume_flux to false for type 2 volume
+  #      integrals
   if opts["precompute_volume_flux"]
     getEulerFlux(mesh, sbp,  eqn, opts)
     # println("  getEulerFlux @time printed above")
@@ -728,7 +719,7 @@ end
   This is a mid level function.
 """
 function evalVolumeIntegrals(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                              opts) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
@@ -769,7 +760,7 @@ end  # end evalVolumeIntegrals
 
 """
 function evalBoundaryIntegrals(mesh::AbstractMesh{Tmsh},
-       sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
+       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
   #TODO: remove conditional
   if mesh.isDG
@@ -805,7 +796,7 @@ end  # end evalBoundaryIntegrals
 """->
 # mid level function
 function addStabilization(mesh::AbstractMesh{Tmsh},
-             sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh,  Tsol}
+             sbp::AbstractOperator, eqn::EulerData{Tsol}, opts) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
 
@@ -867,7 +858,7 @@ end
 
 """->
 function evalFaceIntegrals(mesh::AbstractDGMesh{Tmsh},
-               sbp::AbstractSBP, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
+               sbp::AbstractOperator, eqn::EulerData{Tsol}, opts) where {Tmsh, Tsol}
 
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
@@ -941,13 +932,12 @@ end
 """->
 function evalSharedFaceIntegrals(mesh::AbstractDGMesh, sbp, eqn, opts)
 
-#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   if face_integral_type == 1
 
-    if opts["parallel_data"] == "face"
+    if opts["parallel_data"] == PARALLEL_DATA_FACE
       finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals)
-    elseif opts["parallel_data"] == "element"
+    elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
       finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element)
 #      calcSharedFaceIntegrals_element(mesh, sbp, eqn, opts, eqn.flux_func)
@@ -987,7 +977,7 @@ end
 
 """
 function evalSourceTerm(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                      opts) where {Tmsh, Tsol, Tres, Tdim}
 
 

@@ -10,7 +10,7 @@ eqn: an implementation of NSData. Does not have to be fully initialized.
 """->
 # used by NSData Constructor
 function calcElemSurfaceArea(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP,
+                             sbp::AbstractOperator,
                              eqn::NSData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
   nfaces = length(mesh.interfaces)
   nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
@@ -77,7 +77,7 @@ Output:
   cont_tii
 """->
 
-function calcTraceInverseInequalityConst(sbp::AbstractSBP{Tsbp},
+function calcTraceInverseInequalityConst(sbp::AbstractOperator{Tsbp},
                                          sbpface::AbstractFace{Tsbp}) where Tsbp
   R = sview(sbpface.interp, :,:)
   BsqrtRHinvRtBsqrt = Array{Tsbp}(sbpface.numnodes, sbpface.numnodes)
@@ -115,7 +115,7 @@ Input:
 Input/Output:
   Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
-function calcDx(sbp::AbstractSBP,
+function calcDx(sbp::AbstractOperator,
                 dxidx::AbstractArray{Tmsh, 3},
                 jac::AbstractArray{Tmsh, 1},
                 Dx::AbstractArray{Tmsh, 3}) where Tmsh
@@ -162,7 +162,7 @@ Input/Output:
   Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
 function calcDx(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 elem::Integer,
                 Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
@@ -199,7 +199,7 @@ function calcDx(mesh::AbstractMesh{Tmsh},
 end
 
 function calcQx(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 elem::Integer,
                 Qx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Qx, 1) == mesh.numNodesPerElement)
@@ -237,7 +237,7 @@ Input:
 Output:
   nothing
 """->
-function calcGradient(sbp::AbstractSBP{Tsbp},
+function calcGradient(sbp::AbstractOperator{Tsbp},
                       dxidx::AbstractArray{Tmsh, 3},
                       jac::AbstractArray{Tmsh, 1},
                       q::AbstractArray{Tsol, 2},
@@ -286,7 +286,7 @@ Output :
 	q_grad : (in/out) gradient of q
 """->
 function calcGradient(mesh::AbstractDGMesh{Tmsh},
-                      sbp::AbstractSBP{Tsbp},
+                      sbp::AbstractOperator{Tsbp},
                       elem::Integer,
                       q::AbstractArray{Tsol, 2},
                       q_grad::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tsbp}

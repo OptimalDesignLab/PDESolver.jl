@@ -52,7 +52,7 @@ include("newton_setup.jl")
     func must have the signature func(mesh, sbp, eqn, opts, t=0.0) 
 
 """->
-function newton(func::Function, mesh::AbstractMesh, sbp::AbstractSBP,
+function newton(func::Function, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts, pmesh=mesh, t=0.0)
 
   jac_type = opts["jac_type"]::Int  # jacobian sparse or dense
@@ -136,7 +136,7 @@ end
 
 """
 function newtonInner(newton_data::NewtonData, mesh::AbstractMesh, 
-                     sbp::AbstractSBP, eqn::AbstractSolutionData,
+                     sbp::AbstractOperator, eqn::AbstractSolutionData,
                      opts, rhs_func, ls::LinearSolver,
                      rhs_vec, ctx_residual=(), 
                      t=0.0;)
