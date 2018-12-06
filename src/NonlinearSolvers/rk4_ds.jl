@@ -645,6 +645,14 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     println("    c: ", 1.0)
     println("    mesh.coord_order: ", mesh.coord_order)
     println(" ")
+    println("    opts[stabilization_method]: ", opts["stabilization_method"])
+    println("    opts[output_freq]: ", opts["output_freq"])
+    println("    opts[use_itermax]: ", opts["use_itermax"])
+    println("    opts[itermax]: ", opts["itermax"])
+    println("    opts[use_checkpointing]: ", opts["use_checkpointing"])
+    println("    opts[checkpoint_freq]: ", opts["checkpoint_freq"])
+    println("    opts[ncheckpoints]: ", opts["ncheckpoints"])
+    println(" ")
   end
 
   if opts["write_L2vnorm"]
