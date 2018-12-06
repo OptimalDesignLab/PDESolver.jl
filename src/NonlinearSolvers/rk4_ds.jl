@@ -160,6 +160,11 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     finaliter = calcFinalIter(t_steps, itermax)
     quad_weight = calcQuadWeight(i, dt, finaliter)
 
+    @mpi_master f_quadweights = open("quadweights.dat", "w")
+    @mpi_master println(f_quadweights, "finaliter: ", finaliter)
+    @mpi_master println(f_quadweights, "i    quad_weight")
+    @mpi_master println(f_quadweights, i, "    ", quad_weight)
+
     #------------------------------------------------------------------------------
     # allocation of objects for stabilization routine
     if opts["stabilize_v"]
@@ -187,8 +192,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     term2 = zeros(eqn.q)      # First allocation of term2. fill! used below, during timestep loop
     # evalFunctional calls disassembleSolution, which puts q_vec into q
-    # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
-    # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+    # should be calling evalFunctional, not calcFunctional.
     evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
     # do the dot product of the two terms, and save
@@ -234,6 +238,11 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # beginning of RK4 time stepping loop
   # this loop is 2:(t_steps + 1) when not restarting
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
+
+    if opts["perturb_Ma"]
+      quad_weight = calcQuadWeight(i, dt, finaliter)
+      @mpi_master println(f_quadweights, i, "    ", quad_weight)
+    end   # end if opts["perturb_Ma"]
 
     # compute time value from time step
     t = (i - 2)*h
@@ -518,6 +527,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     @mpi_master close(f_drag)
+    @mpi_master close(f_quadweights)
 
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
     @mpi_master println(" Ma_pert: ", Ma_pert)

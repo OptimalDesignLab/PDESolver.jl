@@ -155,6 +155,11 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     finaliter = calcFinalIter(t_steps, itermax)
     quad_weight = calcQuadWeight(i, delta_t, finaliter)
 
+    @mpi_master f_quadweights = open("quadweights.dat", "w")
+    @mpi_master println(f_quadweights, "finaliter: ", finaliter)
+    @mpi_master println(f_quadweights, "i    quad_weight")
+    @mpi_master println(f_quadweights, i, "    ", quad_weight)
+
     #------------------------------------------------------------------------------
     # allocation of objects for stabilization routine
     if opts["stabilize_v"]
@@ -182,8 +187,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
     term2 = zeros(eqn.q)      # First allocation of term2. fill! used below, during timestep loop
     # evalFunctional calls disassembleSolution, which puts q_vec into q
-    # should be calling evalFunctional, not calcFunctional. disassemble isn't getting called. but it doesn't seem to matter?
-    # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+    # should be calling evalFunctional, not calcFunctional.
     evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
 
     # do the dot product of the two terms, and save
@@ -213,6 +217,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     if opts["perturb_Ma"]
       quad_weight = calcQuadWeight(i, delta_t, finaliter)
+      @mpi_master println(f_quadweights, i, "    ", quad_weight)
     end   # end if opts["perturb_Ma"]
 
     t = (i-2)*delta_t
@@ -300,7 +305,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                              stab_A, stab_assembler, clipJacData,
                              treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
       for j=1:length(q_vec)
-        q_vec[j] -= fac*delta_t*Bv[j]*im     # needs to be -=
+        q_vec[j] -= fac*delta_t*Bv[j]*im     # needs to be -=, or else v grows exponentially even faster
       end
     end
 
@@ -393,7 +398,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                               stab_A, stab_assembler, clipJacData,
                               treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
         for j=1:length(q_vec)
-          q_vec[j] -= fac2*delta_t*Bv[j]*im     # needs to be -=
+          q_vec[j] -= fac2*delta_t*Bv[j]*im     # needs to be -=, or else v grows exponentially even faster
         end
       end
 
@@ -515,6 +520,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
     end
 
     @mpi_master close(f_drag)
+    @mpi_master close(f_quadweights)
 
     @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
     @mpi_master println(" Ma_pert: ", Ma_pert)
