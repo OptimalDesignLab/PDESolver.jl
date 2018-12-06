@@ -283,6 +283,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   flush(BSTDOUT)
 
+  dt = h      # for clarity, I use this everywhere
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End NEW
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -370,7 +371,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     for j = 1:m
       k1[j] = h*res_vec[j]
-      k1[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      if opts["stabilize_v"] && i != 2
+        k1[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      end
       q_vec[j] = x_old[j] + 0.5*k1[j]
     end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -422,7 +425,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # k2[j] = res_vec[j]
       # q_vec[j] = x_old[j] + (h/2)*k2[j]
       k2[j] = dt*res_vec[j]
-      k2[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      if opts["stabilize_v"] && i != 2
+        k2[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      end
       q_vec[j] = x_old[j] + 0.5*k2[j]
     end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -451,7 +456,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # k2[j] = res_vec[j]
       # q_vec[j] = x_old[j] + (h/2)*k2[j]
       k3[j] = dt*res_vec[j]
-      k3[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      if opts["stabilize_v"] && i != 2
+        k3[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      end
       q_vec[j] = x_old[j] + k3[j]
     end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -479,7 +486,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # k2[j] = res_vec[j]
       # q_vec[j] = x_old[j] + (h/2)*k2[j]
       k4[j] = dt*res_vec[j]
-      k4[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      if opts["stabilize_v"] && i != 2
+        k4[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
+      end
     end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -607,7 +616,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     println(f_Ma, eqn.params.Ma)
     close(f_Ma)
     f_dt = open("delta_t.dat", "w")
-    println(f_dt, delta_t)
+    println(f_dt, dt)
     close(f_dt)
 
     println(" ")
@@ -617,7 +626,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     else
       println("    Ma: ", eqn.params.Ma)
     end
-    println("    delta_t: ", delta_t)
+    println("    delta_t: ", dt)
     println("    a_inf: ", eqn.params.a_free)
     println("    rho_inf: ", eqn.params.rho_free)
     println("    c: ", 1.0)
