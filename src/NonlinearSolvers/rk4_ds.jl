@@ -284,12 +284,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     sol_norm = post_func(ctx..., opts)
     timing.t_callback += @elapsed majorIterationCallback(i, ctx..., opts, BSTDOUT)
 
-    # for j=1:m
-      # Old:
-      # k1[j] = res_vec[j]
-      # q_vec[j] = x_old[j] + (h/2)*k1[j]
-    # end
-
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # stabilize q_vec: needs to be before q_vec update (NO, it needs to be after, according to Lorenz LSERK)
     if opts["stabilize_v"] && i != 2
@@ -346,9 +340,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     for j=1:m
-      # Old:
-      # k2[j] = res_vec[j]
-      # q_vec[j] = x_old[j] + (h/2)*k2[j]
       k2[j] = dt*res_vec[j]
       if opts["stabilize_v"] && i != 2
         k2[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
@@ -364,12 +355,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 3
     post_func(ctx..., opts, calc_norm=false)
 
-    # for j=1:m
-      # Old:
-      # k3[j] = res_vec[j]
-      # q_vec[j] = x_old[j] + h*k3[j]
-    # end
-
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["stabilize_v"] && i != 2
       # Stage 3: get B*v
@@ -379,9 +364,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     for j=1:m
-      # Old:
-      # k2[j] = res_vec[j]
-      # q_vec[j] = x_old[j] + (h/2)*k2[j]
       k3[j] = dt*res_vec[j]
       if opts["stabilize_v"] && i != 2
         k3[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
@@ -397,11 +379,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     timing.t_func += @elapsed f( ctx..., opts, treal)       # evalResidual, stage 4
     post_func(ctx..., opts, calc_norm=false)
 
-    # for j=1:m
-      # Old:
-      # k4[j] = res_vec[j]
-    # end
-
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["stabilize_v"] && i != 2
       # Stage 4: get B*v
@@ -411,9 +388,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     for j=1:m
-      # Old:
-      # k2[j] = res_vec[j]
-      # q_vec[j] = x_old[j] + (h/2)*k2[j]
       k4[j] = dt*res_vec[j]
       if opts["stabilize_v"] && i != 2
         k4[j] += FAC*im*dt*Bv[j]      # needs to be -=, done w/ FAC
@@ -664,64 +638,4 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat, mesh, sbp, 
 
 end
 
-#------------------------------------------------------------------------------
-# Commenting out repeated stuff from RK4
-#=
 
-@doc """
-### NonlinearSolvers.pde_pre_func
-
-  The pre-function for solving partial differential equations with a physics
-  module.  The only operation it performs is disassembling eqn.q_vec into
-  eqn.q
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-"""->
-function pde_pre_func(mesh, sbp, eqn, opts)
-  
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-end
-
-
-@doc """
-### NonlinearSolvers.pde_post_func
-
-  The post-function for solving partial differential equations with a physics
-  module.  This function multiplies by A0inv, assembles eqn.res into
-  eqn.res_vec, multiplies by the inverse mass matrix, and calculates
-  the SBP approximation to the integral L2 norm
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-"""->
-function pde_post_func(mesh, sbp, eqn, opts; calc_norm=true)
-  eqn.multiplyA0inv(mesh, sbp, eqn, opts, eqn.res)
-  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  for j=1:length(eqn.res_vec) eqn.res_vec[j] = eqn.Minv[j]*eqn.res_vec[j] end
-  if calc_norm
-    local_norm = calcNorm(eqn, eqn.res_vec)
-    eqn.params.time.t_allreduce += @elapsed global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, mesh.comm)
-    return sqrt(global_norm)
-  end
-
-  return nothing
-end
-
-
-#DEBUGGING
-
-function globalNorm(vec)
-
-  local_norm = norm(vec)
-  global_norm = MPI.Allreduce(local_norm*local_norm, MPI.SUM, MPI.COMM_WORLD)
-  return sqrt(global_norm)
-end
-=#
