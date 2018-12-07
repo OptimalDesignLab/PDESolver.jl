@@ -336,15 +336,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       break
     end
 
-    if use_itermax && i > itermax
-      if myrank == 0
-        println(BSTDOUT, "breaking due to itermax")
-        close(f1)
-        flush(BSTDOUT)
-      end
-      break
-    end
-
     #------------------------------------------------------------------------------
     # Stage 2: q_vec now contains the updated state after stage 1
     pre_func(ctx..., opts) 
@@ -502,6 +493,15 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     end   # end if opts["perturb_Ma"]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    if use_itermax && i > itermax
+      if myrank == 0
+        println(BSTDOUT, "breaking due to itermax")
+        close(f1)
+        flush(BSTDOUT)
+      end
+      break
+    end
 
   end   # end of RK4 time stepping loop
 
