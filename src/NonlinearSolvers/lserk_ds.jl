@@ -299,7 +299,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
     #------------------------------------------------------------------------------
     # stabilize q_vec: needs to be before q_vec update (NO, it needs to be after, according to Lorenz LSERK)
-    if opts["stabilize_v"]
+    if opts["stabilize_v"]        # need to have i != 2??? TODO
       # Stage 1: get B*v
       calcStabilizedQUpdate!(mesh, sbp, eqn, opts, 
                              stab_A, stab_assembler, clipJacData,
@@ -393,7 +393,7 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
 
       # call to calcStabilizedQUpdate should be HERE, before the update to q_vec at this stage
       # NO, it needs to be after according to Lorenz LSERK
-      if opts["stabilize_v"]
+      if opts["stabilize_v"]        # need to have i != 2??? TODO
         calcStabilizedQUpdate!(mesh, sbp, eqn, opts, 
                               stab_A, stab_assembler, clipJacData,
                               treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec

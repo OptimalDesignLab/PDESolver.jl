@@ -26,6 +26,7 @@ include("curvilinear.jl")
 include("area.jl")
 include("checkpoint.jl")
 include("interpolation.jl")
+include("nan_tools.jl")
 
 export free
 export array1DTo3D, writeQ, array3DTo1D, assembleArray

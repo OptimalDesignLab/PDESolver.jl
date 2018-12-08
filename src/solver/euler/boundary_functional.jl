@@ -31,7 +31,9 @@ function evalFunctional(mesh::AbstractMesh{Tmsh},
     startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
   end
 =#
+
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
@@ -276,7 +278,9 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
     integratefunctional!(mesh.sbpface, mesh.bndryfaces[idx_range],
                            boundary_integrand, val_per_geom_edge)
 
-    local_functional_val[:] += val_per_geom_edge[:]
+
+    local_functional_val[:] += val_per_geom_edge[:]       # TODO: slow?
+
 
   end # End for itr = 1:length(functional_edges)
 

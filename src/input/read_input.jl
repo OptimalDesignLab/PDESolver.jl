@@ -176,6 +176,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
+# GREP: RUNTYPE run_type flag
 if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
   arg_dict["calc_dt"] = true
 else
@@ -222,13 +223,15 @@ else
 end
 
 # parallel options
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
+# GREP: RUNTYPE run_type flag
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
   get!(arg_dict, "parallel_type", 1)
 else
   get!(arg_dict, "parallel_type", 2)
 end
 
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
+# GREP: RUNTYPE run_type flag
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
   if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
@@ -648,7 +651,8 @@ function checkForIllegalOptions_post(arg_dict)
   commsize = MPI.Comm_size(MPI.COMM_WORLD)
 
   jac_type = arg_dict["jac_type"]
-  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 30 && arg_dict["run_type"] != 31 && arg_dict["run_type"] != 90)
+  # GREP: RUNTYPE run_type flag
+  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 100 && arg_dict["run_type"] != 30 && arg_dict["run_type"] != 31 && arg_dict["run_type"] != 90)
   error("Invalid jacobian type for parallel run")
 end
 
@@ -665,6 +669,7 @@ end
   end
 
   # error if checkpointing not supported
+  # GREP: RUNTYPE run_type flag
   checkpointing_run_types = [1, 100, 30, 20, 31, 90]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
     error("checkpointing only supported with RK4, RK4 DS, LSERK, LSERK DS, CN, and explicit Euler")

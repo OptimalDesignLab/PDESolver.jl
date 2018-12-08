@@ -139,6 +139,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # note about drag writing: file_dict populated and file opened in src/solver/euler/types.jl
     @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
     @mpi_master println(f_drag, 1, " ", drag)
+    println("i: ", 1, "  myrank: ", myrank,"  drag: ", drag)
     @mpi_master flush(f_drag)
   end
   if opts["write_L2vnorm"]
@@ -295,6 +296,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # q_vec[j] += FAC*h*Bv[j]*im     # needs to be -=, done w/ FAC
       # end
     end
+
     for j = 1:m
       k1[j] = h*res_vec[j]
       if opts["stabilize_v"] && i != 2
@@ -370,6 +372,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
       q_vec[j] = x_old[j] + k3[j]
     end
+
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #------------------------------------------------------------------------------

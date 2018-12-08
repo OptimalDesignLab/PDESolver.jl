@@ -107,6 +107,7 @@ function getDataTypes(opts::Dict)
 
   calc_jac_explicit = opts["calc_jac_explicit"]
 
+  # GREP: RUNTYPE run_type flag
   if flag == 1 || flag == 100 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 31 || flag == 90  # normal run
     if opts["perturb_Ma"]
       println("perturb_Ma set, setting Tsol & Tres to Complex128")
