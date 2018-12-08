@@ -152,7 +152,8 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     R_stab = zeros(q_vec)
     v_energy = zeros(q_vec)
 
-    @mpi_master f_v_energy = open("v_energy_data.dat", "w")
+    @mpi_master f_v_energy_stage1 = open("v_energy_data_stage1.dat", "w")
+    @mpi_master f_v_energy_stageall = open("v_energy_data_stageall.dat", "w")
   end
   if opts["perturb_Ma"]
 
@@ -273,6 +274,17 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # save q_vec from the last time step in old_q_vec: used for v_energy calcs
+    if opts["write_L2vnorm"]
+      # for visualization of element level DS energy
+      fill!(old_q_vec, 0.0)
+      for j = 1:length(q_vec)
+        old_q_vec[j] = q_vec[j]
+      end
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # FAC = 1.0       # for making stabilization +=
     FAC = -1.0       # for making stabilization -=  (needed for eig clipping?)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -325,6 +337,55 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
       break
     end
+    
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # for visualization of element level DS energy
+    if opts["write_L2vnorm"]
+      # special case for calculating v_energy:
+      #   Need to calculate v_vec after the first stage for use in the first-stage-only v_energy calculation.
+      # TODO: why only first-stage?
+      # TODO: stage parameter divide
+      # TODO: store old_q_vec
+      #   Previously, this would only be done at the end of all the stages
+      for v_ix = 1:length(v_vec)
+        v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
+      end
+      fill!(R_stab, 0.0)
+      for j = 1:length(q_vec)
+        # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
+        R_stab[j] = (q_vec[j] - old_q_vec[j])/(dt)
+      end
+      fill!(v_energy, 0.0)
+      for j = 1:length(q_vec)
+        v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+      end
+
+      if (i % output_freq) == 0
+        saveSolutionToMesh(mesh, v_energy)
+        fname = string("v_energy_stage1_", i)
+        writeVisFiles(mesh, fname)
+      end
+
+      # i  calcNorm    avg   min   max
+      v_energy_mean_local = mean(v_energy)
+      # v_energy_min_local = minimum(v_energy)      # not doing abs on purpose
+      # v_energy_max_local = maximum(v_energy)
+
+      v_energy_mean = MPI.Allreduce(v_energy_mean_local, MPI.SUM, mesh.comm)
+      # v_energy_min = MPI.Allreduce(v_energy_min_local, MPI.SUM, mesh.comm)
+      # v_energy_max = MPI.Allreduce(v_energy_max_local, MPI.SUM, mesh.comm)
+
+      v_energy_norm = calcNorm(eqn, v_energy)
+
+      # @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm), "  ", real(v_energy_mean), "  ", real(v_energy_min), "  ", real(v_energy_max))
+      @mpi_master println(f_v_energy_stage1, i, "  ", real(v_energy_norm))
+      if (i % 500) == 0
+        @mpi_master flush(f_v_energy_stage1)
+      end
+
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
     #------------------------------------------------------------------------------
     # Stage 2: q_vec now contains the updated state after stage 1
@@ -398,6 +459,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
     # update
     for j=1:m
       # x_old[j] = x_old[j] + (h/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])
@@ -406,6 +468,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       x_old[j] = x_old[j] + (1/6)*(k1[j] + 2*k2[j] + 2*k3[j] + k4[j])   
       q_vec[j] = x_old[j]
     end
+
 
     #-----------------------------------------------------------------------------------------------
     # End of RK4's stages
@@ -463,6 +526,57 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
 
     end   # end if opts["perturb_Ma"]
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # for visualization of element level DS energy: end of all stages
+    if opts["write_L2vnorm"]
+      # special case for calculating v_energy:
+      #   Need to calculate v_vec after the first stage for use in the first-stage-only v_energy calculation.
+      # TODO: why only first-stage?
+      # TODO: stage parameter divide
+      # TODO: store old_q_vec
+      #   Previously, this would only be done at the end of all the stages
+      # for v_ix = 1:length(v_vec)
+        # v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
+      # end
+      # RK4: the v_vec assignment is commented out because it should be set inside perturb_Ma just above
+      fill!(R_stab, 0.0)
+      for j = 1:length(q_vec)
+        # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
+        R_stab[j] = (q_vec[j] - old_q_vec[j])/(dt)
+      end
+      fill!(v_energy, 0.0)
+      for j = 1:length(q_vec)
+        v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+      end
+
+      if (i % output_freq) == 0
+        saveSolutionToMesh(mesh, v_energy)
+        fname = string("v_energy_stageall_", i)
+        writeVisFiles(mesh, fname)
+      end
+
+      # i  calcNorm    avg   min   max
+      v_energy_mean_local = mean(v_energy)
+      # v_energy_min_local = minimum(v_energy)      # not doing abs on purpose
+      # v_energy_max_local = maximum(v_energy)
+
+      v_energy_mean = MPI.Allreduce(v_energy_mean_local, MPI.SUM, mesh.comm)
+      # v_energy_min = MPI.Allreduce(v_energy_min_local, MPI.SUM, mesh.comm)
+      # v_energy_max = MPI.Allreduce(v_energy_max_local, MPI.SUM, mesh.comm)
+
+      v_energy_norm = calcNorm(eqn, v_energy)
+
+      # @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm), "  ", real(v_energy_mean), "  ", real(v_energy_min), "  ", real(v_energy_max))
+      @mpi_master println(f_v_energy_stageall, i, "  ", real(v_energy_norm))
+      if (i % 500) == 0
+        @mpi_master flush(f_v_energy_stageall)
+      end
+
+    end
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     if use_itermax && i > itermax
@@ -562,7 +676,9 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   if opts["write_L2vnorm"]
     @mpi_master close(f_L2vnorm)
-    @mpi_master close(f_v_energy)
+    # @mpi_master close(f_v_energy)
+    @mpi_master close(f_v_energy_stage1)
+    @mpi_master close(f_v_energy_stageall)
   end
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
