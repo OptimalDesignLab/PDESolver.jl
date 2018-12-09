@@ -58,7 +58,8 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData)
 
   # perform clipping
   for i=1:m
-    if lambda[i] > 0
+    # if lambda[i] > 0      # default, origin was JEH's code - must be flipped for Ticon!
+    if lambda[i] < 0
       lambda[i] = 0
     end
   end

@@ -285,8 +285,8 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # FAC = 1.0       # for making stabilization +=
-    FAC = -1.0       # for making stabilization -=  (needed for eig clipping?)
+    FAC = 1.0       # for making stabilization +=    (now that explicit fix has been implemented: no fac needed)
+    # FAC = -1.0       # for making stabilization -=  (needed for eig clipping?)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     #------------------------------------------------------------------------------

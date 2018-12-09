@@ -305,7 +305,8 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                              stab_A, stab_assembler, clipJacData,
                              treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
       for j=1:length(q_vec)
-        q_vec[j] -= fac*delta_t*Bv[j]*im     # needs to be -=, or else v grows exponentially even faster
+        # q_vec[j] -= fac*delta_t*Bv[j]*im     # needs to be -=, or else v grows exponentially even faster
+        q_vec[j] += fac*delta_t*Bv[j]*im     # unexplained negative not needed now that explicit fix is in
       end
     end
 
@@ -398,7 +399,8 @@ function lserk54_ds(f::Function, delta_t::AbstractFloat, t_max::AbstractFloat,
                               stab_A, stab_assembler, clipJacData,
                               treal, Bv, tmp_imag)   # q_vec now obtained from eqn.q_vec
         for j=1:length(q_vec)
-          q_vec[j] -= fac2*delta_t*Bv[j]*im     # needs to be -=, or else v grows exponentially even faster
+          # q_vec[j] -= fac2*delta_t*Bv[j]*im     # needs to be -=, or else v grows exponentially even faster
+          q_vec[j] += fac2*delta_t*Bv[j]*im     # unexplained negative not needed now that explicit fix is in
         end
       end
 
