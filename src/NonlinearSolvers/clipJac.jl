@@ -78,7 +78,8 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData)
 
   # subtract off of complex valued array
   @simd for i=1:length(Jac)
-    Jac[i] -= Jac2[i]
+    # Jac[i] -= Jac2[i]
+    Jac[i] = -1.0*Jac2[i]
   end
 
   return nothing
