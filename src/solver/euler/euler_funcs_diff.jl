@@ -105,6 +105,15 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
   @assert eqn.params.use_Minv != 1  # use_Minv not supported
 
+  #------------------------------------------------------------------------------
+  # Manually and locally setting use_Minv equal to 1
+  #   Trying this Sun night before Scitech deadline: 
+  #   The only place this Jacobian is used is in the calculation of the 
+  #   stabilization matrix. I believe the derivation supports 
+  #   the 'strong Jacobian' to be multiplied by Minv.
+  #   To use, and comment the above assertion, and uncomment the use_Minv = 0 at the bottom of this fn.
+  # eqn.params.use_Minv = 1
+
   # flux jacobian at every node in each direction
   flux_jac = eqn.params.flux_jac
   res_jac = eqn.params.res_jac; fill!(res_jac, 0.0)
@@ -155,6 +164,10 @@ function calcVolumeIntegralsStrong_nopre_diff(
     # flux_jac gets overwritten, so no need to zero it 
 
   end  # end loop i
+
+  #------------------------------------------------------------------------------
+  # Scitech stabilization testing! 
+  # eqn.params.use_Minv = 0
 
   return nothing
 end  # end function
