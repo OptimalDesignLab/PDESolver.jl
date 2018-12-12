@@ -147,7 +147,7 @@ function install_pkg(dir::AbstractString, pkg_name::AbstractString, git_url::Abs
       Libc.flush_cstdio()
       println(f, "  Installation appears to have completed sucessfully")
     catch x
-      flush_cstdio()
+      Libc.flush_cstdio()
       println(f, "Error installing package $pkg_name")
       println(f, "Error is $x")
     end
