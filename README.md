@@ -65,22 +65,21 @@ sub-triangulating each element and doing an exact projection onto the finer
 mesh.
 
 # Version History
-v0.1: the old master version (DG supported, I think)
 
-v0.2: the work branch after the test system/frontend rewrite
+ * v0.1: the old master version (DG supported, I think)
 
-v0.3: curvilinear entropy stable works (requires PumiInterface v0.3, SBP tag ticon_broken)
+ * v0.2: the work branch after the test system/frontend rewrite
 
-v0.4: curvilinear works (both entropy stable and Roe scheme)
+ * v0.3: curvilinear entropy stable works (requires PumiInterface v0.3, SBP tag ticon_broken)
 
-introduced AbstractLinearOperator, AbstractPreconditioner, LinearSolver abstractions
+ * v0.4: curvilinear works (both entropy stable and Roe scheme)
+         introduced AbstractLinearOperator, AbstractPreconditioner, LinearSolver abstractions, Changed MPI initialization/finalization (PETSc too)
 
-Changed MPI initialization/finalization (PETSc too)
-
-v0.5: add checkpointing, Linear solver/operator/preconditioner abstraction, explicit jacobian calculation,
+ * v0.5: add checkpointing, Linear solver/operator/preconditioner abstraction, explicit jacobian calculation,
       more reliable MPI/PETSc initialization and finalization
 
-v0.6: upgrade from Julia 0.4 to 0.6
+ * v0.6: upgrade from Julia 0.4 to 0.6
+ * v0.7: functional and residual reverse mode, serial and parallel
 
 Master branch:
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg?branch=master)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)
