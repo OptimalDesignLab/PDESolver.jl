@@ -36,7 +36,7 @@ end
   Outputs:
     mesh: an AbstractMesh.  The concrete type is determined by the options
           dictionary
-    sbp: an AbstractSBP.  The concrete type is determined by the options
+    sbp: an AbstractOperator.  The concrete type is determined by the options
          dictionary
     eqn: an EulerData object
     opts: the options dictionary
@@ -58,6 +58,10 @@ function createObjects(opts::Dict)
   # initialize physics module and populate any fields in mesh and eqn that
   # depend on the physics module
   init(mesh, sbp, eqn, opts, pmesh)
+
+#  if opts["need_adjoint"]
+#    init_revm(mesh, sbp, eqn, opts, pmesh)
+#  end
 
   return mesh, sbp, eqn, opts, pmesh
 end
@@ -81,7 +85,7 @@ end
    * opts
    * pmesh: currently, always the same as mesh
 """
-function createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)
+function createObjects(mesh::AbstractMesh, sbp::AbstractOperator, opts::Dict)
 
   var_type = opts["variable_type"]
 
@@ -106,7 +110,7 @@ end
 
   Inputs:
     mesh: an AbstractMesh
-    sbp: an AbstractSBP
+    sbp: an AbstractOperator
     eqn: an AbstractEulerData
     opts: the options dictionary.  This must be the options dictionary returned
           by createObjects().  Changing values in the options dictionary after
@@ -115,7 +119,7 @@ end
            default value of mesh
 
 """
-function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEulerData, opts::Dict, pmesh::AbstractMesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerData, opts::Dict, pmesh::AbstractMesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
   myrank = mesh.myrank
@@ -275,7 +279,8 @@ end  # end function
 function postproc(mesh, sbp, eqn, opts)
 
   ##### Do postprocessing ######
-  println("\nDoing postprocessing")
+  myrank = mesh.myrank
+  @mpi_master println("\nDoing postprocessing")
 
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
@@ -296,7 +301,6 @@ function postproc(mesh, sbp, eqn, opts)
 #      end
 #    end
 
-      myrank = mesh.myrank
       q_diff = eqn.q_vec - q_exact
       saveSolutionToMesh(mesh, abs.(real(q_diff)))
       writeVisFiles(mesh, "solution_error")

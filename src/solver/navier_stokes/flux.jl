@@ -12,15 +12,15 @@ Input:
   opts :
 Output:
 
-# """->
+"""->
 function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP,
-                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  sbp::AbstractOperator,
+                                  eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
 
-  Ma      = eqn.params.Ma
+  Ma      = eqn.params.euler_params.Ma
   Re      = eqn.params.Re
-  gamma_1 = eqn.params.gamma_1
+  gamma_1 = eqn.params.euler_params.gamma_1
   Pr      = 0.72
   coef_nondim = Ma/Re
   interfaces  = sview(mesh.interfaces, :)
@@ -209,191 +209,6 @@ function calcViscousFlux_interior(mesh::AbstractDGMesh{Tmsh},
 end # end of function calcViscousFlux_interior
 
 
-function calcViscousFlux_boundary(mesh::AbstractMesh{Tmsh},
-                                  sbp::AbstractSBP,
-                                  eqn::EulerData{Tsol, Tres, Tdim},
-                                  opts) where {Tmsh, Tsol, Tres, Tdim}
-  # freestream info
-  Ma = eqn.params.Ma
-  Re = eqn.params.Re
-  gamma_1 = eqn.params.gamma_1
-  Pr = 0.72
-  coef_nondim = Ma/Re
-
-  p = opts["order"]
-  sat_type = opts["SAT_type"]
-  const_tii = (p + 1.0)*(p + Tdim)/Tdim
-  sbpface = mesh.sbpface
-  dq    = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
-  dqn   = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)    
-  q_bnd = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)    
-  pMat  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  Gt    = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
-  Gt_bnd  = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
-  Fv_face = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  Fv_bnd  = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-  vecflux = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace)
-
-  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
-  area = Array{Tmsh}(mesh.numNodesPerFace)
-  area_sum = sview(eqn.area_sum, :)
-
-  # sigma = calcTraceInverseInequalityConst(sbp, sbpface)
-  dqdx_elem = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerElement )
-  dqdx_face = zeros(Tsol, Tdim, mesh.numDofPerNode, mesh.numNodesPerFace )
-  for iBC = 1 : mesh.numBC
-    indx0 = mesh.bndry_offsets[iBC]
-    indx1 = mesh.bndry_offsets[iBC+1] - 1
-
-    # specify boundary value function
-    # TODO: Put it into a function 
-    local bnd_functor::AbstractBoundaryValueType
-    key_i = string("BC", iBC, "_name")
-    val = opts[key_i]
-    Gt_functor = calcDiffusionTensor
-    if val == "FreeStreamBC"
-      bnd_functor = Farfield()
-    elseif val == "ExactChannelBC"
-      bnd_functor = ExactChannel()
-    elseif val == "nonslipBC"
-      bnd_functor = AdiabaticWall()
-      Gt_functor = calcDiffusionTensorOnAdiabaticWall
-    elseif val == "noPenetrationBC"
-      continue
-    elseif val == "zeroPressGradientBC"
-      bnd_functor = Farfield()
-    else
-      error("iBC = ", iBC, ", Only 'FreeStreamBC' and 'nonslipBC' available")
-    end
-
-    for f = indx0 : indx1
-
-      flux  = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-      bndry = mesh.bndryfaces[f]
-      elem = bndry.element
-      face = bndry.face
-      perm = sview(sbpface.perm, :, face)
-      xy = sview(mesh.coords_bndry, :, :, f)
-
-      # Compute geometric info on face
-      nrm_xy = ro_sview(mesh.nrm_bndry, :, :, f)
-      for n = 1 : mesh.numNodesPerFace
-        area[n] = norm(ro_sview(nrm_xy, :, n)) 
-
-        for i = 1 : Tdim
-          nrm1[i,n] = nrm_xy[i,n] / area[n]
-        end
-      end
-
-      # We need viscous flux and diffusion tensor on interfaces, and there
-      # are different ways to compute them. For viscous flux:
-      # 1) since we have Q on face nodes, if 𝛻Q is available on interface, then we are done.
-      # 2) we can comoute viscous flux on volume nodes and then interpolate to interface node.
-      # It's logically simple but computationally expensive.
-
-      # Compute boundary viscous flux, F(q_b, ∇q) = G(q_b)∇q.
-      # so we need viscousity tensor G, and derivative of q.
-      q_face = sview(eqn.q_bndry, :, :, f)
-      bnd_functor(q_face, xy, nrm1, eqn.params, q_bnd)
-
-      # diffusion matrix used in penalty term should be computed from q_face rather than q_bnd
-      if val == "nonslipBC"
-        Gt_functor(eqn.params, q_bnd, nrm1, Gt)
-      else
-        Gt_functor(eqn.params, q_bnd, Gt)
-      end
-      q_elem = sview(eqn.q, :, :, elem)
-      calcGradient(mesh, sbp, elem, q_elem, dqdx_elem)
-
-      #
-      # TODO: we can consider the first 2 dimension as a single dimension,
-      # then we will not need slice here any more.
-      #
-      for d = 1 : Tdim
-        q_x_node = sview(dqdx_elem, d, :, :)
-        q_x_face = sview(dqdx_face, d, :, :)
-        boundaryinterpolate(sbpface, bndry, q_x_node, q_x_face) 
-      end
-
-      calcFvis(eqn.params, Gt, dqdx_face, Fv_face)
-
-      # compute penalty matrix
-      cmptBPMat(mesh, sbp, eqn, opts, f, Gt, pMat)
-
-      # Start to compute fluxes.  We have 3 terms on interfaces:
-      # 1) -{Fv}⋅[ϕ]
-      # 2) -{G^T ∇ϕ}⋅[q] 
-      # 3) +δ{G}[q]:[ϕ]
-      for n = 1 : mesh.numNodesPerFace
-        for iDof = 1 : mesh.numDofPerNode
-          dq[iDof, n] = q_face[iDof, n] - q_bnd[iDof, n]
-          # dqn[1, iDof, n] = -dq[iDof, n]*nrm_xy[1, n]
-          # dqn[2, iDof, n] = -dq[iDof, n]*nrm_xy[2, n]
-        end
-      end
-      # DEBUG BEGIN
-      # if maximum(abs.(real(dq))) > 1.e-11
-        # println(real(dq))
-      # end
-      # DEBUG END
-
-
-      # -----------------------------------------------
-      # This part computes the contribution of
-      # ∫ {G^T∇ϕ}:[q] dΓ = ∫ ∇ϕ⋅F dΓ , 
-      # where 
-      # [q] = (q+ - q-) ⊗ n, 
-      # G = G(q_b) depends on boudanry value.
-      # Then we can consider Δq⊗n as ∇q and F as viscous flux.
-      # -----------------------------------------------
-
-      # calcFvis(Gt, dqn, vecflux)
-      fill!(vecflux, 0.0)
-      for n = 1 : mesh.numNodesPerFace
-        for iDof = 1 : mesh.numDofPerNode
-          for iDim = 1 : Tdim
-            for jDim = 1 : Tdim
-              tmp = 0.0
-              for jDof = 1 : mesh.numDofPerNode
-                tmp += Gt[iDof, jDof, iDim, jDim, n]
-              end
-              vecflux[iDim, iDof, n] += tmp * nrm_xy[jDim, n]
-            end
-            vecflux[iDim,iDof,n] *=  dq[iDof,n]
-          end
-        end
-      end
-
-      for n = 1 : mesh.numNodesPerFace
-        for iDof = 2 : mesh.numDofPerNode
-          for iDim = 1 : Tdim
-            flux[iDof, n] -= Fv_face[iDim, iDof, n]*nrm_xy[iDim,n] 
-          end
-        end
-      end
-
-      for n = 1 : mesh.numNodesPerFace
-        for iDof = 2 : mesh.numDofPerNode
-          for jDof = 1: mesh.numDofPerNode
-            flux[iDof, n] +=  pMat[iDof, jDof, n]*dq[jDof, n]
-          end
-        end
-      end
-
-      # accumulate fluxes
-      for n = 1 : mesh.numNodesPerFace
-        for iDof = 2 : Tdim+2
-          for iDim = 1 : Tdim
-            eqn.vecflux_bndry[iDim, iDof, n, f] -=  vecflux[iDim, iDof, n]*coef_nondim
-          end
-          eqn.bndryflux[iDof, n, f] += flux[iDof, n]*coef_nondim
-        end
-      end
-    end # loop over faces of one BC
-  end # loop over BCs
-  return nothing 
-end
-
 
 @doc """
 Now actually we are integrating 
@@ -408,8 +223,8 @@ Output:
 
 """->
 function evalFaceIntegrals_vector(mesh::AbstractDGMesh{Tmsh},
-                                  sbp::AbstractSBP,
-                                  eqn::EulerData{Tsol, Tres, Tdim},
+                                  sbp::AbstractOperator,
+                                  eqn::NSData{Tsol, Tres, Tdim},
                                   opts) where {Tmsh, Tsol, Tres, Tdim}
   # This part computes ∫ ∇ϕ⋅F  dΓ, 
   sbpface = mesh.sbpface
@@ -492,93 +307,9 @@ end
 
 
 
-@doc """
-Now actually we are integrating 
-  ∫ G∇ϕ:[q] dΓ
-
-Input: 
-  mesh
-  sbp
-  eqn
-  opts
-Output:
-
-"""->
-function evalBoundaryIntegrals_vector(mesh::AbstractMesh{Tmsh},
-                                      sbp::AbstractSBP,
-                                      eqn::EulerData{Tsol, Tres, Tdim},
-                                      opts) where {Tmsh, Tsol, Tres, Tdim}
-
-  sbpface = mesh.sbpface
-  Dx = Array{Tmsh}((mesh.numNodesPerElement, mesh.numNodesPerElement, Tdim))
-  R = sview(sbpface.interp[:,:])
-  w = sview(sbpface.wface, :)
-  res = sview(eqn.res, :,:,:)
-
-  numNodes_elem = mesh.numNodesPerElement
-  numNodes_face = mesh.numNodesPerFace
-  stencilsize   = sbpface.stencilsize
-  q_bnd = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-  dq    = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerFace)
-  Gt = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, Tdim, Tdim, mesh.numNodesPerFace)
-  RDx = zeros(Tmsh, mesh.numNodesPerFace, mesh.numNodesPerElement, Tdim)
-  GtRDx = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.numNodesPerElement)
-  nrm     = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
-  nrm1 = Array{Tmsh}(Tdim, mesh.numNodesPerFace)
-  area = Array{Tmsh}(mesh.numNodesPerFace)
-
-  # loop over all the boundaries
-  for bc = 1:mesh.numBC
-    indx0 = mesh.bndry_offsets[bc]
-    indx1 = mesh.bndry_offsets[bc+1] - 1
-
-    for f = indx0:indx1
-      bndry = mesh.bndryfaces[f]
-      elem = bndry.element
-      face = bndry.face
-      p = sview(sbpface.perm, :, face)
 
 
-      # compute RDx
-      calcDx(mesh, sbp, elem, Dx)
-
-      for i = 1 : length(RDx)
-        RDx[i] = 0.0
-      end
-
-      for d =  1 : Tdim    
-        for row = 1 : numNodes_face
-          for col = 1 : numNodes_elem
-            for s = 1 : stencilsize
-              RDx[row, col, d] +=  R[s, row] * Dx[p[s], col, d]     
-            end
-          end
-        end
-      end
-
-      vecflux = sview(eqn.vecflux_bndry, :,:,:,f)
-      for i = 1 : numNodes_elem
-        for j = 1 : numNodes_face
-          for iDof = 2 : mesh.numDofPerNode
-            # res[iDof, i, elem] +=  ( RDx[j, i, 1] * vecflux[1, iDof, j] 
-            # + RDx[j, i, 2] * vecflux[2, iDof, j] ) * w[j]
-            tmp = 0.0
-            for iDim = 1 : Tdim
-              tmp += RDx[j, i, iDim] * vecflux[iDim, iDof, j]
-            end
-            res[iDof, i, elem] += tmp * w[j]
-          end
-        end
-      end
-    end
-  end
-
-  return nothing
-end  # end evalBoundaryIntegrals_vector
-
-
-
-@doc """
+"""
 
 Integrate ∫ ∇ϕ⋅F dΩ
 TODO: consider combine it together with `weakdifferentiate`
@@ -590,10 +321,10 @@ Input:
   res    :
 Output:
 
-# """->
+"""
 function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP{Tsbp},
-                             eqn::EulerData{Tsol, Tres, Tdim},
+                             sbp::AbstractOperator{Tsbp},
+                             eqn::NSData{Tsol, Tres, Tdim},
                              res::AbstractArray{Tres,3}) where {Tmsh, Tsbp, Tsol, Tres, Tdim}
   @assert (sbp.numnodes ==  size(res,2))
 
@@ -602,9 +333,9 @@ function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
   numNodesPerElem = mesh.numNodesPerElement
   numDofsPerNode  = mesh.numDofPerNode
 
-  gamma_1 = eqn.params.gamma_1
+  gamma_1 = eqn.params.euler_params.gamma_1
   Pr = 0.72
-  Ma = eqn.params.Ma
+  Ma = eqn.params.euler_params.Ma
   Re = eqn.params.Re
   coef_nondim = Ma/Re 
 
@@ -632,5 +363,84 @@ function weakdifferentiate2!(mesh::AbstractMesh{Tmsh},
       end
     end
   end
+end
+
+
+"""
+  This flux function throws an error. Useful for defaults.
+"""
+mutable struct ErrorFlux <: FluxType
+end
+
+function (obj::ErrorFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres}) where {Tsol, Tres}
+
+  error("ErrorFlux called.")
+  return nothing
+end
+
+
+
+"""
+  Calls the [`SIPG`](@ref) (viscous) flux
+"""
+mutable struct SIPGViscousFlux <: FluxType
+end
+
+function (obj::SIPGViscousFlux)(params::ParamType,
+              sbp::AbstractOperator,
+              sbpface,    # TODO: type
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              dxidxL,     # TODO: type
+              jacL,       # TODO: type
+              dxidxR,     # TODO: type
+              jacR,       # TODO: type
+              face,       # TODO: type
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+
+  # calcViscousFlux_SIPG(params, uL, uR, aux_vars, nrm, F)    # this is the inviscid flux signature, needs to be changed
+  calcViscousFlux_SIPG(params, sbp, sbpface, uL, uR, dxidxL, jacL, dxidxR, jacR, face, F)
+  return nothing
+end
+
+
+"""
+### NavierStokesMod.FluxDict
+
+  This dictonary maps the names of the fluxes (Strings) to the
+  functor object itself.  All flux functors should be added to the dictionary.
+
+  TODO: document signature of the functors here
+
+"""
+global const FluxDict = Dict{String, FluxType}(
+"SIPGViscousFlux" => SIPGViscousFlux(),
+"ErrorFlux" => ErrorFlux(),
+)
+
+"""
+### NavierStokesMod.getFluxFunctors
+
+  This function retrieves the flux functors from the dictonary and
+  stores them to eqn.viscous_flux_func.
+
+  Inputs:
+    mesh: an AbstractDGMesh
+    sbp
+    eqn
+    opts
+"""
+function getFluxFunctors(mesh::AbstractDGMesh, sbp, eqn, opts)
+
+
+  name = opts["Viscous_flux_name"]
+  eqn.viscous_flux_func = FluxDict[name]
+
+  return nothing
 end
 

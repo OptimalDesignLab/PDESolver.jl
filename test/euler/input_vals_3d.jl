@@ -18,6 +18,7 @@ arg_dict = Dict{String, Any}(
 "use_DG" => true,
 "dimensions" => 3,
 "Flux_name" => "RoeFlux",
+"Volume_flux_name" => "StandardFlux",
 "IC_name" => "ICExp",
 "variable_type" => :conservative,
 #"IC_name" => "ICFile",

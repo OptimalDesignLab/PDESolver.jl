@@ -10,8 +10,9 @@ export register_physics, retrieve_physics, registerIC, registerBC
 # from interface.jl
 export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        evalJacobianStrong, createFunctional,
-       evalFunctional, evalFunctionalDeriv, updateMetricDependents,
-       solvePDE
+       evalFunctional, evalFunctionalDeriv_q, evalFunctionalDeriv_m,
+       updateMetricDependents,
+       solvePDE, evalResidual_revm, evalResidual_revq
 
 # from interface2.jl
 export createObjects
@@ -38,10 +39,15 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/euler"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/simpleODE"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/elliptic"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver/navier_stokes"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/optimization"))
 
 # load the modules
 using MPI
+using ODLCommonTools
+import ODLCommonTools: evalFunctional, _evalFunctional,
+                       evalFunctionalDeriv_m, _evalFunctionalDeriv_m,
+                       evalFunctionalDeriv_q, _evalFunctionalDeriv_q
 
 function finalizeMPI()
   if MPI.Initialized()

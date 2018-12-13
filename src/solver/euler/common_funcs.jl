@@ -47,7 +47,7 @@ function calcIsentropicVortex(params::ParamType2,
 
   # calculate r, theta coordinates from x,y
   r = sqrt(x*x + y*y)
-  theta = atan2(real(y),real(x))  # angle in radians
+  theta = atan2(y, x)  # angle in radians
 
   # calculate values at r radius
   tmp1 = ((gamma-1)/2)*M_in*M_in
@@ -71,9 +71,134 @@ function calcIsentropicVortex(params::ParamType2,
   sol[3] = rho_r*v_r
   sol[4] = E_r
 
-return nothing
+  return nothing
 
 end
+
+
+"""
+  Reverse mode
+"""
+function calcIsentropicVortex_rev(params::ParamType2,
+                  coords::AbstractArray{Tmsh}, coords_bar::AbstractVector{Tres},
+                  sol_bar::AbstractVector{Tsol}) where {Tmsh, Tsol, Tres}
+  # calculates the solution at a point of the isentropic vortex
+  # 2D only
+
+
+  # unpack arguments
+  x = coords[1]
+  y = coords[2]
+
+  # get some values out of eqn
+  cv = params.cv
+  R = params.R
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+
+  # the (hard coded) parameters are
+  r_in = 1  # inner radius of sector of circle
+  rho_in = 2 # density at inner radius
+  M_in = 0.95  # Mach number
+  p_in =  1/gamma
+
+
+  # calculate r, theta coordinates from x,y
+  r = sqrt(x*x + y*y)
+  theta = atan2(y, x)  # angle in radians
+
+  # calculate values at r radius
+  tmp1 = ((gamma-1)/2)*M_in*M_in
+  rho_r = rho_in*(1 + tmp1*(1- (r_in*r_in)/(r*r)))^(1/(gamma-1))
+
+  p_r = p_in*(rho_r/rho_in)^gamma
+
+  a_r = sqrt( gamma*p_r/rho_r )
+
+  M_r = sqrt( (2/(gamma-1))*((rho_in/rho_r)^(gamma-1))*(1 + tmp1) - 2/(gamma-1) )
+  U_r = M_r*a_r  # velocity magnitude
+
+  u_r = U_r*sin(theta)
+  v_r = -U_r*cos(theta)
+  e_r = cv*p_r/(rho_r*R)
+  E_r = rho_r*e_r + 0.5*rho_r*U_r*U_r
+
+  # save solution to sol
+  #sol[1] = rho_r
+  #sol[2] = rho_r*u_r
+  #sol[3] = rho_r*v_r
+  #sol[4] = E_r
+
+  #----------------------------------------------------------------------------
+  # reverse sweep
+
+  E_r_bar = zero(Tres)
+  rho_r_bar = zero(Tres)
+  v_r_bar = zero(Tres)
+  u_r_bar = zero(Tres)
+  U_r_bar = zero(Tres)
+  e_r_bar = zero(Tres)
+  p_r_bar = zero(Tres)
+  a_r_bar = zero(Tres)
+  M_r_bar = zero(Tres)
+  r_bar   = zero(Tres)
+  x_bar   = zero(Tres)
+  y_bar   = zero(Tres)
+  theta_bar = zero(Tres)
+
+  E_r_bar   += sol_bar[4]
+
+  rho_r_bar += v_r*sol_bar[3]
+  v_r_bar   += rho_r*sol_bar[3]
+
+  rho_r_bar += u_r*sol_bar[2]
+  u_r_bar   += rho_r*sol_bar[2]
+
+  rho_r_bar += sol_bar[1]
+
+
+  # E_r through u_r
+  rho_r_bar += (e_r + 0.5*U_r*U_r)*E_r_bar
+  e_r_bar   += rho_r*E_r_bar
+  U_r_bar   += rho_r*U_r*E_r_bar
+
+  p_r_bar   += cv/(rho_r*R)*e_r_bar
+  rho_r_bar += -e_r/rho_r*e_r_bar
+
+  U_r_bar +=  sin(theta)*u_r_bar
+  U_r_bar +=  -cos(theta)*v_r_bar
+  theta_bar += U_r*sin(theta)*v_r_bar + U_r*cos(theta)*u_r_bar
+
+
+  # calculating values at r radius
+  a_r_bar += M_r*U_r_bar
+  M_r_bar += a_r*U_r_bar
+
+  rho_r_bar += (M_r_bar/M_r)*((rho_in/rho_r)^(gamma - 2))*(-rho_in/(rho_r*rho_r))*(1 + tmp1)
+#  tmp1_bar   = M_r_bar/(M_r*gamma_1)*(rho_in/rho_r)^(gamma_1)
+
+  p_r_bar   += (0.5/a_r)*gamma*a_r_bar/rho_r
+  rho_r_bar += (0.5/a_r)*(-gamma*p_r/(rho_r*rho_r))*a_r_bar
+
+  rho_r_bar += p_in*gamma*((rho_r/rho_in)^gamma_1)*p_r_bar/rho_in
+
+  t2 = (rho_in/gamma_1)*(1 + tmp1*(1 - (r_in*r_in)/(r*r)))^(1/gamma_1 - 1)
+#  tmp1_bar  += t2*(1 - (r_in*r_in)/(r*r))
+  r_bar += rho_r_bar*t2*2*tmp1*(r_in*r_in)/(r*r*r)
+
+
+  # r, theta
+  theta, y_bar, x_bar = atan2_rev(y, x, theta_bar)
+  x_bar += (0.5/r)*2*x*r_bar
+  y_bar += (0.5/r)*2*y*r_bar
+
+  coords_bar[1] += x_bar
+  coords_bar[2] += y_bar
+
+
+  return nothing
+end
+ 
 
 
 function calcIsentropicVortex(params::ParamType3,
@@ -404,15 +529,17 @@ function calcUnsteadyVortex2(params::ParamType{Tdim},
   y0 = 0
   epsilon = 5.0
   Ma = 0.5
-  alpha = 45.0  # degrees
+#  alpha = 45.0  # degrees
+  sind_alpha = 0.7071067811865476
+  cosd_alpha = 0.7071067811865476
 #  cinf = 1.0  # assumption, I think this is a free parameter
 #  Uinf = Ma*cinf
 
   Uinf = 1.0
   cinf = Ma/Uinf
 
-  ycoeff = y - y0 - Uinf*sind(alpha)*t
-  xcoeff = x - x0 - Uinf*cosd(alpha)*t
+  ycoeff = y - y0 - Uinf*sind_alpha*t
+  xcoeff = x - x0 - Uinf*cosd_alpha*t
   f = 1 - ( xcoeff^2 + ycoeff^2 )
 
   coeff1 = epsilon*epsilon*Ma*Ma*gamma_1/(8*pi*pi)
@@ -421,9 +548,9 @@ function calcUnsteadyVortex2(params::ParamType{Tdim},
   rho = T^(1/gamma_1)
  
 #  u1 = Uinf - (epsilon*y/(2*pi))*e^(f/2)
-  u1 = Uinf*cosd(alpha) - (epsilon*ycoeff/(2*pi))*exp(f/2)
+  u1 = Uinf*cosd_alpha - (epsilon*ycoeff/(2*pi))*exp(f/2)
 #  u2 = (epsilon*xcoeff/(2*pi))*e^(f/2)
-  u2 = Uinf*sind(alpha) + ((epsilon*xcoeff)/(2*pi))*exp(f/2)
+  u2 = Uinf*sind_alpha + ((epsilon*xcoeff)/(2*pi))*exp(f/2)
  
   q2 = rho*u1
   q3 = rho*u2
@@ -652,6 +779,12 @@ function calcRho1Energy2U3(params::ParamType3,
 end
 
 
+"""
+  Alias for [`calcRho1Energy2U3`](@ref) used by initial conditions.
+"""
+const calcRho1E2U3 = calcRho1Energy2U3
+
+
 
 @doc """
 ### EulerEquationMod.calcVortex
@@ -719,6 +852,46 @@ function calcExp(params::ParamType2, coords::AbstractArray{Tmsh,1},
   q[2] = exp(af*2*x*y + b)
   q[3] = exp(af*3*x*y + b)
   q[4] = (1/gamma_1 + 0.5)*exp(af*5*x*y + b) + 0.5*exp(af*3*x*y + b)
+
+  return nothing
+end
+
+
+function calcExp_rev(params::ParamType2, coords::AbstractArray{Tmsh, 1},
+                 coords_bar::AbstractArray{Tmsh, 1},
+                 q_bar::AbstractArray{Tsol, 1}) where {Tmsh, Tsol}
+
+  af = 1/5  # a = 1/af
+  b = 0.01
+  gamma_1 = params.gamma_1
+
+  x = coords[1]
+  y = coords[2]
+
+  x_bar = zero(Tmsh)
+  y_bar = zero(Tmsh)
+
+  # some reused quantities
+  t1 = (1/gamma_1 + 0.5)
+  e1 = exp(af*x*y + b)
+  e2 = exp(af*2*x*y + b)
+  e3 = exp(af*3*x*y + b)
+  e5 = exp(af*5*x*y + b)
+
+  x_bar += (t1*af*5*y*e5 + 0.5*af*3*y*e3)*q_bar[4]
+  y_bar += (t1*af*5*x*e5 + 0.5*af*3*x*e3)*q_bar[4]
+
+  x_bar += af*3*y*e3*q_bar[3]
+  y_bar += af*3*x*e3*q_bar[3]
+
+  x_bar += af*2*y*e2*q_bar[2]
+  y_bar += af*2*x*e2*q_bar[2]
+
+  x_bar += af*y*e1*q_bar[1]
+  y_bar += af*x*e1*q_bar[1]
+
+  coords_bar[1] += x_bar
+  coords_bar[2] += y_bar
 
   return nothing
 end

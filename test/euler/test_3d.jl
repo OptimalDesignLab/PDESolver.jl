@@ -472,13 +472,16 @@ function test_3d_matrices(mesh, sbp, eqn, opts)
       @test isapprox( A04_code[i], A03[i]) atol=1e-10
     end
 
+    test_IRA0inv(eqn.params, q3)
+
+
   end  # end facts block
 
   return nothing
 end  # end function
 
 #test_3d_matrices(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST])
+add_func2!(EulerTests, test_3d_matrices,  test_3d_inputfile, [TAG_SHORTTEST, TAG_ENTROPYVARS])
 
 """
   Test Roe solver in 3D
@@ -503,7 +506,7 @@ function test_3d_bc(mesh, sbp, eqn, opts)
 
     @test isapprox( F2, F) atol=1e-13
 
-    func1 = EulerEquationMod.noPenetrationESBC()
+    func1 = EulerEquationMod.noPenetrationESBC(mesh, eqn)
     # make velocity parallel to the boundary
     nrm = mesh.nrm_bndry[:, 1, 1]
     tngt = mesh.coords_bndry[:, 2, 1] - mesh.coords_bndry[:, 1, 1]
@@ -519,7 +522,7 @@ function test_3d_bc(mesh, sbp, eqn, opts)
 
     @test isapprox( F2, F) atol=1e-13
 
-    func1 = EulerEquationMod.noPenetrationBC()
+    func1 = EulerEquationMod.noPenetrationBC(mesh, eqn)
     func1(params, q, aux_vars, coords, nrm, F2)
 
     @test isapprox( F2, F) atol=1e-13

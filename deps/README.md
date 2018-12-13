@@ -12,7 +12,7 @@ other installed packages.
 
 ## Non-Standard Packages
 
-The dependencies that are not registered packages are installed by manually 
+The build system install dependencies that are not registered packages by manually 
 cloning their repositories and building them.  Commit hashes are used to 
 identify versions known to work.  The commits are checked out into a branch
 called `pdesolver_version`.
@@ -25,7 +25,7 @@ Julia (see below)
 
 ## Manual Installation Process
 
-The packages listed in the `REQUIRE` file can be installed manually, by 
+The build system can install packeges listed in the `REQUIRE` file manually, by 
 cloning the repository and checkout out a particular commit known to work.
 This will force the checking out of he commit and re-building of the package 
 even if it is already installed.
@@ -43,6 +43,9 @@ of the package named `pkg_name`.
 
 For all these environmental variables, the value is not important, only the 
 existance of the variable.
+
+After setting the required environment variables, either run `Pkg.build()` in
+the Julia REPL or have Julia execute the script `deps/build.jl`.
 
 
 ## Offline Installation

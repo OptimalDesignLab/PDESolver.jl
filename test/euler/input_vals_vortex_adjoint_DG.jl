@@ -57,5 +57,6 @@ arg_dict = Dict{String, Any}(
 "solve" => true,
 "do_postproc" => true,
 "exact_soln_func" => "ICIsentropicVortex",
-"calc_jac_explicit" => false
+"calc_jac_explicit" => false,
+"need_adjoint" => true,
 )

@@ -10,8 +10,8 @@
    * pMat: penalty matrix
 """
 function cmptIPMat(mesh::AbstractMesh{Tmsh},
-                   sbp::AbstractSBP,
-                   eqn::EulerData{Tsol, Tres, Tdim},
+                   sbp::AbstractOperator,
+                   eqn::NSData{Tsol, Tres, Tdim},
                    opts,
                    iface::Int,
                    GtL::AbstractArray{Tsol, 5},
@@ -27,8 +27,8 @@ function cmptIPMat(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_SIPG(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP,
-                        eqn::EulerData{Tsol, Tres, 2},
+                        sbp::AbstractOperator,
+                        eqn::NSData{Tsol, Tres, 2},
                         opts,
                         iface::Int,
                         GtL::AbstractArray{Tsol, 5},
@@ -38,8 +38,8 @@ function cmptIPMat_SIPG(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_BR2(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
-                       eqn::EulerData{Tsol, Tres, 2},
+                       sbp::AbstractOperator,
+                       eqn::NSData{Tsol, Tres, 2},
                        opts,
                        iface::Int,
                        GtL::AbstractArray{Tsol, 5},
@@ -49,8 +49,8 @@ function cmptIPMat_BR2(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 2},
+                           sbp::AbstractOperator,
+                           eqn::NSData{Tsol, Tres, 2},
                            opts,
                            iface::Int,
                            GtL::AbstractArray{Tsol, 5},
@@ -170,8 +170,8 @@ function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptIPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 3},
+                           sbp::AbstractOperator,
+                           eqn::NSData{Tsol, Tres, 3},
                            opts,
                            iface::Int,
                            GtL::AbstractArray{Tsol, 5},
@@ -477,8 +477,8 @@ end
    * pMat: penalty matrix
 """
 function cmptBPMat(mesh::AbstractMesh{Tmsh},
-                   sbp::AbstractSBP,
-                   eqn::EulerData{Tsol, Tres, Tdim},
+                   sbp::AbstractOperator,
+                   eqn::NSData{Tsol, Tres, Tdim},
                    opts,
                    iface::Int,
                    Gt::AbstractArray{Tsol, 5},
@@ -493,8 +493,8 @@ function cmptBPMat(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_SIPG(mesh::AbstractMesh{Tmsh},
-                        sbp::AbstractSBP,
-                        eqn::EulerData{Tsol, Tres, 2},
+                        sbp::AbstractOperator,
+                        eqn::NSData{Tsol, Tres, 2},
                         opts,
                         iface::Int,
                         Gt::AbstractArray{Tsol, 5},
@@ -503,8 +503,8 @@ function cmptBPMat_SIPG(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_BR2(mesh::AbstractMesh{Tmsh},
-                       sbp::AbstractSBP,
-                       eqn::EulerData{Tsol, Tres, 2},
+                       sbp::AbstractOperator,
+                       eqn::NSData{Tsol, Tres, 2},
                        opts,
                        iface::Int,
                        Gt::AbstractArray{Tsol, 5},
@@ -513,8 +513,8 @@ function cmptBPMat_BR2(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 2},
+                           sbp::AbstractOperator,
+                           eqn::NSData{Tsol, Tres, 2},
                            opts,
                            iface::Int,
                            Gt::AbstractArray{Tsol, 5},
@@ -629,8 +629,8 @@ function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
 end
 
 function cmptBPMat_hartman(mesh::AbstractMesh{Tmsh},
-                           sbp::AbstractSBP,
-                           eqn::EulerData{Tsol, Tres, 3},
+                           sbp::AbstractOperator,
+                           eqn::NSData{Tsol, Tres, 3},
                            opts,
                            iface::Int,
                            Gt::AbstractArray{Tsol, 5},

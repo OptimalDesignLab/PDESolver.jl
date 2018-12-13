@@ -89,7 +89,7 @@ function isNeumann(dBC::AbstractNeumannBC)
   return true
 end
 
-function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EllipticData, opts)
+function getBCFunctors(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EllipticData, opts)
   for i = 1:mesh.numBC
     key = string("BC", i, "_name")
     val = opts[key]
@@ -97,7 +97,7 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EllipticData, 
   end
 end
 function interpolateBoundary(mesh::AbstractDGMesh,
-                             sbp::AbstractSBP,
+                             sbp::AbstractOperator,
                              eqn::AbstractEllipticData{Tsol, Tres},
                              opts,
                              q::AbstractArray{Tsol,3},
@@ -106,7 +106,7 @@ function interpolateBoundary(mesh::AbstractDGMesh,
 end
 
 function interpolateBoundary(mesh::AbstractDGMesh,
-                             sbp::AbstractSBP,
+                             sbp::AbstractOperator,
                              eqn::AbstractEllipticData{Tsol, Tres},
                              opts,
                              grad::AbstractArray{Tsol,4},
@@ -123,7 +123,7 @@ function interpolateBoundary(mesh::AbstractDGMesh,
 end
 
 function getBCFluxes(mesh::AbstractMesh{Tmsh},
-                            sbp::AbstractSBP,
+                            sbp::AbstractOperator,
                             eqn::EllipticData{Tsol, Tres, Tdim},
                             opts) where {Tmsh, Tsol, Tres, Tdim}
   #

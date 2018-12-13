@@ -174,8 +174,168 @@ abstract type EulerData{Tsol, Tres, Tdim, var_type} <: AbstractEulerData{Tsol, T
   Functor type for faceElementIntegrals.  These integrals operate on a face,
   but require data from the entirety of the elements that make up the
   face, rather than data interpolated to the face
+
+  These functors have the signature:
+
+  ```
+    calcFaceElementIntegral(obj::FaceElementIntegralType, 
+        params::AbstractParamType, sbpface::AbstractFace, iface::Interface,
+        qL::AbstractMatrix, qR::AbstractMatrix, aux_vars::AbstractMatrix,
+        nrm_face::AbstractMatrix, functor::FluxType,
+        resL::AbstractMatrix, resR::AbstractMatrix)
+  ```
+
+  where `qL` and `qR` contains the solutions at the volume nodes of the left
+  and right elements (`numDofPerNode` x `numNodesPerElement`), `aux_vars`
+  contains the auxiliary variables for `qL`, `nrm_face` contains the normal
+  vector at each face quadracture note, `functor` is the flux function used
+  for the entropy conservative integrals, and `resL` and `resR` are the
+  residual for the left and right elements, to be updated (same shape as
+  `qL`, `qR`).
+
+  Some of the `FaceElementIntegralType`s compute the entropy conservative
+  integrals, others apply an entropy dissipative penalty of one kind
+  or another.
+
+  For use with explicit jacobian calculation, functors should also define
+  a method for:
+
+  ```
+    calcFaceElementIntegral_diff(obj::FaceElementIntegralType, 
+        params::AbstractParamType, sbpface::AbstractFace, iface::Interface,
+        qL::AbstractMatrix, qR::AbstractMatrix, aux_vars::AbstractMatrix,
+        nrm_face::AbstractMatrix, functor::FluxType_diff,
+        jacLL::AbstractArray{T,4}, resLR::AbstractArray{T,4},
+        jacRL::AbstractArray{T,4}, resRR::AbstractArray{T,4})
+  ```
+
+  Most of the arguments are the same as the regular version, the output
+  arguments are
+
+   **Inputs/Outputs**
+
+    * jacLL: jacobian of `resL` wrt `qL`
+    * jacLR: jacobian of `resL` wrt `qR`
+    * jacRL: jacobian of `resR` wrt `qL`
+    * jacRR: jacobian of `resR` wrt `qR`
+
+ 
 """
 abstract type FaceElementIntegralType end
+
+
+"""
+  Abstract type for all kernel operations used with entropy penalty functions
+  (ie. given the state at the interface, apply a symmetric semi-definite
+  operation).  Every type must extend this function with a new method:
+
+  ```
+    applyEntropyKernel(obj::AbstractEntropyKernel, params::ParamType, 
+                        q_avg::AbstractVector, delta_w::AbstractVector,
+                        nrm_in::AbstractVector, flux::AbstractVector)
+  ```
+
+  specializing the first argument.  Here `q_avg` is the state at the interface
+  in conservative variables, `delta_w` is the vector to multiply against,
+  `nrm_in` is the normal vector at the node, and `flux` is the vector to
+  overwrite with the result.
+
+  Each `AbstractEntropyKernel` should have an outer constructor with signaturea
+
+  ```
+    function MyEntropyKernel(mesh::AbstractMesh, eqn::EulerData)
+  ```
+
+  For use in computing the Jacobian, a second function should be extended with
+  a new method
+
+  ```
+    function applyEntropyKernel_diff(obj::AbstractEntropyKernel, params::ParamType, 
+                          q_avg::AbstractVector, q_avg_dot::AbstractMatrix,
+                          delta_w::AbstractVector, delta_w_dot::AbstractMatrix,
+                          nrm::AbstractVector,
+                          flux::AbstractVector, flux_dot::AbstractMatrix)
+
+  ```
+
+  **Inputs**
+
+   * obj: `AbstractEntropyKernel` implementation
+   * params: ParamType
+   * q_avg: same as regular method
+   * q_avg_dot: `numDofPerNode` x `nd` matrix containing `nd` dual vectors for
+                `q_avg`
+   * delta_w: same as regular method
+   * delta_w_dot: `numDofPerNode` x `nd` matrix containing `nd` dual vectors for
+                  `delta_w`
+   * nrm: same as regular method
+   * flux: vector to be overwritten with the flux
+   * flux_dot: `numDofPerNode` x `nd` array the derivative values will be added
+               to.
+
+  Note that `nd` must be less than or equal to the `nd` argument of the
+  `AbstractEntropyKernel` constructor.
+
+
+  For reverse mode with respect to the solution, a function should be defined:
+
+  ```
+    function applyEntropyKernel_revq(obj::LFKernel, params::ParamType, 
+                            q_avg::AbstractVector, q_bar::AbstractVector,
+                            delta_w::AbstractVector, delta_w_bar::AbstractVector,
+                            nrm::AbstractVector, flux::AbstractVector,
+                            flux_bar::AbstractVector)
+  ```
+
+  **Inputs**
+
+   * obj: `AbstractEntropyKernel` implementation
+   * params: ParamType
+   * q_avg: same as regular method
+   * delta_w: same as regular method
+   * nrm: same as regular method
+   * flux_bar: seed vector for dual part of `flux`
+
+  **Inputs/Outputs**
+
+   * q_bar: vector to accumulate the result for `q_avg` into (not overwritten)
+   * delta_w_bar: vector to accumulate result for `delta_w` into (not overwritten)
+   * flux: vector, length `numDofPerNode` to overwrite with flux
+
+
+  Similarly for reverse mode with respect to the metrics:
+
+  ```
+    function applyEntropyKernel_revm(obj::AbstractEntropyKernel, params::ParamType, 
+                            q_avg::AbstractVector, delta_w::AbstractVector,
+                            nrm::AbstractVector, nrm_bar::AbstractVector,
+                            flux::AbstractVector,
+                            flux_bar::AbstractVector)
+  ```
+
+  **Inputs**
+
+   * obj: `AbstractEntropyKernel` implementation
+   * params: ParamType
+   * q_avg: same as regular method
+   * delta_w: same as regular method
+   * nrm: same as regular method
+   * flux_bar: seed vector for dual part of `flux`
+
+  **Inputs/Outputs**
+
+   * nrm_bar: vector to accumulate result into (not overwritten)
+   * flux: vector, length `numDofPerNode` to overwrite with flux
+
+"""
+abstract type AbstractEntropyKernel end
+
+"""
+  Functionals that use entropy penalties
+"""
+abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt} end
+
+
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
 # Mid level function should take in an EulerData{Tsol, Tdim}, so they
@@ -186,7 +346,6 @@ abstract type FaceElementIntegralType end
 # this allows them to have different methods for different dimension equations.
 
 include("types.jl")  # type definitions
-include("functionals.jl")
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("euler_macros.jl")
 include("common_funcs.jl")
@@ -201,8 +360,10 @@ include("flux.jl")
 # include("artificialViscosity.jl")
 # include("constant_diff.jl")
 include("GLS2.jl")
+include("functionals.jl")
 include("boundary_functional.jl")
 include("functional_deriv.jl")
+include("evalFunctional.jl")
 include("source.jl")
 include("PressureMod.jl")
 include("entropy_flux.jl")
@@ -210,12 +371,9 @@ include("eigensystem.jl")
 include("check_options.jl")
 include("eqn_deepcopy.jl")
 include("startup_func.jl")  # function for invoking the solver
-include("dataprep_rev.jl")
 include("evaldRdm.jl")
+include("evaldRdq.jl")
 include("homotopy.jl")
-include("util_viscous.jl")
-include("viscous_flux.jl")
-include("viscous_func.jl")
 
 # Jacobian calculation
 include("evalJacobian.jl")

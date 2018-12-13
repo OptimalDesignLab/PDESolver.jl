@@ -9,7 +9,7 @@ arg_dict   = Dict{Any, Any}(
   "itermax"            => 10,
 
   # because RK4 is selected and not steady Newton, we have to explicitly set parallel_data
-  "parallel_data"      => "element",
+  "parallel_data"      => PARALLEL_DATA_ELEMENT,
 
   "operator_type"      => "SBPGamma",
   # "operator_type"     => "SBPOmega",
@@ -78,7 +78,7 @@ arg_dict   = Dict{Any, Any}(
   "real_time"          => false,
 
   "write_timing"       => true,
-  "physics"            => "Euler",
+  "physics"            => "NavierStokes",
 
   "output_freq"        => 1,
 

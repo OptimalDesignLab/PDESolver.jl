@@ -112,7 +112,7 @@ global const SRCDict = Dict{String, SRCType}(
 
 
 function getSrcFuntors(mesh::AbstractMesh,
-                       sbp::AbstractSBP,
+                       sbp::AbstractOperator,
                        eqn::EllipticData,
                        opts)
   eqn.src_func = SRCDict[opts["SRC_name"]]
@@ -120,7 +120,7 @@ function getSrcFuntors(mesh::AbstractMesh,
 end
 
 function calcSource(mesh::AbstractMesh{Tmsh},
-                    sbp::AbstractSBP,
+                    sbp::AbstractOperator,
                     eqn::EllipticData{Tsol, Tres, Tdim},
                     srcFunc::SRCType,
                     src::AbstractArray{Tres, 3}) where {Tmsh, Tsol, Tres, Tdim}

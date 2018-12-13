@@ -147,7 +147,7 @@ function StandardLinearSolver(pc::T1, lo::T2, comm::MPI.Comm, opts) where {T1, T
                                     commsize, ksp, is_finalized,
                                     reltol, abstol, dtol, itermax)
 
-  atexit( () -> free(ls))  # make sure this gets destroyed eventually
+  finalizer(ls, free)
 
   return ls
 end
@@ -225,7 +225,7 @@ const AbstractPetscPC = Union{AbstractPetscMatPC, AbstractPetscMatFreePC}
     even when the PC matrix and LinearOperator matrix are the same (as long as
     the solve function is called regularly).
 """
-function calcPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function calcPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
   error("reached AbstractPC calcPC(), did you forget to define calcPC() for your AbstractPC implementation?")
@@ -256,7 +256,7 @@ end
 
    * x: AbstractVector updated with results (same size as b) (do not overwrite)
 """
-function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -271,7 +271,7 @@ end
 
   Note that not every preconditioning method supports this.
 """
-function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractSBP,
+function applyPCTranspose(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
@@ -471,7 +471,7 @@ const DirectLO = Union{AbstractDenseLO, AbstractSparseDirectLO}
 
 """
 function calcLinearOperator(lo::AbstractLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
   error("reached AbstractLO calcLinearOperator(), did you forget to define calcLinearOperator() for your AbstractLO implementation?")
@@ -501,7 +501,7 @@ end
    * b: vector updated with results (do not overwrite)
 """
 function applyLinearOperator(lo::AbstractLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData,
+                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
@@ -520,7 +520,7 @@ end
 
 """
 function applyLinearOperatorTranspose(lo::AbstractLO, 
-                             mesh::AbstractMesh, sbp::AbstractSBP,
+                             mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)

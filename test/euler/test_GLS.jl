@@ -3,21 +3,18 @@ using PDESolver
 using FactCheck
 using ODLCommonTools
 using ArrayViews
+using Input
 
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 
 # insert a command line argument
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_vortex_GLS.jl"
-opts = read_input(ARGS[1])
+fname = "input_vals_vortex_GLS.jl"
+opts = read_input(fname)
 @testset "Check input arguments applied correctly" begin
   @test ( opts["use_GLS"] )== true
   @test ( opts["Q_transpose"] )== true
 end
 
-
-include("../src/solver/euler/startup.jl")
-include("../src/solver/euler/GLS.jl")
+mesh, sbp, eqn, opts = solvePDE(fname)
 
 fill!(eqn.res, 0.0)
 fill!(eqn.res_vec,0.0)

@@ -1,7 +1,7 @@
 # differentiated version of homotopy.jl
 import PDESolver.evalHomotopyJacobian
 
-function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractOperator,
                               eqn::EulerData, opts::Dict, 
                               assembler::AssembleElementData, lambda::Number)
 
@@ -12,7 +12,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
                           eqn::EulerData{Tsol, Tres}, opts, assembler, lambda) where {Tsol, Tres, Tmsh}
 
   # some checks for when parallelism is enabled
-  @assert opts["parallel_data"] == "element"
+  @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
   for i=1:mesh.npeers
     @assert eqn.shared_data[i].recv_waited
   end
@@ -27,8 +27,8 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
     D[:, :, d] = inv(diagm(sbp.w))*sbp.Q[:, :, d]
   end
 
-  res_jac = eqn.params.res_jacLL
-  t2_dot = eqn.params.res_jacLR  # work array
+  res_jac = eqn.params.calc_face_integrals_data.res_jacLL
+  t2_dot = eqn.params.calc_face_integrals_data.res_jacLR  # work array
   t1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
   lambda_dot = zeros(Tres, mesh.numDofPerNode)
 
@@ -116,17 +116,20 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
   #----------------------------------------------------------------------------
   # interface terms
 
+  @unpack params.calc_face_integrals_data q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
+
+  #=
   q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   q_faceR = zeros(q_faceL)
 #  nrm2 = eqn.params.nrm2
-  flux_jacL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-  flux_jacR = zeros(flux_jacL)
+  flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
+  flux_dotR = zeros(flux_dotL)
 
   res_jacLL = params.res_jacLL
   res_jacLR = params.res_jacLR
   res_jacRL = params.res_jacRL
   res_jacRR = params.res_jacRR
-
+  =#
   lambda_dotL = zeros(Tres, mesh.numDofPerNode)
   lambda_dotR = zeros(Tres, mesh.numDofPerNode)
 
@@ -155,21 +158,21 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
       for k=1:mesh.numDofPerNode
         # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
         for m=1:mesh.numDofPerNode
-          flux_jacL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
-          flux_jacR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
+          flux_dotL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
+          flux_dotR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
         end
-        flux_jacL[k, k, j] += 0.5*lambda_max
-        flux_jacR[k, k, j] -= 0.5*lambda_max
+        flux_dotL[k, k, j] += 0.5*lambda_max
+        flux_dotR[k, k, j] -= 0.5*lambda_max
       end
     end  # end loop j
 
     # multiply by lambda here and it will get carried through
     # interiorFaceIntegrate_jac
-    scale!(flux_jacL, lambda)
-    scale!(flux_jacR, lambda)
+    scale!(flux_dotL, lambda)
+    scale!(flux_dotR, lambda)
 
     # compute dR/dq
-    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_jacL, flux_jacR,
+    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
     # assemble into the Jacobian
@@ -188,8 +191,8 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
   # skipping boundary integrals
   # use nrm2, flux_jfacL from interface terms above
   if opts["homotopy_addBoundaryIntegrals"]
-    qg = eqn.params_complex.qg  # boundary state
-    q_faceLc = eqn.params_complex.q_faceL
+    qg = zeros(Complex128, mesh.numDofPerNode)
+    q_faceLc = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerFace)
     h = 1e-20
     pert = Complex128(0, h)
     for i=1:mesh.numBoundaryFaces
@@ -220,7 +223,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 
           # calculate dissipation
           for k=1:mesh.numDofPerNode
-            flux_jacL[k, m, j] = lambda*imag(0.5*lambda_max*(q_j[k] - qg[k]))/h
+            flux_dotL[k, m, j] = lambda*imag(0.5*lambda_max*(q_j[k] - qg[k]))/h
           end
 
           q_j[m] -= pert
@@ -228,7 +231,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
       end  # end loop j
 
       
-      boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_jacL, res_jac,
+      boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_dotL, res_jac,
                                SummationByParts.Subtract())
 
       assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
@@ -240,7 +243,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   #---------------------------------------------------------------------------- 
   # shared face integrals
-  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_jacL, flux_jacR
+  # use q_faceL, q_faceR, lambda_dotL, lambda_dotR, flux_dotL, flux_dotR
   # from above
 
   workarr = zeros(q_faceR)
@@ -276,21 +279,21 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
         for k=1:mesh.numDofPerNode
           # flux[k, j] = 0.5*lambda_max*(qL_j[k] - qR_j[k])
           for m=1:mesh.numDofPerNode
-            flux_jacL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
-            flux_jacR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
+            flux_dotL[m, k, j] = 0.5*lambda_dotL[k]*(qL_j[m] - qR_j[m])
+            flux_dotR[m, k, j] = 0.5*lambda_dotR[k]*(qL_j[m] - qR_j[m])
           end
-          flux_jacL[k, k, j] += 0.5*lambda_max
-          flux_jacR[k, k, j] -= 0.5*lambda_max
+          flux_dotL[k, k, j] += 0.5*lambda_max
+          flux_dotR[k, k, j] -= 0.5*lambda_max
         end
       end  # end loop j
 
       # multiply by lambda here and it will get carried through
       # interiorFaceIntegrate_jac
-      scale!(flux_jacL, lambda)
-      scale!(flux_jacR, lambda)
+      scale!(flux_dotL, lambda)
+      scale!(flux_dotR, lambda)
 
       # compute dR/dq
-      interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_jacL, flux_jacR,
+      interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 
@@ -311,145 +314,6 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 end
 
 
-"""
-  Differentiated version of [`getLambdaMax`](@ref)
-
-  **Inputs**
-
-   * params: ParamType
-   * qL: vector of conservative variables at a node
-   * dir: direction vector (can be scaled)
-
-  **Inputs/Outputs**
-
-   * qL_dot: derivative of lambda max wrt qL
-
-  **Outputs**
-
-   * lambda_max: maximum eigenvalue
-"""
-function getLambdaMax_diff(params::ParamType{2},
-                      qL::AbstractVector{Tsol},
-                      dir::AbstractVector{Tmsh},
-                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
-
-  gamma = params.gamma
-  Un = zero(Tres)
-  dA = zero(Tmsh)
-  rhoLinv = 1/qL[1]
-  rhoLinv_dotL1 = -rhoLinv*rhoLinv
-
-  p_dot = params.p_dot
-  pL = calcPressure_diff(params, qL, p_dot)
-  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
-  t1 = gamma*rhoLinv/(2*aL)
-  t2 = gamma*pL/(2*aL)
-  aL_dotL1 = t1*p_dot[1] + t2*rhoLinv_dotL1
-  aL_dotL2 = t1*p_dot[2]
-  aL_dotL3 = t1*p_dot[3]
-  aL_dotL4 = t1*p_dot[4]
-
-
-  Un_dotL1 = dir[1]*qL[2]*rhoLinv_dotL1
-  Un_dotL2 = dir[1]*rhoLinv
-  Un += dir[1]*qL[2]*rhoLinv
-
-  Un_dotL1 += dir[2]*qL[3]*rhoLinv_dotL1
-  Un_dotL3 = dir[2]*rhoLinv
-  Un += dir[2]*qL[3]*rhoLinv
-
-  for i=1:2
-    dA += dir[i]*dir[i]
-  end
-
-  dA = sqrt(dA)
-
-  lambda_max = absvalue(Un) + dA*aL
-  lambda_dot[1] = dA*aL_dotL1
-  lambda_dot[2] = dA*aL_dotL2
-  lambda_dot[3] = dA*aL_dotL3
-  lambda_dot[4] = dA*aL_dotL4
-
-  if Un > 0
-    lambda_dot[1] += Un_dotL1
-    lambda_dot[2] += Un_dotL2
-    lambda_dot[3] += Un_dotL3
-  else
-    lambda_dot[1] -= Un_dotL1
-    lambda_dot[2] -= Un_dotL2
-    lambda_dot[3] -= Un_dotL3
-  end
-
-
-  return lambda_max
-end
-
-
-
-function getLambdaMax_diff(params::ParamType{3},
-                      qL::AbstractVector{Tsol},
-                      dir::AbstractVector{Tmsh},
-                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres, Tmsh}
-
-  gamma = params.gamma
-  Un = zero(Tres)
-  dA = zero(Tmsh)
-  rhoLinv = 1/qL[1]
-  rhoLinv_dotL1 = -rhoLinv*rhoLinv
-
-  p_dot = params.p_dot
-  pL = calcPressure_diff(params, qL, p_dot)
-  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
-  t1 = gamma*rhoLinv/(2*aL)
-  t2 = gamma*pL/(2*aL)
-  aL_dotL1 = t1*p_dot[1] + t2*rhoLinv_dotL1
-  aL_dotL2 = t1*p_dot[2]
-  aL_dotL3 = t1*p_dot[3]
-  aL_dotL4 = t1*p_dot[4]
-  aL_dotL5 = t1*p_dot[5]
-
-
-  Un_dotL1 = dir[1]*qL[2]*rhoLinv_dotL1
-  Un_dotL2 = dir[1]*rhoLinv
-  Un += dir[1]*qL[2]*rhoLinv
-
-  Un_dotL1 += dir[2]*qL[3]*rhoLinv_dotL1
-  Un_dotL3 = dir[2]*rhoLinv
-  Un += dir[2]*qL[3]*rhoLinv
-
-  Un_dotL1 += dir[3]*qL[4]*rhoLinv_dotL1
-  Un_dotL4 = dir[3]*rhoLinv
-  Un += dir[3]*qL[4]*rhoLinv
-
-
-  for i=1:3
-    dA += dir[i]*dir[i]
-  end
-
-  dA = sqrt(dA)
-
-  lambda_max = absvalue(Un) + dA*aL
-  lambda_dot[1] = dA*aL_dotL1
-  lambda_dot[2] = dA*aL_dotL2
-  lambda_dot[3] = dA*aL_dotL3
-  lambda_dot[4] = dA*aL_dotL4
-  lambda_dot[5] = dA*aL_dotL5
-
-  if Un > 0
-    lambda_dot[1] += Un_dotL1
-    lambda_dot[2] += Un_dotL2
-    lambda_dot[3] += Un_dotL3
-    lambda_dot[4] += Un_dotL4
-  else
-    lambda_dot[1] -= Un_dotL1
-    lambda_dot[2] -= Un_dotL2
-    lambda_dot[3] -= Un_dotL3
-    lambda_dot[4] -= Un_dotL4
-  end
-
-
-  return lambda_max
-end
 
 """
   Differentiated version of [`getLambdaMaxSimple`](@ref)
@@ -472,7 +336,7 @@ function getLambdaMaxSimple_diff(params::ParamType{Tdim},
                       lambda_dotL::AbstractVector{Tres},
                       lambda_dotR::AbstractVector{Tres}) where {Tsol, Tres, Tmsh, Tdim}
 
-  q_avg = params.q_vals3
+  q_avg = params.get_lambda_max_simple_data.q_avg
 
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])

@@ -15,6 +15,7 @@ arg_dict = Dict{String, Any}(
 "jac_method" => 1,
 "order" => 1,
 "IC_name" => "ICRho1E2U3",
+"Volume_flux_name" => "StandardFlux",
 "numBC" => 1,
 "BC1" => [ 0 ],  #??? - perhaps this mesh is so old it didn't have proper geo. classification?
 "BC1_name" => "Rho1E2U3BC",

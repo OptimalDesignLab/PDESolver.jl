@@ -1,15 +1,26 @@
+mutable struct SRC0 <: SRCType
+end
+
+function (obj::SRC0)(
+              src::AbstractVector,
+              xyz::AbstractVector, 
+              params::ParamType{3}, 
+              t)
+ 
+  error("SRC0 should never be called")
+end
 
 #
 # Given PRIMITIVE variable and its 1st order and 
 # 2nd order derivatives, calculate the source terms 
 #
-function calcMmsSource(params::ParamType{3, :conservative},
+function calcMmsSource(params::ParamType{3},
                        q::AbstractArray{Tsrc, 1},
                        q_x::AbstractArray{Tsrc, 2},
                        q_xx::AbstractArray{Tsrc, 3},
                        src::AbstractArray{Tsrc, 1}) where Tsrc
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma - 1
 
   p   = q[1]*q[5]/gamma
   E   = q[5]/(gamma*gamma_1) + 0.5*(q[2]*q[2] + q[3]*q[3] + q[4]*q[4])
@@ -112,7 +123,7 @@ function calcMmsSource(params::ParamType{3, :conservative},
 
   # these coefficients are from nondimensionalization.
   Pr = 0.72
-  c1 = params.Ma/params.Re
+  c1 = params.euler_params.Ma/params.Re
   c2 = c1/(Pr*gamma_1)
   src[2] -= c1*(txx_x + txy_y + txz_z)
   src[3] -= c1*(tyx_x + tyy_y + tyz_z)
@@ -125,13 +136,13 @@ function calcMmsSource(params::ParamType{3, :conservative},
   return nothing
 end
 
-function calcMmsSource(params::ParamType{2, :conservative},
+function calcMmsSource(params::ParamType{2},
                        q::AbstractArray{Tsrc, 1},
                        q_x::AbstractArray{Tsrc, 2},
                        q_xx::AbstractArray{Tsrc, 3},
                        src::AbstractArray{Tsrc, 1}) where Tsrc
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma - 1
 
   p   = q[1]*q[4]/gamma
   E   = q[4]/(gamma*gamma_1) + 0.5*(q[2]*q[2] + q[3]*q[3])
@@ -189,7 +200,7 @@ function calcMmsSource(params::ParamType{2, :conservative},
   tyx_y = txy_y
 
   Pr = 0.72
-  c1 = params.Ma/params.Re
+  c1 = params.euler_params.Ma/params.Re
   c2 = c1/(Pr*gamma_1)
   src[2] -= c1*(txx_x + txy_y)
   src[3] -= c1*(tyx_x + tyy_y)
@@ -214,18 +225,18 @@ function (obj::SRCPolynomial)(
 
   Tdim = 3
   sigma = 0.01
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   beta = params.sideslip_angle
   q = zeros(typeof(src[1]), Tdim+2)
   q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef = zeros(typeof(src[1]), Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma * cos(beta) * cos(aoa)
-  qRef[3] = params.Ma * sin(beta) * -1
-  qRef[4] = params.Ma * cos(beta) * sin(aoa)
+  qRef[2] = params.euler_params.Ma * cos(beta) * cos(aoa)
+  qRef[3] = params.euler_params.Ma * sin(beta) * -1
+  qRef[4] = params.euler_params.Ma * cos(beta) * sin(aoa)
   qRef[5] = 1.0
 
   x = xyz[1]
@@ -362,16 +373,16 @@ function (obj::SRCPolynomial)(
               t)
   Tdim = 2
   sigma = 0.01
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   q = zeros(typeof(src[1]), Tdim+2)
   q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef = zeros(typeof(src[1]), Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
   x = coords[1]
   y = coords[2]
@@ -448,18 +459,18 @@ function (obj::SRCChannel)(
               t)
   Tdim = 3
   sigma = 0.01
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   beta = params.sideslip_angle
   qRef = zeros(typeof(src[1]), Tdim+2)
   q = zeros(typeof(src[1]), Tdim+2)
   q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma * cos(beta) * cos(aoa)
-  qRef[3] = params.Ma * sin(beta) * -1
-  qRef[4] = params.Ma * cos(beta) * sin(aoa)
+  qRef[2] = params.euler_params.Ma * cos(beta) * cos(aoa)
+  qRef[3] = params.euler_params.Ma * sin(beta) * -1
+  qRef[4] = params.euler_params.Ma * cos(beta) * sin(aoa)
   qRef[5] = 1.0
 
   x = xyz[1]
@@ -559,16 +570,16 @@ function (obj::SRCChannel)(
   Tdim = 2
   pi = 3.14159265358979323846264338
   sigma = 0.1
-  gamma = params.gamma
-  gamma_1 = params.gamma_1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma_1
+  aoa = params.euler_params.aoa
   q = zeros(typeof(src[1]), Tdim+2)
   q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef = zeros(typeof(src[1]), Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
   x = coords[1]
   y = coords[2]
@@ -663,16 +674,16 @@ function (obj::SRCDoubleSquare)(
   Tdim = 2
   pi = 3.14159265358979323846264338
   sigma = 0.01
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma - 1
+  aoa = params.euler_params.aoa
   q = zeros(typeof(src[1]), Tdim+2)
   q_x = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef = zeros(typeof(src[1]), Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
   x = coords[1]
   y = coords[2]
@@ -760,18 +771,18 @@ function (obj::SRCTrigonometric)(
               t)
   Tdim = 3
   sigma = 0.0001
-  gamma = params.gamma
-  gamma_1 = params.gamma - 1
-  aoa = params.aoa
+  gamma = params.euler_params.gamma
+  gamma_1 = params.euler_params.gamma - 1
+  aoa = params.euler_params.aoa
   beta = params.sideslip_angle
   qRef = zeros(typeof(src[1]), Tdim+2)
   q    = zeros(typeof(src[1]), Tdim+2)
   q_x  = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma * cos(beta) * cos(aoa)
-  qRef[3] = params.Ma * sin(beta) * -1
-  qRef[4] = params.Ma * cos(beta) * sin(aoa)
+  qRef[2] = params.euler_params.Ma * cos(beta) * cos(aoa)
+  qRef[3] = params.euler_params.Ma * sin(beta) * -1
+  qRef[4] = params.euler_params.Ma * cos(beta) * sin(aoa)
   qRef[5] = 1.0
 
   xyz1 = 1 * pi * xyz
@@ -913,16 +924,16 @@ function (obj::SRCTrigonometric)(
               t)
   Tdim = 2
   sigma = 0.01
-  gamma = params.gamma
+  gamma = params.euler_params.gamma
   gamma_1 = gamma - 1.0
-  aoa = params.aoa
+  aoa = params.euler_params.aoa
   q    = zeros(typeof(src[1]), Tdim+2)
   q_x  = zeros(typeof(src[1]), Tdim, Tdim+2)
   q_xx = zeros(typeof(src[1]), Tdim, Tdim, Tdim+2)
   qRef = zeros(typeof(src[1]), Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
   x = coords[1]
   y = coords[2]
@@ -1001,3 +1012,29 @@ function (obj::SRCTrigonometric)(
   calcMmsSource(params, q, q_x, q_xx, src)
   return nothing
 end
+
+global const SRCDict = Dict{String, SRCType}(
+  "SRC0" => SRC0(),
+  "SRCTrigonometric" => SRCTrigonometric(),
+  "SRCDoubleSquare" => SRCDoubleSquare(),
+  "SRCPolynomial" => SRCPolynomial(),
+  "SRCChannel" => SRCChannel()
+)
+
+
+"""
+### NavierStokesMod.getSRCFunctors
+
+  This function gets the functor specified by opts["SRCname"] and stores
+  it to the equation object.  Currently one 1 source functor is allowed.
+
+"""
+function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractOperator, 
+                        eqn::NSData, opts)
+
+  # currently we only allow 1 source functor
+  eqn.src_func = SRCDict[opts["SRCname"]]
+  return nothing
+end
+
+

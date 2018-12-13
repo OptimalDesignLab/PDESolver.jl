@@ -73,8 +73,8 @@ function test_dg_boundary(mesh, sbp, eqn, opts)
   @testset "----- Testing DG Boundary -----" begin
 
     EulerEquationMod.ICRho1E2U3(mesh, sbp, eqn, opts, eqn.q_vec)
-    EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
-    mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"]
+    EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
+    mesh.bndry_funcs[1:end] = EulerEquationMod.BCDict["Rho1E2U3BC"](mesh, eqn)
 
     # check that the interpolation worked
     for i=1:mesh.numBoundaryFaces
@@ -113,9 +113,6 @@ add_func2!(EulerTests, test_dg_boundary, test_dg_inputfile, [TAG_BC, TAG_SHORTTE
   This functions tests that a uniform flow gives zero residual
 """
 function test_dg_uniform(mesh, sbp, eqn, opts)
-
-  # reset eqn
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
 
   @testset "----- Testing Uniform Channel -----" begin
 

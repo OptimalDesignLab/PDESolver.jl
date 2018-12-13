@@ -1,9 +1,9 @@
 #  IRStab.jl: functions for stabilizing the IR flux
 #             These functions are called from bc_solvers.jl to produce
 #             fluxes that include dissipation terms.
-# It turns out for simplex elements modifying the flux with a dissipation
-# term does not produce an entropy stable discretization, so these functions
-# are not very useful
+
+include("IR_stab_diff.jl")
+
 """
   Computes dq/dv, where q are the conservative variables and v are the
   IR entropy variables.  This is equiavlent to calcA0 scaled by gamma_1,
@@ -109,161 +109,149 @@ end
   return nothing
 end
 
-
-
 """
-  This function computes the entropy dissipation term using Lax-Friedrich
-  type dissipation.  The term is evaluated using simple averaging of
-  qL and qR.  The term is subtracted off of F.
-
-  This function is dimension agnostic, but only works for conservative
-  variables.
-
-  Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
+  Gets inverse matrix of [`getIRA0`](@ref)
 """
-function getEntropyLFStab(
-                      params::ParamType{Tdim, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
+function getIRA0inv(params::ParamType{2}, q::AbstractArray{Tsol, 1},
+                    A0inv::AbstractMatrix{Tsol}) where {Tsol}
 
-  q_avg = params.q_vals3
-  for i=1:length(q_avg)
-    q_avg[i] = 0.5*(qL[i] + qR[i])
-  end
-  getEntropyLFStab_inner(params, qL, qR, q_avg, aux_vars, dir, F)
-
-  return nothing
-end
-#=
-"""
-  This function computes the entropy dissipation term using Lax-Wendroff
-  type dissipation.  The term is evaluated using simple averaging of
-  qL and qR.  The term is subtracted off of F.
-
-  This function is dimension agnostic, but only works for conservative
-  variables.
-
-  Aliasing restrictions: params.q_vals3, see also getEntropyLFStab_inner
-"""
-function getEntropyLWStab(
-                      params::ParamType{Tdim, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
-
-  q_avg = params.q_vals3
-  for i=1:length(q_avg)
-    q_avg[i] = 0.5*(qL[i] + qR[i])
-  end
-  getEntropyLWStab_inner(params, qL, qR, q_avg, aux_vars, dir, F)
-
-  return nothing
-end
-=#
-
-
-"""
-  Updates the vector F with the stabilization term from Carpenter, Fisher,
-  Nielsen, Frankel, Entrpoy stable spectral collocation schemes for the 
-  Navier-Stokes equatiosn: Discontinuous interfaces.  The term is subtracted
-  off from F.
-
-  The q_avg vector should some average of qL and qR, but the type of 
-  averaging is left up to the user.
-
-  This function is agnostic to dimension, but only works for conservative
-  variables.
-
-  Aliasing: from params the following arrays are used: A0, v_vals
-              v_vals2.
-
-"""
-function getEntropyLFStab_inner(
-                      params::ParamType{Tdim, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
-#  println("entered getEntropyLFStab_inner")
-
-  A0 = params.A0
-  vL = params.v_vals
-  vR = params.v_vals2
   gamma = params.gamma
-  gamma_1inv = 1/params.gamma_1
-  p = calcPressure(params, q_avg)
+  gamma_1 = params.gamma_1
+  gamma_1i = 1/gamma_1
 
-  convertToIR(params, qL, vL)
-  convertToIR(params, qR, vR)
+  k1 = 0.5*(q[2]^2 + q[3]^2)/q[1]
+  k1_dot1 = -k1/q[1]
+  k1_dot2 = q[2]/q[1]
+  k1_dot3 = q[3]/q[1]
+#  k1_dot4 = 0
 
-  for i=1:length(vL)
-    vL[i] = vR[i] - vL[i]
-  end
+  rho_int = q[4] - k1
+  rho_int_dot1 = -k1_dot1
+  rho_int_dot2 = -k1_dot2
+  rho_int_dot3 = -k1_dot3
+  rho_int_dot4 =  1
 
-#  println("delta v = \n", vL)
-  # common-subexpression-elimination has a strong influence on the weak minded
-  getIRA0(params, q_avg, A0)
+  s = log(gamma_1*rho_int/(q[1]^gamma))
+  s_dot1 = rho_int_dot1/rho_int - gamma/q[1]
+  s_dot2 = rho_int_dot2/rho_int
+  s_dot3 = rho_int_dot3/rho_int
+  s_dot4 = rho_int_dot4/rho_int
 
-  # multiply into vR
-  smallmatvec!(A0, vL, vR)
+  fac = 1.0/rho_int
+  t1 = -fac*fac
+  fac_dot1 = t1*rho_int_dot1
+  fac_dot2 = t1*rho_int_dot2
+  fac_dot3 = t1*rho_int_dot3
+  fac_dot4 = t1*rho_int_dot4
 
-  # calculate lambda_max at average state
-  rhoinv = 1/q_avg[1]
-  a = sqrt(gamma*p*rhoinv)  # speed of sound
+  t2 = (rho_int*(gamma + 1 - s) - q[4])
 
-  Un = zero(Tres)
-  dA = zero(Tmsh)
-#  Un = nx*q_avg[2]*rhoinv + ny*q_avg[3]*rhoinv + nz*q_avg[4]*rhoinv
-#  dA = sqrt(nx*nx + ny*ny + nz*nz)
-  for i=1:Tdim
-    Un += dir[i]*q_avg[i+1]*rhoinv
-    dA += dir[i]*dir[i]
-  end
-  dA = sqrt(dA)
-  lambda_max = absvalue(Un) + dA*a
-#=
-  println("qL = \n", qL)
-  println("qR = \n", qR)
-  println("q_avg = \n", q_avg)
-  println("dir = \n", dir)
-=#
-  # the two eigenvalues are Un + dA*a and Un - dA*a, so depending on
-  # the sign of Un, the maximum is abs(Un) + dA*a
-#  lambda_max1 = absvalue(Un) + dA*a
-#  println("lambda_max1 = ", lambda_max1)
-#=
-  # use the Roe solver code
-  rhoA = absvalue(Un) + dA*a
+  A0inv[1, 1] = (rho_int_dot1*(gamma + 1) - (rho_int*s_dot1 + s*rho_int_dot1))*fac*gamma_1i + t2*fac_dot1*gamma_1i
+  A0inv[2, 1] = q[2]*fac_dot1*gamma_1i
+  A0inv[3, 1] = q[3]*fac_dot1*gamma_1i
+  A0inv[4, 1] = -(fac + q[1]*fac_dot1)*gamma_1i
 
-  #=
-  lambda1 = Un + dA*a
-  lambda2 = Un - dA*a
-  lambda3 = Un
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
-  tau = 1
-  lambda1 = (tau*max(absvalue(lambda1),sat_Vn *rhoA) - lambda1)
-  lambda2 = (tau*max(absvalue(lambda2),sat_Vn *rhoA) - lambda2)
-  lambda3 = (tau*max(absvalue(lambda3),sat_Vl *rhoA) - lambda3)
-  lambda_max1 = max(lambda1, lambda2)
-  lambda_max1 = max(lambda_max1, lambda3)
-  =#
+  A0inv[1, 2] = ( (rho_int_dot2*(gamma + 1) - (rho_int*s_dot2 +
+                   s*rho_int_dot2))*fac + fac_dot2*t2)*gamma_1i
+  A0inv[2, 2] = (fac + q[2]*fac_dot2)*gamma_1i
+  A0inv[3, 2] = q[3]*fac_dot2*gamma_1i
+  A0inv[4, 2] = -(q[1]*fac_dot2)*gamma_1i
 
-  # DEBUGGING: try definition from Carpenters paper
+  A0inv[1, 3] = ( (rho_int_dot3*(gamma + 1) - (rho_int*s_dot3 +
+                   s*rho_int_dot3))*fac + fac_dot3*t2)*gamma_1i
+  A0inv[2, 3] = q[2]*fac_dot3*gamma_1i
+  A0inv[3, 3] = (fac + q[3]*fac_dot3)*gamma_1i
+  A0inv[4, 3] = -(q[1]*fac_dot3)*gamma_1i
 
-#  println("Un = ", Un, ", a = ", a, ", dA = ", dA)
-#  lambda_max2 = getLambdaMax(params, qL, qR, dir)
-#  println("lambda_max1 = ", lambda_max1, ", lambda_max2 = ", lambda_max2)
-  lambda_max = lambda_max1
-=#
-#  println("lambda_max = ", lambda_max)
-  fac = 1
-  for i=1:length(vR)
-    F[i] -= fac* 0.5*lambda_max*vR[i]
-  end
+  A0inv[1, 4] = ( (rho_int_dot4*(gamma + 1) - (rho_int*s_dot4 +
+                   s*rho_int_dot4) - 1)*fac + fac_dot4*t2)*gamma_1i
+  A0inv[2, 4] = q[2]*fac_dot4*gamma_1i
+  A0inv[3, 4] = q[3]*fac_dot4*gamma_1i
+  A0inv[4, 4] = -(q[1]*fac_dot4)*gamma_1i
 
   return nothing
 end
+
+function getIRA0inv(params::ParamType{3}, q::AbstractArray{Tsol, 1},
+                    A0inv::AbstractMatrix{Tsol}) where {Tsol}
+
+  gamma = params.gamma
+  gamma_1 = params.gamma_1
+  gamma_1i = 1/gamma_1
+
+  k1 = 0.5*(q[2]^2 + q[3]^2 + q[4]^2)/q[1]
+  k1_dot1 = -k1/q[1]
+  k1_dot2 = q[2]/q[1]
+  k1_dot3 = q[3]/q[1]
+  k1_dot4 = q[4]/q[1]
+#  k1_dot4 = 0
+
+  rho_int = q[5] - k1
+  rho_int_dot1 = -k1_dot1
+  rho_int_dot2 = -k1_dot2
+  rho_int_dot3 = -k1_dot3
+  rho_int_dot4 = -k1_dot4
+  rho_int_dot5 =  1
+
+  s = log(gamma_1*rho_int/(q[1]^gamma))
+  s_dot1 = rho_int_dot1/rho_int - gamma/q[1]
+  s_dot2 = rho_int_dot2/rho_int
+  s_dot3 = rho_int_dot3/rho_int
+  s_dot4 = rho_int_dot4/rho_int
+  s_dot5 = rho_int_dot5/rho_int
+
+  fac = 1.0/rho_int
+  t1 = -fac*fac
+  fac_dot1 = t1*rho_int_dot1
+  fac_dot2 = t1*rho_int_dot2
+  fac_dot3 = t1*rho_int_dot3
+  fac_dot4 = t1*rho_int_dot4
+  fac_dot5 = t1*rho_int_dot5
+
+  t2 = (rho_int*(gamma + 1 - s) - q[5])
+
+  A0inv[1, 1] = (rho_int_dot1*(gamma + 1) - (rho_int*s_dot1 + s*rho_int_dot1))*fac*gamma_1i + t2*fac_dot1*gamma_1i
+  A0inv[2, 1] = q[2]*fac_dot1*gamma_1i
+  A0inv[3, 1] = q[3]*fac_dot1*gamma_1i
+  A0inv[4, 1] = q[4]*fac_dot1*gamma_1i
+  A0inv[5, 1] = -(fac + q[1]*fac_dot1)*gamma_1i
+
+  A0inv[1, 2] = ( (rho_int_dot2*(gamma + 1) - (rho_int*s_dot2 +
+                   s*rho_int_dot2))*fac + fac_dot2*t2)*gamma_1i
+  A0inv[2, 2] = (fac + q[2]*fac_dot2)*gamma_1i
+  A0inv[3, 2] = q[3]*fac_dot2*gamma_1i
+  A0inv[4, 2] = q[4]*fac_dot2*gamma_1i
+  A0inv[5, 2] = -(q[1]*fac_dot2)*gamma_1i
+
+  A0inv[1, 3] = ( (rho_int_dot3*(gamma + 1) - (rho_int*s_dot3 +
+                   s*rho_int_dot3))*fac + fac_dot3*t2)*gamma_1i
+  A0inv[2, 3] = q[2]*fac_dot3*gamma_1i
+  A0inv[3, 3] = (fac + q[3]*fac_dot3)*gamma_1i
+  A0inv[4, 3] = q[4]*fac_dot3*gamma_1i
+  A0inv[5, 3] = -(q[1]*fac_dot3)*gamma_1i
+
+  A0inv[1, 4] = (rho_int_dot4*(gamma + 1) - (rho_int*s_dot4 + s*rho_int_dot4))*fac*gamma_1i + t2*fac_dot4*gamma_1i
+  A0inv[2, 4] = q[2]*fac_dot4*gamma_1i
+  A0inv[3, 4] = q[3]*fac_dot4*gamma_1i
+  A0inv[4, 4] = (fac + q[4]*fac_dot4)*gamma_1i
+  A0inv[5, 4] = -(q[1]*fac_dot4)*gamma_1i
+
+
+  A0inv[1, 5] = ( (rho_int_dot5*(gamma + 1) - (rho_int*s_dot5 +
+                   s*rho_int_dot5) - 1)*fac + fac_dot5*t2)*gamma_1i
+  A0inv[2, 5] = q[2]*fac_dot5*gamma_1i
+  A0inv[3, 5] = q[3]*fac_dot5*gamma_1i
+  A0inv[4, 5] = q[4]*fac_dot5*gamma_1i
+  A0inv[5, 5] = -(q[1]*fac_dot5)*gamma_1i
+
+  return nothing
+end
+
+
+
+
+
+
 
 function getLambdaMax(params::ParamType{Tdim}, 
     qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
@@ -318,7 +306,6 @@ end
   Outputs:
     lambda_max: eigenvalue of maximum magnitude
 
-  Aliasing restrictions: params.q_vals3 must be unused
 """
 function getLambdaMaxSimple(params::ParamType{Tdim}, 
                       qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
@@ -327,7 +314,8 @@ function getLambdaMaxSimple(params::ParamType{Tdim},
 
   gamma = params.gamma
   Tres = promote_type(Tsol, Tmsh)
-  q_avg = params.q_vals3
+
+  q_avg = params.get_lambda_max_simple_data.q_avg
 
   for i=1:length(q_avg)
     q_avg[i] = 0.5*(qL[i] + qR[i])
@@ -395,77 +383,3 @@ function getLambdaMaxRoe(params::ParamType{Tdim},
 
   return lambda_max1
 end
-
-#=
-"""
-  Updates the vector F with the stabilization term from Carpenter, Fisher,
-  Nielsen, Frankel, Entrpoy stable spectral collocation schemes for the 
-  Navier-Stokes equatiosn: Discontinuous interfaces.  The term is subtracted
-  off from F.
-
-  The q_avg vector should some average of qL and qR, but the type of 
-  averaging is left up to the user.
-
-  This function is agnostic to dimension, but only works for conservative
-  variables.
-
-  Aliasing: from params the following arrays are used: A0, v_vals
-              v_vals2, Lambda, S2, res_vals1, res_vals2
-
-"""
-function getEntropyLWStab_inner(
-                      params::ParamType{Tdim, :conservative}, 
-                      qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
-                      q_avg::AbstractArray{Tsol}, aux_vars::AbstractArray{Tres},
-                      dir::AbstractArray{Tmsh},  F::AbstractArray{Tres,1}) where {Tmsh, Tsol, Tres, Tdim}
-#  println("entered getEntropyLFStab_inner")
-
-  Y = params.A0  # eigenvectors of flux jacobian
-  S2 = params.S2  # diagonal scaling matrix squared
-                       # S is defined s.t. (YS)*(YS).' = A0
-  Lambda = params.Lambda  # diagonal matrix of eigenvalues
-  vL = params.v_vals  # entropy variables
-  vR = params.v_vals2
-  tmp1 = params.res_vals1  # work vectors
-  tmp2 = params.res_vals2
-  gamma = params.gamma
-  gamma_1inv = 1/params.gamma_1
-  p = calcPressure(params, q_avg)  # TODO: remove this?
-
-  convertToEntropy(params, qL, vL)
-  convertToEntropy(params, qR, vR)
-
-  for i=1:length(vL)
-    vL[i] = gamma_1inv*(vR[i] - vL[i]) # scale by 1/gamma_1 to make IR entropy
-                                       # variables, now vL has vL - vR
-  end
-
-  # get quantities
-  calcEvecsx(params, q_avg, Y)
-  calcEvalsx(params, q_avg, Lambda)
-  calcEScalingx(params, q_avg, S2)
-  ni = dir[1]
-
-  # calculate term in current direction
-  applyEntropyLWUpdate(Y, Lambda, S2, vL, tmp1, tmp2, ni, F)
-
-  calcEvecsy(params, q_avg, Y)
-  calcEvalsy(params, q_avg, Lambda)
-  calcEScalingy(params, q_avg, S2)
-
-  applyEntropyLWUpdate(Y, Lambda, S2, vL, tmp1, tmp2, ni, F)
-
-
-  if Tdim == 3  # three cheers for static analysis
-    calcEvecsz(params, q_avg, Y)
-    calcEvalsz(params, q_avg, Lambda)
-    calcEScalingz(params, q_avg, S2)
-
-    applyEntropyLWUpdate(Y, Lambda, S2, vL, tmp1, tmp2, ni, F)
-  end
-
-
-  return nothing
-end
-
-=#

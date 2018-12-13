@@ -21,7 +21,7 @@ function test_lowlevel_mesh(mesh, sbp, eqn, opts)
     @test ( mesh.numNodesPerElement )== 3
     @test ( mesh.numNodesPerType )== [1, 0 , 0]
 
-    @test ( mesh.bndry_funcs[1] )== EulerEquationMod.Rho1E2U3BC()
+    @test ( mesh.bndry_funcs[1] )== EulerEquationMod.Rho1E2U3BC(mesh, eqn)
     @test ( mesh.bndryfaces[1].element )== 1
     @test ( mesh.bndryfaces[1].face )== 3
     @test ( mesh.bndryfaces[2].element )== 2
@@ -210,6 +210,7 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
      @test isapprox( A04_code[i], A03[i]) atol=1e-10
    end
 
+   test_IRA0inv(eqn.params, q)
 
       # test A1
     A1 = zeros(4,4)
@@ -263,6 +264,43 @@ function test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 
   return nothing
 end  # end function
+
+function test_IRA0inv(params, q)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # test calcIRA0inv
+  q3 = zeros(Complex128, length(q))
+  copy!(q3, real(q))
+  
+  numDofPerNode = length(q)
+
+  qe = zeros(q3)
+  A0inv = zeros(Complex128, numDofPerNode, numDofPerNode)
+  A0invc = zeros(Complex128, numDofPerNode, numDofPerNode)
+
+  for i=1:numDofPerNode
+    q3[i] += pert
+    EulerEquationMod.convertToIR_(params, q3, qe)
+    q3[i] -= pert
+    A0invc[:, i] = imag(qe)/h
+  end
+
+  EulerEquationMod.getIRA0inv(params, q3, A0inv)
+
+  @test maximum(abs.(A0inv - A0invc)) < 1e-12
+
+  # test against the inverse of A0
+  A0 = zeros(A0inv)
+  EulerEquationMod.getIRA0(params, q3, A0)
+  A0inv2 = inv(A0)
+  @assert maximum(abs.(A0inv - A0inv2)) < 1e-9
+
+  return nothing
+end
+
+
 
 #test_lowlevel_entropyvars(mesh, sbp, eqn, opts)
 add_func2!(EulerTests, test_lowlevel_entropyvars, "input_vals_channel.jl", [TAG_ENTROPYVARS, TAG_SHORTTEST])
@@ -535,7 +573,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm2, sview(flux_parametric, :, 2))
 
 
-    func1 = EulerEquationMod.isentropicVortexBC()
+    func1 = EulerEquationMod.isentropicVortexBC(mesh, eqn)
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm, F)
     calcBCNormal(eqn.params, dxidx, dir, nrm_xy)
     func1(eqn.params, q, aux_vars, coords, nrm_xy, F_roe,)
@@ -543,7 +581,7 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     @test isapprox( F_roe, F) 
 
     q[3] = 0  # make flow parallel to wall
-    func1 = EulerEquationMod.noPenetrationBC()
+    func1 = EulerEquationMod.noPenetrationBC(mesh, eqn)
     nrm1 = [dxidx[1,1], dxidx[1,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
     nrm2 = [dxidx[2,1], dxidx[2,2]]
@@ -556,13 +594,13 @@ function test_lowlevel_boundary(mesh, sbp, eqn, opts)
     @test isapprox( F_roe, F) 
 
     # test the entropy stable BC
-    func2 = EulerEquationMod.noPenetrationESBC()
+    func2 = EulerEquationMod.noPenetrationESBC(mesh, eqn)
     func2(eqn.params, q, aux_vars, coords, nrm_xy, F_roe)
 
     @test isapprox( F_roe, F) 
 
     EulerEquationMod.calcRho1Energy2U3(eqn.params, coords, q)
-    func1 = EulerEquationMod.Rho1E2U3BC()
+    func1 = EulerEquationMod.Rho1E2U3BC(mesh, eqn)
     nrm1 = [dxidx[1,1], dxidx[1,2]]
     EulerEquationMod.calcEulerFlux(eqn.params, q, aux_vars, nrm1, sview(flux_parametric, :, 1))
     nrm2 = [dxidx[2,1], dxidx[2,2]]

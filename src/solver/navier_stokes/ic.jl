@@ -21,20 +21,20 @@ Aliasing restrictions: none.
 """->
 
 function ICPolynomial(mesh::AbstractMesh{Tmsh}, 
-                      sbp::AbstractSBP{Tsbp}, 
-                      eqn::EulerData{Tsol, Tsol, 3}, 
+                      sbp::AbstractOperator{Tsbp}, 
+                      eqn::NSData{Tsol, Tsol, 3}, 
                       opts, 
                       u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   sigma = 0.01
   params = eqn.params
-  gamma = params.gamma
-	gamma_1 = params.gamma_1
-	aoa = params.aoa
+  gamma = params.euler_params.gamma
+	gamma_1 = params.euler_params.gamma_1
+	aoa = params.euler_params.aoa
   beta = eqn.params.sideslip_angle
 	rhoInf = 1.0
-  uInf = eqn.params.Ma * cos(beta) * cos(aoa)
-  vInf = eqn.params.Ma * sin(beta) * -1
-  wInf = eqn.params.Ma * cos(beta) * sin(aoa)
+  uInf = eqn.params.euler_params.Ma * cos(beta) * cos(aoa)
+  vInf = eqn.params.euler_params.Ma * sin(beta) * -1
+  wInf = eqn.params.euler_params.Ma * cos(beta) * sin(aoa)
 	TInf = 1.0
 
   numEl = mesh.numEl
@@ -74,23 +74,24 @@ function ICPolynomial(mesh::AbstractMesh{Tmsh},
 end
 
 function ICPolynomial(mesh::AbstractMesh{Tmsh}, 
-                      sbp::AbstractSBP{Tsbp}, 
-                      eqn::EulerData{Tsol, Tsol, 2}, 
+                      sbp::AbstractOperator{Tsbp}, 
+                      eqn::NSData{Tsol, Tsol, 2}, 
                       opts, 
                       u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
   # this is a template for all other initial conditions
+
   sigma   = 0.01
   Tdim    = 2
   params  = eqn.params
-  gamma   = params.gamma
+  gamma   = params.euler_params.gamma
   gamma_1 = gamma - 1.0
-  aoa     = eqn.params.aoa
+  aoa     = params.euler_params.aoa
   q       = zeros(Float64, Tdim+2)
   qRef    = zeros(Float64, Tdim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
 
   numEl = mesh.numEl
@@ -129,8 +130,8 @@ function ICPolynomial(mesh::AbstractMesh{Tmsh},
 end
 
 function ICChannel(mesh::AbstractMesh{Tmsh}, 
-                   operator::AbstractSBP{Tsbp}, 
-                   eqn::EulerData{Tsol, Tsol, 3}, 
+                   operator::AbstractOperator{Tsbp}, 
+                   eqn::NSData{Tsol, Tsol, 3}, 
                    opts, 
                    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
@@ -139,14 +140,14 @@ function ICChannel(mesh::AbstractMesh{Tmsh},
   sigma = 0.01
   pi = 3.14159265358979323846264338
   params = eqn.params
-  gamma = params.gamma
-	gamma_1 = params.gamma_1
-	aoa = params.aoa
+  gamma = params.euler_params.gamma
+	gamma_1 = params.euler_params.gamma_1
+	aoa = params.euler_params.aoa
   beta = params.sideslip_angle
 	rhoInf = 1.0
-  uInf = params.Ma * cos(beta) * cos(aoa)
-  vInf = params.Ma * sin(beta) * -1
-  wInf = params.Ma * cos(beta) * sin(aoa)
+  uInf = params.euler_params.Ma * cos(beta) * cos(aoa)
+  vInf = params.euler_params.Ma * sin(beta) * -1
+  wInf = params.euler_params.Ma * cos(beta) * sin(aoa)
 	TInf = 1.0
 
   numEl = mesh.numEl
@@ -196,8 +197,8 @@ function ICChannel(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICChannel(mesh::AbstractMesh{Tmsh}, 
-                   operator::AbstractSBP{Tsbp}, 
-                   eqn::EulerData{Tsol, Tsol, 2}, 
+                   operator::AbstractOperator{Tsbp}, 
+                   eqn::NSData{Tsol, Tsol, 2}, 
                    opts, 
                    u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
@@ -206,13 +207,13 @@ function ICChannel(mesh::AbstractMesh{Tmsh},
   params = eqn.params
   sigma = 0.1
   pi = 3.14159265358979323846264338
-  gamma = eqn.params.gamma
+  gamma = eqn.params.euler_params.gamma
   gamma_1 = gamma - 1.0
-  aoa = eqn.params.aoa
+  aoa = eqn.params.euler_params.aoa
   qRef = zeros(Float64, dim+2)
   qRef[1] = 1.0
-  qRef[2] = params.Ma*cos(aoa)
-  qRef[3] = params.Ma*sin(aoa)
+  qRef[2] = params.euler_params.Ma*cos(aoa)
+  qRef[3] = params.euler_params.Ma*sin(aoa)
   qRef[4] = 1.0
 
   numEl = mesh.numEl
@@ -253,8 +254,8 @@ function ICChannel(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICDoubleSquare(mesh::AbstractMesh{Tmsh}, 
-                        operator::AbstractSBP{Tsbp}, 
-                        eqn::EulerData{Tsol, Tsol, 2}, 
+                        operator::AbstractOperator{Tsbp}, 
+                        eqn::NSData{Tsol, Tsol, 2}, 
                         opts, 
                         u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
@@ -263,10 +264,10 @@ function ICDoubleSquare(mesh::AbstractMesh{Tmsh},
   pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0
-  aoa = eqn.params.aoa
+  aoa = eqn.params.euler_params.aoa
   rhoInf = 1.0
-  uInf = eqn.params.Ma*cos(aoa)
-  vInf = eqn.params.Ma*sin(aoa)
+  uInf = eqn.params.euler_params.Ma*cos(aoa)
+  vInf = eqn.params.euler_params.Ma*sin(aoa)
   TInf = 1.0
 
   numEl = mesh.numEl
@@ -332,8 +333,8 @@ function ICDoubleSquare(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICTrigonometric(mesh::AbstractMesh{Tmsh}, 
-                         operator::AbstractSBP{Tsbp}, 
-                         eqn::EulerData{Tsol, Tsol, 2}, 
+                         operator::AbstractOperator{Tsbp}, 
+                         eqn::NSData{Tsol, Tsol, 2}, 
                          opts, 
                          u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values
@@ -341,10 +342,10 @@ function ICTrigonometric(mesh::AbstractMesh{Tmsh},
   sigma = 0.01
   gamma = 1.4
   gamma_1 = gamma - 1.0
-  aoa = eqn.params.aoa
+  aoa = eqn.params.euler_params.aoa
   rhoInf = 1.0
-  uInf = eqn.params.Ma*cos(aoa)
-  vInf = eqn.params.Ma*sin(aoa)
+  uInf = eqn.params.euler_params.Ma*cos(aoa)
+  vInf = eqn.params.euler_params.Ma*sin(aoa)
   TInf = 1.0
 
   numEl = mesh.numEl
@@ -401,8 +402,8 @@ function ICTrigonometric(mesh::AbstractMesh{Tmsh},
 end  # end function
 
 function ICTrigonometric(mesh::AbstractMesh{Tmsh}, 
-                         operator::AbstractSBP{Tsbp}, 
-                         eqn::EulerData{Tsol, Tres, 3}, 
+                         operator::AbstractOperator{Tsbp}, 
+                         eqn::NSData{Tsol, Tres, 3}, 
                          opts, 
                          u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol, Tres}
   # populate u0 with initial values
@@ -411,12 +412,12 @@ function ICTrigonometric(mesh::AbstractMesh{Tmsh},
   pi = 3.14159265358979323846264338
   gamma = 1.4
   gamma_1 = gamma - 1.0
-  aoa = eqn.params.aoa
+  aoa = eqn.params.euler_params.aoa
   beta = eqn.params.sideslip_angle
   rhoInf = 1.0
-  uInf = eqn.params.Ma * cos(beta) * cos(aoa)
-  vInf = eqn.params.Ma * sin(beta) * -1
-  wInf = eqn.params.Ma * cos(beta) * sin(aoa)
+  uInf = eqn.params.euler_params.Ma * cos(beta) * cos(aoa)
+  vInf = eqn.params.euler_params.Ma * sin(beta) * -1
+  wInf = eqn.params.euler_params.Ma * cos(beta) * sin(aoa)
   TInf = 1.0
 
   numEl = mesh.numEl
@@ -465,4 +466,11 @@ function ICTrigonometric(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end  # end function
+
+global const ICDict = Dict{String, Function}(
+  "ICTrigonometric" => ICTrigonometric,
+  "ICPolynomial" => ICPolynomial,
+  "ICChannel" => ICChannel,
+  "ICDoubleSquare" => ICDoubleSquare,
+)
 

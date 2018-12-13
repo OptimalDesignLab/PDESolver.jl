@@ -15,7 +15,7 @@
    * opts:
                  
 """
-function createPetscMat(mesh::AbstractMesh, sbp::AbstractSBP,
+function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts)
 
 #  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
@@ -88,7 +88,7 @@ end
 
   **Inputs**
 """
-function createPetscMatShell(mesh::AbstractMesh, sbp::AbstractSBP,
+function createPetscMatShell(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::AbstractSolutionData, opts)
 
   obj_size = PetscInt(mesh.numDof)  # length of vectors, side length of matrices
@@ -112,7 +112,7 @@ end
    * eqn
    * opts
 """
-function createPetscVec(mesh::AbstractMesh, sbp::AbstractSBP,
+function createPetscVec(mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts)
 
   @assert PetscInitialized()
@@ -140,7 +140,7 @@ end
    * opts
 
 """
-function createPetscPC(mesh::AbstractMesh, sbp::AbstractSBP,
+function createPetscPC(mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts)
 
   @assert PetscInitialized()

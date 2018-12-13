@@ -55,7 +55,7 @@ arg_dict = Dict{Any, Any}(
 "functional_name1" => "lift",
 "functional_bcs1" => [2],
 "num_functionals" => 1,
-"need_adjoint" => false, # Necessary for reverse mode
+"need_adjoint" => true, # Necessary for reverse mode
 
 "exact_soln_func" => "ICFreeStream",
 )

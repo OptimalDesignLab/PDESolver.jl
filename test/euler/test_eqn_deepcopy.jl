@@ -64,7 +64,6 @@ function test_eqn_copy()
     # note: q_face_send and q_face_recv purposes are now served by eqn.shared_data
     @test ( (eqn_copy.shared_data == eqn.shared_data) )== true
     @test ( (eqn_copy.flux_face == eqn.flux_face) )== true
-    @test ( (eqn_copy.flux_sharedface == eqn.flux_sharedface) )== true
     @test ( (eqn_copy.res == eqn.res) )== true
     @test ( (eqn_copy.res_vec == eqn.res_vec) )== true
     @test ( (eqn_copy.Axi == eqn.Axi) )== true
@@ -87,40 +86,12 @@ function test_eqn_copy()
     @test ( (eqn_copy.params.f == eqn.params.f) )== true
     @test ( (eqn_copy.params.t == eqn.params.t) )== true
     @test ( (eqn_copy.params.order == eqn.params.order) )== true
-    @test ( (eqn_copy.params.q_vals == eqn.params.q_vals) )== true
-    @test ( (eqn_copy.params.q_vals2 == eqn.params.q_vals2) )== true
-    @test ( (eqn_copy.params.q_vals3 == eqn.params.q_vals3) )== true
-    @test ( (eqn_copy.params.qg == eqn.params.qg) )== true
-    @test ( (eqn_copy.params.v_vals == eqn.params.v_vals) )== true
-    @test ( (eqn_copy.params.v_vals2 == eqn.params.v_vals2) )== true
-    @test ( (eqn_copy.params.Lambda == eqn.params.Lambda) )== true
-    @test ( (eqn_copy.params.w_vals_stencil == eqn.params.w_vals_stencil) )== true
-    @test ( (eqn_copy.params.w_vals2_stencil == eqn.params.w_vals2_stencil) )== true
-    @test ( (eqn_copy.params.res_vals1 == eqn.params.res_vals1) )== true
-    @test ( (eqn_copy.params.res_vals2 == eqn.params.res_vals2) )== true
-    @test ( (eqn_copy.params.res_vals3 == eqn.params.res_vals3) )== true
-    @test ( (eqn_copy.params.flux_vals1 == eqn.params.flux_vals1) )== true
-    @test ( (eqn_copy.params.flux_vals2 == eqn.params.flux_vals2) )== true
-    @test ( (eqn_copy.params.sat_vals == eqn.params.sat_vals) )== true
-    @test ( (eqn_copy.params.A0 == eqn.params.A0) )== true
-    @test ( (eqn_copy.params.A0inv == eqn.params.A0inv) )== true
-    @test ( (eqn_copy.params.A1 == eqn.params.A1) )== true
-    @test ( (eqn_copy.params.A2 == eqn.params.A2) )== true
-    @test ( (eqn_copy.params.S2 == eqn.params.S2) )== true
-    @test ( (eqn_copy.params.A_mats == eqn.params.A_mats) )== true
-    @test ( (eqn_copy.params.Rmat1 == eqn.params.Rmat1) )== true
-    @test ( (eqn_copy.params.Rmat2 == eqn.params.Rmat2) )== true
-    @test ( (eqn_copy.params.P == eqn.params.P) )== true
-    @test ( (eqn_copy.params.nrm == eqn.params.nrm) )== true
-    @test ( (eqn_copy.params.nrm2 == eqn.params.nrm2) )== true
-    @test ( (eqn_copy.params.nrm3 == eqn.params.nrm3) )== true
     @test ( (eqn_copy.params.h == eqn.params.h) )== true
     @test ( (eqn_copy.params.cv == eqn.params.cv) )== true
     @test ( (eqn_copy.params.R == eqn.params.R) )== true
     @test ( (eqn_copy.params.gamma == eqn.params.gamma) )== true
     @test ( (eqn_copy.params.gamma_1 == eqn.params.gamma_1) )== true
     @test ( (eqn_copy.params.Ma == eqn.params.Ma) )== true
-    @test ( (eqn_copy.params.Re == eqn.params.Re) )== true
     @test ( (eqn_copy.params.aoa == eqn.params.aoa) )== true
     @test ( (eqn_copy.params.rho_free == eqn.params.rho_free) )== true
     @test ( (eqn_copy.params.E_free == eqn.params.E_free) )== true
@@ -140,49 +111,18 @@ function test_eqn_copy()
     @test ( (eqn_copy.params.krylov_itr == eqn.params.krylov_itr) )== true
     @test ( (eqn_copy.params.krylov_type == eqn.params.krylov_type) )== true
     @test ( (eqn_copy.params.Rprime == eqn.params.Rprime) )== true
-    @test ( (eqn_copy.params.A == eqn.params.A) )== true
-    @test ( (eqn_copy.params.B == eqn.params.B) )== true
-    @test ( (eqn_copy.params.iperm == eqn.params.iperm) )== true
     @test ( (eqn_copy.params.time == eqn.params.time) )== true
 
     # testing 2nd level, params_entropy
     @test ( (eqn_copy.params_entropy.f == eqn.params_entropy.f) )== true
     @test ( (eqn_copy.params_entropy.t == eqn.params_entropy.t) )== true
     @test ( (eqn_copy.params_entropy.order == eqn.params_entropy.order) )== true
-    @test ( (eqn_copy.params_entropy.q_vals == eqn.params_entropy.q_vals) )== true
-    @test ( (eqn_copy.params_entropy.q_vals2 == eqn.params_entropy.q_vals2) )== true
-    @test ( (eqn_copy.params_entropy.q_vals3 == eqn.params_entropy.q_vals3) )== true
-    @test ( (eqn_copy.params_entropy.qg == eqn.params_entropy.qg) )== true
-    @test ( (eqn_copy.params_entropy.v_vals == eqn.params_entropy.v_vals) )== true
-    @test ( (eqn_copy.params_entropy.v_vals2 == eqn.params_entropy.v_vals2) )== true
-    @test ( (eqn_copy.params_entropy.Lambda == eqn.params_entropy.Lambda) )== true
-    @test ( (eqn_copy.params_entropy.w_vals_stencil == eqn.params_entropy.w_vals_stencil) )== true
-    @test ( (eqn_copy.params_entropy.w_vals2_stencil == eqn.params_entropy.w_vals2_stencil) )== true
-    @test ( (eqn_copy.params_entropy.res_vals1 == eqn.params_entropy.res_vals1) )== true
-    @test ( (eqn_copy.params_entropy.res_vals2 == eqn.params_entropy.res_vals2) )== true
-    @test ( (eqn_copy.params_entropy.res_vals3 == eqn.params_entropy.res_vals3) )== true
-    @test ( (eqn_copy.params_entropy.flux_vals1 == eqn.params_entropy.flux_vals1) )== true
-    @test ( (eqn_copy.params_entropy.flux_vals2 == eqn.params_entropy.flux_vals2) )== true
-    @test ( (eqn_copy.params_entropy.sat_vals == eqn.params_entropy.sat_vals) )== true
-    @test ( (eqn_copy.params_entropy.A0 == eqn.params_entropy.A0) )== true
-    @test ( (eqn_copy.params_entropy.A0inv == eqn.params_entropy.A0inv) )== true
-    @test ( (eqn_copy.params_entropy.A1 == eqn.params_entropy.A1) )== true
-    @test ( (eqn_copy.params_entropy.A2 == eqn.params_entropy.A2) )== true
-    @test ( (eqn_copy.params_entropy.S2 == eqn.params_entropy.S2) )== true
-    @test ( (eqn_copy.params_entropy.A_mats == eqn.params_entropy.A_mats) )== true
-    @test ( (eqn_copy.params_entropy.Rmat1 == eqn.params_entropy.Rmat1) )== true
-    @test ( (eqn_copy.params_entropy.Rmat2 == eqn.params_entropy.Rmat2) )== true
-    @test ( (eqn_copy.params_entropy.P == eqn.params_entropy.P) )== true
-    @test ( (eqn_copy.params_entropy.nrm == eqn.params_entropy.nrm) )== true
-    @test ( (eqn_copy.params_entropy.nrm2 == eqn.params_entropy.nrm2) )== true
-    @test ( (eqn_copy.params_entropy.nrm3 == eqn.params_entropy.nrm3) )== true
     @test ( (eqn_copy.params_entropy.h == eqn.params_entropy.h) )== true
     @test ( (eqn_copy.params_entropy.cv == eqn.params_entropy.cv) )== true
     @test ( (eqn_copy.params_entropy.R == eqn.params_entropy.R) )== true
     @test ( (eqn_copy.params_entropy.gamma == eqn.params_entropy.gamma) )== true
     @test ( (eqn_copy.params_entropy.gamma_1 == eqn.params_entropy.gamma_1) )== true
     @test ( (eqn_copy.params_entropy.Ma == eqn.params_entropy.Ma) )== true
-    @test ( (eqn_copy.params_entropy.Re == eqn.params_entropy.Re) )== true
     @test ( (eqn_copy.params_entropy.aoa == eqn.params_entropy.aoa) )== true
     @test ( (eqn_copy.params_entropy.rho_free == eqn.params_entropy.rho_free) )== true
     @test ( (eqn_copy.params_entropy.E_free == eqn.params_entropy.E_free) )== true
@@ -202,9 +142,6 @@ function test_eqn_copy()
     @test ( (eqn_copy.params_entropy.krylov_itr == eqn.params_entropy.krylov_itr) )== true
     @test ( (eqn_copy.params_entropy.krylov_type == eqn.params_entropy.krylov_type) )== true
     @test ( (eqn_copy.params_entropy.Rprime == eqn.params_entropy.Rprime) )== true
-    @test ( (eqn_copy.params_entropy.A == eqn.params_entropy.A) )== true
-    @test ( (eqn_copy.params_entropy.B == eqn.params_entropy.B) )== true
-    @test ( (eqn_copy.params_entropy.iperm == eqn.params_entropy.iperm) )== true
     @test ( (eqn_copy.params_entropy.time == eqn.params_entropy.time) )== true
 
   end   # end of facts check on values of eqn_copy matching eqn
@@ -224,7 +161,6 @@ function test_eqn_copy()
     # note: q_face_send and q_face_recv purposes are now served by eqn.shared_data
     @test ( (pointer(eqn_copy.shared_data) == pointer(eqn.shared_data)) )== false
     @test ( (pointer(eqn_copy.flux_face) == pointer(eqn.flux_face)) )== false
-    @test ( (pointer(eqn_copy.flux_sharedface) == pointer(eqn.flux_sharedface)) )== false
     @test ( (pointer(eqn_copy.res) == pointer(eqn.res)) )== false
     @test ( (pointer(eqn_copy.res_vec) == pointer(eqn.res_vec)) )== false
     @test ( (pointer(eqn_copy.Axi) == pointer(eqn.Axi)) )== false
@@ -238,71 +174,10 @@ function test_eqn_copy()
     @test ( (pointer(eqn_copy.M) == pointer(eqn.M)) )== false
 
     # 2nd level fields of type Array (just going to check params)
-    @test ( (pointer(eqn_copy.params.q_vals) == pointer(eqn.params.q_vals)) )== false
-    @test ( (pointer(eqn_copy.params.q_vals2) == pointer(eqn.params.q_vals2)) )== false
-    @test ( (pointer(eqn_copy.params.q_vals3) == pointer(eqn.params.q_vals3)) )== false
-    @test ( (pointer(eqn_copy.params.qg) == pointer(eqn.params.qg)) )== false
-    @test ( (pointer(eqn_copy.params.v_vals) == pointer(eqn.params.v_vals)) )== false
-    @test ( (pointer(eqn_copy.params.v_vals2) == pointer(eqn.params.v_vals2)) )== false
-    @test ( (pointer(eqn_copy.params.Lambda) == pointer(eqn.params.Lambda)) )== false
-    @test ( (pointer(eqn_copy.params.w_vals_stencil) == pointer(eqn.params.w_vals_stencil)) )== false
-    @test ( (pointer(eqn_copy.params.w_vals2_stencil) == pointer(eqn.params.w_vals2_stencil)) )== false
-    @test ( (pointer(eqn_copy.params.res_vals1) == pointer(eqn.params.res_vals1)) )== false
-    @test ( (pointer(eqn_copy.params.res_vals2) == pointer(eqn.params.res_vals2)) )== false
-    @test ( (pointer(eqn_copy.params.res_vals3) == pointer(eqn.params.res_vals3)) )== false
-    @test ( (pointer(eqn_copy.params.flux_vals1) == pointer(eqn.params.flux_vals1)) )== false
-    @test ( (pointer(eqn_copy.params.flux_vals2) == pointer(eqn.params.flux_vals2)) )== false
-    @test ( (pointer(eqn_copy.params.sat_vals) == pointer(eqn.params.sat_vals)) )== false
-    @test ( (pointer(eqn_copy.params.A0) == pointer(eqn.params.A0)) )== false
-    @test ( (pointer(eqn_copy.params.A0inv) == pointer(eqn.params.A0inv)) )== false
-    @test ( (pointer(eqn_copy.params.A1) == pointer(eqn.params.A1)) )== false
-    @test ( (pointer(eqn_copy.params.A2) == pointer(eqn.params.A2)) )== false
-    @test ( (pointer(eqn_copy.params.S2) == pointer(eqn.params.S2)) )== false
-    @test ( (pointer(eqn_copy.params.A_mats) == pointer(eqn.params.A_mats)) )== false
-    @test ( (pointer(eqn_copy.params.Rmat1) == pointer(eqn.params.Rmat1)) )== false
-    @test ( (pointer(eqn_copy.params.Rmat2) == pointer(eqn.params.Rmat2)) )== false
-    @test ( (pointer(eqn_copy.params.P) == pointer(eqn.params.P)) )== false
-    @test ( (pointer(eqn_copy.params.nrm) == pointer(eqn.params.nrm)) )== false
-    @test ( (pointer(eqn_copy.params.nrm2) == pointer(eqn.params.nrm2)) )== false
-    @test ( (pointer(eqn_copy.params.nrm3) == pointer(eqn.params.nrm3)) )== false
     @test ( (pointer(eqn_copy.params.filter_mat) == pointer(eqn.params.filter_mat)) )== false
     @test ( (pointer(eqn_copy.params.Rprime) == pointer(eqn.params.Rprime)) )== false
-    @test ( (pointer(eqn_copy.params.A) == pointer(eqn.params.A)) )== false
-    @test ( (pointer(eqn_copy.params.B) == pointer(eqn.params.B)) )== false
-    @test ( (pointer(eqn_copy.params.iperm) == pointer(eqn.params.iperm)) )== false
-
-    @test ( (pointer(eqn_copy.params_entropy.q_vals) == pointer(eqn.params_entropy.q_vals)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.q_vals2) == pointer(eqn.params_entropy.q_vals2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.q_vals3) == pointer(eqn.params_entropy.q_vals3)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.qg) == pointer(eqn.params_entropy.qg)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.v_vals) == pointer(eqn.params_entropy.v_vals)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.v_vals2) == pointer(eqn.params_entropy.v_vals2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.Lambda) == pointer(eqn.params_entropy.Lambda)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.w_vals_stencil) == pointer(eqn.params_entropy.w_vals_stencil)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.w_vals2_stencil) == pointer(eqn.params_entropy.w_vals2_stencil)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.res_vals1) == pointer(eqn.params_entropy.res_vals1)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.res_vals2) == pointer(eqn.params_entropy.res_vals2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.res_vals3) == pointer(eqn.params_entropy.res_vals3)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.flux_vals1) == pointer(eqn.params_entropy.flux_vals1)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.flux_vals2) == pointer(eqn.params_entropy.flux_vals2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.sat_vals) == pointer(eqn.params_entropy.sat_vals)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.A0) == pointer(eqn.params_entropy.A0)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.A0inv) == pointer(eqn.params_entropy.A0inv)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.A1) == pointer(eqn.params_entropy.A1)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.A2) == pointer(eqn.params_entropy.A2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.S2) == pointer(eqn.params_entropy.S2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.A_mats) == pointer(eqn.params_entropy.A_mats)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.Rmat1) == pointer(eqn.params_entropy.Rmat1)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.Rmat2) == pointer(eqn.params_entropy.Rmat2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.P) == pointer(eqn.params_entropy.P)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.nrm) == pointer(eqn.params_entropy.nrm)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.nrm2) == pointer(eqn.params_entropy.nrm2)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.nrm3) == pointer(eqn.params_entropy.nrm3)) )== false
     @test ( (pointer(eqn_copy.params_entropy.filter_mat) == pointer(eqn.params_entropy.filter_mat)) )== false
     @test ( (pointer(eqn_copy.params_entropy.Rprime) == pointer(eqn.params_entropy.Rprime)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.A) == pointer(eqn.params_entropy.A)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.B) == pointer(eqn.params_entropy.B)) )== false
-    @test ( (pointer(eqn_copy.params_entropy.iperm) == pointer(eqn.params_entropy.iperm)) )== false
 
   end   # end of facts checking pointers of arrays
 
@@ -368,7 +243,6 @@ flux_parametric  Array{Float64,4}  false
 q_face_send  Array{Array{Float64,3},1}  false
 q_face_recv  Array{Array{Float64,3},1}  false
 flux_face  Array{Float64,3}  false
-flux_sharedface  Array{Array{Float64,3},1}  false
 res  Array{Float64,3}  false
 res_vec  Array{Float64,1}  false
 Axi  Array{Float64,4}  false
@@ -424,7 +298,6 @@ R  Float64  true
 gamma  Float64  true
 gamma_1  Float64  true
 Ma  Float64  true
-Re  Float64  true
 aoa  Float64  true
 rho_free  Float64  true
 E_free  Float64  true
@@ -485,7 +358,6 @@ R  Float64  true
 gamma  Float64  true
 gamma_1  Float64  true
 Ma  Float64  true
-Re  Float64  true
 aoa  Float64  true
 rho_free  Float64  true
 E_free  Float64  true
@@ -546,7 +418,6 @@ R  Float64  true
 gamma  Float64  true
 gamma_1  Float64  true
 Ma  Float64  true
-Re  Float64  true
 aoa  Float64  true
 rho_free  Float64  true
 E_free  Float64  true

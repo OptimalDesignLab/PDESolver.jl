@@ -8,7 +8,7 @@ import PDESolver.evalHomotopy
 """
   This function calls the appropriate homotopy function for the Euler module.
 """
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
 
   
   calcHomotopyDiss(mesh, sbp, eqn, opts, res)
@@ -41,7 +41,7 @@ function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp,
 #  println("\nentered calcHomotopyDiss")
 
   # some checks for when parallelism is enabled
-  @assert opts["parallel_data"] == "element"
+  @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
   for i=1:mesh.npeers
     @assert eqn.shared_data[i].recv_waited
   end
@@ -135,7 +135,7 @@ function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp,
   # boundary dissipation
   # use q_faceL, nrm2, flux  from interface dissipation
   if opts["homotopy_addBoundaryIntegrals"]
-    qg = eqn.params.qg  # boundary state
+    qg = zeros(Tsol, mesh.numDofPerNode)  # boundary state
     for i=1:mesh.numBoundaryFaces
       bndry_i = mesh.bndryfaces[i]
       qL = sview(eqn.q, :, :, bndry_i.element)
@@ -230,44 +230,6 @@ function calcHomotopyDiss(mesh::AbstractDGMesh{Tmsh}, sbp,
   return nothing
 end
 
-
-"""
-  Calculate the maximum wave speed for a given state
-
-  Inputs:
-    params: a ParamType
-    qL: a vector of conservative variables at a node
-    dir: a direction vector, length 2 in 2D and 3 in 3D
-
-  Outputs:
-    lambda_max: the maximum wave speed
-
-  Aliasing restrictions: none
-"""
-function getLambdaMax(params::ParamType{Tdim}, 
-    qL::AbstractVector{Tsol}, 
-    dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
-
-  Tres = promote_type(Tsol, Tmsh)
-  gamma = params.gamma
-  Un = zero(Tres)
-  dA = zero(Tmsh)
-  rhoLinv = 1/qL[1]
-
-  pL = calcPressure(params, qL)
-  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
-
-  for i=1:Tdim
-    Un += dir[i]*qL[i+1]*rhoLinv
-    dA += dir[i]*dir[i]
-  end
-
-  dA = sqrt(dA)
-
-  lambda_max = absvalue(Un) + dA*aL
-
-  return lambda_max
-end
 
 
 

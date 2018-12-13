@@ -23,13 +23,11 @@
 
   Outputs: none
 
-  Aliasing restrictions: params.q_vals cannot be in use
-
 """->
-function applySourceTerm(mesh,sbp, eqn, opts, src_func::SRCType)
+function applySourceTerm(mesh, sbp, eqn, opts, src_func::SRCType)
 #TODO: check that the k loop vectorizes
   weights = sbp.w
-  q_vals = eqn.params.q_vals
+  q_vals = zeros(eltype(eqn.q), mesh.numDofPerNode)
   t = eqn.params.t
 
   for i=1:mesh.numEl
@@ -250,7 +248,6 @@ function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector,
   return nothing
 end
 
-include("source_viscous.jl")
 
 @doc """
 ### EulerEquationMod.SRCDict
@@ -270,10 +267,6 @@ global const SRCDict = Dict{String, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
 "SRC0" => SRC0(),
-"SRCTrigonometric" => SRCTrigonometric(),
-"SRCDoubleSquare" => SRCDoubleSquare(),
-"SRCPolynomial" => SRCPolynomial(),
-"SRCChannel" => SRCChannel(),
 )
 
 
@@ -284,12 +277,11 @@ global const SRCDict = Dict{String, SRCType}(
   it to the equation object.  Currently one 1 source functor is allowed.
 
 """->
-function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, 
+function getSRCFunctors(mesh::AbstractMesh, sbp::AbstractOperator, 
                         eqn::EulerData, opts)
 
   # currently we only allow 1 source functor
   eqn.src_func = SRCDict[opts["SRCname"]]
-  println("using source term functor ", eqn.src_func)
   return nothing
 end
 

@@ -1,4 +1,3 @@
-#Test functional Integrate and adjoint for euler equation.
 
 @doc """
 Euler Equation -- test_viscous
@@ -15,15 +14,15 @@ function test_viscous()
 
   @testset "--- Testing Viscous Terms ---" begin
 
-    ARGS[1] = "input_viscous_polynomial_ser.jl"
-    # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(ARGS[1])
-    mesh, sbp, eqn, opts = PDESolver.run_solver(ARGS[1])
+    fname = "input_viscous_polynomial_ser.jl"
+    # mesh, sbp, eqn, opts, pmesh = EulerEquationMod.createObjects(fname)
+    mesh, sbp, eqn, opts = PDESolver.run_solver(fname)
     @assert mesh.isDG == true
     @assert opts["isViscous"] == true
 
     @testset "Checking Solution at Final Time Step" begin
 
-      viscous_qvec_final_for_comparison = readdlm("viscous_files/solution_viscous_forcomparison_0.dat")
+      viscous_qvec_final_for_comparison = readdlm("viscous_files/solution_viscous_forcomparison_0.dat_keep")
 
       for dof_ix = 1:length(eqn.q_vec)
         diff = eqn.q_vec[dof_ix] - viscous_qvec_final_for_comparison[dof_ix]
@@ -51,14 +50,14 @@ function test_viscous()
         q_faceL = Base.view(eqn.q_face, :, 1, :, interface)
         q_faceR = Base.view(eqn.q_face, :, 2, :, interface)
 
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
-        EulerEquationMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceL, GtL)
+        NavierStokesMod.calcDiffusionTensor(eqn.params, q_faceR, GtR)
 
         GtL_vec = reshape(GtL, 128, )
         GtR_vec = reshape(GtR, 128, )
 
-        GtL_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtL_vec.dat")
-        GtR_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtR_vec.dat")
+        GtL_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtL_vec.dat_keep")
+        GtR_file_to_check_against = string("viscous_files/viscous_test_face", interface, "_GtR_vec.dat_keep")
 
         GtL_vec_to_check_against = readdlm(GtL_file_to_check_against)
         GtR_vec_to_check_against = readdlm(GtR_file_to_check_against)
@@ -81,4 +80,4 @@ function test_viscous()
 
 end # End function test_viscous
 
-add_func1!(EulerTests, test_viscous, [TAG_VISCOUS, TAG_LONGTEST])
+add_func1!(NSTests, test_viscous, [TAG_SHORTTEST])

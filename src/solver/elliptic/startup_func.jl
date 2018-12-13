@@ -37,7 +37,7 @@ Inputs:
 Outputs:
 mesh: an AbstractMesh.  The concrete type is determined by the options
 dictionary
-sbp: an AbstractSBP.  The concrete type is determined by the options
+sbp: an AbstractOperator.  The concrete type is determined by the options
 dictionary
 eqn: an EllipticData object
 opts: the options dictionary
@@ -74,7 +74,7 @@ solver according to the options dictionary.
 
 Inputs:
 mesh: an AbstractMesh
-sbp: an AbstractSBP
+sbp: an AbstractOperator
 eqn: an AbstractEllipticData
 opts: the options dictionary.  This must be the options dictionary returned
 by createObjects().  Changing values in the options dictionary after
@@ -83,7 +83,7 @@ pmesh: mesh used for preconditioning, can be same object as mesh.
 default value of mesh
 
 """
-function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractEllipticData, opts::Dict, pmesh::AbstractMesh=mesh)
+function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEllipticData, opts::Dict, pmesh::AbstractMesh=mesh)
   #delta_t = opts["delta_t"]   # delta_t: timestep for RK
 
   myrank = mesh.myrank
@@ -159,16 +159,20 @@ opts
 function postproc(mesh, sbp, eqn, opts)
 
   ##### Do postprocessing ######
-  println("\nDoing postprocessing")
+  myrank = mesh.myrank
+
+  @mpi_master println("\nDoing postprocessing")
 
   if haskey(opts, "exactSolution")
     l2norm, lInfnorm = calcErrorL2Norm(mesh, sbp, eqn, opts)
-    println("L2Norm = ", l2norm)
-    println("LinfNorm = ", lInfnorm)
-    fname = "l2norm.dat"
-    f = open(fname, "w")
-    println(f, l2norm)
-    close(f)
+    @mpi_master begin
+      println("L2Norm = ", l2norm)
+      println("LinfNorm = ", lInfnorm)
+      fname = "l2norm.dat"
+      f = open(fname, "w")
+      println(f, l2norm)
+      close(f)
+    end
   end
 
   if haskey(opts, "Functional")
@@ -177,11 +181,14 @@ function postproc(mesh, sbp, eqn, opts)
     end
     functional_value = Array{typeof(eqn.q[1,1,1])}(mesh.numDofPerNode)
     eqn.functional(mesh, sbp, eqn, opts, functional_value)
-    println("functional = ", abs(real(functional_value[1]) - exactFunctional))
-    fname = "functional.dat"
-    f = open(fname, "w")
-    println(f, abs(real(functional_value[1]) - exactFunctional))
-    close(f)
+
+    @mpi_master begin
+      println("functional = ", abs(real(functional_value[1]) - exactFunctional))
+      fname = "functional.dat"
+      f = open(fname, "w")
+      println(f, abs(real(functional_value[1]) - exactFunctional))
+      close(f)
+    end
   end
 
   return nothing

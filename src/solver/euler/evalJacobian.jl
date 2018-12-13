@@ -1,10 +1,9 @@
 import PDESolver: evalJacobian, evalJacobianStrong
 
 """
-  Euler implementation of `evalJacobian`.  Currently only supports the
-  Roe scheme.
+  Euler implementation of `evalJacobian`.
 """
-function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, 
+function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
   time = eqn.params.time
@@ -14,16 +13,17 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
   @assert opts["parallel_type"] == 2
 #  println("entered evalResidual")
   time.t_send += @elapsed if start_comm
+    setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
 
 
   time.t_dataprep_diff += @elapsed dataPrep_diff(mesh, sbp, eqn, opts)
-#  println("dataPrep @time printed above")
+  #println("dataPrep @time printed above")
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("volume integral @time printed above")
+    #println("volume integral @time printed above")
   end
 
   if opts["use_GLS"]
@@ -32,7 +32,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_bndry_diff += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#   println("boundary integral @time printed above")
+    #println("boundary integral @time printed above")
   end
 
 
@@ -45,7 +45,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-#    println("face integral @time printed above")
+    #println("face integral @time printed above")
   end
 
 
@@ -73,7 +73,7 @@ end
 
 
 
-function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractSBP,
+function evalJacobianStrong(mesh::AbstractMesh, sbp::AbstractOperator,
                       eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
@@ -108,8 +108,8 @@ end
    * opts
 """
 function dataPrep_diff(mesh::AbstractMesh{Tmsh},
-     sbp::AbstractSBP,
-     eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
+                      sbp::AbstractOperator,
+                      eqn::AbstractEulerData{Tsol, Tres}, opts) where {Tmsh, Tsol, Tres}
 # gather up all the data needed to do vectorized operatinos on the mesh
 # calculates all mesh wide quantities in eqn
 # this is almost the exact list of everything we *shouldn't* be storing, but
@@ -174,7 +174,7 @@ end # end function dataPrep
    * assembler
 """
 function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                              opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
@@ -187,7 +187,8 @@ function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
   if integral_type == 1  # regular volume integrals
     calcVolumeIntegrals_nopre_diff(mesh, sbp, eqn, opts, assembler)
   elseif integral_type == 2  # entropy stable formulation
-    error("volume_integral_type == 2 not supported by evalJacobian()")
+    calcVolumeIntegralsSplitForm_diff(mesh, sbp, eqn, opts,
+                                      eqn.volume_flux_func_diff, assembler)
   else
     throw(ErrorException("Unsupported volume integral type = $integral_type"))
   end
@@ -208,7 +209,7 @@ end  # end evalVolumeIntegrals
    * assembler.
 """
 function evalBoundaryIntegrals_diff(mesh::AbstractMesh{Tmsh},
-                               sbp::AbstractSBP,
+                               sbp::AbstractOperator,
                                eqn::EulerData{Tsol, Tres, Tdim}, opts,
                                assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
@@ -236,7 +237,7 @@ end  # end evalBoundaryIntegrals
    * assembler
 """
 function addStabilization_diff(mesh::AbstractMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol}, opts,
+                          sbp::AbstractOperator, eqn::EulerData{Tsol}, opts,
                           assembler::AssembleElementData) where {Tmsh,  Tsol}
 
 #  println("==== start of addStabilization ====")
@@ -283,7 +284,7 @@ end
    * assembler
 """
 function evalFaceIntegrals_diff(mesh::AbstractDGMesh{Tmsh},
-                    sbp::AbstractSBP,
+                    sbp::AbstractOperator,
                     eqn::EulerData{Tsol}, opts,
                     assembler::AssembleElementData) where {Tmsh, Tsol}
 
@@ -292,7 +293,15 @@ function evalFaceIntegrals_diff(mesh::AbstractDGMesh{Tmsh},
       calcFaceIntegral_nopre_diff(mesh, sbp, eqn, opts, eqn.flux_func_diff, mesh.interfaces, assembler)
 
   elseif face_integral_type == 2
-    error("face_integral_type == 2 not supported by evalJacobian")
+
+    if opts["use_staggered_grid"]
+      error("explicit jacobian calculation does not support staggered grids")
+    else
+      getFaceElementIntegral_diff(mesh, sbp, eqn,
+                  eqn.face_element_integral_func,  
+                  eqn.flux_func_diff, mesh.sbpface, mesh.interfaces, assembler)
+    end
+
   else
     throw(ErrorException("Unsupported face integral type = $face_integral_type"))
   end
@@ -316,7 +325,6 @@ end
 function evalSharedFaceIntegrals_diff(mesh::AbstractDGMesh, sbp, eqn, opts,
                                       assembler::AssembleElementData)
 
-#  println(eqn.params.f, "evaluating shared face integrals")
   face_integral_type = opts["face_integral_type"]
   eqn.assembler = assembler  # stash this here to get retrieved later
   if face_integral_type == 1
@@ -324,7 +332,7 @@ function evalSharedFaceIntegrals_diff(mesh::AbstractDGMesh, sbp, eqn, opts,
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceIntegrals_element_diff)
 
   elseif face_integral_type == 2
-    error("face_integral_type == 2 not supported")
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element_diff)
   else
     throw(ErrorException("unsupported face integral type = $face_integral_type"))
   end
@@ -348,7 +356,7 @@ end
    * assembler
 """
 function evalSourceTerm_diff(mesh::AbstractMesh{Tmsh},
-                     sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                      opts, assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 

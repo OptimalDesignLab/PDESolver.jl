@@ -1,6 +1,6 @@
 # functional derivative calculation
 
-import PDESolver.evalFunctionalDeriv
+import PDESolver._evalFunctionalDeriv_q
 
 """
   Computes a 3D array of hte derivative of a functional wrt eqn.q.
@@ -13,7 +13,7 @@ import PDESolver.evalFunctionalDeriv
    * sbp
    * eqn
    * opts
-   * functionalData: AbstractIntegralFunctional to evaluate
+   * func: AbstractBoundaryFunctional to evaluate
 
   **Inputs/Outputs**
 
@@ -22,20 +22,19 @@ import PDESolver.evalFunctionalDeriv
 
   **Options Keys**
 
-  This funciton is not compatible with `precompute_q_bndry` = false
+  This function is not compatible with `precompute_q_bndry` = false
 """
-function evalFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           func::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData, func_deriv_arr)
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, func, func_deriv_arr)
 
   return nothing
 end
@@ -53,7 +52,7 @@ mesh nodes.
 *  `sbp`  : Summation-By-parts operator
 *  `eqn`  : Euler equation object
 *  `opts` : Options dictionary
-*  `functionalData` : Functional object of super-type AbstractFunctional
+*  `func` : Functional object of super-type AbstractBoundaryFunctional
                       that is needed for computing the adjoint vector.
                       Depending on the functional being computed, a different
                       method based on functional type may be needed to be
@@ -67,16 +66,16 @@ mesh nodes.
 
 """->
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::AbstractIntegralFunctional,
+                           func::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
   integrand = zeros(eqn.q_bndry)
 
   # Populate integrand
-  for itr = 1:length(functionalData.bcnums)
-    bcnum = functionalData.bcnums[itr]
+  for itr = 1:length(func.bcnums)
+    bcnum = func.bcnums[itr]
 
     start_index = mesh.bndry_offsets[bcnum]
     end_index = mesh.bndry_offsets[bcnum+1]
@@ -99,11 +98,12 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
         integrand_i = sview(integrand, :, j, global_facenum)
 
         calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info,
-                           functionalData)
+                           func)
       end  # End for j = 1:mesh.sbpface.numnodes
     end    # End for i = 1:nfaces
   end      # End for itr = 1:length(functional_edges)
 
+  fill!(func_deriv_arr, 0)
   boundaryintegrate!(mesh.sbpface, mesh.bndryfaces, integrand, func_deriv_arr)
 
   return nothing
@@ -115,12 +115,12 @@ end  # End function calcFunctionalDeriv
   Lift functional.
 """
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
-                           sbp::AbstractSBP,
+                           sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
-                           functionalData::LiftCoefficient,
+                           func::LiftCoefficient,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, functionalData.lift, func_deriv_arr)
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, func.lift, func_deriv_arr)
 
   Ma = eqn.params.Ma
   fac = 0.5*eqn.params.rho_free*Ma*Ma
@@ -147,7 +147,7 @@ degrees of freedom at the node.
 *  `nrm`    : normal vector in the physical space
 *  `integrand_deriv` : Derivative of the integrand at that particular node
 *  `node_info` : Tuple containing information about the node
-*  `functionalData` : Functional object that is a subtype of AbstractFunctional.
+*  `func` : Functional object that is a subtype of AbstractBoundaryFunctional.
 
 **Outputs**
 
@@ -159,7 +159,7 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
           q::AbstractArray{Tsol,1},
           aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
           integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          functionalData::BoundaryForceData{Tsol,:lift}) where {Tsol, Tres, Tmsh}
+          func::BoundaryForceData{Tsol,:lift}) where {Tsol, Tres, Tmsh}
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -167,7 +167,7 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
 
   for i = 1:length(q)
     q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, functionalData, momentum)
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, func, momentum)
     val = -momentum[1]*sin(aoa) + momentum[2]*cos(aoa)
     integrand_deriv[i] = imag(val)/norm(pert)
     q[i] -= pert
@@ -180,7 +180,7 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
           q::AbstractArray{Tsol,1},
           aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
           integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          functionalData::BoundaryForceData{Tsol,:drag}) where {Tsol, Tres, Tmsh}
+          func::BoundaryForceData{Tsol,:drag}) where {Tsol, Tres, Tmsh}
 
   pert = complex(0, 1e-20)
   aoa = params.aoa
@@ -188,7 +188,7 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
 
   for i = 1:length(q)
     q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, functionalData, momentum)
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, func, momentum)
     val = momentum[1]*cos(aoa) + momentum[2]*sin(aoa)
     integrand_deriv[i] = imag(val)/norm(pert)
     q[i] -= pert
@@ -202,16 +202,16 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
           aux_vars::AbstractArray{Tres, 1},
           nrm::AbstractArray{Tmsh},
           integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          functionalData::MassFlowData) where {Tsol, Tres, Tmsh}
+          func::MassFlowData) where {Tsol, Tres, Tmsh}
 
-  node_info = [1, 2, 3]
+  node_info = [1, 2, 3]  #TODO: what is this doing??? node_info is an argument
   h = 1e-20
   pert = Complex128(0, h)
   val = zeros(Complex128, 1)
   for i=1:length(q)
     q[i] += pert
     calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
-                                          functionalData, val)
+                                          func, val)
     integrand_deriv[i] = imag(val[1])/h
     q[i] -= pert
   end
@@ -221,3 +221,30 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# generic fallback: complex step it
+
+function calcIntegrandDeriv(opts, params::ParamType{2},
+          q::AbstractArray{Tsol,1},
+          aux_vars::AbstractArray{Tres, 1},
+          nrm::AbstractArray{Tmsh},
+          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
+          func::Tfunc) where {Tsol, Tres, Tmsh, Tfunc<:AbstractBoundaryFunctional}
+
+  h = 1e-20
+  pert = Complex128(0, h)
+  val = zeros(Complex128, 1)
+  for i=1:length(q)
+    q[i] += pert
+    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
+                                          func, val)
+    integrand_deriv[i] = imag(val[1])/h
+    q[i] -= pert
+  end
+
+  return nothing
+end
+
+

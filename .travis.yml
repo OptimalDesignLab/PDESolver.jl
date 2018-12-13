@@ -25,8 +25,8 @@ cache:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
-  - sudo apt-get install -y liblapack-dev liblapack-doc liblapack3gf
-  - sudo apt-get install -y libblas-dev libblas-doc libblas3gf
+  - sudo apt-get install -y liblapack-dev liblapack3gf
+  - sudo apt-get install -y libblas-dev libblas3gf
   - sudo ./deps/travis-install-mpi.sh $MPI_IMPL
   # setting these variables will help cmake find MPI
   - export CC=mpicc
@@ -43,8 +43,8 @@ script:
   - source ./deps/move_petsccache.sh remove
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
   - source ./deps/move_petsccache.sh restore  # move files back
-  - cd ~/.julia/v0.6/PumiInterface/src
-  - source ./use_julialib.sh
+#  - cd ~/.julia/v0.6/PumiInterface/src
+#  - source ./use_julialib.sh
   - cd ~/.julia/v0.6/PDESolver/test
 #  - ./runtests_fast.sh
   - ./runtests_travis.sh

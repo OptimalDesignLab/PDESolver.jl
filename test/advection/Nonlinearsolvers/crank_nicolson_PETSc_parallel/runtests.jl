@@ -7,16 +7,16 @@ function test_CN_parallel()
 
     cd(dirname(@__FILE__))
     cd("./m1")
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("../m2")
-    ARGS[1] = "input_vals1.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals1.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
 
 #    cd("../m3")
-#    ARGS[1] = "input_vals1.jl"
-#    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+#    fname = "input_vals1.jl"
+#    mesh, sbp, eqn, opts = solvePDE(fname)
 
     cd("..")
 #    include(joinpath(pwd(), "calc_line.jl"))

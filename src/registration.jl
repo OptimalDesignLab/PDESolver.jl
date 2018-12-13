@@ -36,7 +36,7 @@ global const PhysicsModDict = Dict{String, Tuple{Module, Function, Function}}()
                       
                       If this physics modules supports solving on a submesh,
                       this function should also have a method
-                      `_createObjects(mesh::AbstractMesh, sbp::AbstractSBP, opts::Dict)`
+                      `_createObjects(mesh::AbstractMesh, sbp::AbstractOperator, opts::Dict)`
                       to create a new equation object.  See [`createObjects`](@ref).
       
    * _checkOptions: physics-specific function for supplying default options and
@@ -76,6 +76,10 @@ function register_physics(modname::String, mod::Module, _createObjects::Function
       throw(ErrorException("_checkOptions function $_checkOptions is already registered to physics module $mod_i with name $key"))
     end
  
+  end
+
+  if _createObjects == PDESolver.createObjects
+    error("PDESolver.createObjects cannot be registered as the physics module _createObjects function, this would create an infinite loop")
   end
 
   # if we get here, the registration is new
@@ -124,7 +128,7 @@ end
   physics module.  The function must have the signature:
 
   ```
-   ICfunc(mesh::AbstractMesh, sbp::AbstractSBP, eqn:AbstractSolutionData{Tsol},
+   ICfunc(mesh::AbstractMesh, sbp::AbstractOperator, eqn:AbstractSolutionData{Tsol},
                 opts:Dict, q_vec::AbstractVector{Tsol})
   ```
 
@@ -205,7 +209,7 @@ end
    * fname: the name associated with this function, used as the value for any
             key in the options dictionary that specifies a boundary condition,
             for example `BC1_name`
-   * func: the functor itself
+   * func: the functor itself, or the constructor for one
 
   **Outputs**
 
@@ -216,7 +220,7 @@ end
   This function works by utilizing `mod.BCDict`, which must be an associative
   collection mapping BC names to functors.
 """
-function registerBC(mod::Module, fname::String, func::BCType)
+function registerBC(mod::Module, fname::String, func::Union{BCType, Type{T} where T <: BCType})
 
   # check if name is already registered
   # special case for reanalysisBC because it is special

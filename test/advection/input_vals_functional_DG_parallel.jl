@@ -56,5 +56,6 @@ arg_dict = Dict{Any, Any}(
 "solve" => true,
 "do_postproc" => true,
 "exact_soln_func" => "ICexp_xy",
-"write_face_vertnums" => false
+"write_face_vertnums" => false,
+"need_adjoint" => true,
 )

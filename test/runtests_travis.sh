@@ -12,7 +12,7 @@ then
   julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
-  mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
   err=$(( err + $?))
 
   mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
@@ -27,10 +27,15 @@ then
   julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
-  mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
   err=$(( err + $?))
 
   mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
+  err=$(( err + $?))
+
+  # do the viscous tests here because they are short and rely on Euler
+  cd ../navier_stokes
+  julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
   cd ..
@@ -42,7 +47,7 @@ then
   julia ./runtests.jl tag_shorttest
   err=$(( err + $?))
 
-  #mpirun -np 2 julia ./runtests_parallel.jl tag_shorttest
+  #mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
   #err=$(( err + $?))
 
   #mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest

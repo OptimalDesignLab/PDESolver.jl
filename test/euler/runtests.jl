@@ -3,10 +3,12 @@ using ODLCommonTools
 import ODLCommonTools.sview
 using SummationByParts  # SBP operators
 
-push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))
+push!(LOAD_PATH, abspath(joinpath(pwd(), "..")))  # get TestSystem
+push!(LOAD_PATH, abspath(joinpath(pwd(), "../common")))  # get TestCommon
 
 using PDESolver
 #using Base.Test
+using TestCommon
 using PdePumiInterface  # common mesh interface - pumi
 using EulerEquationMod
 using LinearSolvers
@@ -44,35 +46,25 @@ include("test_3d.jl")
 include("test_bc.jl")
 include("test_interp.jl")
 include("test_jac.jl")
+include("test_functionals.jl")
 include("test_adjoint.jl")
-include("test_reversemode.jl")
 include("test_flux.jl")
 include("test_ESS.jl")
 include("test_curvilinear.jl")
 include("test_rk4.jl")
 include(joinpath("./convergence/runtests.jl"))
 include("Utils.jl")
-include("test_parallel.jl")
+include("test_parallel_serialpart.jl")
 include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
-
-include("test_viscous.jl")
+include("test_coordsfd.jl")
 
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Euler tests -----" begin
-  nargs = length(ARGS)
-  if nargs == 0
-    tags = String[TAG_DEFAULT]
-  else
-    tags = Array{String}(nargs)
-    copy!(tags, ARGS)
-  end
 
-  resize!(ARGS, 1)
-  ARGS[1] = ""
-  run_testlist(EulerTests, solvePDE, tags)
+  runTestSystem(EulerTests, solvePDE, ARGS)
 end
 
 

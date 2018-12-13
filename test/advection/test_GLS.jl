@@ -3,24 +3,21 @@
 # Write tests corresponding to GLS here.
 
 using PDESolver
+using AdvectionEquationMod
+using Input
 using Base.Test
 using ODLCommonTools
 using ArrayViews
 
-include(joinpath(Pkg.dir("PDESolver"), "src/input/read_input.jl"))
 
-# insert a command line argument
-resize!(ARGS, 1)
-ARGS[1] = "input_vals_GLS.jl"
-opts = read_input(ARGS[1])
+fname = "input_vals_GLS.jl"
+opts = read_input(fname)
 @testset "--- Check input arguments applied correctly ---" begin
   @test ( opts["use_GLS"] )== true
   @test ( opts["Q_transpose"] )== true
 end
 
-
-include("../../src/solver/advection/startup.jl")
-include("../../src/solver/advection/GLS.jl")
+mesh, sbp, eqn, opts = solvePDE(fname)
 
 @testset "--- Check functions in ../src/solver/advection/GLS.jl ---" begin
 

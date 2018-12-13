@@ -1,5 +1,7 @@
 # test the entropy stable interface calculation
 
+import EulerEquationMod.calcFaceElementIntegral
+
 """
   A way of calculating the entropy stable face integral, used for comparison
   and debugging.
@@ -22,18 +24,18 @@ function calcECFaceIntegralTest(params::AbstractParamType{Tdim},
 
   Rprime = params.Rprime
 
-  F_tmp = params.flux_vals1
-
-  workA = params.A
-  workB = sview(params.B, :, :, 1)
-  workC = sview(params.B, :, :, 2)
-  nrm = params.nrm
+  F_tmp = zeros(Tres, numDofPerNode)
+  workA = zeros(Tres, size(Rprime))
+  workB = zeros(Tres, numNodesPerElement, numNodesPerElement)
+  workC = zeros(Tres, numNodesPerElement, numNodesPerElement)
+  nrm = zeros(Tmsh, size(nrm_face, 1))
+  iperm = zeros(Int, size(sbpface.perm, 1))
 
   perm_nu = sview(sbpface.perm, :, iface.faceR)
   perm_gamma = sview(sbpface.perm, :, iface.faceL)
 
   # inverse (transpose) permutation vectors
-  iperm_gamma = params.iperm 
+  iperm_gamma = copy(iperm)
   inversePerm(perm_gamma, iperm_gamma)
 
   # get the face normals
@@ -384,7 +386,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 # func_name: name of functor from FaceelementDict
 
   functor = EulerEquationMod.IRFlux()
-  ec_integral = EulerEquationMod.FaceElementDict[func_name]
+  ec_integral = EulerEquationMod.FaceElementDict[func_name](mesh, eqn)
   eqn.flux_func = functor
   fill!(eqn.res, 0.0)
   res_test = copy(eqn.res)
@@ -406,7 +408,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     resR_test2 = sview(res_test2, :, :, elR)
 
 
-    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_code, resR_code)
+    calcFaceElementIntegral(ec_integral, eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_code, resR_code)
 
     if test_ref
       calcECFaceIntegralTest(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL_test2, resR_test2)
@@ -461,7 +463,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
     resR = zeros(resL)
 
     # calculate the integral of entropy flux from the residual
-    ec_integral(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
+    calcFaceElementIntegral(ec_integral, eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, functor, resL, resR)
     lhsL, lhsR = contractLHS(eqn.params, qL, qR, resL, resR)
 
     nrm = zeros(mesh.dim)
@@ -578,7 +580,7 @@ function runECTest(mesh, sbp, eqn, opts, func_name="ECFaceIntegral"; test_ref=fa
 
 end
 
-function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, zero_penalty=false)
+function runESTest(mesh, sbp, eqn, opts, penalty_func::EulerEquationMod.FaceElementIntegralType; test_ref=false, zero_penalty=false)
 # run entropy stability tests
 # test_ref: whether or not to compare against the reference implementations above
 # zero_penalty: test whether the entropy stability penalty should be zero
@@ -607,10 +609,10 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, z
 #    resR3 = zeros(resR)
 
 
-    penalty_func = EulerEquationMod.FaceElementDict[penalty_name]
-    lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
+    #penalty_func = EulerEquationMod.FaceElementDict[penalty_name](mesh, eqn)
+    #lf_penalty_func = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
 
-    penalty_func(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
+    calcFaceElementIntegral(penalty_func, eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, flux_func,  resL, resR)
 
     if test_ref
       entropyDissipativeRef(eqn.params, mesh.sbpface, iface, qL, qR, aux_vars, nrm_face, resL2, resR2)
@@ -710,13 +712,44 @@ function runESTest(mesh, sbp, eqn, opts, penalty_name::String; test_ref=false, z
 end
 
 """
+  Test that using diagonal E operator with normal face integral is entropy
+  stable
+
+  **Keywords**
+
+   * isEC: if true, verify W^T R == 0, otherwise test that it is less than zero
+"""
+function runESTest_diagE(mesh, sbp, eqn, opts, flux_func::EulerEquationMod.FluxType; isEC=true)
+
+  fill!(eqn.res, 0.0)
+  EulerEquationMod.calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_func, mesh.interfaces)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val = EulerEquationMod.contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, eqn.res_vec)
+
+  if isEC
+    println("entropy conservative val = ", val)
+    @test abs(val) < 1e-13
+  else
+    println("entropy stable val = ", val)
+    @test val < eps()
+  end
+
+  return nothing
+end
+
+
+
+
+
+"""
   Test the entropy-stable boundary condition
 """
 function test_ESSBC(mesh, sbp, eqn, opts)
 
-  func = EulerEquationMod.BCDict["noPenetrationESBC"]
+  func = EulerEquationMod.BCDict["noPenetrationESBC"](mesh, eqn)
 
-  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry)
+  EulerEquationMod.interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
 
   bndry_flux = zeros(eltype(eqn.res), mesh.numDofPerNode)
   w = zeros(eltype(eqn.q), mesh.numDofPerNode)
@@ -752,15 +785,10 @@ function testLW(mesh, sbp, eqn::EulerEquationMod.EulerData{Tsol, Tres, Tdim}, op
   params = eqn.params
   sbpface = mesh.sbpface
 
-  Y = params.A0  # eigenvectors of flux jacobian
+  Y = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
   A0 = copy(Y)
-  S2 = params.S2  # diagonal scaling matrix squared
-                       # S is defined s.t. (YS)*(YS).' = A0
-  Lambda = params.Lambda  # diagonal matrix of eigenvalues
-  tmp1 = params.res_vals1  # work vectors
-  tmp2 = params.res_vals2
-  tmp3 = params.res_vals3  # accumulate result vector
-#  nrm = params.nrm2
+  S2 = zeros(Tsol, mesh.numDofPerNode)  # S is defined s.t. (YS)*(YS).' = A0
+  Lambda = zeros(Tsol, mesh.numDofPerNode)
   nrm = sview(mesh.nrm_face, :, 1, 1)
 
   iface = mesh.interfaces[1]
@@ -911,16 +939,15 @@ end
 
 function test_ESS()
   @testset "----- testing ESS -----" begin
-    ARGS[1] = "input_vals_channel_dg_large.jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = "input_vals_channel_dg_large.jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
     # evaluate the residual to confirm it is zero
     EulerEquationMod.evalResidual(mesh, sbp, eqn, opts)
-    penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"]
     penalty_lf = "ELFPenaltyFaceIntegral"
-    penalty_lw = "ELWPenaltyFaceIntegral"
     penalty_lw2 = "ELW2PenaltyFaceIntegral"
 
     for dim =2:3
+      println("\n\n\ndim = ", dim)
       println("testing dimensions ", dim)
       if dim == 2
         meshname = "SRCMESHES/tri8l.smb"
@@ -929,6 +956,7 @@ function test_ESS()
       end
 
       for p=1:4
+        println("\n\np = ", p)
         println("test p = ", p)
         if dim == 3 && p > 2  # 3D Omega operators for p > 2 don't exists yet
           continue
@@ -941,9 +969,12 @@ function test_ESS()
         opts["numBC"] = 0
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
-        ARGS[1] = fname*".jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
-       
+        fname = fname*".jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
+    
+        # create the penalty functors
+        penalty_lf = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
+        penalty_lw2 = EulerEquationMod.FaceElementDict["ELW2PenaltyFaceIntegral"](mesh, eqn)
 
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
 
@@ -959,9 +990,6 @@ function test_ESS()
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
         println("testing LF dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true)
-        println("testing LW dissipation")
-        runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=false)
-        println("finished testing LW dissipation")
         println("testing LW2 dissipation")
         runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
         println("finished testing LW dissipation")
@@ -977,10 +1005,6 @@ function test_ESS()
         applyPoly(mesh, sbp, eqn, opts, p)
         runECTest(mesh, sbp, eqn, opts, test_ref=true)
         runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=true, zero_penalty=true)
-
-        println("testing LW dissipation")
-        runESTest(mesh, sbp, eqn, opts, penalty_lw, test_ref=true, zero_penalty=true)
-        println("finished testing LW dissipation")
         if dim == 2
           println("testing ESBC")
           test_ESSBC(mesh, sbp, eqn, opts)
@@ -989,6 +1013,9 @@ function test_ESS()
 
         # check full calling sequence
         fill!(eqn.res, 0.0)
+
+       penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
+        println("about to check full calling sequence")
         EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
@@ -998,8 +1025,8 @@ function test_ESS()
         opts["operator_type"] = "SBPGamma"
         fname = "input_vals_ESS_test2"
         make_input(opts, fname)
-        ARGS[1] = fname*".jl"
-        mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+        fname = fname*".jl"
+        mesh, sbp, eqn, opts = solvePDE(fname)
         
         ICFunc = EulerEquationMod.ICDict["ICExp"]
         ICFunc(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -1020,6 +1047,7 @@ function test_ESS()
 
         # check full calling sequence
         fill!(eqn.res, 0.0)
+        penalty_functor = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
         EulerEquationMod.getFaceElementIntegral(mesh, sbp, eqn, penalty_functor, eqn.flux_func, mesh.sbpface, mesh.interfaces)
 
         factRes0(mesh, sbp, eqn, opts)
@@ -1040,11 +1068,37 @@ function test_ESS()
     opts["numBC"] = 0
     fname = "input_vals_ESS_test2"
     make_input(opts, fname)
-    ARGS[1] = fname*".jl"
-    mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+    fname = fname*".jl"
+    mesh, sbp, eqn, opts = solvePDE(fname)
    
+#    penalty_lf = EulerEquationMod.FaceElementDict["ELFPenaltyFaceIntegral"](mesh, eqn)
+#    penalty_lw2 = EulerEquationMod.FaceElementDict["ELW2PenaltyFaceIntegral"](mesh, eqn)
 
-    runECTest(mesh, sbp, eqn, opts, test_ref=false)
+
+#    runECTest(mesh, sbp, eqn, opts, test_ref=false)
+
+    # because there is no interpolation, add a small amount to the solution
+    # on one side of the interface (so delta_w will be non-zero)
+    for iface in mesh.interfaces
+      for j in mesh.sbpface.perm
+        for i=1:mesh.numDofPerNode
+          eqn.q[i, j, iface.elementL] += 0.001
+        end
+      end
+    end
+#=
+    #TODO: test entropy dissipation
+    println("testing LF dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lf, test_ref=false)
+    println("testing LW2 dissipation")
+    runESTest(mesh, sbp, eqn, opts, penalty_lw2, test_ref=false)
+    println("finished testing LW dissipation")
+=#
+    # test using type 1 face integrals
+    irflux_diagE = EulerEquationMod.FluxDict["IRFlux"]
+    runESTest_diagE(mesh, sbp, eqn, opts, irflux_diagE, isEC=true)
+    penalty_lf_diagE = EulerEquationMod.FluxDict["LFPenalty"]
+    runESTest_diagE(mesh, sbp, eqn, opts, penalty_lf_diagE, isEC=false)
 
 
   end  # end facts block
@@ -1053,4 +1107,4 @@ function test_ESS()
 end  # end function
 
 #test_ESS()
-add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST])

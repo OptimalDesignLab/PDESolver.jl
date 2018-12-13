@@ -4,26 +4,36 @@
   Test the parallel communication constructs.
 """
 function test_parallel_mpi()
-  ARGS[1] = "input_vals_parallel.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_parallel.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   # test the Utils parallel functions
   @testset "----- Testing Parallel Functions -----" begin
+
+    test_tagmanager()
+
+
+    Tsol = eltype(eqn.q)
     mesh.npeers = 1
     nfaces = length(mesh.bndryfaces)
-    shared_data = Array{SharedFaceData}(mesh.npeers)
+    shared_data = Array{SharedFaceData{Tsol}}(mesh.npeers)
     resize!(mesh.bndries_local, mesh.npeers)
     resize!(mesh.bndries_remote, mesh.npeers)
     resize!(mesh.shared_interfaces, mesh.npeers)
     resize!(mesh.peer_parts, mesh.npeers)
+    resize!(mesh.peer_face_counts, mesh.npeers)
+    resize!(mesh.local_element_counts, mesh.npeers)
+    resize!(mesh.remote_element_counts, mesh.npeers)
     fill!(mesh.peer_parts, mesh.myrank)
+    fill!(mesh.peer_face_counts, nfaces)
+    fill!(mesh.local_element_counts, nfaces)
+    fill!(mesh.remote_element_counts, nfaces)
     for i=1:mesh.npeers
+      println("creating SharedFaceData for peer ", i, ", Tsol = ", Tsol)
       mesh.bndries_local[i] = mesh.bndryfaces
       mesh.bndries_remote[i] = mesh.bndryfaces
       mesh.shared_interfaces[i] = Array{Interface}(0)
-      q_send = zeros(mesh.numDofPerNode, mesh.numNodesPerFace, nfaces)
-      q_recv = zeros(q_send)
-      shared_data[i] = SharedFaceData(mesh, i, q_send, q_recv)
+      shared_data[i] = SharedFaceData(Tsol, mesh, i, opts["parallel_data"], 100)
     end
 
     for i=1:mesh.npeers
@@ -108,17 +118,120 @@ function test_parallel_mpi()
     for i=1:length(eqn.flux_sharedface[1])
       @test isapprox( eqn.flux_sharedface[1][i], eqn.flux_face[i]) atol=1e-13
     end
+
+    # test changing buffers
+    @test getParallelData(shared_data) == PARALLEL_DATA_FACE
+    @test size(data_i.q_send, 1) == mesh.numDofPerNode
+    @test size(data_i.q_send, 2) == mesh.numNodesPerFace
+    @test size(data_i.q_send, 3) == mesh.peer_face_counts[1]
+
+    @test size(data_i.q_recv, 1) == mesh.numDofPerNode
+    @test size(data_i.q_recv, 2) == mesh.numNodesPerFace
+    @test size(data_i.q_recv, 3) == mesh.peer_face_counts[1]
+
+    setParallelData(shared_data, PARALLEL_DATA_ELEMENT)
+    @test getParallelData(shared_data) == PARALLEL_DATA_ELEMENT
+    @test size(data_i.q_send, 1) == mesh.numDofPerNode
+    @test size(data_i.q_send, 2) == mesh.numNodesPerElement
+    @test size(data_i.q_send, 3) == mesh.local_element_counts[1]
+
+    @test size(data_i.q_recv, 1) == mesh.numDofPerNode
+    @test size(data_i.q_recv, 2) == mesh.numNodesPerElement
+    @test size(data_i.q_recv, 3) == mesh.remote_element_counts[1]
+
+    # test copy
+    data_i2 = copy(data_i)
+    data_i2.q_send[1] = 10
+    data_i2.q_recv[1] = 10
+    @test data_i2.q_send[1] != data_i.q_send[1]
+    @test data_i2.q_recv[1] != data_i.q_recv[1]
+    @test pointer(data_i2.q_send) != pointer(data_i.q_send)
+    @test pointer(data_i2.q_recv) != pointer(data_i.q_recv)
+
+
+    copy!(data_i2, data_i)
+    @test data_i2.q_send[1] == data_i.q_send[1]
+    @test data_i2.q_recv[1] == data_i.q_recv[1]
+
+    old_tag = shared_data[1].tag
+    setNewTag(shared_data)
+    @test old_tag != shared_data[1].tag
+
   end  # end facts block
 
   return nothing
 end
 
+function test_tagmanager()
+  @testset "MPITagManager" begin
+    mgr = MPITagManager()
+
+    for i=1:10
+      @test getNextTag(mgr) == i
+    end
+
+    # test using tags
+    markTagUsed(mgr, 12)
+    @test getNextTag(mgr) == 11
+    @test getNextTag(mgr) == 13
+
+    freeTag(mgr, 3)
+    freeTag(mgr, 4)
+    @test getNextTag(mgr) == 3
+    @test getNextTag(mgr) == 4
+    @test getNextTag(mgr) == 14
+
+    freeTag(mgr, 5)
+    freeTag(mgr, 4)
+    freeTag(mgr, 6)
+    @test getNextTag(mgr) == 4
+    @test getNextTag(mgr) == 5
+    @test getNextTag(mgr) == 6
+
+    freeTag(mgr, 3)
+    @test_throws Exception freeTag(mgr, 3)
+
+    @test_throws Exception markTagUsed(mgr, 4)
+
+
+    # test starting tag = 5
+    mgr = MPITagManager(5)
+
+    for i=1:10
+      @test getNextTag(mgr) == i + 5 - 1
+    end
+
+    markTagUsed(mgr, 16)
+    @test getNextTag(mgr) == 15
+    @test getNextTag(mgr) == 17
+
+    freeTag(mgr, 9)
+    freeTag(mgr, 7)
+    freeTag(mgr, 8)
+    @test getNextTag(mgr) == 7
+    @test getNextTag(mgr) == 8
+    @test getNextTag(mgr) == 9
+    @test getNextTag(mgr) == 18
+
+    @test_throws Exception freeTag(mgr, 2)
+    @test_throws Exception markTagUsed(mgr, 2)
+
+    freeTag(mgr, 7)
+    @test_throws Exception freeTag(mgr, 7)
+
+
+  end
+
+  return nothing
+end
+
+
 #test_parallel_mpi()
-add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_parallel_mpi, [TAG_SHORTTEST, TAG_TMP])
 
 function test_parallel_serialpart()
-  ARGS[1] = "input_vals_parallel.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_parallel.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   # do a serial rk4 run to compare against later
   start_dir = pwd()
@@ -128,8 +241,8 @@ function test_parallel_serialpart()
   fname = "input_vals_parallel_run"
   make_input(opts, fname)
 
-  ARGS[1] = string(fname, ".jl")
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname2 = string(fname, ".jl")
+  mesh, sbp, eqn, opts = solvePDE(fname2)
   cd(start_dir)
 
   # make the parallel version
@@ -140,8 +253,8 @@ function test_parallel_serialpart()
   # serial newton
   start_dir = pwd()
   cd("./newton/serial")
-  ARGS[1] = "input_vals_serial.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_serial.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
   cd(start_dir)
   opts["smb_name"] = "SRCMESHES/psquare2.smb"
   opts["dmg_name"] = "SRCMESHES/psquare2.dmg"
@@ -151,8 +264,8 @@ function test_parallel_serialpart()
   # 3D rk4
   start_dir = pwd()
   cd("./rk4_3d/serial")
-  ARGS[1] = "input_vals_rk4_3d.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_rk4_3d.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   # make the parallel version
   cd(start_dir)
@@ -164,15 +277,15 @@ function test_parallel_serialpart()
   opts["jac_method"] = 2
   opts["jac_type"] = 3
   opts["parallel_type"] = 2
-  opts["parallel_data"] = "element"
+  opts["parallel_data"] = PARALLEL_DATA_ELEMENT
   make_input(opts, string("./newton_3d/parallel/", "input_vals_parallel"))
 
   opts["smb_name"] = "SRCMESHES/tet8cube.smb"
   make_input(opts, string("./newton_3d/serial/", "input_vals_serial"))
 
   cd("./newton_3d/serial")
-  ARGS[1] = "input_vals_serial.jl"
-  mesh, sbp, eqn, opts = solvePDE(ARGS[1])
+  fname = "input_vals_serial.jl"
+  mesh, sbp, eqn, opts = solvePDE(fname)
 
   cd(start_dir)
 end

@@ -5,7 +5,7 @@
 
 # this *should* work for both conservative and entropy variables, I think
 function applyGLS2(mesh::AbstractMesh{Tmsh}, 
-sbp::AbstractSBP, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
+sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol, Tres, Tdim}
 
 #  println("----- Entered applyGLS2 -----")
   # extract some constants
@@ -889,10 +889,10 @@ function getTau(params::ParamType{Tdim, var_type, Tsol, Tres, Tmsh},
 #  println("----- Entered getTau original-----")
 
   numDofPerNode = size(A_mat, 1)
-  AjAk = params.A1
-  flux_term = params.A2
-  A0inv = params.A0inv
-  tmp_mat = params.Rmat1
+
+  data = params.get_tau_data
+  @unpack data AjAk flux_term A0inv tmp_mat
+
   fill!(AjAk, 0.0)  # unneeded?
   fill!(flux_term, 0.0)
  
@@ -969,11 +969,9 @@ function getTau(params::ParamType{Tdim, :entropy},
 q::AbstractVector{Tsol}, A_mat::AbstractArray{Tsol, 3}, 
 dxidx::AbstractArray{Tmsh, 2}, p::Integer, tau::AbstractArray{Tres, 2}) where {Tsol, Tres, Tmsh, Tdim}
 
-  B_d = params.Rmat1  # storeage for B_i
-  B_p = params.Rmat2  # storage for the accumulation of the B_ia
+  data = params.get_tau_data
+  @unpack data B_d B_p A_mat_hat A0 tmp_mat2
   fill!(B_p, 0.0)
-  A_mat_hat = params.A_mats
-  A0 = params.A0
   calcA0(params, q, A0)
   L = chol(A0)' # is the hermitian transpose right here?
 
@@ -981,12 +979,11 @@ dxidx::AbstractArray{Tmsh, 2}, p::Integer, tau::AbstractArray{Tres, 2}) where {T
                        # efficient for small matrices
 
   # calculate the A_i hats = inv(L)*flux_jacobian_i*inv(L).'
-  tmp_mat = params.A1
   for d1=1:Tdim
     A_hat_d1 = sview(A_mat_hat, :, :, d1)
     A_d1 = sview(A_mat, :, :, d1)
-    smallmatmat!(Linv, A_d1, tmp_mat)
-    smallmatmatT!(tmp_mat, Linv, A_hat_d1)
+    smallmatmat!(Linv, A_d1, tmp_mat2)
+    smallmatmatT!(tmp_mat2, Linv, A_hat_d1)
   end
 
 #  println("A_mat_hat = \n", A_mat_hat)

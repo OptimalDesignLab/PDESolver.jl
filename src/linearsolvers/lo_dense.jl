@@ -33,7 +33,7 @@ end
    * eqn
    * opts
 """
-function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict)
 
   @assert mesh.commsize == 1  # serial only
@@ -61,7 +61,7 @@ end
 
 
 function calcLinearOperator(lo::DenseLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
@@ -73,7 +73,7 @@ end
 
 # note: this may be faster if lo is not yet set up
 function applyLinearOperator(lo::AbstractDenseLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData,
+                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
@@ -104,7 +104,7 @@ end
 
 
 function applyLinearOperatorTranspose(lo::AbstractDenseLO,
-                             mesh::AbstractMesh, sbp::AbstractSBP,
+                             mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)

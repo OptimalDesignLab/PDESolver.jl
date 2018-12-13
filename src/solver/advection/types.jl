@@ -138,6 +138,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   t::Float64
   res_type::DataType  # type of res
   q::Array{Tsol, 3}
+  q_bar::Array{Tres, 3}  # for testing
   q_face::Array{Tsol, 4}  # store solution values interpolated to faces
   aux_vars::Array{Tres, 3}  # storage for auxiliary variables
   flux_parametric::Array{Tsol,4}  # flux in xi direction
@@ -145,10 +146,13 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   res::Array{Tres, 3}      # result of computation
   res_vec::Array{Tres, 1}  # result of computation in vector form
   res_edge::Array{Tres, 4} # edge based residual storage
+  res_bar::Array{Tres, 3}
   q_vec::Array{Tres,1}     # initial condition in vector form
   q_bndry::Array{Tsol, 3}  # store solution variables interpolated to
                           # the boundaries with boundary conditions
   shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI data, including send and receive
+  shared_data_bar::Array{SharedFaceData{Tres}, 1}
+
                                          # buffers
 #  q_face_send::Array{Array{Tsol, 3}, 1}  # send buffers for sending q values
                                          # to other processes
@@ -165,7 +169,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
   flux_func::FluxType  # functor for the face flux
   majorIterationCallback::Function # called before every major (Newton/RK) itr
 
-  function AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres, Tdim, Tmsh}
+  function AdvectionData_{Tsol, Tres, Tdim, Tmsh}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres, Tdim, Tmsh}
     println("\nConstruction AdvectionData object")
     println("  Tsol = ", Tsol)
     println("  Tres = ", Tres)
@@ -186,6 +190,7 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
     eqn.Minv = calcMassMatrixInverse(mesh, sbp, eqn)
     eqn.Minv3D = calcMassMatrixInverse3D(mesh, sbp, eqn)
     eqn.q = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.q_bar = zeros(Tres, 1, sbp.numnodes, mesh.numEl)
     eqn.aux_vars = zeros(Tsol, 0, 0, 0)
 
     if opts["precompute_volume_flux"]
@@ -195,8 +200,9 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
       eqn.flux_parametric = zeros(Tsol, 0, 0, 0, 0)
     end
 
-    eqn.res = zeros(Tsol, 1, sbp.numnodes, mesh.numEl)
+    eqn.res = zeros(Tres, 1, sbp.numnodes, mesh.numEl)
     eqn.res_edge = zeros(Tres, 0, 0, 0, 0)
+    eqn.res_bar = zeros(Tres, 1, mesh.numNodesPerElement, mesh.numEl)
     if mesh.isDG
       eqn.q_vec = reshape(eqn.q, mesh.numDof)
       eqn.res_vec = reshape(eqn.res, mesh.numDof)
@@ -244,9 +250,13 @@ mutable struct AdvectionData_{Tsol, Tres, Tdim, Tmsh} <: AdvectionData{Tsol, Tre
     end  # end if precompute_face_flux
 
     if mesh.isDG
-      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
+                                          opts["parallel_data"])
+      eqn.shared_data_bar = getSharedFaceData(Tres, mesh, sbp, opts, PARALLEL_DATA_ELEMENT)
+
     else
-      eqn.shared_data = Array{SharedFaceData}(0)
+      eqn.shared_data = Array{SharedFaceData{Tsol}}(0)
+      eqn.shared_data_bar = Array{SharedFaceData{Tres}}(0)
     end
 
     return eqn

@@ -15,7 +15,6 @@ using PdePumiInterface     # common mesh interface - pumi
 using Input
 
 include("output.jl")
-include("parallel_types.jl")
 include("parallel.jl")
 include("io.jl")
 include("logging.jl")
@@ -40,12 +39,13 @@ export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
 export fastzero!, fastscale!, removeComplex
-export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5
+export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
+       assertArraysUnique, assertFieldsConcrete
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength
 
 # complexify.jl functions
-export absvalue, absvalue_deriv
+export absvalue, absvalue_deriv, absvalue_rev, atan2_rev
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
@@ -56,7 +56,7 @@ export calcMassMatrixInverse, calcMassMatrix, calcMassMatrixInverse3D,
        applyMassMatrixInverse
 
 # curvilinear.jl
-export calcSCurvilinear, calcECurvilinear, calcDCurvilinear
+export calcSCurvilinear, calcSCurvilinear_rev, calcECurvilinear, calcDCurvilinear
 
 # area.jl
 export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev
@@ -65,11 +65,18 @@ export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaCo
 export BufferedIO, BSTDOUT, BSTDERR
 
 # parallel_types.jl
-export SharedFaceData, getSharedFaceData
+export SharedFaceData, getSharedFaceData, setParallelData, getParallelData,
+       setNewTag
 
 # parallel.jl
-export startSolutionExchange, exchangeData, finishExchangeData, @mpi_master, 
-       @time_all, print_time_all, verifyReceiveCommunication
+export startSolutionExchange, startSolutionExchange_rev,
+       startSolutionExchange_rev2, exchangeData,
+       exchangeData_rev,
+       finishExchangeData, finishExchangeData_rev, finishExchangeData_rev2,
+       finishSolutionBarExchange,
+       @mpi_master, @time_all, print_time_all, verifyReceiveCommunication,
+       MPITagManager, getNextTag, markTagUsed, freeTag, assertReceivesWaited,
+       assertSendsWaited
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,
@@ -94,30 +101,35 @@ end
 @doc """
 ### Utils.array1DTo3D
 
-  This takes eqn.q_vec (the initial state), and disassembles it into eqn.q, the
-  3 dimensional array.  This function uses mesh.dofs
-  to speed the process.
+  This takes a solution vector, and disassembles it into the 3D array form.
+  This function uses mesh.dofs to speed the process.
 
   This function also calls writeQ to do any requested output.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * q_vec: vector, same shape as `eqn.q_vec
+
+  **Inputs/Outputs**
+
+   * q_arr: array, same shape as `eqn.q`, to be overwritten
 
   This is a mid level function, and does the right thing regardless of equation
   dimension.
 
-  The DG method for array1DTo3D assumes that q and q_vec refer to the
-    same memory address, and therefore does no explicit writing/copying.
+  This function is optimized for DG meshes where `q_vec` and `q` might
+  refer to the same array.
 
   Aliasing restrictions: none
 """->
 # mid level function (although it doesn't need Tdim)
 function array1DTo3D(mesh::AbstractCGMesh, sbp,
                           eqn::AbstractSolutionData, opts,
-                          q_vec::AbstractArray{T, 1},
+                          q_vec::AbstractVector,
                           q_arr::AbstractArray{T, 3}) where T
   # disassemble q_vec into eqn.
   for i=1:mesh.numEl  # loop over elements
@@ -137,7 +149,7 @@ end
 
 function array1DTo3D(mesh::AbstractDGMesh, sbp,
                           eqn::AbstractSolutionData, opts,
-                          q_vec::AbstractArray{T, 1},
+                          q_vec::AbstractVector,
                           q_arr::AbstractArray{T, 3}) where T
 
   # we assume the memory layouts of q_arr and q_vec are the same
@@ -178,34 +190,51 @@ end
 @doc """
 ### Utils.array3DTo1D
 
-  This function takes the 3D array of variables in arr and
-  reassembles it into the vector res_vec.  Note that
-  This is a reduction operation and zeros res_vec before performing the
+  This function takes the 3D array of variables and
+  reassembles it into the vector form by summing into the output array.
+  Note that
+  this is a reduction operation and zeros res_vec before performing the
   operation, unless zero_resvec is set to false
 
   This is a mid level function, and does the right thing regardless of
   equation dimension
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * res_array: 3D array, same shape as `eqn.res`
+
+  **Inputs/Outputs**
+
+   * res_vec: vector, same shape as `eqn.res_vec`, to sum into
+
+  **Keyword Arguments**
+
+   * zero_resvec: if true (default), zeros `res_vec` before summing into it
+
+
 """->
 # mid level function (although it doesn't need Tdim)
 function array3DTo1D(mesh::AbstractCGMesh{Tmsh},
        sbp, eqn::AbstractSolutionData{Tsol}, opts,
-       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
-       zero_resvec=true) where {Tmsh, Tsol, Tres}
+       res_arr::Abstract3DArray, res_vec::AbstractVector;
+       zero_resvec=true) where {Tmsh, Tsol}
 # arr is the array to be assembled into res_vec
 
 #  println("in array3DTo1D")
-  if mesh.isDG
-    return nothing
-  end
 
   if zero_resvec
-    fill!(res_vec, 0.0)
+    @assert pointer(res_vec) != pointer(res_arr)
+    fill!(res_vec, 0)
   end
 
-
+  # sum into output
   for i=1:mesh.numEl  # loop over elements
     for j=1:mesh.numNodesPerElement
-      for k=1:size(res_arr, 1)  # loop over dofs on the node
+      @simd for k=1:size(res_arr, 1)  # loop over dofs on the node
         dofnum_k = mesh.dofs[k, j, i]
         res_vec[dofnum_k] += res_arr[k,j,i]
       end
@@ -217,15 +246,24 @@ end
 
 function array3DTo1D(mesh::AbstractDGMesh{Tmsh},
        sbp, eqn::AbstractSolutionData{Tsol}, opts,
-       res_arr::Abstract3DArray, res_vec::AbstractArray{Tres,1},
-       zero_resvec=true) where {Tmsh, Tsol, Tres}
+       res_arr::Abstract3DArray, res_vec::AbstractVector;
+       zero_resvec=true) where {Tmsh, Tsol}
 
   # we assume the memory layouts of q_arr and q_vec are the same
   if pointer(res_arr) != pointer(res_vec)
-    for i = 1:length(res_vec)
-      res_vec[i] = res_arr[i]
+    if zero_resvec
+      @simd for i = 1:length(res_vec)
+        res_vec[i] = res_arr[i]
+      end
+    else
+      @simd for i = 1:length(res_vec)
+        res_vec[i] += res_arr[i]
+      end
     end
+
+  # else: nothing to do
   end
+
 
   return nothing
 
@@ -317,7 +355,7 @@ end
    * eqn
    * opts
 """
-function removeComplex(mesh::AbstractMesh, sbp::AbstractSBP,
+function removeComplex(mesh::AbstractMesh, sbp::AbstractOperator,
                        eqn::AbstractSolutionData, opts)
 
   for i=1:mesh.numDof
@@ -795,43 +833,6 @@ function inversePerm(permvec::AbstractVector, invperm::AbstractVector)
   return nothing
 end
 
-@doc """
-###Utils.absvalue_deriv
-
-Computes the derivative of the absolute value of a variable w.r.t itself
-
-**Inputs**
-
-* `val` : The variable whose derivative needs to be computed e.r.t itself
-
-"""->
-
-function absvalue_deriv(val::Tval) where Tval
-
-  if val > zero(Tval)
-    return one(Tval)
-  elseif val < zero(Tval)
-    return -one(Tval)
-  else
-    return zero(Tval)
-  end
-
-end # End function absvalue_deriv
-
-function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
-
-  x_bar = zero(Tval)
-  y_bar = zero(Tval)
-  
-  if real(x) > real(y)
-    x_bar += max_val_bar
-  else
-    y_bar += max_val_bar
-  end
-
-  return x_bar, y_bar
-end # End function max_rev
-
 # TODO: write functions to apply inverse permutation from permvec, without
 #       needing to explicetly compute the inverse permutation vector
 
@@ -950,5 +951,134 @@ macro verbose5(ex)
     end
   end
 end
+
+"""
+  This macro enables easy unpacking of the members of a type to local variables
+  of the same name.  For example:
+
+  ```
+    @unpack foo a b c
+  ```
+
+  expands into
+
+  ```
+    a = foo.a; b = foo.b; c = foo.c
+  ```
+
+  **Inputs**
+
+   * obj: the name of a variable (must be a type with fields)
+   * varnames...: 1 or more names to unpack.  An error is thrown if a name is
+                  duplicated, presuming that is not what the user intended
+"""
+macro unpack(obj, varnames...)
+
+  @assert length(varnames) > 0
+
+  # check varnames are unique
+  for i=1:length(varnames)
+    for j=1:(i-1)
+      if varnames[i] == varnames[j]
+        error("attempting to unpack duplicate variable name: $(varnames[i])")
+      end
+    end
+  end
+
+  # build the expression
+  ex = :($(varnames[1]) = $(obj).$(varnames[1]))
+  for i=2:length(varnames)
+    ex = :($ex; $(varnames[i])= $(obj).$(varnames[i]))
+  end
+
+  return esc(ex)
+end
+
+"""
+  Given a list of variables, prints them out, one per line
+
+  Ex.  The code
+
+  ```
+    a = 2
+    b = 3
+    @printit a b
+  ```
+    will print
+  ```
+    a = 2
+    b = 3
+  ```
+
+  Variables can also be more general expressions:
+
+  ```
+    a = [1 2 3]
+    @printit a[1:2]
+  ```
+
+  will print
+
+  ```
+    a[1:2] = [1, 2]
+  ```
+"""
+macro printit(v...)
+
+  ex = :()  # empty expression
+  for s in v
+    str = string(s)
+#    println("s = ", s)
+    ex = :($ex, println($str, " = ", $(esc(s))); )
+  end
+
+  return ex
+end
+
+
+"""
+  This function asserts that every array field of the given object is a
+  unique array.  Note that this is less strict than a non-aliasing check,
+  becuase views of an array are not the same as the array.
+"""
+function assertArraysUnique(obj::T) where {T}
+# verify a struct does not have any fields that alias each other
+
+  fnames = fieldnames(T)
+
+  for i=1:length(fnames)
+    f_i = getfield(obj, fnames[i])
+    if typeof(f_i) <: AbstractArray
+      for j=(i+1):length(fnames)
+        f_j = getfield(obj, fnames[j])
+        if typeof(f_j) <: AbstractArray
+          @assert !(f_i === f_j)
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+"""
+  Asserts that all fields of the given object have declared field types that
+  are concrete.  Note that this only considers the types of the field as
+  written in the type declaration, not the runtime type of the fields.
+
+  **Inputs**
+
+   * obj: an object
+"""
+function assertFieldsConcrete(obj::T) where {T}
+
+  for i=1:nfields(T)
+    type_i = fieldtype(T, i)
+    @assert isleaftype(type_i)
+  end
+
+  return nothing
+end
+
 
 end  # end module

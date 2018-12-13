@@ -44,9 +44,9 @@ global const NullBoundaryNode = BoundaryNode(Boundary(0, 0), 0, 0)
   This is a mid level function.
 
   
-"""->
+"""
 # this is a mid level function
-function getBCFluxes(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFluxes(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
   #get all the fluxes for all the boundary conditions and save them in eqn.bndryflux
 
   #println("mesh.bndry_funcs = ", mesh.bndry_funcs)
@@ -94,7 +94,7 @@ end
                           delimited file
 
    This is a high level function.
-"""->
+"""
 function writeBoundary(mesh, sbp, eqn, opts)
 
   if !eqn.params.writeboundary
@@ -158,17 +158,17 @@ end
     eqn.aux_vars_bndry is also populated
 
     Aliasing restrictions: none
-"""->
-function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray)
+"""
+function interpolateBoundary(mesh::AbstractDGMesh, sbp, eqn, opts, q::Abstract3DArray, q_bndry::Abstract3DArray, aux_vars_bndry::Abstract3DArray)
 
   # interpolate solutions
-  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
+  boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, q, q_bndry)
 
   # calculate aux_vars
   for i=1:mesh.numBoundaryFaces
     for j=1:mesh.numNodesPerFace
       q_vals = ro_sview(eqn.q_bndry, :, j, i)
-      eqn.aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
+      aux_vars_bndry[1, j, i] = calcPressure(eqn.params, q_vals)
     end
   end
 
@@ -184,7 +184,7 @@ end
 
   Inputs:
   mesh : AbstractMesh
-  sbp : AbstractSBP
+  sbp : AbstractOperator
   eqn : EulerEquation
   functor : a callable object that calculates the boundary flux at a node
   idx_range: the Range describing which Boundaries have the current BC
@@ -203,10 +203,10 @@ end
   nrm = mesh.sbpface.normal[:, current_node]
 
   This is a mid level function.
-"""->
+"""
 # mid level function
 function calcBoundaryFlux( mesh::AbstractCGMesh{Tmsh},
-       sbp::AbstractSBP, eqn::EulerData{Tsol},
+       sbp::AbstractOperator, eqn::EulerData{Tsol},
        functor::BCType, idx_range::UnitRange,
        bndry_facenums::AbstractArray{Boundary,1},
        bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -249,7 +249,7 @@ end
 
 # DG version
 function calcBoundaryFlux( mesh::AbstractDGMesh{Tmsh},
-       sbp::AbstractSBP, eqn::EulerData{Tsol},
+       sbp::AbstractOperator, eqn::EulerData{Tsol},
        functor::BCType, idx_range::UnitRange,
        bndry_facenums::AbstractArray{Boundary,1},
        bndryflux::AbstractArray{Tres, 3}) where {Tmsh,  Tsol, Tres}
@@ -288,7 +288,7 @@ end
   than storing the flux.
 """
 function calcBoundaryFlux_nopre( mesh::AbstractDGMesh{Tmsh},
-                          sbp::AbstractSBP, eqn::EulerData{Tsol, Tres},
+                          sbp::AbstractOperator, eqn::EulerData{Tsol, Tres},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
   # calculate the boundary flux for the boundary condition evaluated by the
@@ -333,7 +333,7 @@ end
 """
 function calcBoundaryFlux_nopre(mesh_s::AbstractDGMesh{Tmsh},
                           mesh_f::AbstractDGMesh{Tmsh},
-                          sbp_s::AbstractSBP, sbp_f::AbstractSBP,
+                          sbp_s::AbstractOperator, sbp_f::AbstractOperator,
                           eqn::EulerData{Tsol, Tres},
                           functor::BCType, idx_range::UnitRange,
                           bndry_facenums::AbstractArray{Boundary,1}) where {Tmsh,  Tsol, Tres}
@@ -394,7 +394,136 @@ end
 # Boundary condition definitions
 # TODO: move these to separate file
 
-@doc """
+"""
+  This macro facilitates defining a new boundary condition struct and default
+  constructor.  This works for regular boundary condition functors as well
+  as reverse mode ones.  The default functor for a boundary condition is:
+
+  ```
+    mutable struct Foo{Tsol} <: BCType
+      qg::Vector{Tsol}  # for boundary state
+      v_vals::Vector{Tsol}  # for entropy variables (if needed)
+    end
+  ```
+
+  **Inputs**
+
+   * fname: name of new boundary condition struct (`Foo` in the above example)
+            If the functor does the reverse mode with respect to the metrics,
+            the fname *must* end with `_revm`.  Similarly, reverse mode with
+            respect to the solution must end with `_revq`.
+   * docstring: (optional) docstring for the newly created functor
+
+   **Example usage**
+
+   ```
+     @makeBC Foo \"\"\"
+Docstring for Foo
+\"\"\"
+  ```
+"""
+macro makeBC(fname::Symbol, docstring="")
+
+  # introducing an empty docstring is not the same as not supplying a docstring
+  # figure out which to do
+  if docstring != ""
+    docex = quote
+              @doc $docstring $fname
+            end
+  else
+    docex = :()
+  end
+
+  # figure out name of supertype based on name of functor
+  fname_str = string(fname)
+  if endswith(fname_str, "_revq")
+    stype = :BCType_revq
+  elseif endswith(fname_str, "_revm")
+    stype = :BCType_revm
+  else
+    stype = :BCType
+  end
+
+
+  return esc(quote
+               struct $fname{Tsol} <: $stype
+                 #=
+                 """
+                   Storage for boundary state
+                 """
+                 qg::Vector{Tsol}
+                 """
+                   Storage for entropy variables (may be unneeded)
+                 """
+                 v_vals::Vector{Tsol}
+                 =#
+               end
+
+
+               function $fname(mesh::AbstractMesh, eqn::EulerData{Tsol, Tres}) where {Tsol, Tres}
+                 #=
+                 qg = zeros(Tsol, mesh.numDofPerNode)
+                 v_vals = zeros(Tsol, mesh.numDofPerNode)
+                 =#
+
+                 return $fname{Tsol}()
+               end
+
+               $docex
+             end  # end quote
+            )
+end
+
+
+
+@makeBC errorBC """
+  This BC generates an error if it is called
+"""
+
+function (obj::errorBC)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  error("errorBC has been called")
+end
+
+@makeBC errorBC_revm """
+  This BC generates an error if it is called.  Used as a placeholder if no
+  BC is specified
+"""
+function (obj::errorBC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm::AbstractArray{Tmsh,1},
+              nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  error("errorBC_revm has been called")
+end
+
+@makeBC errorBC_revq """
+  This BC generates an error if it is called.  Used as a placeholder if no
+  BC is specified
+"""
+function (obj::errorBC_revq)(params::ParamType2,
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+  error("errorBC_revm has been called")
+end
+
+
+@makeBC isentropicVortexBC """
 ### EulerEquationMod.isentropicVortexBC <: BCTypes
 
   This type and the associated call method define a functor to calculate
@@ -403,163 +532,96 @@ end
   must support.
 
   This is a low level functor.
+"""
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : sclaed face normal in physical space
-*  `bndryflux` : Computed flux value at the boundary
-
-"""->
-mutable struct isentropicVortexBC <: BCType
-end
-
-function (obj::isentropicVortexBC)(params::ParamType,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-
-  gamma = params.gamma
-  gami = params.gamma_1
-
-  # getting qg
-  qg = params.qg
-  calcIsentropicVortex(params, coords, qg) # Get the boundary value
-
-  v_vals = params.q_vals
-  convertFromNaturalToWorkingVars(params, q, v_vals)
-
-  # Getting SAT terms
-  specific_vol = 1.0/v_vals[1]
-  u = v_vals[2]*specific_vol
-  v = v_vals[3]*specific_vol
-  phi = 0.5*(u*u + v*v)
-  H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
-
-#  dq = zeros(Tsol, 4)
-  dq = v_vals - qg  #!!! this allocates a new vector dq every time
-#  nrm2 = params.nrm2
-#  calcBCNormal(params, dxidx, nrm, nrm2)
-  sat = params.sat_vals
-  roe_vars = params.roe_vars
-  roe_vars[1] = u
-  roe_vars[2] = v
-  roe_vars[3] = H
-  calcSAT(params, roe_vars, dq, nrm_xy, sat)
-
-  euler_flux = zeros(Tsol, 4) # params.flux_vals1
-  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, euler_flux)
-
-  sat_fac = 1.0 # Multiplier for SAT term
-  for i=1:4
-    bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
-  end
-
-  return nothing
-end
-
-#=
 # low level function
 function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
-               nrm::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcIsentropicVortex(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
 
   return nothing
 
 end # ends the function isentropicVortexBC
-=#
 
-@doc """
+
+@makeBC isentropicVortexBC_revm """
 ###EulerEquationMod.isentropicVortexBC_revm
 
 Reverse mode for isentropicVortexBC.
 
-**Inputs**
+"""
 
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
-          BCType_revm
-* `q`   : Solution variable
-* `aux_vars` : Auxiliary variables
-* `x`     : Node coordinates
-* `nrm`   : scaled normal vector in x-y space
-* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
-                    mode derivative.
-* `params`        : equation object parameters
-
-**Output**
-
-* `nrm_bar` : Derivative of flux w.r.t the nrm
-
-"""->
-
-mutable struct isentropicVortexBC_revm <: BCType_revm
-end
 
 function (obj::isentropicVortexBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1},
               nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  # Forward sweep
-  gamma = params.gamma
-  gami = params.gamma_1
 
-  # getting qg
-  qg = params.qg
-  calcIsentropicVortex(params, coords, qg) # Get the boundary value
-  v_vals = params.q_vals
-  convertFromNaturalToWorkingVars(params, q, v_vals)
+   # Forward Sweep
+  @unpack params.bcdata qg q_bar qg_bar
+  fill!(q_bar, 0); fill!(qg_bar, 0)
 
-  # Getting SAT terms
-  specific_vol = 1.0/v_vals[1]
-  u = v_vals[2]*specific_vol
-  v = v_vals[3]*specific_vol
-  phi = 0.5*(u*u + v*v)
-  H = gamma*v_vals[4]*specific_vol - gami*phi # Total Enthalpy
+  calcIsentropicVortex(params, coords, qg)
 
-  dq = zeros(Tsol, 4)
-  dq = v_vals - qg
-#  nrm2 = params.nrm2
-#  calcBCNormal(params, dxidx, nrm, nrm2)
+  # Reverse Sweep
 
-  sat_fac = 1.0 # Multiplier for SAT term
-  # for i=1:4
-  #   bndryflux[i] = euler_flux[i] + sat_fac*sat[i]
-  # end
+  # RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm, nrm_bar, bndryflux_bar)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm, bndryflux_bar)
 
-  # Reverse sweep
-  sat_bar = zeros(Tsol, 4)
-  euler_flux_bar = zeros(Tsol, 4)
-  for i = 1:4
-    sat_bar[i] = sat_fac*bndryflux_bar[i]
-    euler_flux_bar[i] = bndryflux_bar[i]
-  end
-
-#  nrm2_bar = zeros(Tmsh, 2)
-  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, euler_flux_bar, nrm_bar)
-  calcSAT_revm(params, nrm, dq, [u,v], H, sat_bar, nrm_bar)
-#  calcBCNormal_revm(params, dxidx, nrm, nrm2_bar, dxidx_bar)
+  calcIsentropicVortex_rev(params, coords, coords_bar, qg_bar)
 
   return nothing
 end
 
-@doc """
+
+@makeBC isentropicVortexBC_revq """
+###EulerEquationMod.isentropicVortexBC_revq
+
+Reverse mode for isentropicVortexBC.
+
+"""
+
+
+function (obj::isentropicVortexBC_revq)(params::ParamType2,
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+  # Forward Sweep
+  @unpack params.bcdata qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcIsentropicVortex(params, coords, qg)
+
+  # Reverse Sweep
+
+  # RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm, bndryflux_bar)
+
+  return nothing
+end
+
+
+
+
+@makeBC isentropicVortexBC_physical """
 ### EulerEquationMod.isentropicVortexBC_physical <: BCTypes
 
   This type and the associated call method define a functor to calculate
@@ -568,9 +630,8 @@ end
   must support.
 
   This is a low level functor.
-"""->
-mutable struct isentropicVortexBC_physical <: BCType
-end
+"""
+
 
 function (obj::isentropicVortexBC_physical)(
               params::ParamType2,
@@ -587,7 +648,7 @@ function (obj::isentropicVortexBC_physical)(
 end # end function isentropicVortexBC_physical
 
 
-@doc """
+@makeBC noPenetrationBC """
 ### EulerEquationMod.noPenetrationBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -596,20 +657,7 @@ end # end function isentropicVortexBC_physical
   Works in 2D, untested in 3D.
 
   This is a low level functor
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : scaled normal vector in x-y space
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-mutable struct noPenetrationBC <: BCType
-end
 
 # low level function
 function (obj::noPenetrationBC)(params::ParamType2,
@@ -624,8 +672,6 @@ function (obj::noPenetrationBC)(params::ParamType2,
   # calculate normal vector in xy space
   nx = nrm_xy[1]
   ny = nrm_xy[2]
-#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
   nx *= fac
@@ -634,7 +680,7 @@ function (obj::noPenetrationBC)(params::ParamType2,
   # Get the normal momentum
   Unrm = nx*q[2] + ny*q[3]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -644,7 +690,7 @@ function (obj::noPenetrationBC)(params::ParamType2,
   qg[2] -= nx*Unrm
   qg[3] -= ny*Unrm
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
@@ -684,7 +730,7 @@ function (obj::noPenetrationBC)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -696,22 +742,25 @@ function (obj::noPenetrationBC)(params::ParamType3,
 
   # call Roe solver
   #RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
-#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-#  nz2 = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
   # this is a problem: q is in conservative variables even if
   # params says we are using entropy variables
   calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 #  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
 
+println("bndryflux = ", bndryflux)
   return nothing
 end
 
-mutable struct noPenetrationESBC <: BCType
-end
+@makeBC noPenetrationESBC """
+  Entropy stable no penetration boundary condition from Chen and Shu
+  "Entropy Stbale High Order Discontinuous Galerkin Methods with Suitable
+  quadrature rules for Hyperbolic Conservation Laws.
+
+  Entropy stable for diagonal E SBP operators only
+"""
 
 # low level function
 function (obj::noPenetrationESBC)(params::ParamType2,
@@ -727,8 +776,6 @@ function (obj::noPenetrationESBC)(params::ParamType2,
   # calculate normal vector in xy space
   nx = nrm_xy[1]
   ny = nrm_xy[2]
-#  nx2 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-#  ny2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
   fac = 1.0/(sqrt(nx*nx + ny*ny))
   # normalize normal vector
   nx *= fac
@@ -741,7 +788,7 @@ function (obj::noPenetrationESBC)(params::ParamType2,
   #   1. computing the normal and tangential components
   #   2. negating the normal component
   #   3. combining the negative normal and non-negated tangent component
-  qg = params.qg
+  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
@@ -766,9 +813,6 @@ function (obj::noPenetrationESBC)(params::ParamType3,
   nx = nrm_xy[1]
   ny = nrm_xy[2]
   nz = nrm_xy[3]
-#  nx = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2] + dxidx[3,1]*nrm[3]
-#  ny = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2] + dxidx[3,2]*nrm[3]
-#  nz = dxidx[1,3]*nrm[1] + dxidx[2,3]*nrm[2] + dxidx[3,3]*nrm[3]
   fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
   # normalize normal vector
   nx = nx*fac
@@ -778,7 +822,7 @@ function (obj::noPenetrationESBC)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
@@ -792,32 +836,16 @@ end
 
 
 
-@doc """
+@makeBC noPenetrationBC_revm """
 ###EulerEquationMod.noPenetrationBC_revm
 
 Reverse mode for noPenetrationBC.
 
-**Input**
-
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
-          BCType_revm
-* `q`   : Solution variable
-* `aux_vars` : Auxiliary variables
-* `x`     : Node coordinates
-* `dxidx` : Mapping jacobian matrix for the SBP node
-* `nrm`   : sbpface normal vector
-* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
-                    mode derivative.
-* `params`        : equation object parameters
-
-"""->
-
-mutable struct noPenetrationBC_revm <: BCType_revm
-end
-
+"""
 function (obj::noPenetrationBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -831,7 +859,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   nx = n1*fac
   ny = n2*fac
   Unrm = nx*q[2] + ny*q[3]
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -841,14 +869,14 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   qg[2] = qg[2] - nx*Unrm
   qg[3] = qg[3] - ny*Unrm
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
 
   # Reverse sweep
 #  nrm2_bar = zeros(Tmsh, 2)
-  qg_bar = zeros(Tsol, 4)
-  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, bndryflux_bar, nrm_bar)
-  calcEulerFlux_revq(params, v_vals, aux_vars, nrm, bndryflux_bar, qg_bar)
+  qg_bar = zeros(Tsol, 4)  #TODO: stop allocating new arrays
+  calcEulerFlux_revm(params, v_vals, aux_vars, nrm, nrm_bar, bndryflux_bar)
+  calcEulerFlux_revq(params, v_vals, qg_bar, aux_vars, nrm, bndryflux_bar)
 
   # TODO: reverse mode convertFromNaturalToWorkingVars(params, qg, v_vals)
   n1_bar = nrm_bar[1]
@@ -879,16 +907,62 @@ function (obj::noPenetrationBC_revm)(params::ParamType2,
   nrm_bar[1] = n1_bar
   nrm_bar[2] = n2_bar
 
-  #=
-  # n1 = dxidx[1,1]*nrm[1] + dxidx[2,1]*nrm[2]
-  dxidx_bar[1,1] += n1_bar*nrm[1]
-  dxidx_bar[2,1] += n1_bar*nrm[2]
-  # n2 = dxidx[1,2]*nrm[1] + dxidx[2,2]*nrm[2]
-  dxidx_bar[1,2] += n2_bar*nrm[1]
-  dxidx_bar[2,2] += n2_bar*nrm[2]
-  =#
   return nothing
 end
+
+@makeBC noPenetrationBC_revq """
+  Reverse mode wrt q of `noPenetrationBC`
+"""
+
+function (obj::noPenetrationBC_revq)(params::ParamType{2, :conservative},
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+  data = params.bcdata
+  @unpack data qg qg_bar
+  fill!(qg_bar, 0)
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+
+  # Subtract the normal component of the momentum from \xi & \eta components
+  # of the momentum
+  qg[2] -= nx*Unrm
+  qg[3] -= ny*Unrm
+
+
+  calcEulerFlux_revq(params, qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  Unrm_bar = -nx*qg_bar[2] - ny*qg_bar[3]
+  for i=1:length(q)
+    q_bar[i] += qg_bar[i]
+  end
+
+  q_bar[2] += nx*Unrm_bar
+  q_bar[3] += ny*Unrm_bar
+
+  return nothing
+end
+
+
+
 #=
 function (obj::noPenetrationBC_revm)(params::ParamType3,
               q::AbstractArray{Tsol,1},
@@ -913,7 +987,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.qg
+  qg = params.bcdata.qg
   for i=1:length(q)
     qg[i] = q[i]
   end
@@ -923,14 +997,14 @@ function (obj::noPenetrationBC_revm)(params::ParamType3,
   qg[3] -= ny*Unrm
   qg[4] -= nz*Unrm
 
-  v_vals = params.v_vals
+  v_vals = params.bcdata.v_vals
   convertFromNaturalToWorkingVars(params, qg, v_vals)
 
   # Reverse Sweep
   nrm2_bar = zeros(Tmsh, 3)
   v_vals_bar = zeros(Tsol, 5)
-  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux_bar, nrm2_bar)
-  calcEulerFlux_revq(params, v_vals, aux_vars, [nx2, ny2, nz2], bndryflux_bar, v_vals_bar)
+  calcEulerFlux_revm(params, v_vals, aux_vars, [nx2, ny2, nz2], nrm2_bar, bndryflux_bar)
+  calcEulerFlux_revq(params, v_vals, v_vals_bar, aux_vars, [nx2, ny2, nz2], bndryflux_bar)
 
   nz2_bar = nrm2_bar[3]
   ny2_bar = nrm2_bar[2]
@@ -985,7 +1059,7 @@ function (obj::noPenetrationBC_revm)(params::ParamType3,
   return nothing
 end # End noPenetrationBC_revm 3D
 =#
-@doc """
+@makeBC unsteadyVortexBC """
 ### EulerEquationMod.unsteadyVortexBC <: BCTypes
 
   This type and the associated call method define a functor to calculate
@@ -994,22 +1068,7 @@ end # End noPenetrationBC_revm 3D
   must support.
 
   This is a low level functor.
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm_xy`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
-"""->
-mutable struct unsteadyVortexBC <: BCType
-end
-
+"""
 # low level function
 function (obj::unsteadyVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
@@ -1022,7 +1081,7 @@ function (obj::unsteadyVortexBC)(params::ParamType,
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcUnsteadyVortex(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -1031,8 +1090,7 @@ function (obj::unsteadyVortexBC)(params::ParamType,
 
 end # ends the function unsteadyVortex BC
 
-mutable struct unsteadyVortex2BC <: BCType
-end
+@makeBC unsteadyVortex2BC
 
 # low level function
 function (obj::unsteadyVortex2BC)(params::ParamType,
@@ -1046,7 +1104,7 @@ function (obj::unsteadyVortex2BC)(params::ParamType,
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcUnsteadyVortex2(params, coords, qg)
 
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -1056,7 +1114,7 @@ function (obj::unsteadyVortex2BC)(params::ParamType,
 end # ends the function unsteadyVortex BC
 
 
-@doc """
+@makeBC Rho1E2U1VW0BC """
 ### EulerEquationMod.Rho1E2U1VW0BC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -1067,22 +1125,7 @@ end # ends the function unsteadyVortex BC
 
   This is a low level functor.
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-mutable struct Rho1E2U1VW0BC <: BCType
-end
-
-# low level function
 function (obj::Rho1E2U1VW0BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
@@ -1093,7 +1136,7 @@ function (obj::Rho1E2U1VW0BC)(params::ParamType,
 
 
   #println("in Rho1E2BCU1V0W0")
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcRho1Energy2U1VW0(params, coords, qg)
 
@@ -1105,7 +1148,7 @@ function (obj::Rho1E2U1VW0BC)(params::ParamType,
 
 end
 
-@doc """
+@makeBC Rho1E2BC """
 ### EulerEquationMod.Rho1E2BC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -1113,22 +1156,7 @@ end
 
   This is a low level functor
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-mutable struct Rho1E2BC <: BCType
-end
-
-# low level function
 function (obj::Rho1E2BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
@@ -1139,7 +1167,7 @@ function (obj::Rho1E2BC)(params::ParamType,
 
 
   #println("in Rho1E2BC")
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcRho1Energy2(params, coords, qg)
 
@@ -1151,7 +1179,7 @@ function (obj::Rho1E2BC)(params::ParamType,
 
 end
 
-@doc """
+@makeBC Rho1E2U3BC """
 ### EulerEquationMod.Rho1E2U3BC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -1159,22 +1187,7 @@ end
 
   This is a low level functor
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-mutable struct Rho1E2U3BC <: BCType
-end
-
-# low level function
 function (obj::Rho1E2U3BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},
@@ -1185,7 +1198,7 @@ function (obj::Rho1E2U3BC)(params::ParamType,
 
 
   #println("in Rho1E2U3Bc")
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcRho1Energy2U3(params, coords, qg)
 
@@ -1194,10 +1207,50 @@ function (obj::Rho1E2U3BC)(params::ParamType,
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
   return nothing
-
 end
 
-@doc """
+@makeBC Rho1E2U3BC_revm """
+  Reverse mode wrt metrics of of`Rho1E2U3BC
+"""
+function (obj::Rho1E2U3BC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward sweep
+  qg = params.bcdata.qg
+  calcRho1Energy2U3(params, coords, qg)
+
+  # Reverse sweep
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+end
+
+
+@makeBC Rho1E2U3BC_revq """
+  Reverse mode wrt solution of Rho1E2U3BC
+"""
+function (obj::Rho1E2U3BC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  data = params.bcdata
+  @unpack data qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcRho1Energy2U3(params, coords, qg)
+  RoeSolver_revq(params, q, q_bar,  qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  return nothing
+end
+
+
+@makeBC FreeStreamBC """
 ### EulerEquationMod.FreeStreamBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
@@ -1207,21 +1260,7 @@ end
 
   This is a low level functor
 
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `dxidx`    : Mapping jacobian matrix for the SBP node
-*  `nrm_xy`      : SBP face normal
-*  `bndryflux` : Computed flux value at the boundary
-
 """
-mutable struct FreeStreamBC <: BCType
-end
-
 function (obj::FreeStreamBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1229,7 +1268,7 @@ function (obj::FreeStreamBC)(params::ParamType,
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcFreeStream(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -1237,71 +1276,64 @@ function (obj::FreeStreamBC)(params::ParamType,
   return nothing
 end
 
-@doc """
+@makeBC FreeStreamBC_revm """
 ###EulerEquationMod.FreeStreamBC_revm
 
 Reverse mode for FreeStreamBC.
 
-**Inputs**
-
-* `obj` : Type of the Boundary condition being evaluated. Its a subtype of
-          BCType_revm
-* `q`   : Solution variable
-* `aux_vars` : Auxiliary variables
-* `x`     : Node coordinates
-* `nrm_xy`   : scaled normal vector in x-y space
-* `bndryflux_bar` : Input flux value seed that is used to compute the reverse
-                    mode derivative.
-* `params`        : equation object parameters
-
-**Output**
-
-* `nrm_bar` : Derivative of bndryflux_bar w.r.t the mapping jacobian
-
-"""->
-
-mutable struct FreeStreamBC_revm <: BCType_revm
-end
-
+"""
 function (obj::FreeStreamBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward sweep
-  qg = params.qg
+  qg = params.bcdata.qg
   calcFreeStream(params, coords, qg)
 
   # Reverse sweep
-  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+
+  # calcFreeStream does not depend on coords, so no need to reverse mode it
+  return nothing
+end
+
+
+@makeBC FreeStreamBC_revq """
+  Reverse mode wrt q of `FreeStreamBC`
+"""
+
+function (obj::FreeStreamBC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  data = params.bcdata
+  @unpack data qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcFreeStream(params, coords, qg)
+  RoeSolver_revq(params, q, q_bar,  qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
 
   return nothing
 end
 
-@doc """
+
+
+
+@makeBC FreeStreamBC_dAlpha """
 ### EulerEquationMod.FreeStreamBC_dAlpha <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state corresponding to the free stream velocity, using rho_free, Ma, aoa, and E_free
 
   This is a low level functor
-
-**Arguments**
-
-*  `obj` : Object of type BCType used for multiple dispatch. Every new boundary
-           condition needs to have its own type and entered in BCDict
-*  `q`   : Solution variable
-*  `aux_vars` : Auxiliary variables
-*  `x`        : physical coordinates of the SBP node
-*  `nrm_xy`      : scaled normal vector in x-y space
-*  `bndryflux` : Computed flux value at the boundary
-
-"""->
-mutable struct FreeStreamBC_dAlpha <: BCType
-end
-
+"""
 function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
@@ -1309,7 +1341,7 @@ function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
 
   calcFreeStream_dAlpha(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm, bndryflux)
@@ -1318,18 +1350,14 @@ function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
 end
 
 
-@doc """
+@makeBC allOnesBC """
 ### EulerEquationMod.allOnesBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state where all the conservative variables have a value 1.0
 
   This is a low level functor
-"""->
-
-mutable struct allOnesBC <: BCType
-end
-
+"""
 function (obj::allOnesBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
@@ -1346,17 +1374,14 @@ function (obj::allOnesBC)(params::ParamType2,
   return nothing
 end # end function call
 
-@doc """
+@makeBC allZerosBC """
 ### EulerEquationMod.allZerosBC <: BCTypes
 
   This functor uses the Roe solver to calculate the flux for a boundary
   state where all the conservative variables have a value 0.0
 
   This is a low level functor
-"""->
-
-mutable struct allZerosBC <: BCType
-end
+"""
 
 function (obj::allZerosBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
@@ -1374,8 +1399,10 @@ function (obj::allZerosBC)(params::ParamType2,
   return nothing
 end # end function
 
-mutable struct ExpBC <: BCType
-end
+
+@makeBC ExpBC """
+  Dirichlet BC for [`calcExp`](@ref)
+"""
 
 function (obj::ExpBC)(params::ParamType, q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
@@ -1383,7 +1410,7 @@ function (obj::ExpBC)(params::ParamType, q::AbstractArray{Tsol,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcExp(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -1391,30 +1418,71 @@ function (obj::ExpBC)(params::ParamType, q::AbstractArray{Tsol,1},
   return nothing
 end # end function
 
-mutable struct ExpBC_revm <: BCType_revm
-end
+@makeBC ExpBC_revm """
+Reverse mode of ExpBC
+"""
 
 function (obj::ExpBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # Forward Sweep
-  qg = params.qg
+  @unpack params.bcdata qg q_bar qg_bar
+  fill!(q_bar, 0); fill!(qg_bar, 0)
+
   calcExp(params, coords, qg)
 
   # Reverse Sweep
 
   # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
-  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, bndryflux_bar, nrm_bar)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  calcExp_rev(params, coords, coords_bar, qg_bar)
 
   return nothing
 end
 
-mutable struct PeriodicMMSBC <: BCType
+
+@makeBC ExpBC_revq """
+Reverse mode of ExpBC
+"""
+
+
+function (obj::ExpBC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward Sweep
+  @unpack params.bcdata qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcExp(params, coords, qg)
+
+  # Reverse Sweep
+
+  # RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  return nothing
 end
+
+
+
+@makeBC PeriodicMMSBC """
+  Dirichlet boundary condition for [`calcPeriodicMMS`](@ref).  This BC
+  should not normally be needed, the correct thing to do is make a periodic
+  mesh
+"""
 
 function (obj::PeriodicMMSBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
@@ -1425,7 +1493,7 @@ function (obj::PeriodicMMSBC)(params::ParamType,
 # use the exact solution as the boundary condition for the PeriodicMMS
 # solutions
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcPeriodicMMS(params, coords, qg)
   use_efix = 0
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux, use_efix)
@@ -1434,8 +1502,9 @@ function (obj::PeriodicMMSBC)(params::ParamType,
   return nothing
 end # end function
 
-mutable struct ChannelMMSBC <: BCType
-end
+@makeBC ChannelMMSBC """
+  DirichletBC for [`calcChannelMMS`](@ref)
+"""
 
 function (obj::ChannelMMSBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
@@ -1446,7 +1515,7 @@ function (obj::ChannelMMSBC)(params::ParamType,
 # use the exact solution as the boundary condition for the ChannelMMS
 # solutions
 
-  qg = params.qg
+  qg = params.bcdata.qg
   calcChannelMMS(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -1454,8 +1523,10 @@ function (obj::ChannelMMSBC)(params::ParamType,
 end # end function
 
 
-mutable struct defaultBC <: BCType
-end
+@makeBC defaultBC """
+  Default boundary condition for Euler.  Computes the Euler flux.  This 
+  should only be used for supersonic outflow.
+"""
 
 function (obj::defaultBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
@@ -1469,8 +1540,13 @@ function (obj::defaultBC)(params::ParamType,
   return nothing
 end
 
-mutable struct SubsonicInflowBC <: BCType
-end
+@makeBC SubsonicInflowBC """
+  See NASA/TM-2011-217181: Inflow/Outflow Boundary Conditions with Application
+                           to FUN3D by Carlson 
+  The derivation has some algebraic mistakes, but the approach is correct
+
+  This BC does not work yet.
+"""
 
 function (obj::SubsonicInflowBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
@@ -1478,10 +1554,6 @@ function (obj::SubsonicInflowBC)(params::ParamType2,
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-
-  #See NASA/TM-2011-217181: Inflow/Outflow Boundary Conditions with Application
-  #                         to FUN3D by Carlson 
-  # The derivation has some algebraic mistakes, but the approach is correct
 
   pt = 102010.0/params.p_free  # boundary stagnation pressure
   Tt = 288.6/params.T_free  # boundary stagnation temperature
@@ -1534,7 +1606,7 @@ function (obj::SubsonicInflowBC)(params::ParamType2,
 
 
   # convert back to conservative variables
-  qg = params.qg
+  qg = params.bcdata.qg
   rho1 = gamma*pb/(ab*ab)  # this is numerically equivalent to rho2 below,
                            # which is weuird because in this case Tb is never
                            # used
@@ -1551,8 +1623,7 @@ function (obj::SubsonicInflowBC)(params::ParamType2,
   return nothing
 end
 
-mutable struct SubsonicOutflowBC <: BCType
-end
+@makeBC SubsonicOutflowBC
 
 function(obj::SubsonicOutflowBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
@@ -1576,7 +1647,7 @@ function(obj::SubsonicOutflowBC)(params::ParamType2,
   @assert Un >= 0  # this should be outflow, not inflow
   @assert (Un*Un)/ai2 < 1
 
-  qg = params.qg
+  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = q[2]
   qg[3] = q[3]
@@ -1589,8 +1660,7 @@ function(obj::SubsonicOutflowBC)(params::ParamType2,
   return nothing
 end
 
-mutable struct inviscidChannelFreeStreamBC <: BCType
-end
+@makeBC inviscidChannelFreeStreamBC
 
 # low level function
 function(obj::inviscidChannelFreeStreamBC)(             
@@ -1605,7 +1675,7 @@ function(obj::inviscidChannelFreeStreamBC)(
 #  println("entered isentropicOvrtexBC (low level)")
 #  println("Tsol = ", Tsol)
   # getting qg
-  qg = params.qg
+  qg = params.bcdata.qg
   calcInvChannelFreeStream(params, coords, qg)
   RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 
@@ -1633,9 +1703,10 @@ mutable struct reanalysisBC{Tsol} <: BCType
   bc_vals::Array{Tsol, 3}
 end
 
-function reanalysisBC()
-  bc_vals = Array{Float64}(0, 0, 0)
-  return reanalysisBC{Float64}(bc_vals)
+
+function reanalysisBC(mesh::AbstractMesh, eqn::AbstractSolutionData{Tsol, Tres}) where {Tsol, Tres}
+  bc_vals = Array{Tsol}(0, 0, 0)
+  return reanalysisBC{Tsol}(bc_vals)
 end
 
 function (obj::reanalysisBC)(params::AbstractParamType{Tdim},
@@ -1654,60 +1725,84 @@ function (obj::reanalysisBC)(params::AbstractParamType{Tdim},
   return nothing
 end
 
-include("bc_viscous.jl")
 
 # every time a new boundary condition is created,
 # add it to the dictionary
-#const isentropicVortexBC_ = isentropicVortexBC()
-#const noPenetrationBC_ = noPenetrationBC()
 
 """
   Maps boundary conditions names to the functor objects.
   Each functor should be callable with the signature
 """
-global const BCDict = Dict{String, BCType}(
-"isentropicVortexBC" => isentropicVortexBC(),
-"noPenetrationBC" => noPenetrationBC(),
-"noPenetrationESBC" => noPenetrationESBC(),
-"Rho1E2BC" => Rho1E2BC(),
-"Rho1E2U1VW0BC" => Rho1E2U1VW0BC(),
-"Rho1E2U3BC" => Rho1E2U3BC(),
-"isentropicVortexBC_physical" => isentropicVortexBC_physical(),
-"FreeStreamBC" => FreeStreamBC(),
-"allOnesBC" => allOnesBC(),
-"unsteadyVortexBC" => unsteadyVortexBC(),
-"unsteadyVortex2BC" => unsteadyVortex2BC(),
-"ExpBC" => ExpBC(),
-"PeriodicMMSBC" => PeriodicMMSBC(),
-"ChannelMMSBC" => ChannelMMSBC(),
-"subsonicInflowBC" => SubsonicInflowBC(),
-"subsonicOutflowBC" => SubsonicOutflowBC(),
-"inviscidChannelFreeStreamBC" => inviscidChannelFreeStreamBC(),
-"reanalysisBC" => reanalysisBC(),
-"defaultBC" => defaultBC(),
-"nonslipBC" => nonslipBC(),
-"ExactChannelBC" => ExactChannelBC(),
-"zeroPressGradientBC" => zeroPressGradientBC(),
+global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
+"errorBC" => errorBC,
+"isentropicVortexBC" => isentropicVortexBC,
+"noPenetrationBC" => noPenetrationBC,
+"noPenetrationESBC" => noPenetrationESBC,
+"Rho1E2BC" => Rho1E2BC,
+"Rho1E2U1VW0BC" => Rho1E2U1VW0BC,
+"Rho1E2U3BC" => Rho1E2U3BC,
+"isentropicVortexBC_physical" => isentropicVortexBC_physical,
+"FreeStreamBC" => FreeStreamBC,
+"allOnesBC" => allOnesBC,
+"unsteadyVortexBC" => unsteadyVortexBC,
+"unsteadyVortex2BC" => unsteadyVortex2BC,
+"ExpBC" => ExpBC,
+"PeriodicMMSBC" => PeriodicMMSBC,
+"ChannelMMSBC" => ChannelMMSBC,
+"subsonicInflowBC" => SubsonicInflowBC,
+"subsonicOutflowBC" => SubsonicOutflowBC,
+"inviscidChannelFreeStreamBC" => inviscidChannelFreeStreamBC,
+"reanalysisBC" => reanalysisBC,
+"defaultBC" => defaultBC,
 )
 
 @doc """
 ### EulerEquationMod.getBCFunctors
 
   This function uses the opts dictionary to populate mesh.bndry_funcs with
-  the the functors
+  the functors.
 
+  The functors must be a subtype of [`BCType`](@ref).
+
+  The function must be callable with the signature:
+
+  ```
     func(params::ParamType,
          q::AbstractArray{Tsol,1},
          aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
          nrm_xy::AbstractArray{Tmsh,1},
          bndryflux::AbstractArray{Tres, 1},
          bndry::BoundaryNode=NullBoundaryNode)
+  ```
+
+  with inputs
+
+   * q: solution vector at a node
+   * aux_vars: auxiliary variables for the node
+   * coords: x-y coordinates of the node
+   * nrm_xy: normal vector of the node
+
+  and output
+
+   * bndryflux: the flux vector, length `numDofPerNode`
+
+
+  The functor must also have have an outer constructor
+
+  ```
+    Foo(mesh::AbstractMesh, eqn::EulerData)
+  ```
+
+  See the [`@makeBC`](@ref) macro creating a new BC type for with the default
+  fields.  If a particular boundary condition needs special fields, then it
+  must be constructed by hand (ie. not using the macro).
 
 
   This is a high level function.
-"""->
+"""
+
 # use this function to populate access the needed values in BCDict
-function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function getBCFunctors(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 # populate the array mesh.bndry_funcs with the functors for the boundary condition types
 
 #  println("Entered getBCFunctors")
@@ -1715,28 +1810,141 @@ function getBCFunctors(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opt
   for i=1:mesh.numBC
     key_i = string("BC", i, "_name")
     val = opts[key_i]
-#    println("BCDict[val] = ", BCDict[val])
-    mesh.bndry_funcs[i] = BCDict[val]
+    ctor = BCDict[val]
+    mesh.bndry_funcs[i] = ctor(mesh, eqn)
   end
 
   return nothing
-end # ENd function getBCFunctors
+end # End function getBCFunctors
 
-global const BCDict_revm = Dict{String, BCType_revm}(
-"noPenetrationBC" => noPenetrationBC_revm(),
-"FreeStreamBC" => FreeStreamBC_revm(),
-"ExpBC" => ExpBC_revm(),
-"isentropicVortexBC" => isentropicVortexBC_revm(),
+global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
+"errorBC" => errorBC_revm,
+"noPenetrationBC" => noPenetrationBC_revm,
+"Rho1E2U3BC" => Rho1E2U3BC_revm,
+"FreeStreamBC" => FreeStreamBC_revm,
+"ExpBC" => ExpBC_revm,
+"isentropicVortexBC" => isentropicVortexBC_revm,
 )
 
-function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+"""
+  This function uses the options dictionary to populate mesh.bndry_funcs_revm.
+
+  The functors must be of time [`BCType_revm`](@ref)
+
+  If opts["need_adjoint"] is false, the error BC is supplied instead.
+
+  The function must be callable with the signature
+
+  ```
+  func(params::ParamType,
+        q::AbstractArray{Tsol,1},
+        aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+        nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+        bndryflux_bar::AbstractArray{Tres, 1},
+        bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+  ```
+
+  with inputs
+
+   * q: solution vector at a node
+   * aux_vars: auxiliary variables for the node
+   * coords: x-y coordinates of the node
+   * nrm_xy: normal vector of the node
+   * bndryflux_bar: seed vector for the flux vector, length `numDofPerNode`
+
+  and outputs
+
+   * nrm_bar: output vector, same length of `nrm_xy`
+
+
+  The functor must also have an outer constructor
+
+  ```
+    Foo(mesh::AbstractMesh, eqn::EulerData)
+  ```
+"""
+function getBCFunctors_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 
   for i = 1:mesh.numBC
     key_i = string("BC", i, "_name")
-    val = opts[key_i]
+    if opts["need_adjoint"]
+      val = opts[key_i]
+    else
+      val = "errorBC"  # placeholder, because the BC in use might not have
+                       # a reverse-mode version
+    end
+    ctor = BCDict_revm[val]
 #    println("BCDict_revm[$val] = ", BCDict_revm[val])
-    mesh.bndry_funcs_revm[i] = BCDict_revm[val]
+    mesh.bndry_funcs_revm[i] = ctor(mesh, eqn)
   end # End for i = 1:mesh.numBC
 
   return nothing
 end # End function getBCFunctors_revm
+
+
+global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
+"errorBC" => errorBC_revq,
+"noPenetrationBC" => noPenetrationBC_revq,
+"Rho1E2U3BC" => Rho1E2U3BC_revq,
+"FreeStreamBC" => FreeStreamBC_revq,
+"ExpBC" => ExpBC_revq,
+"isentropicVortexBC" => isentropicVortexBC_revq,
+)
+
+
+"""
+  This function uses the options dictionary to populate mesh.bndry_funcs_revq.
+
+  The functors must be of time [`BCType_revq`](@ref)
+
+  If opts["need_adjoint"] is false, the error BC is supplied instead.
+
+  The function must be callable with the signature
+
+  ```
+  func(params::ParamType,
+        q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1}
+        aux_vars::AbstractArray{Tres, 1},
+        nrm_xy::AbstractArray{Tmsh,1},
+        bndryflux_bar::AbstractArray{Tres, 1},
+        bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+  ```
+
+  with inputs
+
+   * q: solution vector at a node
+   * aux_vars: auxiliary variables for the node
+   * coords: x-y coordinates of the node
+   * nrm_xy: normal vector of the node
+   * bndryflux_bar: seed vector for the flux vector, length `numDofPerNode`
+
+  and outputs
+
+   * q_bar: vector to be updated with back-propigation of `bndryflux_bar`,
+            same shape as `q`
+
+
+  The functor must also have an outer constructor
+
+  ```
+    Foo(mesh::AbstractMesh, eqn::EulerData)
+  ```
+"""
+function getBCFunctors_revq(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
+
+  for i = 1:mesh.numBC
+    key_i = string("BC", i, "_name")
+    if opts["need_adjoint"]
+      val = opts[key_i]
+    else
+      val = "errorBC"  # placeholder, because the BC in use might not have
+                       # a reverse-mode version
+    end
+    ctor = BCDict_revq[val]
+    mesh.bndry_funcs_revq[i] = ctor(mesh, eqn)
+  end # End for i = 1:mesh.numBC
+
+  return nothing
+end # End function getBCFunctors_revq
+
+

@@ -1,4 +1,7 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
+
+include("flux_types.jl")
+
 @doc """
 ### EulerEquationMod.ParamType
 
@@ -48,107 +51,48 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   t::Float64  # current time value
   order::Int  # accuracy of elements (p=1,2,3...)
 
+  numDofPerNode::Int
+  numNodesPerElement::Int
+  numNodesPerFace::Int
   #TODO: consider making these vectors views of a matrix, to guarantee
   #      spatial locality
-  q_vals::Array{Tsol, 1}  # resuable temporary storage for q variables at a node
-  q_vals2::Array{Tsol, 1}
-  q_vals3::Array{Tsol, 1}
-  qg::Array{Tsol, 1}  # reusable temporary storage for boundary condition
-  v_vals::Array{Tsol, 1}  # reusable storage for convert back to entropy vars.
-  v_vals2::Array{Tsol, 1}
-  Lambda::Array{Tsol, 1}  # diagonal matrix of eigenvalues
-
-  # temporary storage for element level solution
-  q_el1::Array{Tsol, 2}
-  q_el2::Array{Tsol, 2}
-  q_el3::Array{Tsol, 2}
-  q_el4::Array{Tsol, 2}
-
-  # temporary storage for solution interpolated to face
-  q_faceL::Array{Tsol, 2}
-  q_faceR::Array{Tsol, 2}
-
-  res_el1::Array{Tsol, 2}
-  res_el2::Array{Tsol, 2}
-
-  # solution grid temporaries
-  qs_el1::Array{Tsol, 2}
-  qs_el2::Array{Tsol, 2}
-
-  ress_el1::Array{Tsol, 2}
-  ress_el2::Array{Tsol, 2}
 
   # numDofPerNode x stencilsize arrays for entropy variables
-  w_vals_stencil::Array{Tsol, 2}
-  w_vals2_stencil::Array{Tsol, 2}
-
-  res_vals1::Array{Tres, 1}  # reusable residual type storage
-  res_vals2::Array{Tres, 1}  # reusable residual type storage
-  res_vals3::Array{Tres, 1}
-
-  flux_vals1::Array{Tres, 1}  # reusable storage for flux values
-  flux_vals2::Array{Tres, 1}  # reusable storage for flux values
-  flux_valsD::Array{Tres, 2}  # numDofPerNode x Tdim for flux vals 3 directions
-
-  lambda_dotL::Array{Tres, 1}
-  lambda_dotR::Array{Tres, 1}
-
-  # Roe solver storage
-  sat_vals::Array{Tres, 1}  # reusable storage for SAT term
-  euler_fluxjac::Array{Tres, 2}  # euler flux jacobian
-  p_dot::Array{Tsol, 1}  # derivative of pressure wrt q
-  roe_vars::Array{Tres, 1}  # Roe average state
-  roe_vars_dot::Array{Tres, 1}  # derivatives of Roe vars wrt q, packed
 
 
-  A0::Array{Tsol, 2}  # reusable storage for the A0 matrix
-  A0inv::Array{Tsol, 2}  # reusable storage for inv(A0)
-  A1::Array{Tsol, 2}  # reusable storage for a flux jacobian
-  A2::Array{Tsol, 2}  # reusable storage for a flux jacobian
-  S2::Array{Tsol, 1}  # diagonal matrix of eigenvector scaling
 
-  A_mats::Array{Tsol, 3}  # reusable storage for flux jacobians
-
-  Rmat1::Array{Tres, 2}  # reusable storage for a matrix of type Tres
-  Rmat2::Array{Tres, 2}
-
-  P::Array{Tmsh, 2}  # projection matrix
-
-  nrm::Array{Tmsh, 1}  # a normal vector
-  nrm2::Array{Tmsh, 1}
-  nrm3::Array{Tmsh, 1}
-  nrmD::Array{Tmsh, 2}  # Tdim x Tdim array for Tdim normal vectors
-                        # (one per column)
-  nrm_face::Array{Tmsh, 2}  # sbpface.numnodes x Tdim array for normal vectors
-                            # of all face nodes on an element
-  nrm_face2::Array{Tmsh, 2}  # like nrm_face, but transposed
-
-  dxidx_element::Array{Tmsh, 3}  # Tdim x Tdim x numNodesPerElement array for
-                                 # dxidx of an entire element
-  velocities::Array{Tsol, 2}  # Tdim x numNodesPerElement array of velocities
-                              # at each node of an element
-  velocity_deriv::Array{Tsol, 3}  # Tdim x numNodesPerElement x Tdim for
-                                  # derivative of velocities.  First two
-                                  # dimensions are same as velocities array,
-                                  # 3rd dimensions is direction of
-                                  # differentiation
-  velocity_deriv_xy::Array{Tres, 3} # Tdim x Tdim x numNodesPerElement array
-                                    # for velocity derivatives in x-y-z
-                                    # first dim is velocity direction, second
-                                    # dim is derivative direction, 3rd is node
+  # temporary storage for flux functions
+  eulerfluxdata::CalcEulerFluxData{Tsol}
+  bcdata::BCData{Tsol, Tres}
+  roefluxdata::RoeFluxData{Tsol, Tres, Tmsh}
+  calcsatdata::CalcSatData{Tres}
+  lffluxdata::LFFluxData{Tres}
+  irfluxdata::IRFluxData{Tsol}
+  apply_entropy_kernel_diagE_data::ApplyEntropyKernel_diagEData{Tsol, Tres}
+  get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
+  get_lambda_max_data::GetLambdaMaxData{Tsol}
+  calc_vorticity_data::CalcVorticityData{Tsol, Tres, Tmsh}
+  contract_res_entropy_vars_data::ContractResEntropyVarsData{Tsol}
+  get_tau_data::GetTauData{Tsol, Tres}
 
 
-  # volume term jacobian arrays
-  flux_jac::Array{Tres, 4}
-  res_jac::Array{Tres, 4}
+  # temporary storage for face element integral functions
+  calc_ec_face_integral_data::CalcECFaceIntegralData{Tres, Tmsh}
+  calc_entropy_penalty_integral_data::CalcEntropyPenaltyIntegralData{Tsol, Tres}
+  interpolate_element_staggered_data::InterpolateElementStaggeredData{Tsol}
 
-  # face term jacobian arrays
-  flux_dotL::Array{Tres, 3}
-  flux_dotR::Array{Tres, 3}
-  res_jacLL::Array{Tres, 4}
-  res_jacLR::Array{Tres, 4}
-  res_jacRL::Array{Tres, 4}
-  res_jacRR::Array{Tres, 4}
+  # temporary storage for higher level functions
+  calc_volume_integrals_data::CalcVolumeIntegralsData{Tres, Tmsh}
+  face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
+  calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
+
+
+  # entropy kernels
+  entropy_lf_kernel::LFKernel{Tsol, Tres, Tmsh}
+  entropy_lw2_kernel::LW2Kernel{Tsol, Tres, Tmsh}
+  entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
+
+  get_ira0data::GetIRA0Data{Tsol}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -158,7 +102,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   gamma_1::Float64 # = gamma - 1
 
   Ma::Float64  # free stream Mach number
-  Re::Float64  # free stream Reynolds number
 
   # these quantities are dimensional (ie. used for non-dimensionalization)
   aoa::Tsol  # angle of attack (radians)
@@ -197,13 +140,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
   Rprime::Array{Float64, 2}  # numfaceNodes x numNodesPerElement interpolation matrix
                              # this should live in sbpface instead
-  # temporary storage for calcECFaceIntegrals
-  A::Array{Tres, 2}
-  B::Array{Tres, 3}
-  iperm::Array{Int, 1}
-
-  S::Array{Float64, 3}  # SBP S matrix
-
   x_design::Array{Tsol, 1}  # design variables
 
   #=
@@ -221,9 +157,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   t_solve::Float64 # linear solve time
   =#
   time::Timings
-  isViscous::Bool
-  penalty_relaxation::Float64
-  const_tii::Float64
 
   function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer) where {Tdim, var_type, Tsol, Tres, Tmsh} 
   # create values, apply defaults
@@ -234,9 +167,11 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     if opts["use_staggered_grid"]
       numNodesPerElement = mesh.mesh2.numNodesPerElement
       stencilsize = size(mesh.mesh2.sbpface.perm, 1)
+      numNodesPerFace = mesh.mesh2.numNodesPerFace
     else
       numNodesPerElement = mesh.numNodesPerElement
       stencilsize = size(mesh.sbpface.perm, 1)
+      numNodesPerFace = mesh.numNodesPerFace
     end
 
     t = 0.0
@@ -247,89 +182,41 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     else
       f = BufferedIO(DevNull)
     end
-    q_vals = zeros(Tsol, Tdim + 2)
-    q_vals2 = zeros(Tsol, Tdim + 2)
-    q_vals3 = zeros(Tsol, Tdim + 2)
-    qg = zeros(Tsol, Tdim + 2)
-    v_vals = zeros(Tsol, Tdim + 2)
-    v_vals2 = zeros(Tsol, Tdim + 2)
-    Lambda = zeros(Tsol, Tdim + 2)
 
-    q_el1 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el2 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el3 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
-    q_el4 = zeros(Tsol, mesh.numDofPerNode, numNodesPerElement)
 
-    q_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    q_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    nd = 2*mesh.numDofPerNode
+    eulerfluxdata = CalcEulerFluxData{Tsol}(mesh.numDofPerNode)
+    bcdata = BCData{Tsol, Tres}(mesh.numDofPerNode)
+    roefluxdata = RoeFluxData{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
+    lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
+    irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
+    apply_entropy_kernel_diagE_data = ApplyEntropyKernel_diagEData{Tsol, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
+    get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
+    get_lambda_max_data = GetLambdaMaxData{Tsol}(mesh.numDofPerNode)
 
-    res_el1 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
-    res_el2 = zeros(Tres, mesh.numDofPerNode, numNodesPerElement)
+    calc_vorticity_data = CalcVorticityData{Tsol, Tres, Tmsh}(mesh.numNodesPerElement, mesh.dim)
+    contract_res_entropy_vars_data = ContractResEntropyVarsData{Tsol}(mesh.numDofPerNode)
+    get_tau_data = GetTauData{Tsol, Tres}(mesh.numDofPerNode, mesh.dim)
 
-    qs_el1 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
-    qs_el2 = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+    calc_ec_face_integral_data = CalcECFaceIntegralData{Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    calc_entropy_penalty_integral_data = CalcEntropyPenaltyIntegralData{Tsol, Tres}(mesh.numDofPerNode, numNodesPerFace, stencilsize, numNodesPerElement, 2*mesh.numDofPerNode)
+    interpolate_element_staggered_data = InterpolateElementStaggeredData{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement, numNodesPerElement)
 
-    ress_el1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-    ress_el2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+    calc_volume_integrals_data = CalcVolumeIntegralsData{Tres, Tmsh}(
+                                mesh.numDofPerNode, mesh.dim,
+                                mesh.numNodesPerElement, numNodesPerElement, sbp)
+    face_element_integral_data = FaceElementIntegralData{Tsol, Tres}(
+                                 mesh.numDofPerNode, mesh.numNodesPerElement,
+                                 numNodesPerElement)
+    calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
+                               mesh.numDofPerNode, mesh.numNodesPerFace,
+                               mesh.numNodesPerElement)
+    entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, nd)
+    entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
+    entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
+    get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
-    w_vals_stencil = zeros(Tsol, Tdim + 2, stencilsize)
-    w_vals2_stencil = zeros(Tsol, Tdim + 2, stencilsize)
-
-    res_vals1 = zeros(Tres, Tdim + 2)
-    res_vals2 = zeros(Tres, Tdim + 2)
-    res_vals3 = zeros(Tres, Tdim + 2)
-
-    flux_vals1 = zeros(Tres, Tdim + 2)
-    flux_vals2 = zeros(Tres, Tdim + 2)
-    flux_valsD = zeros(Tres, Tdim + 2, Tdim)
-
-    lambda_dotL = zeros(Tres, Tdim + 2)
-    lambda_dotR = zeros(Tres, Tdim + 2)
-
-    # Roe solver storage
-    sat_vals = zeros(Tres, Tdim + 2)
-    euler_fluxjac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode)
-    p_dot = zeros(Tsol, mesh.numDofPerNode)
-    roe_vars = zeros(Tres, Tdim + 1)
-    roe_vars_dot = zeros(Tres, 22)  # number needed in 3D
-
-    A0 = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A0inv = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A1 = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A2 = zeros(Tsol, Tdim + 2, Tdim + 2)
-    A_mats = zeros(Tsol, Tdim + 2, Tdim + 2, Tdim)
-    S2 = zeros(Tsol, Tdim + 2)
-
-    Rmat1 = zeros(Tres, Tdim + 2, Tdim + 2)
-    Rmat2 = zeros(Tres, Tdim + 2, Tdim + 2)
-
-    P = zeros(Tmsh, Tdim + 2, Tdim + 2)
-
-    nrm = zeros(Tmsh, Tdim)
-    nrm2 = zeros(nrm)
-    nrm3 = zeros(nrm)
-    nrmD = zeros(Tmsh, Tdim, Tdim)
-    nrm_face = zeros(Tmsh, mesh.sbpface.numnodes, Tdim)
-    nrm_face2 = zeros(Tmsh, Tdim, mesh.sbpface.numnodes)
-
-    dxidx_element = zeros(Tmsh, Tdim, Tdim, mesh.numNodesPerElement)
-    velocities = zeros(Tsol, Tdim, mesh.numNodesPerElement)
-    velocity_deriv = zeros(Tsol, Tdim, mesh.numNodesPerElement, Tdim)
-    velocity_deriv_xy = zeros(Tres, Tdim, Tdim, mesh.numNodesPerElement)
-
-    # volume term jacobian storage
-    flux_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
-                           mesh.numNodesPerElement, Tdim)
-    res_jac = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
-                          mesh.numNodesPerElement, mesh.numNodesPerElement)
-
-    # face term jacobian storage
-    flux_dotL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-    flux_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerFace)
-    res_jacLL = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
-    res_jacLR = zeros(res_jacLL)
-    res_jacRL = zeros(res_jacLL)
-    res_jacRR = zeros(res_jacLL)
 
     h = maximum(mesh.jac)
 
@@ -339,7 +226,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     cv = R/gamma_1
 
     Ma = opts["Ma"]
-    Re = opts["Re"]
     aoa = opts[ "aoa"]*pi/180
     sideslip_angle = opts["sideslip_angle"]
     E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
@@ -402,58 +288,36 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
       end
     end  # end if
 
-    A = zeros(Tres, size(Rprime))
-    B = zeros(Tres, numNodesPerElement, numNodesPerElement, 2)
-    iperm = zeros(Int, size(sbpface.perm, 1))
-
-    stencil_size = size(sbp.Q, 1)
-    S = zeros(Float64, stencil_size, stencil_size, Tdim)
-    for i=1:Tdim
-      S[:, :, i] = 0.5*(sbp.Q[:, :, i] - sbp.Q[:, :, i].')
-    end
-
     x_design = zeros(Tsol, 0)  # this can be resized later
 
     time = Timings()
 
-    penalty_relaxation = 1.0
-    if haskey(opts, "Cip")
-      penalty_relaxation = opts["Cip"]
-    end
-    isViscous = false
-    if haskey(opts, "isViscous")
-      isViscous = opts["isViscous"]
-    end
-
-    const_tii = 0.0
-    if isViscous
-      const_tii = calcTraceInverseInequalityConst(sbp, sbpface)
-    end
-
-    return new(f, t, order, q_vals, q_vals2, q_vals3,  qg, v_vals, v_vals2,
-               Lambda, q_el1, q_el2, q_el3, q_el4, q_faceL, q_faceR,
-               res_el1, res_el2,
-               qs_el1, qs_el2, ress_el1, ress_el2,
-               w_vals_stencil, w_vals2_stencil, res_vals1, 
-               res_vals2, res_vals3,  flux_vals1, 
-               flux_vals2, flux_valsD, lambda_dotL, lambda_dotR,
-               sat_vals, euler_fluxjac, p_dot, roe_vars, roe_vars_dot,
-               A0, A0inv, A1, A2, S2, 
-               A_mats, Rmat1, Rmat2, P,
-               nrm, nrm2, nrm3, nrmD, nrm_face, nrm_face2, dxidx_element, velocities,
-               velocity_deriv, velocity_deriv_xy,
-               flux_jac, res_jac,
-               flux_dotL, flux_dotR, res_jacLL, res_jacLR, res_jacRL, res_jacRR,
-               h, cv, R, R_ND, gamma, gamma_1, Ma, Re, aoa, sideslip_angle,
+    return new(f, t, order, mesh.numDofPerNode, mesh.numNodesPerElement,
+               mesh.numNodesPerFace,
+               # flux functions
+               eulerfluxdata, bcdata,
+               roefluxdata, calcsatdata, lffluxdata, irfluxdata,
+               apply_entropy_kernel_diagE_data, get_lambda_max_simple_data,
+               get_lambda_max_data,
+               calc_vorticity_data, contract_res_entropy_vars_data,
+               get_tau_data,
+               # face level functions
+               calc_ec_face_integral_data, calc_entropy_penalty_integral_data,
+               interpolate_element_staggered_data,
+               # entire mesh functions
+               calc_volume_integrals_data,
+               face_element_integral_data, calc_face_integrals_data,
+               entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
+               get_ira0data,
+               h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
                writeq, use_edgestab, use_filter, use_res_filter, filter_mat,
                use_dissipation, dissipation_const, tau_type, use_Minv, vortex_x0,
                vortex_strength,
                krylov_itr, krylov_type,
-               Rprime, A, B, iperm,
-               S, x_design, time,
-               isViscous, penalty_relaxation, const_tii)
+               Rprime,
+               x_design, time)
 
     end   # end of ParamType function
 
@@ -556,7 +420,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   aux_vars_face_bar::Array{Tres, 3}  # adjoint part
   aux_vars_sharedface::Array{Array{Tres, 3}, 1}  # storage for aux varables interpolate
                                        # to shared faces
-  aux_vars_sharedface_bar::Array{Array{Tres, 3}} # adjoint part
   aux_vars_bndry::Array{Tres,3}   # storage for aux variables interpolated
                                   # to the boundaries
   aux_vars_bndry_bar::Array{Tres, 3}  # adjoint part
@@ -564,14 +427,11 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   # hold fluxes in all directions
   # [ndof per node by nnodes per element by num element by num dimensions]
   flux_parametric::Array{Tsol,4}  # flux in xi and eta direction
-  flux_parametric_bar::Array{Tsol, 4}  # adjoint part
   shared_data::Array{SharedFaceData{Tsol}, 1}  # MPI send and receive buffers
-  shared_data_bar::Array{SharedFaceData{Tsol}, 1} # adjoint part
+  shared_data_bar::Array{SharedFaceData{Tres}, 1} # adjoint part (for eqn.q_bar
+                                                  # or eqn.res_bar)
 
   flux_face::Array{Tres, 3}  # flux for each interface, scaled by jacobian
-  flux_face_bar::Array{Tres, 3}  # adjoint part
-  flux_sharedface::Array{Array{Tres, 3}, 1}  # hold shared face flux
-  flux_sharedface_bar::Array{Array{Tres, 3}, 1}  # adjoint part
   res::Array{Tres, 3}             # result of computation
   res_bar::Array{Tres, 3}         # adjoint part
 
@@ -584,7 +444,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   edgestab_alpha::Array{Tmsh, 4}  # alpha needed by edgestabilization
                                   # Tdim x Tdim x nnodesPerElement x numEl
   bndryflux::Array{Tsol, 3}       # boundary flux
-  bndryflux_bar::Array{Tsol, 3}   # adjoint part
   stabscale::Array{Tsol, 2}       # stabilization scale factor
 
   # artificial dissipation operator:
@@ -603,10 +462,15 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 
   src_func::SRCType  # functor for the source term
   flux_func::FluxType  # functor for the face flux
-  flux_func_bar::FluxType_revm # Functor for the reverse mode of face flux
+  flux_func_revm::FluxType_revm # Functor for the reverse mode of face flux
+  flux_func_revq::FluxType_revq
   flux_func_diff::FluxType_diff
   volume_flux_func::FluxType  # functor for the volume flux numerical flux
                               # function
+  volume_flux_func_diff::FluxType_diff
+  volume_flux_func_revm::FluxType_revm
+  volume_flux_func_revq::FluxType_revq
+
   viscous_flux_func::FluxType  # functor for the viscous flux numerical flux function
   face_element_integral_func::FaceElementIntegralType  # function for face
                                                        # integrals that use
@@ -617,23 +481,18 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 
   file_dict::Dict{String, IO}  # dictionary of all files used for logging
 
-  #
-  # variables for viscous terms
-  #
-  area_sum::Array{Tmsh, 1}			    # the wet area of each element
-	# vecflux_face::Array{Tres, 4}    # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
-	vecflux_faceL::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
-	vecflux_faceR::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
-	vecflux_bndry::Array{Tres, 4}     # stores (u+ - u-)nx*, (numDofs, numNodes, numFaces)
+ # inner constructor
+  function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractOperator, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
 
-  # inner constructor
-  function EulerData_{Tsol, Tres, Tdim, Tmsh, var_type}(mesh::AbstractMesh, sbp::AbstractSBP, opts; open_files=true) where {Tsol, Tres, Tdim, Tmsh, var_type} 
+    myrank = mesh.myrank
+    @mpi_master begin
+      println("\nConstruction EulerData object")
+      println("  Tsol = ", Tsol)
+      println("  Tres = ", Tres)
+      println("  Tdim = ", Tdim)
+      println("  Tmsh = ", Tmsh)
+    end
 
-    println("\nConstruction EulerData object")
-    println("  Tsol = ", Tsol)
-    println("  Tres = ", Tres)
-    println("  Tdim = ", Tdim)
-    println("  Tmsh = ", Tmsh)
     eqn = new()  # incomplete initialization
 
     eqn.comm = mesh.comm
@@ -763,25 +622,17 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     end
 
     # send and receive buffers
-    if opts["precompute_face_flux"]
-      eqn.flux_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
-    else
-      eqn.flux_sharedface = Array{Array{Tres, 3}}(0)
-    end
-
     eqn.aux_vars_sharedface = Array{Array{Tres, 3}}(mesh.npeers)
     if mesh.isDG
       for i=1:mesh.npeers
-        if opts["precompute_face_flux"]
-          eqn.flux_sharedface[i] = zeros(Tres, mesh.numDofPerNode, numfacenodes,
-                                         mesh.peer_face_counts[i])
-        end
         eqn.aux_vars_sharedface[i] = zeros(Tres, mesh.numDofPerNode,
                                         numfacenodes, mesh.peer_face_counts[i])
       end
-      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts)
+      eqn.shared_data = getSharedFaceData(Tsol, mesh, sbp, opts,
+                                          opts["parallel_data"])
+
     else
-      eqn.shared_data = Array{SharedFaceData}(0)
+      eqn.shared_data = Array{SharedFaceData{Tsol}}(0)
     end
 
     if eqn.params.use_edgestab
@@ -795,7 +646,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
 
     # functor defaults. functorThatErrors() is defined in ODLCommonTools
     eqn.flux_func = functorThatErrors()
-    eqn.flux_func_bar = functorThatErrors_revm()
+    eqn.flux_func_revm = functorThatErrors_revm()
     eqn.volume_flux_func = functorThatErrors()
     eqn.viscous_flux_func = functorThatErrors()
 
@@ -803,45 +654,31 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.q_bar = zeros(eqn.q)
       eqn.q_face_bar = zeros(eqn.q_face)
       eqn.q_bndry_bar = zeros(eqn.q_bndry)
-      eqn.flux_parametric_bar = zeros(eqn.flux_parametric)
 
       eqn.aux_vars_bar = zeros(eqn.aux_vars)
       eqn.aux_vars_face_bar = zeros(eqn.aux_vars_face)
       eqn.aux_vars_bndry_bar = zeros(eqn.aux_vars_bndry)
 
-      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
-      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(mesh.npeers)
-
       if mesh.isDG
-        for i=1:mesh.npeers
-          eqn.flux_shareface_bar[i] = zeros(eqn.flux_sharedface[i])
-          eqn.aux_vars_sharedface_bar[i] = zeros(eqn.aux_vars_sharedface[i])
-        end
-
-      eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts)
+        eqn.shared_data_bar = getSharedFaceData(Tsol, mesh, sbp, opts, PARALLEL_DATA_ELEMENT)
+        #eqn.shared_data_res_bar = getSharedFaceData(Tres, mesh, sbp, opts, PARALLEL_DATA_ELEMENT)
       else
-        eqn.shared_data_bar = zeros(SharedFaceData, 0)
+        # eqn.shared_data_res_bar = zeros(SharedFaceData, 0)
+        eqn.shared_data_bar = Array{SharedFaceData{Tres}}(0)
       end
 
-      eqn.flux_face_bar = zeros(eqn.flux_face)
-      eqn.bndryflux_bar = zeros(eqn.bndryflux)
       eqn.res_bar = zeros(eqn.res)
     else  # don't allocate arrays if they are not needed
       eqn.q_bar = zeros(Tsol, 0, 0, 0)
       eqn.q_face_bar = zeros(Tsol, 0, 0, 0, 0)
       eqn.q_bndry_bar = zeros(Tsol, 0, 0, 0)
-      eqn.flux_parametric_bar = zeros(Tsol, 0, 0, 0, 0)
 
       eqn.aux_vars_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_face_bar = zeros(Tres, 0, 0, 0)
       eqn.aux_vars_bndry_bar = zeros(Tres, 0, 0, 0)
 
-      eqn.shared_data_bar = Array{SharedFaceData}(0)
-      eqn.flux_sharedface_bar = Array{Array{Tsol, 3}}(0)
-      eqn.aux_vars_sharedface_bar = Array{Array{Tsol, 3}}(0)
-
-      eqn.flux_face_bar = zeros(Tres, 0, 0, 0)
-      eqn.bndryflux_bar = zeros(Tres, 0, 0, 0)
+      #eqn.shared_data_res_bar = Array{SharedFaceData}(0)
+      eqn.shared_data_bar = Array{SharedFaceData{Tres}}(0)
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
@@ -852,24 +689,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
      eqn.file_dict = Dict{String, IO}()
    end
 
-   if eqn.params.isViscous
-     numfacenodes = mesh.numNodesPerFace
-     numfaces = mesh.numInterfaces
-     numBndFaces = mesh.numBoundaryFaces
-     numvars  = mesh.numDofPerNode
-     # eqn.vecflux_face = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
-     eqn.vecflux_faceL = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
-     eqn.vecflux_faceR = zeros(Tsol, Tdim, numvars, numfacenodes, numfaces)
-     eqn.vecflux_bndry = zeros(Tsol, Tdim, numvars, numfacenodes, numBndFaces)
-     eqn.area_sum = zeros(Tmsh, mesh.numEl)
-     calcElemSurfaceArea(mesh, sbp, eqn)
-   else
-     # eqn.vecflux_face  = Array{Tsol}(0, 0, 0, 0)
-     eqn.vecflux_faceL = Array{Tsol}(0, 0, 0, 0)
-     eqn.vecflux_faceR = Array{Tsol}(0, 0, 0, 0)
-     eqn.vecflux_bndry = Array{Tsol}(0, 0, 0, 0)
-     eqn.area_sum = Array{Tsol}(0)
-   end
    return eqn
 
   end  # end of constructor
@@ -968,7 +787,7 @@ end
    * opts: the options dictionary
 
 """
-function cleanup(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData, opts)
+function cleanup(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
 
   for f in values(eqn.file_dict)
     close(f)
@@ -1025,7 +844,7 @@ end
 
 import PDESolver.updateMetricDependents
 
-function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
+function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
                                  eqn::EulerData, opts)
 
   #TODO: don't reallocate the arrays, update in place
@@ -1040,103 +859,3 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractSBP,
 
   return nothing
 end
-
-@doc """
-### EulerEquationMod.calcElemFurfaceArea
-This function calculates the wet area of each element. A weight of 2 is given to
-faces with Dirichlet boundary conditions.
-Arguments:
-mesh: AbstractMesh
-sbp: SBP operator
-eqn: an implementation of EulerData. Does not have to be fully initialized.
-"""->
-# used by EulerData Constructor
-function calcElemSurfaceArea(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractSBP,
-                             eqn::EulerData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
-  nfaces = length(mesh.interfaces)
-  nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
-  area = zeros(Tmsh, mesh.numNodesPerFace)
-  face_area = zero(Tmsh)
-  sbpface = mesh.sbpface
-
-  #
-  # Compute the wet area of each element
-  #
-  for f = 1:nfaces
-    face = mesh.interfaces[f]
-    eL = face.elementL
-    eR = face.elementR
-    fL = face.faceL
-    fR = face.faceR
-    #
-    # Compute the size of face
-    face_area = 0.0
-    
-    for n = 1 : mesh.numNodesPerFace
-      nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
-      area[n] = norm(nrm_xy)
-      face_area += sbpface.wface[n]*area[n]
-    end
-
-    eqn.area_sum[eL] += face_area
-    eqn.area_sum[eR] += face_area
-  end
-
-  for bc = 1 : mesh.numBC
-    indx0 = mesh.bndry_offsets[bc]
-    indx1 = mesh.bndry_offsets[bc+1] - 1
-
-    for f = indx0 : indx1
-      face = mesh.bndryfaces[f].face
-      elem = mesh.bndryfaces[f].element
-
-      # Compute the size of face
-      face_area = 0.0
-      for n=1:mesh.numNodesPerFace
-        nrm_xy = ro_sview(mesh.nrm_bndry, :, n, f)
-        area[n] = norm(nrm_xy)
-        face_area += sbpface.wface[n]*area[n]
-      end
-      eqn.area_sum[elem] += 2.0*face_area
-    end
-  end
-  return nothing
-end
-
-@doc """
-
-Compute the constant coefficent in inverse trace ineqality, i.e.,
-the largest eigenvalue of 
-B^{1/2} R H^{-1} R^{T} B^{1/2}
-
-Input:
-  sbp
-Output:
-  cont_tii
-"""->
-
-function calcTraceInverseInequalityConst(sbp::AbstractSBP{Tsbp},
-                                         sbpface::AbstractFace{Tsbp}) where Tsbp
-  R = sview(sbpface.interp, :,:)
-  BsqrtRHinvRtBsqrt = Array{Tsbp}(sbpface.numnodes, sbpface.numnodes)
-  perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)
-  Hinv = zeros(Tsbp, sbp.numnodes, sbp.numnodes)
-  Bsqrt = zeros(Tsbp, sbpface.numnodes, sbpface.numnodes)
-  for s = 1:sbpface.stencilsize
-    perm[sbpface.perm[s, 1], s] = 1.0
-  end
-  for i = 1:sbp.numnodes
-    Hinv[i,i] = 1.0/sbp.w[i]
-  end
-  for i = 1:sbpface.numnodes
-    Bsqrt[i,i] = sqrt(sbpface.wface[i])
-  end
-
-  BsqrtRHinvRtBsqrt = Bsqrt*R.'*perm.'*Hinv*perm*R*Bsqrt 
-  const_tii = eigmax(BsqrtRHinvRtBsqrt)
-
-  return const_tii
-
-end
-

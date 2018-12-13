@@ -40,7 +40,7 @@ end
    * eqn
    * opts
 """
-function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractSBP,
+function PetscMatFreePC(mesh::AbstractMesh, sbp::AbstractOperator,
                     eqn::AbstractSolutionData, opts::Dict)
 
   pc = createPetscPC(mesh, sbp, eqn, opts)
@@ -107,7 +107,7 @@ end
    * t
 """
 function setPCCtx(pc::AbstractPetscMatFreePC, mesh::AbstractMesh,
-                  sbp::AbstractSBP,
+                  sbp::AbstractOperator,
                   eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 # users *must* call this function from within their calcPC function
 
@@ -220,7 +220,7 @@ function checkPCCtx(ctx)
   pc2 = getBasePC(pc)
 
   @assert typeof(mesh) <: AbstractMesh
-  @assert typeof(sbp) <: AbstractSBP
+  @assert typeof(sbp) <: AbstractOperator
   @assert typeof(eqn) <: AbstractSolutionData
   @assert typeof(opts) <: Dict
   @assert typeof(pc) <: AbstractPC

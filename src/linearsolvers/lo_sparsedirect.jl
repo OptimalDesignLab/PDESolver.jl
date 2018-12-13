@@ -35,7 +35,7 @@ end
    * eqn
    * opts
 """
-function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
+function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts::Dict)
 
   if typeof(mesh) <: AbstractCGMesh
@@ -46,7 +46,7 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractSBP,
     if opts["preallocate_jacobian_coloring"]
       disc_type = COLORING
     end
-    jac = SparseMatrixCSC(mesh, Float64, INVISCID, face_type)
+    jac = SparseMatrixCSC(mesh, Float64, disc_type, face_type)
   end
 
   # Note: colptr and rowval alias A
@@ -88,7 +88,7 @@ end
 
 
 function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
-                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
@@ -98,7 +98,7 @@ function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
 end
 
 function applyLinearOperator(lo::AbstractSparseDirectLO, mesh::AbstractMesh,
-                             sbp::AbstractSBP, eqn::AbstractSolutionData,
+                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                              opts::Dict, ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)
 
@@ -110,7 +110,7 @@ end
 
 
 function applyLinearOperatorTranspose(lo::AbstractSparseDirectLO, 
-                             mesh::AbstractMesh, sbp::AbstractSBP,
+                             mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::AbstractSolutionData, opts::Dict, 
                              ctx_residual, t, x::AbstractVector, 
                              b::AbstractVector)

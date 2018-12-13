@@ -1,4 +1,106 @@
 
+@doc """
+### NavierStokesMod.calcElemFurfaceArea
+This function calculates the wet area of each element. A weight of 2 is given to
+faces with Dirichlet boundary conditions.
+Arguments:
+mesh: AbstractMesh
+sbp: SBP operator
+eqn: an implementation of NSData. Does not have to be fully initialized.
+"""->
+# used by NSData Constructor
+function calcElemSurfaceArea(mesh::AbstractMesh{Tmsh},
+                             sbp::AbstractOperator,
+                             eqn::NSData{Tsol, Tres, Tdim}) where {Tmsh, Tsol, Tres, Tdim}
+  nfaces = length(mesh.interfaces)
+  nrm = zeros(Tmsh, Tdim, mesh.numNodesPerFace)
+  area = zeros(Tmsh, mesh.numNodesPerFace)
+  face_area = zero(Tmsh)
+  sbpface = mesh.sbpface
+
+  #
+  # Compute the wet area of each element
+  #
+  for f = 1:nfaces
+    face = mesh.interfaces[f]
+    eL = face.elementL
+    eR = face.elementR
+    fL = face.faceL
+    fR = face.faceR
+    #
+    # Compute the size of face
+    face_area = 0.0
+    
+    for n = 1 : mesh.numNodesPerFace
+      nrm_xy = ro_sview(mesh.nrm_face, :, n, f)
+      area[n] = norm(nrm_xy)
+      face_area += sbpface.wface[n]*area[n]
+    end
+
+    eqn.area_sum[eL] += face_area
+    eqn.area_sum[eR] += face_area
+  end
+
+  for bc = 1 : mesh.numBC
+    indx0 = mesh.bndry_offsets[bc]
+    indx1 = mesh.bndry_offsets[bc+1] - 1
+
+    for f = indx0 : indx1
+      face = mesh.bndryfaces[f].face
+      elem = mesh.bndryfaces[f].element
+
+      # Compute the size of face
+      face_area = 0.0
+      for n=1:mesh.numNodesPerFace
+        nrm_xy = ro_sview(mesh.nrm_bndry, :, n, f)
+        area[n] = norm(nrm_xy)
+        face_area += sbpface.wface[n]*area[n]
+      end
+      eqn.area_sum[elem] += 2.0*face_area
+    end
+  end
+  return nothing
+end
+
+
+
+
+@doc """
+
+Compute the constant coefficent in inverse trace ineqality, i.e.,
+the largest eigenvalue of 
+B^{1/2} R H^{-1} R^{T} B^{1/2}
+
+Input:
+  sbp
+Output:
+  cont_tii
+"""->
+
+function calcTraceInverseInequalityConst(sbp::AbstractOperator{Tsbp},
+                                         sbpface::AbstractFace{Tsbp}) where Tsbp
+  R = sview(sbpface.interp, :,:)
+  BsqrtRHinvRtBsqrt = Array{Tsbp}(sbpface.numnodes, sbpface.numnodes)
+  perm = zeros(Tsbp, sbp.numnodes, sbpface.stencilsize)
+  Hinv = zeros(Tsbp, sbp.numnodes, sbp.numnodes)
+  Bsqrt = zeros(Tsbp, sbpface.numnodes, sbpface.numnodes)
+  for s = 1:sbpface.stencilsize
+    perm[sbpface.perm[s, 1], s] = 1.0
+  end
+  for i = 1:sbp.numnodes
+    Hinv[i,i] = 1.0/sbp.w[i]
+  end
+  for i = 1:sbpface.numnodes
+    Bsqrt[i,i] = sqrt(sbpface.wface[i])
+  end
+
+  BsqrtRHinvRtBsqrt = Bsqrt*R.'*perm.'*Hinv*perm*R*Bsqrt 
+  const_tii = eigmax(BsqrtRHinvRtBsqrt)
+
+  return const_tii
+
+end
+
 
 @doc """
 
@@ -13,7 +115,7 @@ Input:
 Input/Output:
   Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
-function calcDx(sbp::AbstractSBP,
+function calcDx(sbp::AbstractOperator,
                 dxidx::AbstractArray{Tmsh, 3},
                 jac::AbstractArray{Tmsh, 1},
                 Dx::AbstractArray{Tmsh, 3}) where Tmsh
@@ -60,7 +162,7 @@ Input/Output:
   Dx    : derivative operators in physical domain, incling Dx, Dy
 """->
 function calcDx(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 elem::Integer,
                 Dx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Dx, 1) == mesh.numNodesPerElement)
@@ -97,7 +199,7 @@ function calcDx(mesh::AbstractMesh{Tmsh},
 end
 
 function calcQx(mesh::AbstractMesh{Tmsh},
-                sbp::AbstractSBP,
+                sbp::AbstractOperator,
                 elem::Integer,
                 Qx::AbstractArray{Tmsh, 3}) where Tmsh
   @assert(size(Qx, 1) == mesh.numNodesPerElement)
@@ -135,7 +237,7 @@ Input:
 Output:
   nothing
 """->
-function calcGradient(sbp::AbstractSBP{Tsbp},
+function calcGradient(sbp::AbstractOperator{Tsbp},
                       dxidx::AbstractArray{Tmsh, 3},
                       jac::AbstractArray{Tmsh, 1},
                       q::AbstractArray{Tsol, 2},
@@ -184,7 +286,7 @@ Output :
 	q_grad : (in/out) gradient of q
 """->
 function calcGradient(mesh::AbstractDGMesh{Tmsh},
-                      sbp::AbstractSBP{Tsbp},
+                      sbp::AbstractOperator{Tsbp},
                       elem::Integer,
                       q::AbstractArray{Tsol, 2},
                       q_grad::AbstractArray{Tsol, 3}) where {Tmsh, Tsol, Tsbp}
