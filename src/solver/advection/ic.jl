@@ -437,9 +437,9 @@ This function reads a vector from a file on disk and set the solution to it.
 The vector must contain the same number of entries as there are degrees of 
 freedom in the mesh. 
 
-This function is useful for things like restarting from a checkpoint.
-In this case, the file should be the output of writedlm(eqn.q).  The degree 
-of freedom number must be the same for both simulation for this to work (the 
+This function is useful for things like warm-starting the solver.
+In this case, the file should be the output of `writeSolutionFiles`. The degree 
+of freedom number must be the same for both simulations for this to work (the 
 file contains no degree of freedom number information).
 
 
@@ -458,20 +458,12 @@ file contains no degree of freedom number information).
 
 """->
 function ICFile(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractOperator{Tsbp}, eqn::AdvectionData{Tsol}, opts, 
-u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
+                sbp::AbstractOperator{Tsbp}, eqn::AdvectionData{Tsol},
+                opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 # populate u0 with initial values from a disk file
 # the file name comes from opts["ICfname"]
 
-  fname = get_parallel_fname(opts["ICfname"], mesh.myrank)
-  vals = readdlm(fname)
-
-  @assert length(vals) == mesh.numDof
-
-  for i=1:mesh.numDof
-    u0[i] = vals[i]
-  end
-
+  readSolutionFiles(mesh, sbp, eqn, opts, opts["ICfname"], u0)
 end
 
 """

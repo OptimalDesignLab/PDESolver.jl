@@ -164,9 +164,6 @@ function setupNewton(mesh, pmesh, sbp,
     rhs_vec = eqn.res_vec
   end
 
-  # should be all zeros if alloc_rhs is true
-#   writedlm("rhs_initial.dat", rhs_vec)
-
   return newton_data, rhs_vec
 
 end   # end of setupNewton

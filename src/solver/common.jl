@@ -704,17 +704,15 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
       # TODO: better way to update final time
       evalResidual(mesh, sbp, eqn, opts, t)
 
-      eqn.res_vec[:] = 0.0
       array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     end
 
     if opts["write_finalsolution"]
-      println("writing final solution")
-      writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
+      writeSolutionFiles(mesh, sbp, eqn, opts, "solution_final")
     end
 
     if opts["write_finalresidual"]
-      writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
+      writeSolutionFiles(mesh, sbp, eqn, opts, "residual_final", eqn.res_vec)
     end
 
     myrank = mesh.myrank

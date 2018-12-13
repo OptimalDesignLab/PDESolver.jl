@@ -196,27 +196,6 @@ sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim}, opts) where {Tmsh, Tsol
 
   end  # end loop over elements
 
-  #DEBUGGING
- #= 
-  gls_resvec = zeros(Tsol, mesh.numDof)
-  full_resvec = zeros(Tsol, mesh.numDof)
-  old_resvec = zeros(Tsol, mesh.numDof)
-  array3DTo1D(mesh, sbp, eqn, opts, gls_res, gls_resvec)
-  array3DTo1D(mesh, sbp, eqn, opts, gls_full, full_resvec)
-  writedlm("gls_full.dat", real(gls_full))
-  writedlm("gls_fullvec.dat", full_resvec)
-  array3DTo1D(mesh, sbp, eqn, opts, res_before, old_resvec)
-  gls_norm = calcNorm(eqn, gls_resvec)
-  full_norm = calcNorm(eqn, full_resvec)
-  old_norm = calcNorm(eqn, old_resvec)
-  tau_eval_avg = tau_eval_sum/tau_eval_cnt
-  rmfile("gls_norm.dat")
-#  println("printing gls_norm.dat")
-  f = open("gls_norm.dat", "w")
-  println(f, gls_norm, " ", old_norm, " ", full_norm, " ", tau_eval_avg)
-  close(f)
-#  println("----- Finished applyGLS2 -----")
- =#
   return nothing
 
 end  # end function

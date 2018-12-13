@@ -129,12 +129,10 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEllipt
 
   res_vec_exact = deepcopy(q_vec)
 
-  rmfile("IC_$myrank.dat")
-  writedlm("IC_$myrank.dat", real(q_vec))
+  #writeSolutionFiles(mesh, sbp, eqn, opts, "IC")
   saveSolutionToMesh(mesh, q_vec)
 
   writeVisFiles(mesh, "solution_ic")
-  writedlm("solution_ic.dat", real(eqn.q_vec))
 
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)

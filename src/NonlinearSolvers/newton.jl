@@ -351,7 +351,7 @@ function writeFiles(newton_data::NewtonData, mesh, sbp, eqn, opts)
   # write starting values for next iteration to file
   if write_sol
     fname = string("q_vec", itr, "_", myrank, ".dat")
-    writedlm(fname, real(eqn.q_vec))
+    writeSolutionFiles(mesh, sbp, eqn, opts, "q_vec_itr")
   end
 
   if write_q

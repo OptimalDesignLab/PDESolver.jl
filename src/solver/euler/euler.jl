@@ -292,15 +292,12 @@ function majorIterationCallback(itr::Integer,
       writeVisFiles(mesh, fname)
     end
 
+
     vals = real(eqn.res_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     fname = string("residual_", itr)
-    println(BSTDOUT, "writing files ", fname)
-    println(BSTDOUT, "res_norm of vals = ", calcNorm(eqn, vals, strongres=true))
-    println(BSTDOUT, "res_norm of res_vec = ", calcNorm(eqn, eqn.res_vec, strongres=true))
     writeVisFiles(mesh, fname)
-    writedlm(string(fname, ".dat"), vals)
-    writedlm("Minv.dat", real(eqn.Minv))
+
 
 
 #=
@@ -316,98 +313,9 @@ function majorIterationCallback(itr::Integer,
   end
 
   if opts["callback_write_qvec"] && (itr % opts["output_freq"] == 0)
-    fname = string("callback_q_vec", itr, "_", myrank, ".dat")
-    writedlm(fname, real(eqn.q_vec))
+    writeSolutionFiles(mesh, sbp, eqn, opts, "callback_q_vec_$itr")
   end
 
-  #=
-  # compute norms of individual components, both max and L2
-  max_vars = zeros(Tres, mesh.numDofPerNode)
-  L2_vars = zeros(Tres, mesh.numDofPerNode)
-
-  for i=1:mesh.numDofPerNode:mesh.numDof
-    for j=1:mesh.numDofPerNode
-      val = eqn.res_vec[i + j - 1]
-
-      if abs(val) > max_vars[j]
-        max_vars[j] = abs(val)
-      end
-
-      L2_vars[j] += eqn.M[i + j - 1]*val*val
-    end
-  end
-
-  
-  # don't forget the square root
-  for j=1:mesh.numDofPerNode
-    L2_vars[j] = sqrt(L2_vars[j])
-    println("var $i: max residual = ", max_vars[j], ", L2 residual = ", L2_vars[j])
-  end
-  =#
-
-
-
-  #=
-  # compute max residual of rho and E
-  max_rho = 0.0
-  max_E = 0.0
-  for i=1:mesh.numDofPerNode:mesh.numDof
-    if abs(eqn.res_vec[i]) > max_rho
-      max_rho = abs(eqn.res_vec[i])
-    end
-  end
-
-  for i=4:mesh.numDofPerNode:mesh.numDof
-    if abs(eqn.res_vec[i]) > max_E
-      max_E = abs(eqn.res_vec[i])
-    end
-  end
-
-  println(BSTDOUT, "iteration", itr, " Res[Rho] = ", max_rho, " Res[E] = ", max_E)
-  =#
-  
-    # add an option on control this or something.  Large blocks of commented
-    # out code are bad
-#=
-  if itr == 0
-    #----------------------------------------------------------------------------
-    # Storing the initial density value at all the nodes
-    global const vRho_act = zeros(mesh.numNodes)
-    k = 1
-    for counter1 = 1:4:length(eqn.q_vec)
-      vRho_act[k] = eqn.q_vec[counter1]
-      k += 1
-    end
-    println("Actual Density value succesfully extracted")
-    #--------------------------------------------------------------------------
-  else
-    #--------------------------------------------------------------------------
-    # Calculate the error in density
-    vRho_calc = zeros(vRho_act)
-    k = 1
-    for counter1 = 1:4:length(eqn.q_vec)
-      vRho_calc[k] = eqn.q_vec[counter1]
-      k += 1
-    end
-    ErrDensityVec = vRho_calc - vRho_act
-    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
-    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
-    # println("DensityErrorNormL1 = ", ErrDensity1)
-    ErrDensity2 = 0.0
-    k = 1
-    for counter1 = 1:length(ErrDensityVec)
-      ErrDensity2 += real(ErrDensityVec[counter1])*eqn.M[k]*real(ErrDensityVec[counter1])
-      k += 4
-    end
-    ErrDensity2 = sqrt(ErrDensity2)
-    println("DensityErrorNormL2 = ", ErrDensity2)
-    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
-
-
-
-    #--------------------------------------------------------------------------
-  end
-=#
   if opts["write_entropy"]
     if mesh.isDG
       # undo multiplication by inverse mass matrix
@@ -424,13 +332,6 @@ function majorIterationCallback(itr::Integer,
 
       # compute w^T * res_vec
       val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
-#      val3 = real(contractResEntropyVars2(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
-
-      # DEBUGGING: compute the potential flux from q
-      #            directly, to verify the boundary terms are the problem
-  #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
-  #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
-
       @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
     end
 
@@ -510,11 +411,6 @@ function majorIterationCallback(itr::Integer,
     =#
   end
 
-  #=
-  #DEBUGGING: write q_vec to file
-  fname = get_parallel_fname("qvec_$itr.dat", mesh.myrank)
-  writedlm(fname, eqn.q_vec)
-  =#
 
   return nothing
 

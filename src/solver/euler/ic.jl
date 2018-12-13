@@ -412,27 +412,34 @@ end
   The vector must contain the same number of entries as there are degrees of 
   freedom in the mesh. 
 
-  This function is useful for things like restarting from a checkpoint.
-  In this case, the file should be the output of writedlm(eqn.q).  The degree 
-  of freedom number must be the same for both simulation for this to work (the 
-  file contains no degree of freedom number information).
+  This function is useful for things like warm-starting the solver.
+  The file should be the output of `writeSolutionFiles`, and must be loaded on
+  an *identical* mesh to the one used when saving.
 
 """->
 function ICFile(mesh::AbstractMesh{Tmsh}, 
-operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
-u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
+                sbp::AbstractOperator{Tsbp}, eqn::EulerData{Tsol}, opts, 
+                u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
   # populate u0 with initial values from a disk file
   # the file name comes from opts["ICfname"]
 
-  fname = get_parallel_fname(opts["ICfname"], mesh.myrank)
-  vals = readdlm(fname)
+  readSolutionFiles(mesh, sbp, eqn, opts, opts["ICfname"], u0)
+end
 
-  @assert length(vals) == mesh.numDof
 
-  for i=1:mesh.numDof
-    u0[i] = vals[i]
-  end
+"""
+  This initial condition uses the current `eqn.q_vec` as the initial condition.
+  This is useful for repeatedly solving a PDE with, using the previous solution
+  as the initial guess.
+"""
+function ICPassThrough(mesh::AbstractMesh{Tmsh}, 
+                       operator::AbstractOperator{Tsbp}, eqn::EulerData{Tsol},
+                       opts, u0::AbstractVector{Tsol}) where {Tmsh, Tsbp, Tsol}
 
+  # use current eqn.q_vec as IC
+  copy!(u0, eqn.q_vec)
+
+  return nothing
 end
 
 @makeIC Exp """
@@ -540,6 +547,7 @@ global const ICDict = Dict{Any, Function}(
 "ICIsentropicVortexWithNoise" => ICIsentropicVortexWithNoise,
 "ICInvChannel" => ICInvChannelIC,
 "ICFile" => ICFile,
+"ICPassThrough" => ICPassThrough,
 "ICExp" => ICExp,
 "ICPeriodicMMS" => ICPeriodicMMS,
 "ICTaylorGreen" => ICTaylorGreen,

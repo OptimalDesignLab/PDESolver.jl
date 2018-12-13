@@ -52,7 +52,6 @@ mass_matrix = getMass(sbp, mesh)
 println("mass_matrix = ", mass_matrix)
 
 
-global int_advec = 1
 function evalAdvection(t, x)
 
   u_i_1 = zeros(mesh.numDof)

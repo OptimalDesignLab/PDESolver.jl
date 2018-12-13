@@ -155,17 +155,11 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
         convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
       end
     end
-  #  println("eqn.q_vec = ", eqn.q_vec)
     tmp = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (evalResidual,))
     res_real = real(eqn.res_vec)
-  #  println("res_real = \n", res_real)
-  #  println("eqn.res_vec = ", eqn.res_vec)
-  #  println("res_real = ", res_real)
     opts["res_reltol0"] = tmp
     println("res_reltol0 = ", tmp)
 
-  #  writedlm("relfunc_res.dat", eqn.res)
-  #  writedlm("relfunc_resvec.dat", res_real)
     saveSolutionToMesh(mesh, res_real)
     writeVisFiles(mesh, "solution_relfunc")
   end
@@ -190,8 +184,8 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
                       " compared to initial condition")
 
     # read in this processors portion of the solution
-    vals = readdlm(get_parallel_fname(opts["calc_error_infname"], myrank))
-    @assert length(vals) == mesh.numDof
+    vals = copy(eqn.q_vec)
+    readSolutionFiles(mesh, sbp, eqn, opts, opts["calc_error_infname"], vals)
 
     err_vec = abs.(vals - eqn.q_vec)
     err = calcNorm(eqn, err_vec)
@@ -233,12 +227,10 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
 
   res_vec_exact = deepcopy(q_vec)
 
-  rmfile("IC_$myrank.dat")
-  writedlm("IC_$myrank.dat", real(q_vec))
+  #writeSolutionFiles(mesh, sbp, eqn, opts, "IC")
   saveSolutionToMesh(mesh, q_vec)
 
   writeVisFiles(mesh, "solution_ic")
-  writedlm("solution_ic.dat", real(eqn.q_vec))
   if opts["calc_dt"]
     wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
     @mpi_master println("max wave speed = ", wave_speed)

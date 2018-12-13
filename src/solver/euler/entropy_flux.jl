@@ -381,9 +381,6 @@ function getVorticity(mesh::AbstractMesh{Tmsh}, sbp, eqn::EulerData{Tsol, Tres},
 
   end
 
-  myrank = mesh.myrank
-  writedlm("q2.dat", new_field)
-
   return new_field
 end
 
