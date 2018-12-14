@@ -13,10 +13,10 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        getBaseLO, getBasePC, getBaseObject,
        PCNone, PetscMatPC, PetscMatFreePC,  # PC types
        DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO,  # LO types
-       AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
-       AbstractPetscPC,
+       AbstractPC, AbstractPCNone, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
+       AbstractPetscPC, getInnerPC,
        AbstractLO, AbstractDenseLO, AbstractSparseDirectLO, # Abstrac LO types
-       AbstractPetscMatLO, AbstractPetscMatFreeLO,
+       AbstractPetscMatLO, AbstractPetscMatFreeLO, getInnerLO,
        setPCCtx, setLOCtx,  # matrix-free specific functions
        needParallelData
 
@@ -108,7 +108,7 @@ end
 function StandardLinearSolver(pc::T1, lo::T2, comm::MPI.Comm, opts) where {T1, T2}
 
   if typeof(lo) <: DirectLO
-    @assert typeof(pc) <: PCNone
+    @assert typeof(pc) <: AbstractPCNone
   end
 
   if typeof(lo) <: PetscLO
@@ -182,6 +182,11 @@ end
   other [`AbstractPC`](@ref) for a nested preconditioner.
 """
 abstract type AbstractPC end
+
+"""
+  Abstract supertype of all no-op PCs.
+"""
+abstract type AbstractPCNone <: AbstractPC  end
 
 """
   Abstract supertype of all Petsc matrix-explicit preconditioners
@@ -319,18 +324,24 @@ end
 
    * pc2: a PC that is a subtype of PC2
 """
-function getInnerPC(pc::T1, ::Type{T2}) where {T1 <: AbstractPC, T2 <: AbstractPC}
+
+function getInnerPC(pc::T1, ::Type{T2}) where {T1 <: AbstractPC, T2}
+# can't have T2 <: AbstractPC because that would preclude Unions like
+# NewtonLinearObject
+#
   if T1 <: T2
     return pc
   else
-    getInnerPC(pc.pc_inner, T2)
+    return getInnerPC(pc.pc_inner, T2)
   end
-  return pc
+  error("unreachable reached")
 end
 
-# This can be rewritten in future version of Julia as:
+
 #=
-function getInnerPC(pc::T1, ::Type{T2}) where {T1 <: T2, T2 <: AbstractPC}
+# This is broken on Julia 0.6
+# T1 <: T2 implies T1 == T2 when T1 and T2 are concrete
+function getInnerPC(pc::T1, ::Type{T2}) where {T2 <: AbstractPC, T1 <: T2}
   return pc
 end
 
@@ -338,6 +349,8 @@ function getInnerPC(pc::T1, ::Type{T2}) where {T1 <:AbstractPC, T2 <: AbstractPC
   return getInnerPC(pc.pc_inner, T2)
 end
 =#
+
+
 
 """
   Returns `true` if `calcPC` needs parallel communication started before
@@ -570,6 +583,24 @@ function getBaseObject(pc::AbstractPC)
   
   return getBasePC(pc)
 end
+
+
+"""
+  Like [`getInnerLO`](@ref), but for linear operators
+"""
+function getInnerLO(lo::T1, ::Type{T2}) where {T1 <: AbstractLO, T2}
+# can't have T2 <: AbstractLO because that would precude Unions like 
+# NewtonLinearOperators
+  if T1 <: T2
+    return lo
+  else
+    return getInnerLO(lo.lo_inner, T2)
+  end
+
+  error("unreachable reached")
+end
+
+
 
 """
   Returns `true` if [`calcLinearOperator`](@ref) needs parallel communication

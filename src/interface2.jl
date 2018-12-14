@@ -94,7 +94,10 @@ function solvePDE(opts::Union{Dict, AbstractString})
 
   read_input(opts)
   mesh, sbp, eqn, opts, pmesh = createObjects(opts)
-  return solvePDE(mesh, sbp, eqn, opts, pmesh)
+  ls = solvePDE(mesh, sbp, eqn, opts, pmesh)
+#  @assert ls != nothing  # catch case where physics modules forgets to return
+                         # the LinearSolver
+  return ls
 end
 
 

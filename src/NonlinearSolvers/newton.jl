@@ -301,7 +301,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   for j=1:m
     rhs_vec[j] = real(rhs_vec[j])
   end
-  clearEulerConstants()
+  clearEulerConstants(newton_data.ls)
 
   return nothing
 end               # end of function newton()
@@ -451,7 +451,7 @@ function checkConvergence(newton_data::NewtonData)
       println(BSTDOUT, "Iteration count: ", itr)
     end
 
-    clearEulerConstants()
+    clearEulerConstants(newton_data.ls)
   end
 
   flush(BSTDOUT)

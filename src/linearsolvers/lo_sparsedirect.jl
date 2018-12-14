@@ -35,7 +35,7 @@ end
    * eqn
    * opts
 """
-function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
+function SparseDirectLO(pc::AbstractPCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::AbstractSolutionData, opts::Dict)
 
   if typeof(mesh) <: AbstractCGMesh

@@ -33,7 +33,7 @@ end
    * eqn
    * opts
 """
-function DenseLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
+function DenseLO(pc::AbstractPCNone, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict)
 
   @assert mesh.commsize == 1  # serial only

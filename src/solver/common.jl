@@ -529,7 +529,6 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
 
       @time t = rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
                     res_tol=opts["res_abstol"], real_time=opts["real_time"])
-      println("finish rk4")
       #    printSolution("rk4_solution.dat", eqn.res_vec)
 
     elseif flag == 2 # forward diff dR/du

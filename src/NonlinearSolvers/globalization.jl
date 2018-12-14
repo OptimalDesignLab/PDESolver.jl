@@ -35,19 +35,27 @@ end
 # Psuedo-Transient Continuation (aka. Implicit Euler)
 #------------------------------------------------------------------------------
 
-# res_norm_i_1 and res_norm_i, updated inside newton's method
-# This is a bad way to pass parameters to updateEuler(), but I can't find a
-# better way that retains the composability of the linear operator abstraction.
-global const EulerConstants_LO = Float64[0, 0]
-global const EulerConstants_PC = Float64[0, 0]
-
 """
   Reinitailize the underlying data.  This function should be called every
   time newtonInner() is entered
 """
-function clearEulerConstants()
-  fill!(EulerConstants_LO, 0.0)
-  fill!(EulerConstants_PC, 0.0)
+function clearEulerConstants(ls::LinearSolver)
+
+  lo = getInnerLO(ls.lo, NewtonLinearObject)
+  clearEulerConstants(lo)
+
+  pc = getInnerPC(ls.pc, NewtonLinearObject)
+  clearEulerConstants(pc)
+
+  return nothing
+end
+
+function clearEulerConstants(lo::NewtonLinearObject)
+
+  lo.res_norm_i = 0
+  lo.res_norm_i_1 = 0
+
+  return nothing
 end
 
 """
@@ -55,13 +63,18 @@ end
 
   **Inputs**
 
+   * ls: a [`LinearSolver`](@ref) object
    * res_norm_i: must be a real number
 """
-function recordEulerResidual(res_norm_i)
-#  EulerConstants[1] = EulerConstants[2]
-  EulerConstants_LO[2] = res_norm_i
-  EulerConstants_PC[2] = res_norm_i
+function recordEulerResidual(ls::LinearSolver, res_norm_i)
+
+  lo = getInnerLO(ls.lo, NewtonLinearObject)
+  lo.res_norm_i = res_norm_i
+
+  pc = getInnerPC(ls.pc, NewtonLinearObject)
+  pc.res_norm_i = res_norm_i
 end
+
 
 """
   Get the most recent residual norm and the residual norm the last time
@@ -79,12 +92,18 @@ end
    * res_norm_i: most recent residual norm
 """
 function getEulerConstants(pc::AbstractPC)
-  return EulerConstants_PC[1], EulerConstants_PC[2]
+
+  pc2 = getInnerPC(pc, NewtonLinearObject)
+  return pc2.res_norm_i_1, pc2.res_norm_i
 end
 
+
 function getEulerConstants(lo::AbstractLO)
-  return EulerConstants_LO[1], EulerConstants_LO[2]
+
+  lo = getInnerLO(lo, NewtonLinearObject)
+  return lo.res_norm_i_1, lo.res_norm_i
 end
+
 
 """
   Similar to [`getEulerConstants`](@ref), this function both returns the
@@ -92,30 +111,34 @@ end
   be correct.
 """
 function useEulerConstants(pc::AbstractPC)
-  t1 = EulerConstants_PC[1]
-  t2 = EulerConstants_PC[2]
-  EulerConstants_PC[1] = EulerConstants_PC[2]
+  pc2 = getInnerPC(pc, NewtonLinearObject)
+  t1 = pc2.res_norm_i_1
+  t2 = pc2.res_norm_i
+  pc2.res_norm_i_1 = t2
   return t1, t2
 end
 
-function useEulerConstants(pc::AbstractLO)
-  t1 = EulerConstants_LO[1]
-  t2 = EulerConstants_LO[2]
-  EulerConstants_LO[1] = EulerConstants_LO[2]
+function useEulerConstants(lo::AbstractLO)
+  lo2 = getInnerLO(lo, NewtonLinearObject)
+  t1 = lo2.res_norm_i_1
+  t2 = lo2.res_norm_i
+  lo2.res_norm_i_1 = t2
   return t1, t2
 end
-
 
 """
   Check if Euler globalization is initialized
 """
-function isEulerInitialized()
-  if EulerConstants_LO[1] == EulerConstants_LO[2] == 0
-    return false
-  else
-    return true
-  end
+function isEulerInitialized(lo::AbstractLO)
+  lo2 = getInnerLO(lo, NewtonLinearObject)
+  return !(lo2.res_norm_i == 0 && lo2.res_norm_i_1 == 0)
 end
+
+function isEulerInitialized(pc::AbstractPC)
+  pc2 = getInnerPC(pc, NewtonLinearObject)
+  return !(pc2.res_norm_i == 0 && pc2.res_norm_i_1 == 0)
+end
+
 
 
 @doc """
@@ -224,9 +247,7 @@ function updateEuler(lo::NewtonLinearObject)
   
   tau_update = lo.tau_l/tau_l_old
   println(BSTDOUT, "tau_update factor = ", tau_update)
-  for i=1:length(lo.tau_vec)
-    lo.tau_vec[i] *= tau_update
-  end
+  scale!(lo.tau_vec, tau_update)
 
   return nothing
 end
@@ -254,7 +275,7 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
 # maybe something in lo?
 # for explicitly stored jacobian only
 
-  if !isEulerInitialized()
+  if !isEulerInitialized(lo)
     return nothing
   end
 
@@ -299,10 +320,10 @@ end
    * b: result vector, updated
 """
 function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, 
-                    lo, b::AbstractArray)
+                    lo::NewtonLinearObject, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
 
-  if !isEulerInitialized()
+  if !isEulerInitialized(lo)
     return nothing
   end
 
