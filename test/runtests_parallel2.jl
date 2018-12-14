@@ -4,7 +4,6 @@ args_orig = copy(ARGS)
 
 cd("./advection")
 include(joinpath(pwd(), "runtests_parallel2.jl"))
-println("after advection tests, pwd = ", pwd())
 
 cd("../euler")
 resize!(ARGS, length(args_orig))  # reset to default
