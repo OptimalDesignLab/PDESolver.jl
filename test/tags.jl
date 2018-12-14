@@ -36,6 +36,8 @@ if !tag_defs
 
   global const TAG_PARALLEL = "tag_parallel"
 
+  global const TAG_DS = "tag_ds"      # direct sensitivity
+
   # types of tests
   global const TAG_SHORTTEST = "tag_shorttest"
   global const TAG_LONGTEST = "tag_longtest"

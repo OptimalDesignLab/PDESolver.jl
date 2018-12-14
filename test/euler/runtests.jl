@@ -58,6 +58,8 @@ include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
 
+include("direct_sensitivity/test_direct_sensitivity.jl")
+
 #------------------------------------------------------------------------------
 # run tests
 @testset "----- Running Euler tests -----" begin

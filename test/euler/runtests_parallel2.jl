@@ -30,6 +30,7 @@ global const EulerTests = TestList()
 # include them below `global const EulerTests = TestList()`.
 
 include("test_parallel_derivatives.jl")
+include("direct_sensitivity/test_direct_sensitivity_par.jl")
 
 """
   Run the parallel tests and compare against serial results run as part of
