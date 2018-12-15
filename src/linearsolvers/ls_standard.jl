@@ -28,7 +28,7 @@
 function calcPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t; start_comm=false)
 
-  if typeof(ls.pc) <: AbstractPCNone
+  if typeof(ls.pc) <: PCNone
     if start_comm && needParallelData(ls.lo)
       startSolutionExchange(mesh, sbp, eqn, opts)
     end
@@ -116,7 +116,7 @@ function calcPCandLO(ls::StandardLinearSolver, mesh::AbstractMesh,
 
   #TODO: why is wait=true here? shouldn't the physics module wait if it hasn't
   #      been done yet?
-  if typeof(ls.pc) <: AbstractPCNone
+  if typeof(ls.pc) <: PCNone
     if start_comm && needParallelData(ls.lo)
       startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
     end
@@ -155,7 +155,7 @@ function applyPC(ls::StandardLinearSolver, mesh::AbstractMesh, sbp::AbstractOper
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
-  if typeof(ls.pc) <: AbstractPCNone
+  if typeof(ls.pc) <: PCNone
     # apply the most recent linear operator
     linearSolve(ls, b, x)
   else
@@ -173,7 +173,7 @@ function applyPCTranspose(ls::StandardLinearSolver, mesh::AbstractMesh,
                           sbp::AbstractOperator,
                           eqn::AbstractSolutionData, opts::Dict, t,
                           b::AbstractVector, x::AbstractVector)
-  if typeof(ls.pc) <: AbstractPCNone
+  if typeof(ls.pc) <: PCNone
     linearSolveTranspose(ls, b, x)
   else
     applyPCTranspose(ls.pc, mesh, sbp, eqn, opts, t, b, x)
@@ -247,7 +247,7 @@ function _linearSolve(
 ls::StandardLinearSolver{Tpc, Tlo},
 b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractDenseLO, Tpc}
 
-  @assert typeof(ls.pc) <: AbstractPCNone
+  @assert typeof(ls.pc) <: PCNone
 
   lo2 = getBaseLO(ls.lo)
 
@@ -287,7 +287,7 @@ function _linearSolve(
 ls::StandardLinearSolver{Tpc, Tlo},
 b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractSparseDirectLO, Tpc}
 
-  @assert typeof(ls.pc) <: AbstractPCNone
+  @assert typeof(ls.pc) <: PCNone
 
   lo2 = getBaseLO(ls.lo)
 
@@ -325,7 +325,7 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
   myrank = ls.myrank
   pc2 = getBasePC(ls.pc)
   lo2 = getBaseLO(ls.lo)
-  @assert !(typeof(pc2) <: AbstractPCNone)
+  @assert !(typeof(pc2) <: PCNone)
   
   # prepare the data structures
   #TODO: copy x into xtmp to support initial guess non-zero

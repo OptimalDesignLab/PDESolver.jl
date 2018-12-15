@@ -260,7 +260,7 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts)
 
   # get PC
   if opts["jac_type"] <= 2
-    pc = NewtonPCNone(mesh, sbp, eqn, opts)
+    pc = PCNone(mesh, sbp, eqn, opts)
   else
     if opts["use_volume_preconditioner"]
       pc = NewtonVolumePC(mesh, sbp, eqn, opts)
@@ -300,36 +300,6 @@ macro newtonfields()
   end)
 end
 
-
-mutable struct NewtonPCNone <: AbstractPCNone
-  pc_inner::PCNone
-  @newtonfields
-end
-  
-function NewtonPCNone(mesh::AbstractMesh, sbp::AbstractOperator,
-                      eqn::AbstractSolutionData, opts::Dict)
-
-  pc_inner = PCNone(mesh, sbp, eqn, opts)
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
-
-
-  return NewtonPCNone(pc_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
-end
-
-function calcPC(pc::AbstractPCNone, mesh::AbstractMesh, sbp::AbstractOperator,
-                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
-
-  calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  return nothing
-end
 
 """
   Matrix-based Petsc preconditioner for Newton's method
@@ -396,7 +366,7 @@ end
 """
   Outer constructor for [`NewtonDenseLO`](@ref)
 """
-function NewtonDenseLO(pc::AbstractPCNone, mesh::AbstractMesh,
+function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
@@ -425,7 +395,7 @@ end
 """
   Outer constructor for [`NewtonSparseDirectLO`](@ref)
 """
-function NewtonSparseDirectLO(pc::AbstractPCNone, mesh::AbstractMesh,
+function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = SparseDirectLO(pc, mesh, sbp, eqn, opts)
@@ -531,7 +501,7 @@ const NewtonHasMat = Union{NewtonMatPC, NewtonDenseLO, NewtonSparseDirectLO, New
 """
   Any Newton PC or LO.
 """
-const NewtonLinearObject = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPCNone, NewtonPetscMatFreeLO, NewtonMatPC}
+const NewtonLinearObject = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC}
 
 
 function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,

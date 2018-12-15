@@ -266,7 +266,7 @@ function getCNPCandLO(mesh, sbp, eqn, opts)
   jac_type = opts["jac_type"]
 
   if jac_type <= 2
-    pc = CNPCNone(mesh, sbp, eqn, opts)
+    pc = PCNone(mesh, sbp, eqn, opts)
   elseif opts["use_volume_preconditioner"]
     pc = CNVolumePC(mesh, sbp, eqn, opts)
   else
@@ -285,32 +285,6 @@ function getCNPCandLO(mesh, sbp, eqn, opts)
 
   return pc, lo
 end
-
-
-#------------------------------------------------------------------------------
-# PCNone
-
-
-mutable struct CNPCNone <: AbstractPCNone
-  pc_inner::NewtonPCNone
-end
-
-function CNPCNone(mesh::AbstractMesh, sbp::AbstractOperator,
-                    eqn::AbstractSolutionData, opts::Dict)
-
-  pc_inner = NewtonPCNone(mesh, sbp, eqn, opts)
-
-  return CNPCNone(pc_inner)
-end
-
-function calcPC(pc::CNPCNone, mesh::AbstractMesh, sbp::AbstractOperator,
-                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
-
-  calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  return nothing
-end
-
 
 
 #------------------------------------------------------------------------------
@@ -391,7 +365,7 @@ mutable struct CNDenseLO <: AbstractDenseLO
   lo_inner::NewtonDenseLO
 end
 
-function CNDenseLO(pc::AbstractPCNone, mesh::AbstractMesh,
+function CNDenseLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
@@ -403,7 +377,7 @@ mutable struct CNSparseDirectLO <: AbstractSparseDirectLO
   lo_inner::NewtonSparseDirectLO
 end
 
-function CNSparseDirectLO(pc::AbstractPCNone, mesh::AbstractMesh,
+function CNSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)

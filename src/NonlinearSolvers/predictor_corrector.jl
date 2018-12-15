@@ -402,7 +402,7 @@ function getHomotopyPCandLO(mesh, sbp, eqn, opts)
 
   # get PC
   if opts["jac_type"] <= 2
-    pc = HomotopyPCNone(mesh, sbp, eqn, opts)
+    pc = PCNone(mesh, sbp, eqn, opts)
   else
     pc = HomotopyMatPC(mesh, sbp, eqn, opts)
   end 
@@ -427,31 +427,6 @@ end
 # Define PC and LO objects
 #------------------------------------------------------------------------------
 # PC:
-
-mutable struct HomotopyPCNone <: AbstractPCNone
-  pc_inner::NewtonPCNone
-  lambda::Float64  # homotopy parameter
-end
-
-function HomotopyPCNone(mesh::AbstractMesh, sbp::AbstractOperator,
-                    eqn::AbstractSolutionData, opts::Dict)
-
-  pc_inner = NewtonPCNone(mesh, sbp, eqn, opts)
-  lambda = 1.0
-
-  return HomotopyPCNone(pc_inner, lambda)
-end
-
-
-function calcPC(pc::HomotopyPCNone, mesh::AbstractMesh, sbp::AbstractOperator,
-                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
-
-
-  calcPC(pc.pc_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  return nothing
-end
-
 
 mutable struct HomotopyMatPC <: AbstractPetscMatPC
   pc_inner::NewtonMatPC
@@ -498,7 +473,7 @@ mutable struct HomotopyDenseLO <: AbstractDenseLO
   lambda::Float64
 end
 
-function HomotopyDenseLO(pc::HomotopyPCNone, mesh::AbstractMesh,
+function HomotopyDenseLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
@@ -511,7 +486,7 @@ mutable struct HomotopySparseDirectLO <: AbstractSparseDirectLO
   lambda::Float64
 end
 
-function HomotopySparseDirectLO(pc::HomotopyPCNone, mesh::AbstractMesh,
+function HomotopySparseDirectLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)

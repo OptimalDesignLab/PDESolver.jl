@@ -44,8 +44,10 @@ function clearEulerConstants(ls::LinearSolver)
   lo = getInnerLO(ls.lo, NewtonLinearObject)
   clearEulerConstants(lo)
 
-  pc = getInnerPC(ls.pc, NewtonLinearObject)
-  clearEulerConstants(pc)
+  if !(typeof(ls.pc) <: PCNone)
+    pc = getInnerPC(ls.pc, NewtonLinearObject)
+    clearEulerConstants(pc)
+  end
 
   return nothing
 end
@@ -71,8 +73,10 @@ function recordEulerResidual(ls::LinearSolver, res_norm_i)
   lo = getInnerLO(ls.lo, NewtonLinearObject)
   lo.res_norm_i = res_norm_i
 
-  pc = getInnerPC(ls.pc, NewtonLinearObject)
-  pc.res_norm_i = res_norm_i
+  if !(typeof(ls.pc) <: PCNone)
+    pc = getInnerPC(ls.pc, NewtonLinearObject)
+    pc.res_norm_i = res_norm_i
+  end
 end
 
 
@@ -137,6 +141,10 @@ end
 function isEulerInitialized(pc::AbstractPC)
   pc2 = getInnerPC(pc, NewtonLinearObject)
   return !(pc2.res_norm_i == 0 && pc2.res_norm_i_1 == 0)
+end
+
+function isEulerInitialized(pc::PCNone)
+  return false  # can't globalize what doesn't exist
 end
 
 

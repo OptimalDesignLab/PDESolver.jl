@@ -13,7 +13,7 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
        getBaseLO, getBasePC, getBaseObject,
        PCNone, PetscMatPC, PetscMatFreePC,  # PC types
        DenseLO, SparseDirectLO, PetscMatLO, PetscMatFreeLO,  # LO types
-       AbstractPC, AbstractPCNone, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
+       AbstractPC, AbstractPetscMatPC, AbstractPetscMatFreePC,# Abstract PC types
        AbstractPetscPC, getInnerPC,
        AbstractLO, AbstractDenseLO, AbstractSparseDirectLO, # Abstrac LO types
        AbstractPetscMatLO, AbstractPetscMatFreeLO, getInnerLO,
@@ -108,7 +108,7 @@ end
 function StandardLinearSolver(pc::T1, lo::T2, comm::MPI.Comm, opts) where {T1, T2}
 
   if typeof(lo) <: DirectLO
-    @assert typeof(pc) <: AbstractPCNone
+    @assert typeof(pc) <: PCNone
   end
 
   if typeof(lo) <: PetscLO
@@ -182,11 +182,6 @@ end
   other [`AbstractPC`](@ref) for a nested preconditioner.
 """
 abstract type AbstractPC end
-
-"""
-  Abstract supertype of all no-op PCs.
-"""
-abstract type AbstractPCNone <: AbstractPC  end
 
 """
   Abstract supertype of all Petsc matrix-explicit preconditioners
