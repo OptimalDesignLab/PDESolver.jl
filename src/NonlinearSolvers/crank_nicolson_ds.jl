@@ -1,7 +1,7 @@
-# crank_nicolson.jl
+# crank_nicolson_ds.jl
 # Crank-Nicolson implicit solver for PDEs
 
-export crank_nicolson, cnResidual
+export crank_nicolson_ds, cnResidual
 
 #TODO: stop doing this
 push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
@@ -11,7 +11,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 
 @doc """
-crank_nicolson
+crank_nicolson_ds
 
   This function performs Crank-Nicolson implicit time solution, using a function 
   of the form du/dt = f(u, t)
@@ -55,9 +55,9 @@ crank_nicolson
    "CN", with the default setting to never recalculate either.  newtonInner
    will use its recalculation policy to recalculate the PC and jacobian.
 """->
-function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
-                        mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
-                        opts, res_tol=-1.0, real_time=true)
+function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
+                          mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
+                          opts, res_tol=-1.0, real_time=true)
 
   myrank = eqn.myrank
   if myrank == 0
@@ -248,7 +248,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   flush(BSTDOUT)
 
-end   # end of crank_nicolson function
+end   # end of crank_nicolson_ds function
 
 """
   Construct CN preconditioner and linear operator based on options dictionary
