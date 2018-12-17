@@ -14,8 +14,10 @@ where input_file_name.jl is in your current directory.
 
 "run_type"  : what type of run:
               1 = rk4
+              101 = rk4 w/ dirsens
               5 = steady Newton, FD or CS is specified with jac_method
               20 = Crank-Nicolson
+              21 = Crank-Nicolson w/ dirsens
               30 = LSERK
               31 = LSERK w/ dirsens via CS'ing Ma research code
               90 = Explicit Euler

@@ -177,7 +177,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 get!(arg_dict, "t_max", 0.0)
 
 # GREP: RUNTYPE run_type flag
-if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 21 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -245,9 +245,11 @@ end
 # physics module options
 get!(arg_dict, "use_Minv", false)       # apply inverse mass matrix to residual calc in physics module. needed for CN
 
-if arg_dict["use_Minv"] == false && arg_dict["run_type"] == 20
-  println("INPUT: User did not specify use_Minv but selected run_type is CN. Setting use_Minv = true.")
-  arg_dict["use_Minv"] = true
+if arg_dict["use_Minv"] == false 
+  if arg_dict["run_type"] == 20 || arg_dict["run_type"] == 21
+    println("INPUT: User did not specify use_Minv but selected run_type is CN. Setting use_Minv = true.")
+    arg_dict["use_Minv"] = true
+  end
 end
 
 
@@ -670,9 +672,9 @@ end
 
   # error if checkpointing not supported
   # GREP: RUNTYPE run_type flag
-  checkpointing_run_types = [1, 100, 30, 20, 31, 90]
+  checkpointing_run_types = [1, 100, 20, 21, 30, 31, 90]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
-    error("checkpointing only supported with RK4, RK4 DS, LSERK, LSERK DS, CN, and explicit Euler")
+    error("checkpointing only supported with RK4, RK4 DS, LSERK, LSERK DS, CN, CN DS, and explicit Euler")
   end
 
   if arg_dict["use_checkpointing"]
@@ -690,8 +692,10 @@ end
     error("cannot precondition non-iterative method")
   end
 
-  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
-    error("cannot use volume preconditioner with any method except CN")
+  if arg_dict["use_volume_preconditioner"] 
+    if arg_dict["run_type"] != 20 || arg_dict["run_type"] != 21
+      error("cannot use volume preconditioner with any method except CN")
+    end
   end
 
   # Direct sensitivity of drag wrt Ma checks
@@ -722,6 +726,14 @@ end
   end
   if arg_dict["perturb_Ma"] == false && arg_dict["write_L2vnorm"] == true
     error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma set.")
+  end
+
+  if arg_dict["perturb_Ma"] == true
+    if arg_dict["run_type"] != 101 || arg_dict["run_type"] != 31 || arg_dict["run_type"] != 21
+      error("\n Direct sensitivity analysis via complex perturbation of Ma selected, but 
+              a non-dirsens time-stepper was selected. 
+              Valid types are: 21 (CN DS), 31 (LSERK DS), and 101 (RK4 DS).")
+    end
   end
 
   if arg_dict["isViscous"] && commsize > 1
