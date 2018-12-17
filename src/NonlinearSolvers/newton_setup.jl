@@ -256,7 +256,8 @@ end
    * opts
    * rhs_func: rhs_func required by [`newtonInner`](@ref)
 """
-function getNewtonPCandLO(mesh, sbp, eqn, opts)
+function getNewtonPCandLO(mesh, sbp, eqn, opts,
+                          jactype::Integer=opts["jac_type"])
 
   # get PC
   if opts["jac_type"] <= 2
@@ -269,7 +270,6 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts)
     end
   end 
 
-  jactype = opts["jac_type"]
   if jactype == 1
     lo = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
   elseif jactype == 2
@@ -282,6 +282,20 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts)
 
   return pc, lo
 end
+
+
+import PDESolver.createLinearSolver
+
+function createLinearSolver(mesh::AbstractMesh, sbp::AbstractOperator,
+                            eqn::AbstractSolutionData, opts,
+                            jac_type::Integer=opts["jac_type"])
+
+  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts, jac_type)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+  
+  return ls
+end
+
 
 #------------------------------------------------------------------------------
 # preconditioner

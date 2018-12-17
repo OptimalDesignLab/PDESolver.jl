@@ -275,7 +275,7 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-#=
+
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -406,7 +406,7 @@ function test_jac_terms_long()
  
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
-=#
+
 
     # test revm products
 
@@ -419,9 +419,6 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPDiagonalE"
     opts_tmp["order"] = 2
     opts_tmp["need_adjoint"] = true
-    # TESTING
-#    opts_tmp["addFaceIntegrals"] = false
-#    opts_tmp["addBoundaryIntegrals"] = false
     make_input(opts_tmp, fname4)
     mesh_r1, sbp_r1, eqn_r1, opts_r1 = run_solver(fname4)
 

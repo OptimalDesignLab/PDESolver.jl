@@ -15,7 +15,7 @@ export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        solvePDE, evalResidual_revm, evalResidual_revq
 
 # from interface2.jl
-export createObjects
+export createObjects, createLinearSolver
 
 # from startup_func
 export run_solver

@@ -430,3 +430,27 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
   return nothing
 end
 
+
+"""
+  Returns an [`StandardLinarSolver`](@ref) that can be used to solve the system
+  `dR/dq * x = b`, where `R` is the spatial residual and `q` is the solution.
+  Users should call `free` on this object when they are finished with it.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * jac_type: an integer specifying what kind of Jacobian to create.  See
+               the documentation for the input option `jac_type`.  Default
+               value `opts["jac_type"]`
+
+  **Outputs**
+
+   * ls: a `StandardLinaerSolver`
+"""
+function createLinearSolver
+  # this method is implemented with the Newton linear operators
+end
+
