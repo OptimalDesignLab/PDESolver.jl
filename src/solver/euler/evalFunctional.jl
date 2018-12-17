@@ -3,8 +3,6 @@
 #------------------------------------------------------------------------------
 # API functions
 
-import PDESolver._evalFunctionalDeriv_m
-
 """
   Evaluates [`EntropyPenaltyFunctional`](@ref)s
 

@@ -145,4 +145,4 @@ function test_homotopy_convergence()
   return nothing
 end
 
-add_func1!(EulerTests, test_homotopy_convergence, [TAG_HOMOTOPY, TAG_LONGTEST, TAG_TMP])
+add_func1!(EulerTests, test_homotopy_convergence, [TAG_HOMOTOPY, TAG_LONGTEST])

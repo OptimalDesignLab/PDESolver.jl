@@ -79,12 +79,16 @@ function test_functionals()
   test_functional_zero(mesh3, sbp3, eqn3, opts3, obj)
   test_functional_deriv_q(mesh3, sbp3, eqn3, opts3, obj)
 =#
-  functional_revm_names = ["entropydissipation"]
+  functional_revm_names = ["entropydissipation", "lift", "drag"]
 
   for funcname in functional_revm_names
     println("testing revm of functional ", funcname)
-    obj = createFunctional(mesh3, sbp3, eqn3, opts3, funcname, [1, 3])
-    test_functional_deriv_m(mesh3, sbp3, eqn3, opts3, obj)
+    
+    obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
+    test_functional_deriv_m(mesh, sbp, eqn, opts, obj)
+
+    obj3 = createFunctional(mesh3, sbp3, eqn3, opts3, funcname, [1])
+    test_functional_deriv_m(mesh3, sbp3, eqn3, opts3, obj3)
   end
 
   end  # end testset
@@ -191,7 +195,11 @@ function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
   pert = Complex128(0, h)
 
   # use a spatially varying solution
-  icfunc = EulerEquationMod.ICDict["ICExp"]
+  if mesh.dim == 3
+    icfunc = EulerEquationMod.ICDict["ICExp"]
+  else
+    icfunc = EulerEquationMod.ICDict["ICIsentropicVortex"]
+  end  
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)

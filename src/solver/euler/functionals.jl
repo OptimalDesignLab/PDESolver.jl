@@ -1,8 +1,12 @@
 # functional definitions
 
-import PDESolver.createFunctional
-import ODLCommonTools.getParallelData
+import PDESolver: createFunctional, _evalFunctional, _evalFunctionalDeriv_m,
+                 _evalFunctionalDeriv_q
+import ODLCommonTools: getParallelData, setupFunctional
 
+
+#------------------------------------------------------------------------------
+# Lift and drag
 
 @doc """
 ###EulerEquationMod.BoundaryForceData
@@ -13,14 +17,13 @@ lift and drag values
 """->
 
 mutable struct BoundaryForceData{Topt, fname} <: AbstractBoundaryFunctional{Topt}
-  bcnums::Array{Int,1}  #TODO: make this non-abstract
-  ndof::Int
-  bndry_force::Array{Topt,1}
-  isLift::Bool
-  lift_val::Topt
-  drag_val::Topt
-  dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
-  dDragdaoa::Topt # Partial derivative of drag w.r.t. angle of attack
+  bcnums::Array{Int,1}
+
+  # factors to multiply x, y, z momenta by, determines if lift or drag is
+  # calculated
+  facx::Topt
+  facy::Topt
+  facz::Topt
 
   # things needed for the calculation
   qg::Vector{Topt}
@@ -32,20 +35,15 @@ end
 """
 function LiftForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, bcnums) where Topt
 
-  ndof = mesh.dim
-  bndry_force = zeros(Topt, mesh.dim)
-  isLift = true
-  lift_val = 0.0
-  drag_val = 0.0
-  dLiftdaoa = 0.0
-  dDragdaoa = 0.0
+  facx = 0
+  facy = 0
+  facz = 0
 
   qg = zeros(Topt, mesh.numDofPerNode)
   euler_flux = zeros(Topt, mesh.numDofPerNode)
 
-  return BoundaryForceData{Topt, :lift}(bcnums, ndof,
-                           bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
-                           dDragdaoa, qg, euler_flux)
+  return BoundaryForceData{Topt, :lift}(bcnums, facx, facy, facz, qg,
+                                        euler_flux)
 end
 
 """
@@ -54,20 +52,48 @@ end
 function DragForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                              bcnums) where Topt
 
-  ndof = mesh.dim
-  bndry_force = zeros(Topt, mesh.dim)
-  isLift = false
-  lift_val = 0.0
-  drag_val = 0.0
-  dLiftdaoa = 0.0
-  dDragdaoa = 0.0
+  facx = 0
+  facy = 0
+  facz = 0
+
   qg = zeros(Topt, mesh.numDofPerNode)
   euler_flux = zeros(Topt, mesh.numDofPerNode)
 
-  return BoundaryForceData{Topt, :drag}(bcnums, ndof,
-                           bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
-                           dDragdaoa, qg, euler_flux)
+  return BoundaryForceData{Topt, :drag}(bcnums, facx, facy, facz, qg,
+                                        euler_flux)
 end
+
+
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::BoundaryForceData{Topt, :lift}) where {Topt}
+
+  if mesh.dim == 2
+    func.facx = -sin(eqn.params.aoa)
+    func.facy =  cos(eqn.params.aoa)
+  else
+    func.facx = -sin(eqn.params.aoa)
+    func.facy =  0
+    func.facz =  cos(eqn.params.aoa)
+  end
+
+  return nothing
+end
+
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::BoundaryForceData{Topt, :drag}) where {Topt}
+
+  if mesh.dim == 2
+    func.facx = cos(eqn.params.aoa)
+    func.facy = sin(eqn.params.aoa)
+  else
+    func.facx = cos(eqn.params.aoa)
+    func.facy = 0
+    func.facz = sin(eqn.params.aoa)
+  end
+
+  return nothing
+end
+
 
 """
   Functional for computing lift coefficient.  Uses the lift functional to
@@ -93,6 +119,15 @@ function LiftCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::LiftCoefficient)
+
+  setupFunctional(mesh, sbp, eqn, opts, func.lift)
+
+end
+
+#------------------------------------------------------------------------------
+# other functionals
 
 
 """
