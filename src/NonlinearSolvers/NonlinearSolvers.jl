@@ -55,7 +55,7 @@ export getNewtonPCandLO
 
 # exports are inside the files
 include("crank_nicolson.jl")
-# include("crank_nicolson_ds.jl")
+include("crank_nicolson_ds.jl")
 
 include("preconditioning.jl")
 include("globalization.jl")
