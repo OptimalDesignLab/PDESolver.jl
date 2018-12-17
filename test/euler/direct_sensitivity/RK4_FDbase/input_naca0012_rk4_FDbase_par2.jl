@@ -16,7 +16,7 @@ arg_dict = Dict{Any, Any}(
 
   "operator_type"       => "SBPOmega",
 
-  "run_type"            => 100,     # rk4_ds
+  "run_type"            => 101,     # rk4_ds
   "jac_method"          => 2,
   "jac_type"            => 3,
   "real_time"           => true,

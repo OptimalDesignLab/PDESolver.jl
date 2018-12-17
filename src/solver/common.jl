@@ -108,7 +108,7 @@ function getDataTypes(opts::Dict)
   calc_jac_explicit = opts["calc_jac_explicit"]
 
   # GREP: RUNTYPE run_type flag
-  if flag == 1 || flag == 100 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 31 || flag == 90  # normal run
+  if flag == 1 || flag == 101 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 31 || flag == 90  # normal run
     if opts["perturb_Ma"]
       println("perturb_Ma set, setting Tsol & Tres to Complex128")
       Tmsh = Float64
@@ -533,7 +533,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
       println("finish rk4")
       #    printSolution("rk4_solution.dat", eqn.res_vec)
 
-    elseif flag == 100      # RK4, direct-sensitivity
+    elseif flag == 101      # RK4, direct-sensitivity
       delta_t = opts["delta_t"]
       t_max = opts["t_max"]
 

@@ -177,7 +177,7 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 get!(arg_dict, "t_max", 0.0)
 
 # GREP: RUNTYPE run_type flag
-if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 21 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
+if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 101 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 21 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
@@ -224,14 +224,14 @@ end
 
 # parallel options
 # GREP: RUNTYPE run_type flag
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 101 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
   get!(arg_dict, "parallel_type", 1)
 else
   get!(arg_dict, "parallel_type", 2)
 end
 
 # GREP: RUNTYPE run_type flag
-if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 100 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
+if arg_dict["run_type"] == 1 || arg_dict["run_type"] == 101 || arg_dict["run_type"] == 30 || arg_dict["run_type"] == 31 || arg_dict["run_type"] == 90
   if arg_dict["face_integral_type"] == 2  # entropy stable
     get!(arg_dict, "parallel_data", "element")
   else
@@ -654,7 +654,7 @@ function checkForIllegalOptions_post(arg_dict)
 
   jac_type = arg_dict["jac_type"]
   # GREP: RUNTYPE run_type flag
-  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 100 && arg_dict["run_type"] != 30 && arg_dict["run_type"] != 31 && arg_dict["run_type"] != 90)
+  if commsize > 1 && !( jac_type == 3 || jac_type == 4) && (arg_dict["run_type"] != 1 && arg_dict["run_type"] != 101 && arg_dict["run_type"] != 30 && arg_dict["run_type"] != 31 && arg_dict["run_type"] != 90)
   error("Invalid jacobian type for parallel run")
 end
 
@@ -672,7 +672,7 @@ end
 
   # error if checkpointing not supported
   # GREP: RUNTYPE run_type flag
-  checkpointing_run_types = [1, 100, 20, 21, 30, 31, 90]
+  checkpointing_run_types = [1, 101, 20, 21, 30, 31, 90]
   if arg_dict["use_checkpointing"] && !(arg_dict["run_type"] in checkpointing_run_types)
     error("checkpointing only supported with RK4, RK4 DS, LSERK, LSERK DS, CN, CN DS, and explicit Euler")
   end
@@ -728,12 +728,16 @@ end
     error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma set.")
   end
 
-  if arg_dict["perturb_Ma"] == true
-    if arg_dict["run_type"] != 101 || arg_dict["run_type"] != 31 || arg_dict["run_type"] != 21
+  # if arg_dict["perturb_Ma"] == true
+    # if arg_dict["run_type"] != 101 || arg_dict["run_type"] != 31 || arg_dict["run_type"] != 21
+    # end
+  ds_run_types = [101, 21, 31]
+  if arg_dict["perturb_Ma"] && !(arg_dict["run_type"] in ds_run_types)
+      println("arg_dict[perturb_Ma]: ", arg_dict["perturb_Ma"])
+      println("arg_dict[run_type]: ", arg_dict["run_type"])
       error("\n Direct sensitivity analysis via complex perturbation of Ma selected, but 
               a non-dirsens time-stepper was selected. 
               Valid types are: 21 (CN DS), 31 (LSERK DS), and 101 (RK4 DS).")
-    end
   end
 
   if arg_dict["isViscous"] && commsize > 1
