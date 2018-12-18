@@ -86,6 +86,15 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
   res_jac = zeros(Tres1, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
   =#
 
+  # Setting up temporary arrays for storage of the real parts of q_j, coords, and nrm_xy.
+  #   We need to pass in only the real parts of these to the complex step 
+  #   derivative evaluation below, because there might be a complex 
+  #   perturbation already present in these quantities.
+  tmpreal_q_j = zeros(Tsol1, mesh.numDofPerNode)
+  tmpreal_coords = zeros(Tmsh, mesh.dim)
+  tmpreal_nrm_xy = zeros(Tmsh, mesh.dim)
+
+
   h = 1e-20
   pert = Tsol(0, h)
   for i=1:nfaces  # loop over faces with this BC
@@ -104,20 +113,35 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
       coords = ro_sview(mesh.coords_bndry, :, j, global_facenum)
       nrm_xy = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
 
+      # Store real part of q_j in tmpreal_q_j
+      for ix = 1:mesh.numDofPerNode
+        tmpreal_q_j[ix] = real(q_j[ix])     # should still be of complex type; required for complex pert below
+      end
+
+      # Store real part of coords & nrm_xy in their respective tmpreal's
+      for ix = 1:mesh.dim
+        tmpreal_coords[ix] = real(coords[ix])
+        tmpreal_nrm_xy[ix] = real(nrm_xy[ix])
+      end
+
       bndry_node = BoundaryNode(bndry_i, i, j)
       # compute the jacobian of the flux wrt q_face
       for k=1:mesh.numDofPerNode
-        q_j[k] += pert
-        aux_vars[1] = calcPressure(params, q_j)
+        tmpreal_q_j[k] += pert
+        aux_vars[1] = calcPressure(params, tmpreal_q_j)
 
-        functor(params, q_j, aux_vars, coords, nrm_xy, flux_k, bndry_node)
+        functor(params, tmpreal_q_j, aux_vars, tmpreal_coords, tmpreal_nrm_xy, flux_k, bndry_node)
 
         for p=1:mesh.numDofPerNode
           flux_jac[p, k, j] = imag(flux_k[p])/h
         end
 
-        q_j[k] -= pert
+        tmpreal_q_j[k] -= pert
       end  # end loop k
+
+      # No need to replace any imaginary components of anything, since the original
+      #   q_j, coords, and nrm_xy arrays were unaltered
+
     end  # end looop j
 
     boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_jac, res_jac,
