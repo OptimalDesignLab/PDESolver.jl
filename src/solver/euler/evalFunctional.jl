@@ -19,6 +19,9 @@ function _evalFunctional(mesh::AbstractMesh{Tmsh},
 end
 
 
+#------------------------------------------------------------------------------
+# derivative wrt q
+
 # derivative of functional wrt q
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
@@ -92,11 +95,28 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+# wrapper method for NegEntropyDissipationData
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::EulerData{Tsol, Tres}, opts,
+                           func::NegEntropyDissipationData,
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
+
+  _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func.func, func_deriv_arr)
+  scale!(func_deriv_arr, -1)
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# derivative wrt metrics
 
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           func::EntropyPenaltyFunctional
+                           func::EntropyPenaltyFunctional,
+                           val_bar::Number=1,
                            ) where {Tmsh, Tsol}
 
   # compute reverse mode of the contraction, take val_bar = 1
@@ -111,7 +131,7 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
         #val += w_j[k]*eqn.res[k, j, i]
         #-----------------------------
         # reverse sweep
-        eqn.res_bar[k, j, i] += w_j[k]
+        eqn.res_bar[k, j, i] += w_j[k]*val_bar
       end
     end
   end
@@ -148,6 +168,19 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+
+# NegEntropyDissipationData method
+function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           func::NegEntropyDissipationData,
+                           val_bar::Number=1,
+                           ) where {Tmsh, Tsol}
+
+  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func.func, -val_bar)
+
+  return nothing
+end
 
 #------------------------------------------------------------------------------
 # Implementation for each functional
@@ -187,7 +220,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
 
     # parallel part
 
-    # figure out which paralle function to call
+    # figure out which parallel function to call
     if opts["parallel_data"] == PARALLEL_DATA_FACE
       pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, flux_functor)
     elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
@@ -215,4 +248,12 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   end
 
   return val
+end
+
+
+function calcFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres}, opts,
+            func::NegEntropyDissipationData) where {Tmsh, Tsol, Tres}
+
+  return -calcFunctional(mesh, sbp, eqn, opts, func.func)
 end

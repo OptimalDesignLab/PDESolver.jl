@@ -213,7 +213,7 @@ end
 function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           func::AbstractFunctional;
+                           func::AbstractFunctional, val_bar::Number=1;
                            start_comm=true
                            ) where {Tmsh, Tsol}
 
@@ -222,7 +222,7 @@ function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 
   # evaluate the functional derivative
   setupFunctional(mesh, sbp, eqn, opts, func)
-  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func)
+  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func, val_bar)
 
   # verify implementation finished communication
   if start_comm_q

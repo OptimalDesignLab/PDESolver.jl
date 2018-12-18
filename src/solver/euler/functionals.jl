@@ -102,7 +102,6 @@ end
 """
 mutable struct LiftCoefficient{Topt} <: AbstractBoundaryFunctional{Topt}
   lift::BoundaryForceData{Topt, :lift}
-  val::Topt
   bcnums::Array{Int, 1}
 end
 
@@ -113,9 +112,8 @@ function LiftCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                     bcnums) where Topt
 
   lift = LiftForceDataConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
-  val = 0.0
 
-  return LiftCoefficient{Topt}(lift, val, bcnums)
+  return LiftCoefficient{Topt}(lift, bcnums)
 end
 
 
@@ -136,8 +134,6 @@ end
 """
 mutable struct MassFlowData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
-  ndof::Int
-  val::Topt
 end
 
 """
@@ -146,7 +142,7 @@ end
 """
 function MassFlowDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
                             bcnums) where Topt
-  return MassFlowData{Topt}(bcnums, 1, 0.0)
+  return MassFlowData{Topt}(bcnums)
 end
 
 """
@@ -155,8 +151,6 @@ end
 """
 mutable struct EntropyFluxData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
-  ndof::Int
-  val::Topt
 end
 
 """
@@ -165,7 +159,7 @@ end
 """
 function EntropyFluxConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
                             bcnums) where Topt
-  return EntropyFluxData{Topt}(bcnums, 1, 0.0)
+  return EntropyFluxData{Topt}(bcnums)
 end
 
 """
@@ -197,6 +191,27 @@ function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 
   return EntropyDissipationData{Topt}(func, func_sparseface, func_sparseface_revq, func_sparseface_revm)
 end
+
+
+"""
+  Returns the negative of [`EntropyDissipationData`](@ref).  That functional
+  is always negative, so this one is always positive.
+"""
+mutable struct NegEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::EntropyDissipationData{Topt}
+end
+
+"""
+  Constructor for [`NegEntropyDissipationData`](@ref).  `bcnums` argument is
+  unused.
+"""
+function NegEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = EntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
 
 """
   Functional that computes function `w^T d(u)`, where `w` are the entropy
@@ -288,6 +303,7 @@ global const FunctionalDict = Dict{String, Function}(
 "liftCoefficient" => LiftCoefficientConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
+"negentropydissipation" => NegEntropyDissipationConstructor,
 "entropyjump" => EntropyJumpConstructor,
 )
 

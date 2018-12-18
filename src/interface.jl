@@ -249,11 +249,15 @@ end
    * eqn
    * opts
    * functionalData: the [`AbstractFunctional`](@ref)
+   * val_bar: seed value for back-propigation, default value 1.  This is
+              rarely used by the user-facing interface, but is useful for
+              functionals that are composed of other functionals.
 """
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           functionalData::AbstractFunctional
+                           functionalData::AbstractFunctional,
+                           val_bar::Number=1,
                            ) where {Tmsh, Tsol}
 
 

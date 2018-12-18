@@ -79,7 +79,7 @@ function test_functionals()
   test_functional_zero(mesh3, sbp3, eqn3, opts3, obj)
   test_functional_deriv_q(mesh3, sbp3, eqn3, opts3, obj)
 =#
-  functional_revm_names = ["entropydissipation", "lift", "drag"]
+  functional_revm_names = ["entropydissipation", "negentropydissipation", "lift", "drag"]
 
   for funcname in functional_revm_names
     println("testing revm of functional ", funcname)
@@ -248,7 +248,29 @@ function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
   println("max coords_bndry_bar = ", maximum(abs.(mesh.coords_bndry_bar)))
   @test abs(val - val2) < 1e-12
 
-  #TODO: test accumulation
+  # test val_bar != 1
+  zeroBarArrays(mesh)
+  evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func, 2)
+
+  val3 = sum(mesh.dxidx_bar .* dxidx_dot)              +
+         sum(mesh.jac_bar .* jac_dot)                  +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
+         sum(mesh.nrm_face_bar .* nrm_face_dot)        +
+         sum(mesh.coords_bndry_bar .* coords_bndry_dot)
+
+  @test abs(val3 - 2*val2) < 1e-12
+
+
+  # test accumulation
+  evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func, 2)
+
+  val4 = sum(mesh.dxidx_bar .* dxidx_dot)              +
+         sum(mesh.jac_bar .* jac_dot)                  +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot)      +
+         sum(mesh.nrm_face_bar .* nrm_face_dot)        +
+         sum(mesh.coords_bndry_bar .* coords_bndry_dot)
+
+  @test abs(val4 - 2*val3) < 1e-13
 
   return nothing
 end

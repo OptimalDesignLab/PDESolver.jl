@@ -60,13 +60,14 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
                            func::AbstractBoundaryFunctional,
+                           val_bar::Number=1,
                            ) where {Tmsh, Tsol}
 
   if mesh.isDG
     boundaryinterpolate!(mesh.sbpface, mesh.bndryfaces, eqn.q, eqn.q_bndry)
   end
 
-  calcBndryFunctional_revm(mesh, sbp, eqn, opts, func)
+  calcBndryFunctional_revm(mesh, sbp, eqn, opts, func, val_bar)
   return nothing
 end
 
@@ -77,8 +78,9 @@ end
   each boundary node and computes the integral.
 """
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
-     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, func::AbstractBoundaryFunctional) where {Tmsh, Tsol, Tres, Tdim}
+                      sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                      opts, func::AbstractBoundaryFunctional,
+                      ) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
   node_info = zeros(Int, 3)
@@ -125,12 +127,12 @@ end  # function calcBndryFunctional
 
 function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
      sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, func::AbstractBoundaryFunctional, _val_bar=1) where {Tmsh, Tsol, Tres, Tdim}
+     opts, func::AbstractBoundaryFunctional, _val_bar::Number=1,
+     ) where {Tmsh, Tsol, Tres, Tdim}
 
   functional_val = zeros(Tres, 1)
   node_info = zeros(Int, 3)
 
-  println("typeof(_val_bar) = ", typeof(_val_bar))
   val_bar = Array{Tres}(1)
   val_bar[1] = _val_bar
 #  val_bar = Tres[_val_bar]  # value is implicitly known, no need to reverse allreduce
@@ -180,9 +182,9 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
   val = calcBndryFunctional(mesh, sbp, eqn, opts, func.lift)
   fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
 
-  func.val = val/fac
+  val = val/fac
 
-  return func.val
+  return val
 end
 
 #TODO _revm
