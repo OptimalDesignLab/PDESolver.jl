@@ -177,9 +177,10 @@ end  # function calcBndryFunctional
 
 function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
      sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
-     opts, func::LiftCoefficient) where {Tmsh, Tsol, Tres, Tdim}
+     opts, func::Union{LiftCoefficient, DragCoefficient}
+    ) where {Tmsh, Tsol, Tres, Tdim}
 
-  val = calcBndryFunctional(mesh, sbp, eqn, opts, func.lift)
+  val = calcBndryFunctional(mesh, sbp, eqn, opts, func.func)
   fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
 
   val = val/fac
@@ -187,7 +188,21 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
   return val
 end
 
-#TODO _revm
+
+function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
+                       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                       opts, func::AeroCoefficients, val_bar::Number=1,
+                       ) where {Tmsh, Tsol, Tres, Tdim}
+
+  fac = 0.5*eqn.params.rho_free*eqn.params.Ma*eqn.params.Ma
+  val_bar = val_bar/fac
+
+  calcBndryFunctional_revm(mesh, sbp, eqn, opts, func.func, val_bar)
+
+  return nothing
+end
+
+#TODO: reverse mode for revq
 
 
 @doc """

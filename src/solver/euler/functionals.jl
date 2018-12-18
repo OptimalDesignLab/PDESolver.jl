@@ -101,7 +101,7 @@ end
   0.5*rho_free*Ma^2.  Note that this assumes the chord length (in 2d) is 1
 """
 mutable struct LiftCoefficient{Topt} <: AbstractBoundaryFunctional{Topt}
-  lift::BoundaryForceData{Topt, :lift}
+  func::BoundaryForceData{Topt, :lift}
   bcnums::Array{Int, 1}
 end
 
@@ -117,12 +117,40 @@ function LiftCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
-function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
-                         opts::Dict, func::LiftCoefficient)
 
-  setupFunctional(mesh, sbp, eqn, opts, func.lift)
+"""
+  Functional for computing drag coefficient.  See [`LiftCoefficient`](@ref)
+  for the non-dimensionalization.
+"""
+mutable struct DragCoefficient{Topt} <: AbstractBoundaryFunctional{Topt}
+  func::BoundaryForceData{Topt, :drag}
+  bcnums::Array{Int, 1}
+end
+
+"""
+  Constructor for DragCoefficient functional
+"""
+function DragCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                    bcnums) where Topt
+
+  drag = DragForceDataConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+
+  return DragCoefficient{Topt}(drag, bcnums)
+end
+
+
+"""
+  Typedef for functionals that compute aerodynamic coefficients (lift, drag)
+"""
+const AeroCoefficients{Topt} = Union{LiftCoefficient{Topt}, DragCoefficient{Topt}}
+
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::AeroCoefficients)
+
+  setupFunctional(mesh, sbp, eqn, opts, func.func)
 
 end
+
 
 #------------------------------------------------------------------------------
 # other functionals
@@ -299,8 +327,9 @@ end
 global const FunctionalDict = Dict{String, Function}(
 "lift" => LiftForceDataConstructor,
 "drag" => DragForceDataConstructor,
-"massflow" => MassFlowDataConstructor,
 "liftCoefficient" => LiftCoefficientConstructor,
+"dragCoefficient" => DragCoefficientConstructor,
+"massflow" => MassFlowDataConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
 "negentropydissipation" => NegEntropyDissipationConstructor,

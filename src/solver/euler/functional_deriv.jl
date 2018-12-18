@@ -71,7 +71,9 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
                            func::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  integrand = zeros(eqn.q_bndry)
+  integrand = zeros(eqn.q_bndry)  #TODO: only allocate enough space for
+                                  #      the boundaries the functional is using
+  node_info = Array{Int}(3)
 
   # Populate integrand
   for itr = 1:length(func.bcnums)
@@ -94,7 +96,7 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
         aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
         nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
-        node_info = Int[itr,j,i]
+        node_info[1] = itr; node_info[2] = j; node_info[3] = i
         integrand_i = sview(integrand, :, j, global_facenum)
 
         calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info,
@@ -117,10 +119,10 @@ end  # End function calcFunctionalDeriv
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
-                           func::LiftCoefficient,
+                           func::AeroCoefficients,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, func.lift, func_deriv_arr)
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, func.func, func_deriv_arr)
 
   Ma = eqn.params.Ma
   fac = 0.5*eqn.params.rho_free*Ma*Ma
