@@ -79,7 +79,7 @@ function test_functionals()
   test_functional_zero(mesh3, sbp3, eqn3, opts3, obj)
   test_functional_deriv_q(mesh3, sbp3, eqn3, opts3, obj)
 =#
-  functional_revm_names = ["entropydissipation", "negentropydissipation", "lift", "liftCoefficient", "drag", "dragCoefficient"]
+  functional_revm_names = ["boundaryentropydiss", "negboundaryentropydiss", "entropydissipation", "negentropydissipation", "lift", "liftCoefficient", "drag", "dragCoefficient"]
 
   for funcname in functional_revm_names
     println("testing revm of functional ", funcname)
@@ -183,6 +183,8 @@ function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
   val2 = imag(f)/h
   eqn.q_vec .-= pert*vec(q_dot)
 
+  println("val1 = ", val)
+  println("val2 = ", val2)
   @test abs(val - val2) < 1e-12
 
   return nothing
@@ -270,7 +272,7 @@ function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
          sum(mesh.nrm_face_bar .* nrm_face_dot)        +
          sum(mesh.coords_bndry_bar .* coords_bndry_dot)
 
-  @test abs(val4 - 2*val3) < 1e-13
+  @test abs(val4 - 2*val3) < 1e-12
 
   return nothing
 end
@@ -326,4 +328,4 @@ function test_compositefunctional(mesh, sbp, eqn, opts,
   end
 end
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

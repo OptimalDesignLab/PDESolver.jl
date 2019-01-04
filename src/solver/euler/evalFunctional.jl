@@ -257,3 +257,4 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
 
   return -calcFunctional(mesh, sbp, eqn, opts, func.func)
 end
+

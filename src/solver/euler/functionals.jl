@@ -272,6 +272,41 @@ end
 
 
 """
+  Functional that computes -delta_w^T lambda_max Y^T Y delta_w for
+  boundary faces.  delta_w is the difference between the (entropy variable)
+  numerical solution and the boundary state.  This only works for boundary
+  conditions that have [`getDirichletState`](@ref) defined.
+"""
+mutable struct BoundaryEntropyDiss{Topt} <: AbstractBoundaryFunctional{Topt}
+  bcnums::Array{Int, 1}
+end
+
+function BoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  return BoundaryEntropyDiss{Topt}(bcnums)
+end
+
+"""
+  Negative of [`BoundaryEntropyDiss`](@ref).  That one is always negative
+  so this one is always positive.
+"""
+mutable struct NegBoundaryEntropyDiss{Topt} <: AbstractBoundaryFunctional{Topt}
+  func::BoundaryEntropyDiss{Topt}
+end
+
+function NegBoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  obj = BoundaryEntropyDissConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegBoundaryEntropyDiss{Topt}(obj)
+end
+
+
+
+
+
+
+
+"""
   Creates a functional object.
 
 **Arguments**
@@ -334,6 +369,8 @@ global const FunctionalDict = Dict{String, Function}(
 "entropydissipation" => EntropyDissipationConstructor,
 "negentropydissipation" => NegEntropyDissipationConstructor,
 "entropyjump" => EntropyJumpConstructor,
+"boundaryentropydiss" => BoundaryEntropyDissConstructor,
+"negboundaryentropydiss" => NegBoundaryEntropyDissConstructor,
 )
 
 

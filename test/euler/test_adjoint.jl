@@ -65,4 +65,4 @@ function test_adjoint()
 
 end # End function test_adjoint
 
-add_func1!(EulerTests, test_adjoint, [TAG_ADJOINT, TAG_LONGTEST, TAG_TMP])
+add_func1!(EulerTests, test_adjoint, [TAG_ADJOINT, TAG_LONGTEST])

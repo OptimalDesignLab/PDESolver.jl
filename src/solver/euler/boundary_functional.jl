@@ -1,5 +1,7 @@
 # boundary functional evaluation and derivatives
 
+include("boundary_entropy_diss.jl")
+
 @doc """
 ### EulerEquationMod.evalFunctional
 
