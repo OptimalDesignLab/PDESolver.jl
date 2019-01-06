@@ -116,6 +116,7 @@ function _calcBndryEntropyDiss(mesh::AbstractMesh{Tmsh},
     q_el = sview(eqn.q, :, :, bndry_i.element)
     boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, q_el, qface)
 
+    val_i = zero(Tres)
     for j=1:mesh.numNodesPerFace
 
       # get components
@@ -141,9 +142,11 @@ function _calcBndryEntropyDiss(mesh::AbstractMesh{Tmsh},
 
       # compute delta_w*B*Lambda(delta_w)
       for k=1:mesh.numDofPerNode
-        val += delta_w[k]*mesh.sbpface.wface[j]*flux[k]
+        val_i += delta_w[k]*mesh.sbpface.wface[j]*flux[k]
       end
     end  # end loop j
+    println("contribution of boundary ", bndry_i, " = ", val_i)
+    val += val_i
   end  # end loop i
 
 

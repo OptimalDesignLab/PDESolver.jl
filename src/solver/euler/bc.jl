@@ -1396,18 +1396,6 @@ function (obj::FreeStreamBC)(params::ParamType,
 end
 
 
-function getDirichletState(obj::FreeStreamBC, params::ParamType,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1},
-              qg::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-
-  calcFreeStream(params, coords, qg)
-
-  return nothing
-end
-
 @makeBC FreeStreamBC_revm """
 ###EulerEquationMod.FreeStreamBC_revm
 
@@ -1424,26 +1412,12 @@ function (obj::FreeStreamBC_revm)(params::ParamType,
 
   # Forward sweep
   qg = params.bcdata.qg
-  calcFreeStream(params, coords, qg)
 
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
   # Reverse sweep
   RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
 
   # calcFreeStream does not depend on coords, so no need to reverse mode it
-  return nothing
-end
-
-function getDirichletState_revm(obj::FreeStreamBC_revm, params::ParamType,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
-              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
-              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
-              bndryflux_bar::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-
-
-  # calcFreeStream does not depend on coords, so no need to reverse mode it
-
   return nothing
 end
 
@@ -1462,8 +1436,36 @@ function (obj::FreeStreamBC_revq)(params::ParamType,
   @unpack data qg qg_bar
   fill!(qg_bar, 0)
 
-  calcFreeStream(params, coords, qg)
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
   RoeSolver_revq(params, q, q_bar,  qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  return nothing
+end
+
+const FreeStreamBCs = Union{FreeStreamBC, FreeStreamBC_revq, FreeStreamBC_revm}
+function getDirichletState(obj::FreeStreamBCs, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  calcFreeStream(params, coords, qg)
+
+  return nothing
+end
+
+
+function getDirichletState_revm(obj::FreeStreamBC_revm, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+  # calcFreeStream does not depend on coords, so no need to reverse mode it
 
   return nothing
 end
@@ -1479,6 +1481,8 @@ function getDirichletState_revq(obj::FreeStreamBC_revq, params::ParamType,
   # no dependence on q
   return nothing
 end
+
+
 
 
 @makeBC FreeStreamBC_dAlpha """
