@@ -589,7 +589,7 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
   @unpack params.bcdata qg q_bar qg_bar
   fill!(q_bar, 0); fill!(qg_bar, 0)
 
-  getDirichletState(params, q, aux_vars, coords, nrm, qg, bndry)
+  getDirichletState(obj, params, q, aux_vars, coords, nrm, qg, bndry)
 
   # Reverse Sweep
 
@@ -597,7 +597,7 @@ function (obj::isentropicVortexBC_revm)(params::ParamType2,
   RoeSolver_revm(params, q, qg, aux_vars, nrm, nrm_bar, bndryflux_bar)
   RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm, bndryflux_bar)
 
-  getDirichletState_revq(params, q, aux_vars, coords, coords_bar, nrm,
+  getDirichletState_revm(obj, params, q, aux_vars, coords, coords_bar, nrm,
                          nrm_bar, qg_bar, bndry)
 
   return nothing
