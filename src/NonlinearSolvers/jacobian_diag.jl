@@ -153,31 +153,83 @@ function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::Abst
   xblock = zeros(eltype(x), blocksize)
   bblock = zeros(eltype(b), blocksize)
   for i=1:nblock
-    
-    # gather dofs in x
-    idx = 1
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        xblock[idx] = x[mesh.dofs[k, j, i]]
-        idx += 1
-      end
-    end
+    getValues(mesh, x, i, xblock)
     Ablock = sview(A.A, :, :, i)
     smallmatvec!(Ablock, xblock, bblock)
-
-    # scatter to b
-    idx = 1
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        b[mesh.dofs[k, j, i]] = bblock[idx]
-        idx += 1
-      end
-    end
-
+    setValues(mesh, bblock, i, b)
   end  # end loop i
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# utility functions
+"""
+  Gets the values out of a `eqn.q_vec` shaped vector for a given element.
+
+  **Inputs**
+
+   * mesh
+   * x: the vector
+   * elnum: element number
+
+  **Inputs/Outputs**
+
+   * workvec: vector of length `mesh.numDofPerNode*mesh.numNodesPerElement`
+              to overwrite with the solution.
+"""
+function getValues(mesh::AbstractMesh, x::AbstractVector, elnum::Integer,
+                   workvec::AbstractVector)
+
+  # get the x values
+  # this could be faster if we assume the dofs on each element are numbered
+  # sequentially
+  pos = 1
+  @simd for j=1:mesh.numNodesPerElement
+    @simd for k=1:mesh.numDofPerNode
+      dof_i = mesh.dofs[k, j, elnum]
+      workvec[pos] = x[dof_i]
+      pos += 1
+    end
+  end
+
+  return nothing
+end
+
+
+"""
+  Inverse of [`getValues`](@ref), puts values back into a vector
+
+  **Inputs**
+
+   * mesh
+   * workvec
+   * elnum
+  
+  **Inputs/Outputs**
+
+   * b: relevent entries are overwritten
+"""
+function setValues(mesh::AbstractMesh, workvec::AbstractVector, elnum::Integer,
+                   b::AbstractVector)
+
+
+  # put entries back into b using mesh.dofs
+  pos = 1
+  for j=1:mesh.numNodesPerElement
+    for k=1:mesh.numDofPerNode
+      dof_i = mesh.dofs[k, j, elnum]
+      b[dof_i] = workvec[pos]
+      pos += 1
+    end
+  end
+
+  return nothing
+end
+
+
+
 #------------------------------------------------------------------------------
 # New AssembleElementData type for getting the diagonal only
 

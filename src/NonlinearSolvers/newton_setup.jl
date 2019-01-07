@@ -264,7 +264,7 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts,
     pc = PCNone(mesh, sbp, eqn, opts)
   else
     if opts["use_volume_preconditioner"]
-      pc = NewtonVolumePC(mesh, sbp, eqn, opts)
+      pc = NewtonBDiagPC(mesh, sbp, eqn, opts)
     else
       pc = NewtonMatPC(mesh, sbp, eqn, opts)
     end

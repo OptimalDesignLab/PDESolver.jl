@@ -25,9 +25,9 @@ include("lserk.jl")
   export lserk54
 
 include("jac_recalc.jl")
-include("preconditioning_types.jl")
 include("newton.jl")
 export getNewtonPCandLO
+include("preconditioning_types.jl")
 
 include("crank_nicolson.jl")
 include("preconditioning.jl")

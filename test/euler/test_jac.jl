@@ -283,7 +283,6 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 
-
     # SBPDiagonalE, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -371,6 +370,7 @@ function test_jac_terms_long()
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
+    test_BDiagPC(mesh4, sbp4, eqn4, opts4)
 
     opts4["preallocate_jacobian_coloring"] = true
     test_jac_general(mesh4, sbp4, eqn4, opts4, is_prealloc_exact=false, set_prealloc=false)
@@ -486,7 +486,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -2431,7 +2431,59 @@ function test_revq_product(mesh, sbp, eqn, opts)
 
   end
 
+  return nothing
+end
 
+
+"""
+  Test NewtonBDiagPC
+"""
+function test_BDiagPC(mesh, sbp, eqn, opts)
+
+  opts["calc_jac_explicit"] = true
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01*rand(size(eqn.q))
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  println("getting flux function named ", opts["Flux_name"])
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+  eqn.volume_flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Volume_flux_name"]]
+
+
+  bs = mesh.numDofPerNode*mesh.numNodesPerElement
+  diag_jac = NonlinearSolvers.DiagJac(Float64, bs, mesh.numEl)
+  assem = NonlinearSolvers.AssembleDiagJacData(mesh, sbp, eqn, opts, diag_jac)
+
+  evalJacobian(mesh, sbp, eqn, opts, assem)
+
+  pc = NonlinearSolvers.NewtonBDiagPC(mesh, sbp, eqn, opts)
+  calcPC(pc, mesh, sbp, eqn, opts, (evalResidual,), 0.0)
+
+  @testset "NewtonBDiagPC" begin
+    # test inverse: use applyPC to multiply by A^-1, then use diagMatVec to
+    # undo it
+    x = rand(mesh.numDof)
+    x_orig = copy(x)
+    b = zeros(mesh.numDof)
+    applyPC(pc, mesh, sbp, eqn, opts, 0.0, x, b)
+    fill!(x, 0)
+    NonlinearSolvers.diagMatVec(diag_jac, mesh, b, x)
+
+    @test maximum(abs.(x - x_orig)) < 1e-12
+
+    # test factored multiplication
+    @test pc.is_factored
+    b = zeros(mesh.numDof)
+    b2 = zeros(mesh.numDof)
+    NonlinearSolvers.diagMatVec(diag_jac, mesh, x, b)
+    NonlinearSolvers.applyBDiagPCInv(pc, mesh, sbp, eqn, opts, x, b2)
+  
+    @test maximum(abs.(b2 - b)) < 1e-12
+  end
 
 
   return nothing

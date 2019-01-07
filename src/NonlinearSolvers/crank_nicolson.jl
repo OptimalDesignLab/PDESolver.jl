@@ -268,7 +268,7 @@ function getCNPCandLO(mesh, sbp, eqn, opts)
   if jac_type <= 2
     pc = PCNone(mesh, sbp, eqn, opts)
   elseif opts["use_volume_preconditioner"]
-    pc = CNVolumePC(mesh, sbp, eqn, opts)
+    pc = CNBDiagPC(mesh, sbp, eqn, opts)
   else
     pc = CNMatPC(mesh, sbp, eqn, opts)
   end
@@ -319,39 +319,39 @@ end
   Volume integral jacobian preconditioner for CN.
 
 """
-mutable struct CNVolumePC <: AbstractPetscMatFreePC
+mutable struct CNBDiagPC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
-  other_pc::NewtonVolumePC
+  other_pc::NewtonBDiagPC
 end  # end type definition
 
-function CNVolumePC(mesh::AbstractMesh, sbp,
+function CNBDiagPC(mesh::AbstractMesh, sbp,
                               eqn::AbstractSolutionData, opts)
 
   pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
-  other_pc = NewtonVolumePC(mesh, sbp, eqn, opts)
+  other_pc = NewtonBDiagPC(mesh, sbp, eqn, opts)
 
-  return CNVolumePC(pc_inner, other_pc)
+  return CNBDiagPC(pc_inner, other_pc)
 end
 
-function calcPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
+function calcPC(pc::CNBDiagPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
 # eqn should be eqn_nextstep from the CN function
 
-  cnCalcVolumePreconditioner(pc, mesh, sbp, eqn, opts, ctx_residual, t)
-  factorVolumePreconditioner(pc, mesh, sbp, eqn, opts)
+  cnCalcBDiagPC(pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  factorBDiagPC(pc, mesh, sbp, eqn, opts)
 
-  # this needs to come last (because calcVolumePreconditioner calls it too)
+  # this needs to come last (because calcBDiagPC calls it too)
   setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
 
   return nothing
 end
 
-function applyPC(pc::CNVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
+function applyPC(pc::CNBDiagPC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
-  applyVolumePreconditioner(pc.other_pc, mesh, sbp, eqn, opts, b, x)
+  applyBDiagPC(pc.other_pc, mesh, sbp, eqn, opts, b, x)
 
   return nothing
 end
@@ -525,12 +525,12 @@ end
 
 
 """
-  This function uses [`calcVolumePreconditioner`](@ref) to compute a
+  This function uses [`calcBDiagPC`](@ref) to compute a
   a preconditioner for the matrix used by Crank-Nicolson.  This function
   has the same signature as [`cnJac`](@ref) to facilitate matrix-free
   operations.
 """
-function cnCalcVolumePreconditioner(pc::CNVolumePC, mesh::AbstractDGMesh,
+function cnCalcBDiagPC(pc::CNBDiagPC, mesh::AbstractDGMesh,
                sbp::AbstractOperator, eqn_nextstep::AbstractSolutionData, opts,
                ctx_residual, t)
   #TODO: is this ctx_residual?
@@ -544,7 +544,7 @@ function cnCalcVolumePreconditioner(pc::CNVolumePC, mesh::AbstractDGMesh,
   other_pc = pc.other_pc
 
 #  NonlinearSolvers.physicsJac(newton_data, mesh, sbp, eqn_nextstep, opts, jac, ctx, t_nextstep)
-  calcVolumePreconditioner(other_pc, mesh, sbp, eqn_nextstep, opts, pert, 
+  calcBDiagPC(other_pc, mesh, sbp, eqn_nextstep, opts, pert, 
                            physics_func, t)
 
   volume_prec = other_pc.vol_prec

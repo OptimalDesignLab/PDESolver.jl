@@ -6,33 +6,39 @@
 
 """
   This type holds all the data needed to calculate a preconditioner based only
-  on the volume integrals.  For DG methods, this matrix is block diagonal and
-  thus easily invertible.  This preconditioner is applied matrix-free.
+  on the element-block diagonal of the Jacobian (the
+  `mesh.numDofPerNode*mesh.numNodesPerElement` square block).
+  This preconditioner is classified as matrix-free, although it does store the
+  Jacobian diagonal.  This preconditioner only works for physics that have
+  explicit Jacobian calculation.
 
-  jac_size is numDofPerNode * numNodesPerElememnt (the total number of unknowns
-  on an element).
 
-  This preconditioner is not suitable for use as an inner preconditioner, but
-  the functions [`calcVolumePC`](@ref), [`factorVolumePC`](@ref), and
-  [`applyVolumPC`](@ref) can be easily used to make a new PC.
+  This preconditioner is not suitable for use as an inner preconditioner for
+  other methods in NonlinearSolvers, but
+  the functions [`calcBDiagPC`](@ref), [`factorBDiagPC`](@ref), and
+  [`applyBDiagPC`](@ref) can be easily used to make a new PC.
    
   **Fields**
 
-   * volume_jac: jacobian of the volume integrals of each element, 
-                 jac_size x jac_size x numEl
-   * ipiv: permutation information, jac_size x numEl
+   * pc_inner: a [`PetscMatFreePC`](@ref) 
+   * assem: an [`AssembleDiagJacData`](@ref)
+   * diag_jac: a [`DiagJac`]
+   * ipiv: permutation information, `bs` x `numEl`
+   * bs: the block size, `mesh.numDofPerNode*mesh.numNodesPerElement`
    * is_factored: if true, volume_jac has been factored (LU with partial
                   pivoting), false otherwise
 """
-mutable struct NewtonVolumePC <: AbstractPetscMatFreePC
+mutable struct NewtonBDiagPC <: AbstractPetscMatFreePC
   pc_inner::PetscMatFreePC
-  volume_jac::Array{Float64, 3}
+  assem::AssembleDiagJacData{Float64}
+  diag_jac::DiagJac{Float64}  # same DiagJac used in assem
   ipiv::Array{BlasInt, 2}
+  bs::Int  # block size
   is_factored::Bool
 end  # end type definition
 
-function needParallelData(pc::NewtonVolumePC)
-  return false
+function needParallelData(pc::NewtonBDiagPC)
+  return true
 end
 
 """
@@ -45,33 +51,39 @@ end
    * eqn: AbstractSolutionData
    * opts: options dictionary
 """
-function NewtonVolumePreconditioner(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts)
+function NewtonBDiagPC(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData, opts)
 
-  jac_size = mesh.numDofPerNode*mesh.numNodesPerElement
+
+  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
+  bs = mesh.numDofPerNode*mesh.numNodesPerElement
   numEl = mesh.numEl
 
-  volume_jac = Array{Float64}(jac_size, jac_size, numEl)
-  ipiv = Array{BlasInt}(jac_size, numEl)
+  diag_jac = DiagJac(Float64, bs, numEl)
+  assem = AssembleDiagJacData(mesh, sbp, eqn, opts, diag_jac)
+  ipiv = Array{BlasInt}(bs, numEl)
   is_factored = false
 
-  return VolumePreconditioner(volume_jac, ipiv, is_factored)
+  return NewtonBDiagPC(pc_inner, assem, diag_jac, ipiv, bs, is_factored)
 end
 
 """
-  Default constructor (think synthesized default constructor in C++.
+  Default constructor (think synthesized default constructor in C++).
   Returns an object where all arrays have size zero
 
   **Inputs**
 
     none
 """
-function NewtonVolumePreconditioner()
+function NewtonBDiagPC()
 
-  volume_jac = Array{Float64}(0, 0, 0)
+  pc_inner = PetscMatFreePC(mesh, sbp, eqn, opts)
+  bs = 0
+  diag_jac = DiagJac(Float64, bs, numEl)
+  assem = AssembleDiagJacData(mesh, sbp, eqn, opts, diag_jac)
   ipiv = Array{BlasInt}(0, 0)
   is_factored = false
 
-  return new(volume_jac, ipiv, is_factored)
+  return NewtonBDiagPC(pc_inner, bs, diag_jac, assem, ipiv, is_factored)
 end
 
 
