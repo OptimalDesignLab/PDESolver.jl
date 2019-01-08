@@ -142,12 +142,24 @@ end
   **Inputs/Outputs**
 
    * b: vector to be overwritten with the result
+
+  **Keyword Arguments**
+
+   * zero_output: if true, overwrite `b`, otherwise add to it, default true
+   * trans: if true, multiply by the transposed matrix, default false
+
+  Aliasing Restrictions: no aliasing allowed
 """
-function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::AbstractVector)
+function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::AbstractVector; zero_output=true, trans::Bool=false)
 
   blocksize, blocksize, nblock = size(A.A)
 
   @assert blocksize == mesh.numDofPerNode*mesh.numNodesPerElement
+  if zero_output
+    fill!(b, 0)
+  end
+
+  _trans::Bool = trans  # make type-stable
 
   # work arrays
   xblock = zeros(eltype(x), blocksize)
@@ -155,13 +167,16 @@ function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::Abst
   for i=1:nblock
     getValues(mesh, x, i, xblock)
     Ablock = sview(A.A, :, :, i)
-    smallmatvec!(Ablock, xblock, bblock)
+    if _trans
+      smallmatTvec!(Ablock, xblock, bblock)
+    else
+      smallmatvec!(Ablock, xblock, bblock)
+    end
     setValues(mesh, bblock, i, b)
   end  # end loop i
 
   return nothing
 end
-
 
 #------------------------------------------------------------------------------
 # utility functions
@@ -209,7 +224,7 @@ end
   
   **Inputs/Outputs**
 
-   * b: relevent entries are overwritten
+   * b: relevent entries are added to (not overwritten)
 """
 function setValues(mesh::AbstractMesh, workvec::AbstractVector, elnum::Integer,
                    b::AbstractVector)
@@ -220,7 +235,7 @@ function setValues(mesh::AbstractMesh, workvec::AbstractVector, elnum::Integer,
   for j=1:mesh.numNodesPerElement
     for k=1:mesh.numDofPerNode
       dof_i = mesh.dofs[k, j, elnum]
-      b[dof_i] = workvec[pos]
+      b[dof_i] += workvec[pos]
       pos += 1
     end
   end

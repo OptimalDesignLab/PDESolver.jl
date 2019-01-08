@@ -12,7 +12,7 @@ export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        evalJacobianStrong, createFunctional,
        evalFunctional, evalFunctionalDeriv_q, evalFunctionalDeriv_m,
        updateMetricDependents,
-       solvePDE, evalResidual_revm, evalResidual_revq
+       solvePDE, evalResidual_revm, evalResidual_revq, evaldRdqProduct
 
 # from interface2.jl
 export createObjects, createLinearSolver

@@ -27,7 +27,7 @@ include("checkpoint.jl")
 include("interpolation.jl")
 
 export free
-export array1DTo3D, writeQ, array3DTo1D, assembleArray
+export array1DTo3D, writeQ, array3DTo1D, removeComplex, assembleArray
 export calcNorm, calcL2InnerProduct, calcMeshH, calcEuclidianNorm
 #export initMPIStructures, exchangeFaceData, verifyCommunication, getSendData
 #export startDataExchange
@@ -306,6 +306,50 @@ function arrToVecAssign(mesh::AbstractMesh{Tmsh},
 end
 
 
+"""
+  This function removes the complex part of the following fields of `eqn`:
+  `q`, `q_vec`, `res`, `res_vec`
+
+  **Inputs**
+
+   * eqn: an `AbstractSolutionData`
+"""
+function removeComplex(eqn::AbstractSolutionData)
+
+  @simd for i=1:length(eqn.q_vec)
+    eqn.q_vec[i] = real(eqn.q_vec[i])
+    eqn.res_vec[i] = real(eqn.res_vec[i])
+  end
+
+  if pointer(eqn.q_vec) != pointer(eqn.q)
+    @simd for i=1:length(eqn.q)
+      eqn.q[i] = real(eqn.q[i])
+    end
+  end
+
+  if pointer(eqn.res_vec) != pointer(eqn.res)
+    @simd for i=1:length(eqn.res)
+      eqn.res[i] = real(eqn.res[i])
+    end
+  end
+
+  # send and receive buffers
+  for i=1:length(eqn.shared_data)
+    arr = eqn.shared_data[i].q_send
+    @simd for j=1:length(arr)
+      arr[j] = real(arr[j])
+    end
+
+    arr = eqn.shared_data[i].q_recv
+    @simd for j=1:length(arr)
+      arr[j] = real(arr[j])
+    end
+  end
+
+  return nothing
+end
+
+
 
 
 # mid level function (although it doesn't need Tdim)
@@ -344,45 +388,6 @@ function assembleArray(mesh::AbstractMesh{Tmsh},
   return nothing
 end
 
-"""
-  Set the complex part of the solution to zero, including `eqn.q`, `eqn.q_vec`, and
-  the send and receive buffers in `eqn.shared_data`
-
-  **Inputs**
-  
-   * mesh
-   * sbp
-   * eqn
-   * opts
-"""
-function removeComplex(mesh::AbstractMesh, sbp::AbstractOperator,
-                       eqn::AbstractSolutionData, opts)
-
-  for i=1:mesh.numDof
-    eqn.q_vec[i] = real(eqn.q_vec[i])
-  end
-
-  if pointer(eqn.q_vec) != pointer(eqn.q)
-    for i=1:length(eqn.q)
-      eqn.q[i] = real(eqn.q[i])
-    end
-  end
-
-  # send and receive buffers
-  for i=1:length(eqn.shared_data)
-    arr = eqn.shared_data[i].q_send
-    for j=1:length(arr)
-      arr[j] = real(arr[j])
-    end
-
-    arr = eqn.shared_data[i].q_recv
-    for j=1:length(arr)
-      arr[j] = real(arr[j])
-    end
-  end
-
-  return nothing
-end
 
 @doc """
 ### Utils.calcNorm

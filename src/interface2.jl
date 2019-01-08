@@ -430,7 +430,76 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
   return nothing
 end
 
+"""
+  This function evaluates a matrix-free Jacobian vector product for any
+  physics.  The solution variables must be complex for this to work.
 
+  The derivative is evaluated at the state in `eqn.q_vec`.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * input_array: vector to multiply against
+   * t: current time value
+
+  **Inputs/Outputs**
+
+   * output_array: vector to store the result in
+
+  **Keyword Arguments**
+
+   * zero_output: if true, `output_array` is overwritten, otherwise it is added
+                  to, default true.
+"""
+function evaldRdqProduct(mesh::AbstractMesh, sbp::AbstractOperator,
+                        eqn::AbstractSolutionData,
+                        opts::Dict, input_array::AbstractVector, 
+                        output_array::AbstractVector,
+                        t::Number=0.0; zero_output=true)
+
+  @assert length(input_array) == length(output_array)
+  @assert length(input_array) == mesh.numDof
+
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:mesh.numDof
+    eqn.q_vec[i] += pert*input_array[i]
+  end
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  # start parallel communication if needed
+  time = eqn.params.time
+  time.t_send += @elapsed if opts["parallel_type"] == 2
+    startSolutionExchange(mesh, sbp, eqn, opts)
+  end
+
+  evalResidual(mesh, sbp, eqn, opts, t)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  if zero_output
+    @simd for i=1:mesh.numDof
+      output_array[i] = imag(eqn.res_vec[i])/h
+    end
+  else
+    @simd for i=1:mesh.numDof
+      output_array[i] += imag(eqn.res_vec[i])/h
+    end
+  end
+
+  removeComplex(eqn)
+
+  if eqn.commsize > 1
+    assertReceivesWaited(eqn.shared_data)
+  end
+
+  return nothing
+end
+ 
 """
   Returns an [`StandardLinarSolver`](@ref) that can be used to solve the system
   `dR/dq * x = b`, where `R` is the spatial residual and `q` is the solution.

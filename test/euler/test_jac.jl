@@ -371,6 +371,7 @@ function test_jac_terms_long()
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
     test_BDiagPC(mesh4, sbp4, eqn4, opts4)
+    test_BJacobiPC(mesh4, sbp4, eqn4, opts4)
 
     opts4["preallocate_jacobian_coloring"] = true
     test_jac_general(mesh4, sbp4, eqn4, opts4, is_prealloc_exact=false, set_prealloc=false)
@@ -1909,12 +1910,15 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     x = rand(PetscScalar, mesh.numDof)
     b1 = zeros(PetscScalar, mesh.numDof)
     b2 = zeros(PetscScalar, mesh.numDof)
+    b3 = zeros(PetscScalar, mesh.numDof)
 
     t = 0.0
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
+    evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
     @test isapprox( norm(b1 - b2), 0.0) atol=1e-11
+    @test isapprox( norm(b1 - b3), 0.0) atol=1e-11
   end
 
   A = getBaseLO(lo2).A
@@ -2483,6 +2487,24 @@ function test_BDiagPC(mesh, sbp, eqn, opts)
     NonlinearSolvers.applyBDiagPCInv(pc, mesh, sbp, eqn, opts, x, b2)
   
     @test maximum(abs.(b2 - b)) < 1e-12
+
+    # test transpose inverse
+    x = rand(mesh.numDof)
+    x_orig = copy(x)
+    b = zeros(mesh.numDof)
+    applyPCTranspose(pc, mesh, sbp, eqn, opts, 0.0, x, b)
+    fill!(x, 0)
+    NonlinearSolvers.diagMatVec(diag_jac, mesh, b, x, trans=true)
+
+    @test maximum(abs.(x - x_orig)) < 1e-12
+
+    # test factored multiplication
+    @test pc.is_factored
+    b = zeros(mesh.numDof)
+    b2 = zeros(mesh.numDof)
+    NonlinearSolvers.diagMatVec(diag_jac, mesh, x, b, trans=true)
+    NonlinearSolvers.applyBDiagPCInv(pc, mesh, sbp, eqn, opts, x, b2, trans=true)
+ 
   end
 
 
@@ -2490,3 +2512,96 @@ function test_BDiagPC(mesh, sbp, eqn, opts)
 end
 
 
+function test_BJacobiPC(mesh, sbp, eqn, opts)
+
+  opts["calc_jac_explicit"] = true
+
+  const fac = 5000  # factor for diagonal
+  # functions for test
+  function eval_jac(mesh, sbp, eqn, opts, assem)
+    evalJacobian(mesh, sbp, eqn, opts, assem)
+
+    bs = mesh.numDofPerNode*mesh.numNodesPerElement
+    res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode,
+                    mesh.numNodesPerElement, mesh.numNodesPerElement)
+    for i=1:mesh.numNodesPerElement
+      for j=1:mesh.numDofPerNode
+        res_jac[j, j, i, i] = fac
+      end
+    end
+
+    for i=1:mesh.numEl
+      assembleElement(assem, mesh, i, res_jac)
+    end
+
+    return nothing
+  end
+
+  function eval_jacvec(mesh, sbp, eqn, opts, x, b)
+
+    evaldRdqProduct(mesh, sbp, eqn, opts, x, b)
+    for i=1:length(b)
+      b[i] += fac*x[i]
+    end
+
+    return nothing
+  end
+
+  function eval_jacTvec(mesh, sbp, eqn, opts, x, b)
+
+    evalResidual_revq(mesh, sbp, eqn, opts, x, b)
+    for i=1:length(b)
+      b[i] += fac*x[i]
+    end
+
+    return nothing
+  end
+ 
+  
+  #TODO: pull this out into a separate function
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01*rand(size(eqn.q))
+
+  # get the correct differentiated flux function (this is needed because the
+  # input file set calc_jac_explicit = false
+  println("getting flux function named ", opts["Flux_name"])
+  eqn.flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Flux_name"]]
+  eqn.volume_flux_func_diff = EulerEquationMod.FluxDict_diff[opts["Volume_flux_name"]]
+
+  
+  pc = NonlinearSolvers.NewtonBJacobiPC(mesh, sbp, eqn, opts, itermax=10,
+                                        res_tol=1e-8, verbose=true)
+  NonlinearSolvers.setEvalJacobian(pc, eval_jac, eval_jacvec, eval_jacTvec)
+
+  ctx_residual = (evalResidual,)
+  calcPC(pc, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+
+  # test that it solves diagonally dominant problem
+  b = ones(Float64, mesh.numDof)
+  x = zeros(Float64, mesh.numDof)
+  applyPC(pc, mesh, sbp, eqn, opts, 0.0, b, x)
+
+  b2 = zeros(Float64, mesh.numDof)
+  eval_jacvec(mesh, sbp, eqn, opts, x, b2)
+
+  println("maxdiff = ", maximum(abs.(b - b2)))
+  @test maximum(abs.(b - b2)) < 2e-8
+
+
+  # test transpose solve
+  fill!(x, 0)
+  applyPCTranspose(pc, mesh, sbp, eqn, opts, 0.0, b, x)
+
+  b2 = zeros(Float64, mesh.numDof)
+  eval_jacTvec(mesh, sbp, eqn, opts, x, b2)
+
+  println("maxdiff = ", maximum(abs.(b - b2)))
+  @test maximum(abs.(b - b2)) < 2e-8
+
+
+
+  return nothing
+end

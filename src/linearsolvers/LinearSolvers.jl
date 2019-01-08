@@ -254,7 +254,9 @@ end
 
   **Inputs/Outputs**
 
-   * x: AbstractVector updated with results (same size as b) (do not overwrite)
+   * x: AbstractVector overwritten with result (same size as b).
+        Some preconditioners may use the value of `x` on entry
+        as the initial guess.
 """
 function applyPC(pc::AbstractPC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 

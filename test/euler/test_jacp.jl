@@ -17,7 +17,7 @@ function test_jac_parallel()
 end
 
 
-add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
+add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC, TAG_TMP]) 
 
 
 """
@@ -122,7 +122,7 @@ function test_jac_parallel_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
 
 #------------------------------------------------------------------------------
 # functions that run individual tests
@@ -187,12 +187,15 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
     x = rand(PetscScalar, mesh.numDof)
     b1 = zeros(PetscScalar, mesh.numDof)
     b2 = zeros(PetscScalar, mesh.numDof)
+    b3 = zeros(PetscScalar, mesh.numDof)
 
     t = 0.0
     applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
+    evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
     @test isapprox( norm(b1 - b2), 0.0) atol=1e-12
+    @test isapprox( norm(b1 - b3), 0.0) atol=1e-12
   end
 
   A = getBaseLO(lo2).A

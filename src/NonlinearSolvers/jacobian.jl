@@ -86,7 +86,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
     pert = epsilon
   elseif jac_method == 2  # complex step
     pert = complex(0, epsilon)
-    removeComplex(mesh, sbp, eqn, opts)
+    removeComplex(eqn)
   end
 
   # ctx_residual: func must be the first element
