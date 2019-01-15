@@ -336,6 +336,13 @@ abstract type AbstractEntropyKernel end
 abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt} end
 
 
+"""
+  Abstract type for all shock capturing methods
+"""
+abstract type AbstractShockCapturing end
+
+
+
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
 # Mid level function should take in an EulerData{Tsol, Tdim}, so they
@@ -374,6 +381,7 @@ include("startup_func.jl")  # function for invoking the solver
 include("evaldRdm.jl")
 include("evaldRdq.jl")
 include("homotopy.jl")
+include("shock_capturing.jl")
 
 # Jacobian calculation
 include("evalJacobian.jl")

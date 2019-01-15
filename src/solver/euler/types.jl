@@ -1,6 +1,7 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
 
 include("flux_types.jl")
+include("shock_capturing_types.jl")
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -93,6 +94,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
 
   get_ira0data::GetIRA0Data{Tsol}
+
+  # shock capturing
+  projection_shock_capturing::ProjectionShockCapturing{Tsol, Tres}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -217,6 +221,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
     get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
+    projection_shock_capturing = ProjectionShockCapturing{Tsol, Tres}(sbp, mesh.numDofPerNode)
+
 
     h = maximum(mesh.jac)
 
@@ -309,6 +315,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                face_element_integral_data, calc_face_integrals_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                get_ira0data,
+               projection_shock_capturing,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
