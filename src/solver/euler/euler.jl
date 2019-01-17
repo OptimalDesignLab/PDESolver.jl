@@ -149,7 +149,9 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("face integral @time printed above")
   end
 
-
+  time.t_shock += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing(mesh, sbp, eqn, opts)
+  end
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
@@ -886,6 +888,38 @@ function evalSourceTerm(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+
+"""
+  This function adds the shock capturing terms (if requested) to the residual.
+
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
+
+  Outputs: none
+
+  Aliasing restrictions: none
+"""
+function evalShockCapturing(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
+
+  # currently there is only one choice for the shock capturing scheme.
+  # If there are more, need something more sophisiticated to choose.
+  # Perhaps add an abstract typed field to eqn containing the structs
+
+  sensor = eqn.params.sensor_pp
+  capture = eqn.params.projection_shock_capturing
+  applyShockCapture(mesh, sbp, eqn, opts, sensor, capture)
+
+  return nothing
+end
+
+
+#TODO: put this in Utils?
 @doc """
 ### EulerEquationMod.applyMassMatrixInverse3D
 

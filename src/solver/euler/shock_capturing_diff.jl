@@ -1,8 +1,59 @@
 # differentiated shock capturing functions
 
+# main entry point
+"""
+  Main function for assembling the shock capturing terms into the Jacobian.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * sensor: an [`AbstractShockSensor`](@ref)
+   * capture: an [`AbstractShockCapturing`](@ref)
+   * assem: an [`AssembleElementData`](@ref)
+"""
+function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts, sensor::AbstractShockSensor,
+                             capture::AbstractShockCapturing,
+                             assem::AssembleElementData)
+
+
+  data = eqn.params.calc_volume_integrals_data
+  res_jac = data.res_jac
+  fill!(res_jac, 0)
+
+  for i=1:mesh.numEl
+    q_i = sview(eqn.q, :, :, i)
+    jac_i = sview(mesh.jac, :, :, i)
+
+    nonzero_jac = applyShockCaputuring_diff(eqn.params, sbp, sensor, capture,
+                                            q, jac, res_jac)
+  
+    # assembling into a sparse matrix is non-trivially expensive, don't do
+    # it unless this element has shock capturing active
+    if nonzero_jac
+      if eqn.params.use_Minv == 1
+        applyMinvElement(jac_i, sbp.w, res_jac)
+      end
+
+      # assemble element level jacobian into the residual
+      assembleElement(assembler, mesh, i, res_jac)
+      fill!(res_jac, 0)
+    end  # if nonzero_jac
+  
+  end  # end i
+
+  return nothing
+end
+
+
+
+#------------------------------------------------------------------------------
 
 """
-  Differentiated versio nof `getShockSensor` for [`ShockSensorPP`](@ref)
+  Differentiated version nof `getShockSensor` for [`ShockSensorPP`](@ref)
 """
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       sensor::ShockSensorPP,

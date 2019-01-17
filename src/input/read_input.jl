@@ -289,6 +289,7 @@ get!(arg_dict, "write_finalresidual", false)
 get!(arg_dict, "addVolumeIntegrals", true)
 get!(arg_dict, "addBoundaryIntegrals", true)
 get!(arg_dict, "addFaceIntegrals", true)
+get!(arg_dict, "addShockCapturing", false)
 get!(arg_dict, "addStabilization", true)
 
 # logging options

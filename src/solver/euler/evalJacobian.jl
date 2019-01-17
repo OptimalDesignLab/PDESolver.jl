@@ -41,21 +41,20 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 #    println("stabilizing @time printed above")
   end
 
-
-
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
     #println("face integral @time printed above")
   end
 
 
+  time.t_shock_diff += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing_diff(mesh, sbp, eqn, opts, assembler)
+  end
 
   time.t_sharedface_diff += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("evalSharedFaceIntegrals @time printed above")
   end
-
-
 
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
 
@@ -174,8 +173,9 @@ end # end function dataPrep
    * assembler
 """
 function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
+                       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                       opts, assembler::AssembleElementData
+                       ) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
 
@@ -372,4 +372,27 @@ function evalSourceTerm_diff(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+
+"""
+  Differentiated version of [`evalShockCapturing`](@ref).
+
+ **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
+function evalShockCapturing_diff(mesh::AbstractMesh{Tmsh},
+                       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                       opts, assembler::AssembleElementData
+                       ) where {Tmsh,  Tsol, Tres, Tdim}
+
+  sensor = eqn.params.sensor_pp
+  capture = eqn.params.projection_shock_capturing
+  applyShockCapture_diff(mesh, sbp, eqn, opts, sensor, capture, assem)
+
+  return nothing
+end
 

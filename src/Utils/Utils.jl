@@ -559,6 +559,7 @@ mutable struct Timings
   t_volume::Float64  # time for volume integrals
   t_face::Float64 # time for surface integrals (interior)
   t_source::Float64  # time spent doing source term
+  t_shock::Float64   # time spent doing shock capturing
   t_sharedface::Float64  # time for shared face integrals
   t_bndry::Float64  # time spent doing boundary integrals
   t_dataprep::Float64  # time spent preparing data
@@ -567,6 +568,7 @@ mutable struct Timings
 
   t_volume_diff::Float64  # time for volume integrals
   t_face_diff::Float64 # time for surface integrals (interior)
+  t_shock::Float64  # time for shock capturing
   t_source_diff::Float64  # time spent doing source term
   t_sharedface_diff::Float64  # time for shared face integrals
   t_bndry_diff::Float64  # time spent doing boundary integrals
@@ -596,7 +598,7 @@ mutable struct Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 
