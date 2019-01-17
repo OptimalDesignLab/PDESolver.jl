@@ -1,9 +1,11 @@
 # differentiated shock capturing functions
 
-#TODO: add bool output to primal version of shock sensor
 
+"""
+  Differentiated versio nof `getShockSensor` for [`ShockSensorPP`](@ref)
+"""
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
-                      sensor::ShockPPData,
+                      sensor::ShockSensorPP,
                       q::AbstractMatrix{Tsol},
                       jac::AbstractVector{Tmsh},
                       Se_jac::AbstractMatrix{Tres},
@@ -85,7 +87,15 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
 end
 
 
+#------------------------------------------------------------------------------
+
+
+"""
+  Differentiated version of `applyShockCapturing` for
+  [`ProjectionShockCapturing`](@ref).
+"""
 function applyShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
+                                  sensor::AbstractShockSensor,
                                   capture::ProjectionShockCapturing,
                                   u::AbstractMatrix, jac::AbstractVector{Tmsh},
                                   res_jac::AbstractArray{Tres, 4}) where {Tmsh, Tres}
@@ -94,14 +104,13 @@ function applyShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
   @unpack capture t1 t2 w Se_jac ee_jac A0inv
 
   #TODO: make shock capturing and shock sensing independent choices
-  Se, ee = getShockSensor(params, sbp, capture.shock_sensor, u, jac)
+  Se, ee = getShockSensor(params, sbp, sensor, u, jac)
 
   if ee > 0
     fill!(Se_jac, 0); fill!(ee_jac, 0)
     # only compute the derivative if there is a shock
-    Se, ee, ee_constant = getShockSensor_diff(params, sbp,
-                                capture.shock_sensor, u, jac, Se_jac,
-                                ee_jac)
+    Se, ee, ee_constant = getShockSensor_diff(params, sbp, sensor, u, jac,
+                                              Se_jac, ee_jac)
 
     # the operator (for a scalar equation) is A = P^T * M * P * v, so
     # dR[p]/v[q] = (P^T * M * P)[p, q].  It then needs to be converted back
@@ -163,7 +172,7 @@ function applyShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
 
   end  # end if
 
-  return nothing
+  return ee > 0
 end
 
 

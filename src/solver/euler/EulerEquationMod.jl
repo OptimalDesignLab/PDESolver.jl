@@ -335,9 +335,18 @@ abstract type AbstractEntropyKernel end
 """
 abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt} end
 
+"""
+  Abstract type for all shock sensors.  The purpose of shock sensors it to tell
+  whether or not there is a shock, and if so, what the viscoscity coefficient
+  should be.  The type of artificial viscoscity to add is determined by the
+  [`AbstractShockCapturing`](@ref)
+"""
+abstract type AbstractShockSensor end
 
 """
-  Abstract type for all shock capturing methods
+  Abstract type for all shock capturing methods.  This type determines what
+  kind of dissipation to add when there is a shock present.  Ideally, any
+  shock capturing scheme should be able to be paired with any shock sensor
 """
 abstract type AbstractShockCapturing end
 

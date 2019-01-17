@@ -1,6 +1,6 @@
 # tests for shock capturing
 
-import EulerEquationMod: AbstractShockCapturing
+import EulerEquationMod: AbstractShockSensor, AbstractShockCapturing
 
 function test_shocksensorPP()
 
@@ -16,7 +16,7 @@ function test_shocksensorPP()
     jac = ones(Float64, mesh.numNodesPerElement)
     res = zeros(eltype(eqn.res), mesh.numDofPerNode, mesh.numNodesPerElement)
 
-    sensor = EulerEquationMod.ShockPPData{Tsol, Tres}(sbp)
+    sensor = eqn.params.sensor_pp
     capture = eqn.params.projection_shock_capturing
     # initial condition is constant, check the sensor reports no shock
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, jac)
@@ -25,7 +25,7 @@ function test_shocksensorPP()
     @test ee == 0
 
     fill!(res, 0)
-    EulerEquationMod.applyShockCapturing(eqn.params, sbp, capture, q, jac, res)
+    EulerEquationMod.applyShockCapturing(eqn.params, sbp, sensor, capture, q, jac, res)
     @test maximum(abs.(res)) < 1e-13
 
     # test when a shock is present
@@ -42,13 +42,13 @@ function test_shocksensorPP()
       q_i = sview(q, :, i)
       EulerEquationMod.convertToIR(eqn.params, q_i, w_i)
     end
-    EulerEquationMod.applyShockCapturing(eqn.params, sbp, capture, q, jac, res)
+    EulerEquationMod.applyShockCapturing(eqn.params, sbp, sensor, capture, q, jac, res)
 
     @test sum(res .* w) < 0  # the term is negative definite
 
     # case 3: ee = 1
     test_shocksensor_diff(eqn.params, sbp, sensor, q, jac)
-    test_shockcapturing_diff(eqn.params, sbp, capture, q, jac)
+    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, jac)
 
     # case 2: ee on sin wave
     q[1, 3] = 1.0105
@@ -59,7 +59,7 @@ function test_shocksensorPP()
     end
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, jac)
-    test_shockcapturing_diff(eqn.params, sbp, capture, q, jac)
+    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, jac)
 
   end  # end testset
 
@@ -71,7 +71,7 @@ end
 """
   Tests derivative of the shock sensor at a given state
 """
-function test_shocksensor_diff(params, sbp, sensor, _q, jac)
+function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q, jac)
 
   numDofPerNode, numNodesPerElement = size(_q)
   q = zeros(Complex128, numDofPerNode, numNodesPerElement)
@@ -123,7 +123,8 @@ end
 """
   Tests Jacobian of shock capturing scheme
 """
-function test_shockcapturing_diff(params, sbp, capture::AbstractShockCapturing,
+function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
+                                  capture::AbstractShockCapturing,
                                    _q, jac)
 
   numDofPerNode, numNodesPerElement = size(_q)
@@ -139,15 +140,15 @@ function test_shockcapturing_diff(params, sbp, capture::AbstractShockCapturing,
 
   # complex step
   q .+= pert*q_dot
-  EulerEquationMod.applyShockCapturing(params, sbp, capture, q, jac, res)
+  EulerEquationMod.applyShockCapturing(params, sbp, sensor, capture, q, jac, res)
   res_dot = imag(res)./h
   q .-= pert*q_dot
 
 
   # AD
   res_jac = zeros(numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
-  EulerEquationMod.applyShockCapturing_diff(params, sbp, capture, q, jac,
-                                            res_jac)
+  EulerEquationMod.applyShockCapturing_diff(params, sbp, sensor, capture, q,
+                                            jac, res_jac)
 
   res_dot2 = zeros(Complex128, numDofPerNode, numNodesPerElement)
   for i=1:numNodesPerElement

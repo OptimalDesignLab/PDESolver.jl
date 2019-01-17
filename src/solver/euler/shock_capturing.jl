@@ -11,17 +11,19 @@
    * sbp
    * eqn
    * opts
+   * sensor: an [`AbstractShockSensor`](@ref) object
    * data: an [`AbstractShockCaputring`](@ref) object
 """
 function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
-                             eqn::EulerData, opts, data::AbstractShockCapturing)
+                             eqn::EulerData, opts, sensor::AbstractShockSensor,
+                             capture::AbstractShockCapturing)
 
   for i=1:mesh.numEl
     q_i = ro_sview(eqn.q, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
 
-    applyShockCapturing(eqn.params, sbp, data, q_i, jac_i, res_i)
+    applyShockCapturing(eqn.params, sbp, sensor, capture, q_i, jac_i, res_i)
   end
 
   return nothing
@@ -53,7 +55,7 @@ end
    * ee: the viscoscity coefficient (constant for the entire element)
 """
 function getShockSensor(params::ParamType, sbp::AbstractOperator,
-                          sensor::ShockPPData,
+                          sensor::ShockSensorPP,
                           q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh},
                          ) where {Tsol, Tmsh}
 
@@ -159,6 +161,7 @@ end
 
 
 function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
+                             sensor::AbstractShockSensor,
                              capture::ProjectionShockCapturing,
                              q::AbstractMatrix, jac::AbstractVector,
                              res::AbstractMatrix)
@@ -166,7 +169,7 @@ function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
   numDofPerNode, numNodesPerElement = size(q)
   @unpack capture t1 t2 w
 
-  Se, ee = getShockSensor(params, sbp, capture.shock_sensor, q, jac)
+  Se, ee = getShockSensor(params, sbp, sensor, q, jac)
   if ee > 0  # if there is a shock
     # For scalar equations, the operator is applied -epsilon * P^T M P * u
     # For vector equations, P needs to be applied to all equations as once:

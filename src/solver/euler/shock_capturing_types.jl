@@ -3,6 +3,10 @@
 #------------------------------------------------------------------------------
 # Persson and Peraire stuff
 
+"""
+  Struct holding data required to transform back and form from a nodal to
+  a modal solution representation.
+"""
 struct VandermondeData
   degree::Int
   Vp::Matrix{Float64}  # Vandermonde matrix for degree p
@@ -23,9 +27,10 @@ function VandermondeData(sbp::AbstractOperator, degree::Int)
 end
 
 """
-  Data for doing shock capturing using Persson and Peraire's method.
+  Shock sensor from Persson and Peraire's method, "Sub-Cell Shock Caputirng for
+  Discontinuous Galerkin Methods", AIAA 2006.
 """
-mutable struct ShockPPData{Tsol, Tres}
+mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   Vp::VandermondeData  # Vandermonde matrix for degree p and pseudo-invers
   Vp1::VandermondeData  # degree p-1
 
@@ -42,7 +47,7 @@ mutable struct ShockPPData{Tsol, Tres}
   num_dot::Vector{Tres}
   den_dot::Vector{Tres}
 
-  function ShockPPData{Tsol, Tres}(sbp::AbstractOperator) where {Tsol, Tres}
+  function ShockSensorPP{Tsol, Tres}(sbp::AbstractOperator) where {Tsol, Tres}
 
     Vp = VandermondeData(sbp, sbp.degree)
     Vp1 = VandermondeData(sbp, sbp.degree-1)
@@ -70,9 +75,9 @@ end
 # Projection-based shock capturing
 
 mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
-  shock_sensor::ShockPPData{Tsol, Tres}
   filt::Matrix{Float64}  # the filter operator
 
+  # storage
   w::Matrix{Tsol}
   t1::Matrix{Tres}
   t2::Matrix{Tres}
@@ -82,7 +87,6 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
   function ProjectionShockCapturing{Tsol, Tres}(sbp::AbstractOperator, numDofPerNode::Integer) where {Tsol, Tres}
 
-    shock_sensor = ShockPPData{Tsol, Tres}(sbp)
     filt = zeros(Float64, sbp.numnodes, sbp.numnodes)
     getFilterOperator!(sbp, filt)
 
@@ -94,7 +98,7 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
     ee_jac = zeros(Tres, numDofPerNode, sbp.numnodes)
     A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
 
-    return new(shock_sensor, filt, w, t1, t2, Se_jac, ee_jac, A0inv)
+    return new(filt, w, t1, t2, Se_jac, ee_jac, A0inv)
   end
 end
 

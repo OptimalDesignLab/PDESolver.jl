@@ -95,6 +95,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
   get_ira0data::GetIRA0Data{Tsol}
 
+  # shock sensors
+  sensor_pp::ShockSensorPP{Tsol, Tres}
+
   # shock capturing
   projection_shock_capturing::ProjectionShockCapturing{Tsol, Tres}
 
@@ -221,6 +224,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
     get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
+    sensor_pp = ShockSensorPP{Tsol, Tres}(sbp)
+
     projection_shock_capturing = ProjectionShockCapturing{Tsol, Tres}(sbp, mesh.numDofPerNode)
 
 
@@ -315,6 +320,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                face_element_integral_data, calc_face_integrals_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                get_ira0data,
+               sensor_pp,
                projection_shock_capturing,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
