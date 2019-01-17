@@ -23,6 +23,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
 
+    println("checking shock capturing for element ", i)
     applyShockCapturing(eqn.params, sbp, sensor, capture, q_i, jac_i, res_i)
   end
 
@@ -159,6 +160,12 @@ function getFilterOperator!(sbp::TriSBP{T}, diss::AbstractArray{T,2}) where {T}
   diss[:,:] = eye(sbp.numnodes) - (V*V.')*diagm(sbp.w)
 end
 
+#TODO: this doesn't work yet
+function getFilterOperator!(sbp::TetSBP{T}, diss::AbstractArray{T,2}) where {T}
+
+  fill!(diss, 0)
+end
+
 
 function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
                              sensor::AbstractShockSensor,
@@ -208,3 +215,37 @@ function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# Debugging/testing
+
+using PumiInterface
+using apf
+
+function writeShockSensorField(mesh, sbp, eqn, opts, sensor::AbstractShockSensor)
+
+  fname = "shock_sensor"
+
+  f_ptr = apf.findField(mesh.m_ptr, fname)
+  if f_ptr == C_NULL
+    fshape = apf.getConstantShapePtr(mesh.dim)
+    f_ptr = apf.createPackedField(mesh.m_ptr, fname, 2, fshape)
+  end
+
+  vals = zeros(Float64, 2)
+  for i=1:mesh.numEl
+    q_i = sview(eqn.q, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
+
+    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+    vals[1] = Se
+    vals[2] = ee
+    apf.setComponents(f_ptr, mesh.elements[i], 0, vals)
+  end
+
+  return nothing
+end
+
+
+

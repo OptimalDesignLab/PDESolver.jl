@@ -391,7 +391,7 @@ function evalShockCapturing_diff(mesh::AbstractMesh{Tmsh},
 
   sensor = eqn.params.sensor_pp
   capture = eqn.params.projection_shock_capturing
-  applyShockCapture_diff(mesh, sbp, eqn, opts, sensor, capture, assem)
+  applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
 
   return nothing
 end

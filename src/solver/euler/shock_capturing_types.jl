@@ -89,6 +89,7 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
     filt = zeros(Float64, sbp.numnodes, sbp.numnodes)
     getFilterOperator!(sbp, filt)
+    println("max entry in filt = ", maximum(abs.(filt)))
 
     w = zeros(Tsol, numDofPerNode, sbp.numnodes)
     t1 = zeros(Tres, numDofPerNode, sbp.numnodes)

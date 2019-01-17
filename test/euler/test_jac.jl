@@ -441,6 +441,12 @@ function test_jac_terms_long()
     test_revm_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
     test_revq_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
 
+    # the ExpIC looks enough like a shock that the indicator says it is one
+    opts_r2["addShockCapturing"] = true
+    test_jac_general(mesh_r2, sbp_r2, eqn_r2, opts_r2)
+    opts_r2["addShockCapturing"] = false
+
+
 
     # SBPOmega ES scheme
     println("\n\ntesting SBP Omega ES scheme")
@@ -487,7 +493,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

@@ -568,7 +568,7 @@ mutable struct Timings
 
   t_volume_diff::Float64  # time for volume integrals
   t_face_diff::Float64 # time for surface integrals (interior)
-  t_shock::Float64  # time for shock capturing
+  t_shock_diff::Float64  # time for shock capturing
   t_source_diff::Float64  # time spent doing source term
   t_sharedface_diff::Float64  # time for shared face integrals
   t_bndry_diff::Float64  # time spent doing boundary integrals

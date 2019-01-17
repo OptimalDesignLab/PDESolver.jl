@@ -282,6 +282,9 @@ function majorIterationCallback(itr::Integer,
   if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
 
+    #TODO: testing
+    writeShockSensorField(mesh, sbp, eqn, opts, eqn.params.sensor_pp)
+
     saveSolutionToMesh(mesh, vals)
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
@@ -913,7 +916,7 @@ function evalShockCapturing(mesh::AbstractMesh{Tmsh},
 
   sensor = eqn.params.sensor_pp
   capture = eqn.params.projection_shock_capturing
-  applyShockCapture(mesh, sbp, eqn, opts, sensor, capture)
+  applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
 
   return nothing
 end

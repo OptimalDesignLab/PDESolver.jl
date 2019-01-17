@@ -26,10 +26,10 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
   for i=1:mesh.numEl
     q_i = sview(eqn.q, :, :, i)
-    jac_i = sview(mesh.jac, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
 
-    nonzero_jac = applyShockCaputuring_diff(eqn.params, sbp, sensor, capture,
-                                            q, jac, res_jac)
+    nonzero_jac = applyShockCapturing_diff(eqn.params, sbp, sensor, capture,
+                                            q_i, jac_i, res_jac)
   
     # assembling into a sparse matrix is non-trivially expensive, don't do
     # it unless this element has shock capturing active
@@ -39,7 +39,7 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
       end
 
       # assemble element level jacobian into the residual
-      assembleElement(assembler, mesh, i, res_jac)
+      assembleElement(assem, mesh, i, res_jac)
       fill!(res_jac, 0)
     end  # if nonzero_jac
   
