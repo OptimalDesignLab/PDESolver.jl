@@ -52,24 +52,24 @@ end
    * Se: the shock sensor value
    * ee: the viscoscity coefficient (constant for the entire element)
 """
-function getShockSensorPP(params::ParamType, sbp::AbstractOperator,
-                          q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh}
+function getShockSensor(params::ParamType, sbp::AbstractOperator,
+                          sensor::ShockPPData,
+                          q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh},
                          ) where {Tsol, Tmsh}
 
   Tres = promote_type(Tsol, Tmsh)
   numNodesPerElement = size(q, 2)
 
-  data = params.shock
-  @unpack data up up_tilde up1_tilde se s0 kappa e0
-  fill!(up_tilde, 0); fill!(up1_tilde, 0)
+  @unpack sensor up up_tilde up1_tilde s0 kappa e0
+  #fill!(up_tilde, 0); fill!(up1_tilde, 0)
 
   # use density as the key variable
   for i=1:numNodesPerElement
     up[i] = q[1, i]
   end
 
-  getFilteredSolution(params, data.Vp, up, up_tilde)
-  getFilteredSolution(params, data.Vp, up, up1_tilde)
+  getFilteredSolution(params, sensor.Vp, up, up_tilde)
+  getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
 
   # compute the inner product
   num = zero(Tres)
@@ -86,8 +86,9 @@ function getShockSensorPP(params::ParamType, sbp::AbstractOperator,
     den += up_tilde[i]*fac*up_tilde[i]
   end
 
-  Se = num/den
 
+  Se = num/den
+  se = log10(Se)
   # should this be a separate function from computing Se?
   if se < s0 - kappa
     ee = zero(Tres)
@@ -139,7 +140,8 @@ function getFilterOperator!(sbp::TriSBP{T}, diss::AbstractArray{T,2}) where {T}
   x = calcnodes(sbp)
   # loop over ortho polys up to degree d
   #println("TEMP: filter operator set to sbp.degree-1!!!!!")
-  d = sbp.degree
+  d = 0
+#  d = sbp.degree
   V = zeros(T, (sbp.numnodes, convert(Int, (d+1)*(d+2)/2)) )
   ptr = 0
   for r = 0:d
@@ -157,22 +159,31 @@ end
 
 
 function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
-                             data::ProjectionShockCapturing,
+                             capture::ProjectionShockCapturing,
                              q::AbstractMatrix, jac::AbstractVector,
                              res::AbstractMatrix)
 
   numDofPerNode, numNodesPerElement = size(q)
-  t1 = data.t2; t2 = data.t2
-  Se, ee = getShockSensorPP(params, sbp, q, jac)
+  @unpack capture t1 t2 w
+
+  Se, ee = getShockSensor(params, sbp, capture.shock_sensor, q, jac)
   if ee > 0  # if there is a shock
     # For scalar equations, the operator is applied -epsilon * P^T M P * u
     # For vector equations, P needs to be applied to all equations as once:
     # utmp^T = P*u^T
     # Instead, work with utmp = (P*u^T)^T = u*P^T
 
+    # convert to entropy variables to make this term entropy-stable
+    #w = zeros(eltype(q), numDofPerNode, numNodesPerElement)
+    for i=1:numNodesPerElement
+      w_i = sview(w, :, i)
+      q_i = sview(q, :, i)
+      convertToIR(params, q_i, w_i)
+    end
 
     # apply P
-    smallmatmatT!(q, data.filt, t1)
+    smallmatmatT!(w, capture.filt, t1)
+
 
     # apply mass matrix
     @simd for i=1:numNodesPerElement
@@ -183,13 +194,13 @@ function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
     end
 
     # apply P^T
-    smallmatmat!(t1, data.filt, t2)
-
+    smallmatmat!(t1, capture.filt, t2)
     @simd for i=1:numNodesPerElement
       @simd for j=1:numDofPerNode
         res[j, i] -= ee*t2[j, i]
       end
     end
+
   end  # end if
 
   return nothing
