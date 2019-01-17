@@ -187,7 +187,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
   # extract the real components to res_0
   for i=1:m
-    res_0[i] = real(rhs_vec[i])
+    # res_0[i] = real(rhs_vec[i])         # TODO TODO confirm that this is ok to comment out
+    res_0[i] = rhs_vec[i]
   end
 
   # if the user said to use the first residual for computing relative residuals
@@ -267,7 +268,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     
     # extract real component to res_0
     for j=1:m
-      res_0[j] = real(rhs_vec[j])
+      # res_0[j] = real(rhs_vec[j])         # TODO TODO confirm that this is ok to comment out
+      res_0[j] = rhs_vec[j]
     end
 
     writeFiles(newton_data, mesh, sbp, eqn, opts)
@@ -275,9 +277,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     if is_converged
       # remove the imaginary part of rhs_vec before exiting
-      for j=1:m
-        rhs_vec[j] = real(rhs_vec[j])
-      end
+      # for j=1:m
+        # rhs_vec[j] = real(rhs_vec[j])         # TODO TODO confirm that this is ok to comment out
+      # end
       flush(BSTDOUT)
 
       return nothing
@@ -299,9 +301,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   flush(BSTDOUT)
 
   # remove the imaginary part of the residual before exiting
-  for j=1:m
-    rhs_vec[j] = real(rhs_vec[j])
-  end
+  # for j=1:m
+    # rhs_vec[j] = real(rhs_vec[j])         # TODO TODO confirm that this is ok to comment out
+  # end
   clearEulerConstants()
 
   return nothing

@@ -165,7 +165,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #   no evalResidual yet, and hasn't entered the time-stepper yet
     #   so no appropriate scaling factors like delta_t or fac or anything
 
-    v_vec = zeros(eqn.q_vec)      # direct sensitivity vector
+    v_vec = zeros(eqn.q_vec)      # direct sensitivity vector       This is at the IC
     for v_ix = 1:length(v_vec)
       v_vec[v_ix] = imag(eqn.q_vec[v_ix])/Ma_pert_mag
     end
@@ -173,6 +173,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # evalFunctional calls disassembleSolution, which puts q_vec into q
     # should be calling evalFunctional, not calcFunctional.
     evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+    println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  term2: ", vecnorm(term2), "  v_vec: ", vecnorm(v_vec))    # matches rk4_ds to 1e-5 or so, consistent with drag variation
 
     # do the dot product of the two terms, and save
     # this dot product is: dJdu*dudM
@@ -226,9 +227,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   recalc_policy = getRecalculationPolicy(opts, "CN")
 
   #------------------------------------------------------------------------------
-  # Time step loop
+  # ### Main timestepping loop ###
   #   this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
+
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    if opts["perturb_Ma"]
+      quad_weight = calcQuadWeight(i, dt, finaliter)
+    end   # end if opts["perturb_Ma"]
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     t = (i-2)*h
     @mpi_master println(BSTDOUT, "\ni = ", i, ", t = ", t)
@@ -365,6 +372,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #     disassemble isn't getting called. but it shouldn't matter b/c DG
       # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
       evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+      println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  term2: ", vecnorm(term2), "  v_vec: ", vecnorm(v_vec))
 
       # do the dot product of the two terms, and save
       fill!(term2_vec, 0.0)     # not sure this is necessary
@@ -475,7 +483,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   @mpi_master begin
     println("---------------------------------------------")
-    println("   RK4: final time step reached. t = $t")
+    println("   CN: final time step reached. t = $t")
     println("---------------------------------------------")
   end
 

@@ -330,7 +330,7 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
   # prepare the data structures
   #TODO: copy x into xtmp to support initial guess non-zero
   t_assem = @elapsed assemblePetscData(ls, b, lo2.btmp, x, lo2.xtmp)
-  @mpi_master println(BSTDOUT, "Final matrix assembly time = ", t_assem)
+  # @mpi_master println(BSTDOUT, "Final matrix assembly time = ", t_assem)            # TODO: commented out for cleaner output
 
   if !isPCMatFree(ls) && !pc2.is_setup
     setupPC(pc2)
@@ -338,7 +338,7 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
 
   # do the solve
   ksp = ls.ksp
-  println("doing solve, setting reltol = ", ls.reltol, ", abstol = ", ls.abstol)
+  # println("doing solve, setting reltol = ", ls.reltol, ", abstol = ", ls.abstol)    # TODO: commented out for cleaner output
   SetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
   if trans
@@ -352,9 +352,9 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
   # print convergence info
   @mpi_master begin
     reason = GetConvergedReason(ksp)
-    println(BSTDOUT, "KSP converged reason = ", KSPConvergedReasonDict[reason])
+    # println(BSTDOUT, "KSP converged reason = ", KSPConvergedReasonDict[reason])           # TODO: commented out for cleaner output
     rnorm = GetResidualNorm(ksp)
-    @mpi_master println("Linear residual = ", rnorm)
+    # @mpi_master println("Linear residual = ", rnorm)            # TODO: commented out for cleaner output
   end
 
   # copy result back to x

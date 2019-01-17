@@ -191,6 +191,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # evalFunctional calls disassembleSolution, which puts q_vec into q
     # should be calling evalFunctional, not calcFunctional.
     evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+    println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  term2: ", vecnorm(term2), "  v_vec: ", vecnorm(v_vec))
 
     # do the dot product of the two terms, and save
     # this dot product is: dJdu*dudM
@@ -236,9 +237,11 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # this loop is 2:(t_steps + 1) when not restarting
   timing.t_timemarch += @elapsed for i=istart:(t_steps + 1)
 
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma"]
       quad_weight = calcQuadWeight(i, dt, finaliter)
     end   # end if opts["perturb_Ma"]
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     # compute time value from time step
     t = (i - 2)*h
@@ -501,6 +504,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #     disassemble isn't getting called. but it shouldn't matter b/c DG
       # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
       evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
+      println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  term2: ", vecnorm(term2), "  v_vec: ", vecnorm(v_vec))
 
       # do the dot product of the two terms, and save
       fill!(term2_vec, 0.0)     # not sure this is necessary
