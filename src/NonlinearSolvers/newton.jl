@@ -187,8 +187,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
   # extract the real components to res_0
   for i=1:m
-    # res_0[i] = real(rhs_vec[i])         # TODO TODO confirm that this is ok to comment out
-    res_0[i] = rhs_vec[i]
+    res_0[i] = real(rhs_vec[i])         # not ok to remove call to real(). This is the reason for the CSR method
   end
 
   # if the user said to use the first residual for computing relative residuals
@@ -268,8 +267,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     
     # extract real component to res_0
     for j=1:m
-      # res_0[j] = real(rhs_vec[j])         # TODO TODO confirm that this is ok to comment out
-      res_0[j] = rhs_vec[j]
+      res_0[i] = real(rhs_vec[i])         # not ok to remove call to real(). This is the reason for the CSR method
     end
 
     writeFiles(newton_data, mesh, sbp, eqn, opts)
@@ -277,9 +275,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     if is_converged
       # remove the imaginary part of rhs_vec before exiting
-      # for j=1:m
-        # rhs_vec[j] = real(rhs_vec[j])         # TODO TODO confirm that this is ok to comment out
-      # end
+      for j=1:m
+        rhs_vec[j] = real(rhs_vec[j])         # not ok to remove call to real(). This is the reason for the CSR method
+      end
       flush(BSTDOUT)
 
       return nothing
@@ -301,9 +299,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   flush(BSTDOUT)
 
   # remove the imaginary part of the residual before exiting
-  # for j=1:m
-    # rhs_vec[j] = real(rhs_vec[j])         # TODO TODO confirm that this is ok to comment out
-  # end
+  for j=1:m
+    rhs_vec[j] = real(rhs_vec[j])         # not ok to remove call to real(). This is the reason for the CSR method
+  end
   clearEulerConstants()
 
   return nothing
