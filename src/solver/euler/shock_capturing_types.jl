@@ -55,7 +55,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     # constants from Barter's thesis
     s0 = -(4 + 4.25*log10(sbp.degree))
     kappa = 0.5
-    e0 = 1  # this is a bit weird, because PP says it should be O(h/p)
+    e0 = 10  # this is a bit weird, because PP says it should be O(h/p)
     
     up = zeros(Tsol, sbp.numnodes)
     up_tilde = zeros(Tsol, sbp.numnodes)
@@ -100,6 +100,136 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
     A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
 
     return new(filt, w, t1, t2, Se_jac, ee_jac, A0inv)
+  end
+end
+
+
+#------------------------------------------------------------------------------
+# for DG-type shock capturing, need to know interfaces
+
+# This is needed because of Julia issue 24909
+mutable struct PushVector{A <: AbstractVector{T}} <: AbstractVector{T}
+  data::A
+  len::Int
+end
+
+function PushVector(A::T) where {T<:AbstractVector}
+
+  return PushVector{T}(A, length(A))
+end
+
+function PushVector{T}(len::Integer=0)
+  data = Array{T}(len)
+  return PushVector(data)
+end
+
+"""
+  Interface that also stores the index that interface corresponds to in the
+  parent mesh.
+"""
+struct RelativeInterface
+  iface::Interface  # needed for SBP
+  idx_orig::Int
+  # add peer?
+end
+
+
+#TODO: docs
+mutable struct ShockedElements{Tres}
+  elnums_shock::Vector{Int}  # elements (global numbering)  where shock
+                             # indicator is non-zero
+  elnums_neighbor::Vector{Int}  # elements (global numbering) that neighbor
+                                # elnums_shock but are in elnums_shock
+  elnums_all::Vector{Int}  # union of elnums_shock and elnums_neighbor
+  elnums_mesh::Vector{Int}  # temporary array, length mesh.numEl
+                            # contains the indices of the selected elements
+                            # in elnums_all
+                            # contains the indices of elements in elnums_all
+                            # TODO: can this be a BitArray?
+  ee::Vector{Tres}  # the numerical viscoscity of each element in
+                    # neighbor_elnums
+  ifaces::Vector{RelativeInterface}
+
+  # current indices in elnums_shock and elnums_neighbor
+  idx_shock::Int
+
+  numShock::Int  # number of elements with shocks in them.  Because we try
+                 # to pre-allocate elnums_shock, its length may be greater than
+                 # the number of elements with shocks
+  numNeighbor::Int  # number of elements that neighbor an element with a shock
+                    # in it, but don't have a shock in it
+  numInterfaces::Int  # number of interfaces in ifaces
+  numEl::Int  # total number of elements
+  function ShockedElement{Tres}(mesh::AbstractMesh) where {Tres}
+
+    # try to guess initial size
+    size_guess = max(div(mesh.numEl, 10), 1)
+    elnums_shock = zeros(Int, size_guess)
+    elnums_neighbor = zeros(Int, size_guess)  # the size here is approximate
+    elnums_all = Array{Int}(0)  # do this later
+    elnums_mesh = zeros(mesh.numEl)
+    ee = Array{Tsol}(size_guess)
+    ifaces = Array{Interface}(0)
+
+    idx_shock = 1
+
+    numShock = 0
+    numNeighbor = 0
+    numInterfaces = 0
+    numEl = 0
+
+    return new(elnums_shock, elnums_neighbor, elnums_all, elnums_mesh, ee,
+               ifaces, idx_shock, numShock, numNeighbor, numInterfaces, numEl)
+  end
+end
+
+"""
+  Shock capturing using the entropy-stable varient of the Local Discontinuous
+  Galerkin method.
+"""
+mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractShockCapturing
+  # Note: the variable names are from Chen and Shu's "Entropy Stable High Order
+  #       DG Methods" paper
+  w_el::Array{Tsol, 3}  # entropy variables for all elements in elnums_all
+  q_j::Array{Tres, 4}  # auxiliary equation solution for elements in
+                       # elnums_all (this gets used for both theta and q)
+  function LDGShockCapturing{Tsol, Tres}()
+    # we don't know the right sizes yet, so just make them zero size
+    w_el = Array{Tsol}(0, 0, 0)
+    q_j = Array{Tsol}(0, 0, 0, 0)
+
+    return new(w_el, q_j)
+  end
+end
+
+
+
+
+"""
+  Diagonal viscoscity (constant for each element), used for shock capturing
+"""
+struct ShockDiffusion{T} <: AbstractDiffusion
+  ee::Vector{T}
+end
+
+function ShockDiffusion(ee::AbstractVector{T}) where {T}
+  return ShockDiffusion{T}(ee)
+end
+
+
+"""
+  Entropy stable LDG flux
+"""
+struct LDG_ESFlux
+  alpha::Float64
+  beta::Float64  # Chen and Shu say this can be an arbitrary vector, but my
+                 # analysis says all entries must the the same, so it acts
+                 # like a scalar
+  function LDG_ESFlux()
+    alpha = 1
+    beta = 1
+
+    return new(alpha, beta)
   end
 end
 

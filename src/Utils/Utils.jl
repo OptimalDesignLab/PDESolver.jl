@@ -42,7 +42,7 @@ export fastzero!, fastscale!, removeComplex
 export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
        assertArraysUnique, assertFieldsConcrete
 # projections.jl functions
-export getProjectionMatrix, projectToXY, projectToNT, calcLength
+export getProjectionMatrix, projectToXY, projectToNT, calcLength, normalize_vec
 
 # complexify.jl functions
 export absvalue, absvalue_deriv, absvalue_rev, atan2_rev

@@ -23,7 +23,6 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
 
-    println("checking shock capturing for element ", i)
     applyShockCapturing(eqn.params, sbp, sensor, capture, q_i, jac_i, res_i)
   end
 

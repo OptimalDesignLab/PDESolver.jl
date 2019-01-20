@@ -351,6 +351,11 @@ abstract type AbstractShockSensor end
 abstract type AbstractShockCapturing end
 
 
+"""
+  Abstract type for diffusion tensors.  Used mostly for shock capturing
+"""
+abstract type AbstractDiffusion end
+
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
@@ -390,6 +395,7 @@ include("startup_func.jl")  # function for invoking the solver
 include("evaldRdm.jl")
 include("evaldRdq.jl")
 include("homotopy.jl")
+include("shock_capturing_mesh.jl")
 include("shock_capturing.jl")
 
 # Jacobian calculation
