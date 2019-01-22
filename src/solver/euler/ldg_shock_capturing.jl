@@ -4,27 +4,31 @@
 
 function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
-                             capture::LDGShockCapturing,
-                             shockmesh::ShockedElements)
+                             capture::LDGShockCapturing{Tsol, Tres},
+                             shockmesh::ShockedElements) where {Tsol, Tres}
 
   # shockmesh should be updated before this function is called
   #TODO: need to get entropy variables conversion function from somewhere
 
-  allocateArrays(capture)
-  computeEntropyVariables(eqn, capture, shockmesh)
+  convert_func = convertToIR_
+  flux = LDG_ESFlux()
+  diffusion = ShockDiffusion(shockmesh.ee)
+
+  allocateArrays(capture, mesh, shockmesh)
+  computeEntropyVariables(mesh, eqn, capture, shockmesh, convert_func)
 
   computeThetaVolumeContribution(mesh, sbp, eqn, opts, capture, shockmesh)
   #TODO: need to get flux_func from somewhere
-  computeThetaFaceContribution(mesh, sbp, eqn, opts, capture, shockmesh, flux_func_theta)
+  computeThetaFaceContribution(mesh, sbp, eqn, opts, capture, shockmesh, flux)
   # this needs to apply Minv too
   # TODO: need to get diffusion func that computes matrix-vector products
   #       with the Cji matrices
-  computeQfromTheta(mesh, sbp, eqn, opts, capture, diffusion_func)
+  computeQFromTheta(mesh, sbp, eqn, opts, capture, shockmesh, diffusion)
 
   # update the residual
   computeQVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   # TODO: need to get flux_func_q from somewhere
-  computeQFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, flux_func_q)
+  computeQFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, flux)
 
   return nothing
 end
@@ -43,15 +47,15 @@ end
    * capture: an [`LDGShockCapturing`](@ref) object, `capture.w_el` is
               overwritten (and possibly re-allocated)
 """
-function computeEntropyVariables(eqn, capture::LDGShockCapturing{Tsol, Tres},
+function computeEntropyVariables(mesh, eqn, capture::LDGShockCapturing{Tsol, Tres},
                                  shockmesh::ShockedElements,
                                  convert_func) where {Tsol, Tres}
 
   @simd for i=1:shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
-      q_i = sview(eqn.q, :, :, i_full)
-      w_i = sview(capture.w_el, :, :, i)
+      q_i = sview(eqn.q, :, j, i_full)
+      w_i = sview(capture.w_el, :, j, i)
       convert_func(eqn.params, q_i, w_i)
     end
   end
@@ -242,8 +246,9 @@ end
 # Computing q_j
 
 
-function computeQfromTheta(mesh, sbp, eqn, opts, capture::LDGShockCapturing,
-                           shockmesh::ShockedElements, diffusion_func)
+function computeQFromTheta(mesh, sbp, eqn, opts,
+                           capture::LDGShockCapturing{Tsol, Tres},
+                           shockmesh::ShockedElements, diffusion_func) where {Tsol, Tres}
 
   # epsilon = 0 for neighbor elements, so q = 0 there, only do shocked elements
   theta_i = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
@@ -266,6 +271,9 @@ function computeQfromTheta(mesh, sbp, eqn, opts, capture::LDGShockCapturing,
     applyDiffusionTensor(diffusion_func, w_i, i, theta_i, q_i)
   end
 
+  # zero out the rest of q_i because epsilon is zero there
+  q_neighbor = sview(capture.q_j, :, :, :, (shockmesh.numShock+1):shockmesh.numEl)
+  fill!(q_neighbor, 0)
   return nothing
 end
 
@@ -325,18 +333,18 @@ end
 # volume contribution to residual
 
 
-function computeQVolumeTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing,
-                           shockmesh::ShockedElements)
+function computeQVolumeTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing{Tsol, Tres},
+                            shockmesh::ShockedElements) where {Tsol, Tres}
 
   op = SummationByParts.Subtract()
   qxi_i = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  for i=1:capture.numShocked
+  for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
     # compute Qx^T q_x
     q_i = ro_sview(capture.q_j, :, :, :, i)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     res_i = sview(eqn.res, :, :, i_full)
-    applyQxTransposed(sbp, q_i, dxidx,  qxi_i, res_i, op)
+    applyQxTransposed(sbp, q_i, dxidx_i,  qxi_i, res_i, op)
   end
 
   return nothing
@@ -348,9 +356,10 @@ end
 
 
 
-function computeQFaceTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing{Tsol, Tres},
+function computeQFaceTerm(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
+                          capture::LDGShockCapturing{Tsol, Tres},
                           shockmesh::ShockedElements, flux::AbstractLDGFlux
-                         ) where {Tsol, Tres}
+                         ) where {Tsol, Tres, Tmsh}
 
   w_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   w_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -361,26 +370,26 @@ function computeQFaceTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing{Tsol,
   fluxD = zeros(Tres, mesh.numDofPerNode, mesh.dim)
   flux_scaled = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   aux_vars = Tres[]
+  nrm = zeros(Tmsh, mesh.dim)
   for i=1:shockmesh.numInterfaces
-    iface_i = shockmesh.interfaces[i].iface
-    iface_full = iface_i.iface
-    idx_orig = shockmesh.interfaces[i].idx_orig
+    iface_red = shockmesh.ifaces[i].iface
+    idx_orig = shockmesh.ifaces[i].idx_orig
 
     # interpolate v to face
-    wL = ro_sview(capture.w_el, :, :, iface_i.elementL)
-    wR = ro_sview(capture.w_el, :, :, iface_i.elementR)
-    interiorFaceInterpolate!(mesh.sbpface, iface_full, wL, wR, w_faceL,
+    wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
+    wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+    interiorFaceInterpolate!(mesh.sbpface, iface_red, wL, wR, w_faceL,
                              w_faceR)
 
     # interpolate q_j to face
     for d=1:mesh.dim
       #TODO: make sure q_j has enough space, and is zeroed out, for all the
       #      neighbor elements
-      qL = ro_sview(capture.q_j, :, :, d, iface_i.elementL)
-      qR = ro_sview(capture.q_j, :, :, d, iface_i.elementR)
+      qL = ro_sview(capture.q_j, :, :, d, iface_red.elementL)
+      qR = ro_sview(capture.q_j, :, :, d, iface_red.elementR)
       q_faceL_d = sview(q_faceL, :, :, d)
       q_faceR_d = sview(q_faceR, :, :, d)
-      interiorFaceInterpolate!(mesh.sbpface, iface_full, qL, qR, q_faceL_d,
+      interiorFaceInterpolate!(mesh.sbpface, iface_red, qL, qR, q_faceL_d,
                                q_faceR_d)
     end
 
@@ -417,9 +426,9 @@ function computeQFaceTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing{Tsol,
     end  # end j
 
     # apply R^T B
-    resL = sview(eqn.res, :, :, iface_full.elementL)
-    resR = sview(eqn.res, :, :, iface_full.elementR)
-    interiorFaceIntegrate!(mesh.sbpface, iface_full, flux_scaled, resL, resR)
+    resL = sview(eqn.res, :, :, shockmesh.elnums_all[iface_red.elementL])
+    resR = sview(eqn.res, :, :, shockmesh.elnums_all[iface_red.elementR])
+    interiorFaceIntegrate!(mesh.sbpface, iface_red, flux_scaled, resL, resR)
   end  # end i
 
   return nothing
@@ -471,7 +480,7 @@ function applyFlux(params::ParamType, flux::LDG_ESFlux, qL::AbstractMatrix, qR::
   @simd for d1=1:dim
     # do average and jumpt in v terms
     @simd for k=1:numDofPerNode
-      fluxD[k, d1] = 0.5*(qL[k, d] + qR[k, d]) - flux.alpha*nrm[d1]*(wL[k] - wR[k])
+      fluxD[k, d1] = 0.5*(qL[k, d1] + qR[k, d1]) - flux.alpha*nrm[d1]*(wL[k] - wR[k])
     end
 
     # do the jump in Q term (which has unusual structure)
