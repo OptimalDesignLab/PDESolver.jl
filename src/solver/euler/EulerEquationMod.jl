@@ -397,6 +397,7 @@ include("evaldRdq.jl")
 include("homotopy.jl")
 include("shock_capturing_mesh.jl")
 include("shock_capturing.jl")
+include("ldg_shock_capturing.jl")
 
 # Jacobian calculation
 include("evalJacobian.jl")

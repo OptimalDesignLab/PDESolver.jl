@@ -107,22 +107,6 @@ end
 #------------------------------------------------------------------------------
 # for DG-type shock capturing, need to know interfaces
 
-# This is needed because of Julia issue 24909
-mutable struct PushVector{A <: AbstractVector{T}} <: AbstractVector{T}
-  data::A
-  len::Int
-end
-
-function PushVector(A::T) where {T<:AbstractVector}
-
-  return PushVector{T}(A, length(A))
-end
-
-function PushVector{T}(len::Integer=0)
-  data = Array{T}(len)
-  return PushVector(data)
-end
-
 """
   Interface that also stores the index that interface corresponds to in the
   parent mesh.
@@ -160,7 +144,7 @@ mutable struct ShockedElements{Tres}
                     # in it, but don't have a shock in it
   numInterfaces::Int  # number of interfaces in ifaces
   numEl::Int  # total number of elements
-  function ShockedElement{Tres}(mesh::AbstractMesh) where {Tres}
+  function ShockedElements{Tres}(mesh::AbstractMesh) where {Tres}
 
     # try to guess initial size
     size_guess = max(div(mesh.numEl, 10), 1)
@@ -168,7 +152,7 @@ mutable struct ShockedElements{Tres}
     elnums_neighbor = zeros(Int, size_guess)  # the size here is approximate
     elnums_all = Array{Int}(0)  # do this later
     elnums_mesh = zeros(mesh.numEl)
-    ee = Array{Tsol}(size_guess)
+    ee = Array{Tres}(size_guess)
     ifaces = Array{Interface}(0)
 
     idx_shock = 1
@@ -185,7 +169,10 @@ end
 
 """
   Shock capturing using the entropy-stable varient of the Local Discontinuous
-  Galerkin method.
+  Galerkin method.  [`allocateArrays`](@ref) must be called after the
+  shock mesh is known before this type is usable.
+
+  The sizes of these arrays may be larger than required.
 """
 mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractShockCapturing
   # Note: the variable names are from Chen and Shu's "Entropy Stable High Order
@@ -193,7 +180,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractShockCapturing
   w_el::Array{Tsol, 3}  # entropy variables for all elements in elnums_all
   q_j::Array{Tres, 4}  # auxiliary equation solution for elements in
                        # elnums_all (this gets used for both theta and q)
-  function LDGShockCapturing{Tsol, Tres}()
+  function LDGShockCapturing{Tsol, Tres}() where {Tsol, Tres}
     # we don't know the right sizes yet, so just make them zero size
     w_el = Array{Tsol}(0, 0, 0)
     q_j = Array{Tsol}(0, 0, 0, 0)
@@ -203,7 +190,36 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 end
 
 
+"""
+  This function allocates the arrays of [`LDGShockCapturing`](@ref) that
+  depend on the shock mesh.  The arrays are only re-allocated if they are
+  too small.
 
+  **Inputs**
+
+   * capture: [`LDGShockCapturing`](@ref)
+   * mesh
+   * shockmesh: a `ShockedElements` object, fully initialized
+"""
+function allocateArrays(capture::LDGShockCapturing{Tsol, Tres}, mesh::AbstractMesh,
+                        shockmesh::ShockedElements) where {Tsol, Tres}
+
+  println("shockmesh.numEl = ", shockmesh.numEl)
+  # can't resize multi-dimension arrays, so reallocate
+  if size(capture.q_j, 4) < shockmesh.numShock
+      capture.q_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                                mesh.dim, shockmesh.numEl)
+    # the final dimension must be numEl, not numShock, because q_j is zero
+    # for the neighboring elements later
+  end
+
+  if size(capture.w_el, 3) < shockmesh.numEl
+    capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
+                               shockmesh.numEl)
+  end
+
+  return nothing
+end
 
 """
   Diagonal viscoscity (constant for each element), used for shock capturing
@@ -216,11 +232,12 @@ function ShockDiffusion(ee::AbstractVector{T}) where {T}
   return ShockDiffusion{T}(ee)
 end
 
+abstract type AbstractLDGFlux end
 
 """
   Entropy stable LDG flux
 """
-struct LDG_ESFlux
+struct LDG_ESFlux  <: AbstractLDGFlux
   alpha::Float64
   beta::Float64  # Chen and Shu say this can be an arbitrary vector, but my
                  # analysis says all entries must the the same, so it acts

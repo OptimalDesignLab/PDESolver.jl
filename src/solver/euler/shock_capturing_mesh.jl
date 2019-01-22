@@ -94,7 +94,7 @@ end
 
 
 """
-  Adds a new element to the list of neighboring elements
+  Adds a new element to the list of neighboring elements.  Internal function
 
   **Inputs**
 
@@ -108,24 +108,35 @@ end
    * newidx: the next index to insert to
    * sz: the size of `data.elnums_neighbor`
 """
-function push_neighbor(data::ShockedElements, elnum::Integer, idx::Integer,
+@inline function push_neighbor(data::ShockedElements, elnum::Integer, idx::Integer,
                        sz::Integer)
 
-  if idx == sz
+  if idx > sz
     sz = max(2*sz, 8)
     resize!(data.elnums_neighbor, sz)
-
   end
 
   data.elnums_neighbor[idx] = elnum
+  data.elnums_mesh[elnum] = idx + data.numShock  #TODO: get rid of elnumsNeighbor
+
 
   return idx+1, sz
 end
 
-function push_iface(data::ShockedElements, iface::RelativeInterface,
-                    idx::Integer, size::Integer)
+"""
+  Internal function for pushing a new interface
 
-  if idx == sz
+  **Inputs**
+
+   * data: `ShockElements`
+   * iface: a `RelativeInterface`
+   * idx: the current index in data.interfaces
+   * sz: the current size of data.interfaces
+"""
+@inline function push_iface(data::ShockedElements, iface::RelativeInterface,
+                    idx::Integer, sz::Integer)
+
+  if idx > sz
     sz = max(2*sz, 8)
     resize!(data.ifaces, sz)
   end
@@ -141,15 +152,15 @@ end
   **Inputs**
 
    * iface: an `Interface`
-   * elnumL: the new left element number
-   * elnumR: the new right elenent number
+   * elementL: the new left element number
+   * elementR: the new right elenent number
 
   **Outputs**
 
    * iface: a new `Interface` object
 """
-function replace_interface(iface::Interface, elnumL::Integer, elnumR::Integer)
-  return Interface(elnumL, elnumR, iface.faceL, iface.faceR, iface.orient)
+function replace_interface(iface::Interface, elementL::Integer, elementR::Integer)
+  return Interface(elementL, elementR, iface.faceL, iface.faceR, iface.orient)
 end
 
 
@@ -171,42 +182,40 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   # iface stuff
   idx_if = 1  # iface stuff
   sz_if = length(data.ifaces)
-  for i=1:mesh.interfaces
+  for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
-    elnumL = data.elnums_mesh[iface_i.elementL]
-    elnumR = data.elnums_mesh[iface_i.elementR]
+    elementL = data.elnums_mesh[iface_i.elementL]
+    elementR = data.elnums_mesh[iface_i.elementR]
 
     # if an element has not been seen before and its neighbor has a shock in
     # it, add to the list of neighbor elements
-    if (elnumL > 0 && elnumL < data.numShock) || (elnumR > 0 && elnumR < data.numShock)
+    if (elementL > 0 && elementL <= data.numShock) || (elementR > 0 && elementR <= data.numShock)
       new_elnum = data.idx_shock
 
-      if elnumL == 0
+      if elementL == 0
         elnum_full = iface_i.elementL  # element numbering in the full numbering
-        elnumL = data.idx_shock  # element number in the reduced numbering
+        elementL = data.idx_shock  # element number in the reduced numbering
         data.idx_shock += 1
 
-        data.elnums_mesh[iface_i.elementL] = elnumL
         idx_nb, sz_nb = push_neighbor(data, elnum_full, idx_nb, sz_nb)
         
-      elseif elnumR == 0  # it shouldn't be possible to see the same pair of
+      elseif elementR == 0  # it shouldn't be possible to see the same pair of
                           # elements more than once (even on periodic meshes)
-        elnum_full = iface.i.elementR
-        elnumR = data.idx_shock
+        elnum_full = iface_i.elementR
+        elementR = data.idx_shock
         data.idx_shock += 1
 
-        data.elnums_mesh[elnumR] = elnumR
-        idx_nb, sz_nb = push_neighbor(data. elnum_full, idx_nb, sz_nb)
+        idx_nb, sz_nb = push_neighbor(data, elnum_full, idx_nb, sz_nb)
       end
 
       # record the new interface
-      iface_new = RelativeInterface(replace_interface(iface_i. elnumL, elnumR), i)
+      iface_new = RelativeInterface(replace_interface(iface_i, elementL, elementR), i)
       idx_if, sz_if = push_iface(data, iface_new, idx_if, sz_if)
     end  # end if
   end  # end for
 
   #TODO: handle parallel interfaces
-  @assert mesh.comm_size == 1
+  @assert mesh.commsize == 1
 
   data.numNeighbor = data.idx_shock - 1 - data.numShock
   data.numInterfaces = idx_if - 1
@@ -216,15 +225,16 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   #       and elnums_neighbor, making this step unnecessary
 
   numEl = data.numShock + data.numNeighbor
-  if size(data.elnums_all) < numEl
+  data.numEl = numEl
+  if length(data.elnums_all) < numEl
     resize!(data.elnums_all, numEl)
   end
   idx = 1
-  @simd for i=1:length(data.elnums_shock)
+  @simd for i=1:data.numShock
     data.elnums_all[idx] = data.elnums_shock[i]
     idx += 1
   end
-  @simd for i=1:length(data.elnums_neighbor)
+  @simd for i=1:data.numNeighbor
     data.elnums_all[idx] = data.elnums_neighbor[i]
     idx += 1
   end

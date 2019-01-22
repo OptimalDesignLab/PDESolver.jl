@@ -517,8 +517,7 @@ end
 
   This function calculates the average distance between nodes over the entire
   mesh.  This function allocates a bunch of temporary memory, so don't call
-  it too often.  This is, strictly speaking, not quite accurate in parallel
-  because the divison by length happens before the allreduce.
+  it too often.
 
   Inputs:
     mesh

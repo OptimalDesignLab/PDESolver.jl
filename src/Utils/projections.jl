@@ -218,7 +218,7 @@ end
 function normalize_vec(params::AbstractParamType{T}, nrm::AbstractVector) where {T}
   len = calcLength(params, nrm)
   for d=1:T
-    nrm[i] /= len
+    nrm[d] /= len
   end
 end
 

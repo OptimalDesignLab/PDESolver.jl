@@ -10,6 +10,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   # shockmesh should be updated before this function is called
   #TODO: need to get entropy variables conversion function from somewhere
 
+  allocateArrays(capture)
   computeEntropyVariables(eqn, capture, shockmesh)
 
   computeThetaVolumeContribution(mesh, sbp, eqn, opts, capture, shockmesh)
@@ -42,14 +43,9 @@ end
    * capture: an [`LDGShockCapturing`](@ref) object, `capture.w_el` is
               overwritten (and possibly re-allocated)
 """
-function computeEntropyVariables(eqn, capture::LDGShockCapturing,
-                                 shockmesh::ShockedElements{Tsol, Tres},
+function computeEntropyVariables(eqn, capture::LDGShockCapturing{Tsol, Tres},
+                                 shockmesh::ShockedElements,
                                  convert_func) where {Tsol, Tres}
-
-  if size(capture.w_el, 3) < shockmesh.numEl
-    # can't resize multi-dimension arrays, so reallocate
-    capture.w_el = Array{Tsol}(size(eqn.q, 1), size(eqn.q, 2), shockmesh.numEl)
-  end
 
   @simd for i=1:shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
@@ -67,17 +63,12 @@ end
 #------------------------------------------------------------------------------
 # Volume contribution to Theta
 
-function computeThetaVolumeContribution(mesh, sbp, eqn, opts, capture::LDGShockCapturing, shockmesh::ShockedElements{Tsol, Tres})  where {Tsol, Tres}
+function computeThetaVolumeContribution(mesh, sbp, eqn, opts,
+                capture::LDGShockCapturing{Tsol, Tres},
+                shockmesh::ShockedElements)  where {Tsol, Tres}
 
-  # reallocate q_j if needed (q_j stores theta_j in this function)
-  if size(capture.q_j, 4) < capure.numShock
-    capture.q_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
-                              mesh.dim, capture.numEl)
-    # the final dimension must be numEl, not numShock, because q_j is zero
-    # for the neighboring elements later
-  else
-    fill!(capture.q_j, 0)
-  end
+  # q_j stores theta_j in this function
+  fill!(capture.q_j, 0)
 
   # temporary storage
   wxi_i = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
@@ -104,6 +95,8 @@ end
    * sbp: the SBP operator
    * w: `numDofPerNode` x `numNodesPerElement` array of values
    * dxidx: `dim` x `dim` x `numNodesPerElement` array containing the metrics
+   * op: a UnaryFunctor that determines if values are added or subtracted to
+         `wx`
 
   **Inputs/Outputs**
 
@@ -112,7 +105,7 @@ end
 """
 function applyQxTransposed(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
                              wxi::Abstract3DArray, wx::Abstract3DArray,
-                             op::SummationByParts.UnaryFunctor)
+                             op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
   # The idea is to compute dw/dxi first, and then use dxi/dx to rotate those
   # arrays to be d/dx
@@ -124,11 +117,11 @@ function applyQxTransposed(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
   end
 
   # dw/dx = dw/dxi * dxi/dx + dw/dy * dy/dxi
-  @simd for d=1:dim
+  @simd for d1=1:dim
     @simd for i=1:numNodesPerElement
       @simd for d2=1:dim
         @simd for j=1:numDofPerNode
-          wx[j, i, d] += op(wxi[j, i, d2]*dxidx[d2, d1, i])
+          wx[j, i, d1] += op(wxi[j, i, d2]*dxidx[d2, d1, i])
         end
       end
     end
@@ -150,6 +143,9 @@ end
    * w: `numDofPerNode` x `numNodesPerElement` x `dim` containing the values
         for each dimension.
    * dxidx: the metric terms, same as other method
+   * op: a UnaryFunctor that determines if values are added or subtracted to
+         `wx`
+
 
   **Inputs/Outputs**
 
@@ -160,13 +156,13 @@ end
 """
 function applyQxTransposed(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
                              wxi::Abstract3DArray, wx::AbstractMatrix,
-                             op::SummationByParts.UnaryFunctor)
+                             op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
 
-  numDofPerNode, numNodesPerElement, dim = size(wx)
+  numDofPerNode, numNodesPerElement, dim = size(wxi)
   for d1=1:dim  # compute Q_d * w_d
     for d2=1:dim
-      smallmatmat!(w, sview(sbp.Q, :, :, d2), sview(wxi, :, :, d2))
+      smallmatmat!(ro_sview(w, :, :, d1), ro_sview(sbp.Q, :, :, d2), sview(wxi, :, :, d2))
     end
 
     @simd for d2=1:dim
@@ -189,8 +185,7 @@ end
 
 function computeThetaFaceContribution(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
           capture::LDGShockCapturing{Tsol, Tres}, shockmesh::ShockedElements,
-          flux_func) where {Tsol, Tres, Tmsh}
-  #TODO: type for flux_func
+          flux::AbstractLDGFlux) where {Tsol, Tres, Tmsh}
 
   w_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   w_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -200,13 +195,13 @@ function computeThetaFaceContribution(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
   aux_vars = Tres[]
   for i=1:shockmesh.numInterfaces
     iface_i = shockmesh.ifaces[i]
-    iface_full = iface_i.iface
+    iface_red = iface_i.iface  # iface in reduced numbering scheme
     iface_idx = shockmesh.ifaces[i].idx_orig
-    wL = sview(capture.w_el, :, :, iface_i.elementL)
-    wR = sview(capture.w_el, :, :, iface_i.elementR)
+    wL = sview(capture.w_el, :, :, iface_red.elementL)
+    wR = sview(capture.w_el, :, :, iface_red.elementR)
 
     # interpolate v to faces
-    interiorFaceInterpolate!(mesh.sbpface, iface_full, wL, wR, w_faceL,
+    interiorFaceInterpolate!(mesh.sbpface, iface_red, wL, wR, w_faceL,
                              w_faceR)
 
     # apply flux function
@@ -216,16 +211,16 @@ function computeThetaFaceContribution(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
 
       # get the normalized unit vector
       for d=1:mesh.dim
-        nrm[d] = mesh.nrm_face[d, j, idx_orig]
+        nrm[d] = mesh.nrm_face[d, j, iface_idx]
       end
       normalize_vec(eqn.params, nrm)
 
-      flux_func(eqn.params, wL_j, wR_j, aux_vars, nrm, flux_j)
+      applyFlux(eqn.params, flux, wL_j, wR_j, aux_vars, nrm, flux_j)
       
       # apply normal vector components here because SBP only applied R^T B
       for d=1:mesh.dim
         for k=1:mesh.numDofPerNode
-          fluxD[k, j, d] = mesh.nrm_face[d, j, iface.idx_orig]*flux_j[k]
+          fluxD[k, j, d] = mesh.nrm_face[d, j, iface_idx]*flux_j[k]
         end
       end
     end  # end j
@@ -233,9 +228,9 @@ function computeThetaFaceContribution(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
     # apply R^T B
     for d=1:mesh.dim
       flux_d = ro_sview(fluxD, :, :, d)
-      resL = sview(capture.q_j, :, :, d, iface.elementL)
-      resR = sview(capture.q_j, :, :, d, iface.elementR)
-      interiorFaceIntegrate!(mesh.sbpface, iface_full, flux_d, resL, resR)
+      resL = sview(capture.q_j, :, :, d, iface_red.elementL)
+      resR = sview(capture.q_j, :, :, d, iface_red.elementR)
+      interiorFaceIntegrate!(mesh.sbpface, iface_red, flux_d, resL, resR)
     end
   end  # end i
 
@@ -353,8 +348,8 @@ end
 
 
 
-function computeQFaceTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing,
-                          shockmesh::ShockedElements{Tsol, Tres}, flux_func
+function computeQFaceTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing{Tsol, Tres},
+                          shockmesh::ShockedElements, flux::AbstractLDGFlux
                          ) where {Tsol, Tres}
 
   w_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -409,7 +404,7 @@ function computeQFaceTerm(mesh, sbp, eqn, opts, capture::LDGShockCapturing,
       end
       normalize_vec(eqn.params, nrm)
 
-      flux_func(eqn.params, qL_j, qR_j, wL_j, wR_j, aux_vars, nrm, fluxD)
+      applyFlux(eqn.params, flux, qL_j, qR_j, wL_j, wR_j, aux_vars, nrm, fluxD)
     
       # multiply by N because SBP doesn't, also do sum over dimensions
       @simd for d=1:mesh.dim
@@ -440,7 +435,7 @@ end
   Note that this si different from a regular 2 point flux function becaues
   it operates on the entropy variables.
 """
-function applyFlux(params::ParamType, flux::LDG_ESFlux wL::AbstractVector,
+function applyFlux(params::ParamType, obj::LDG_ESFlux, wL::AbstractVector,
                    wR::AbstractVector,
                    aux_vars, nrm::AbstractVector{Tmsh}, flux::AbstractVector
                   ) where {Tmsh}
@@ -452,7 +447,7 @@ function applyFlux(params::ParamType, flux::LDG_ESFlux wL::AbstractVector,
   for d=1:dim
     fac += nrm[d]
   end
-  fac *= flux.beta
+  fac *= obj.beta
 
   for i=1:size(flux, 1)
     flux[i] = 0.5*(wL[i] + wR[i]) + fac*(wL[i] - wR[i])
@@ -466,7 +461,7 @@ end
   update the residual.  This function computes the flux in all three
   directions at the same time.
 """
-function applyFlux(params::ParamType, qL::AbstractMatrix, qR::AbstractMatrix,
+function applyFlux(params::ParamType, flux::LDG_ESFlux, qL::AbstractMatrix, qR::AbstractMatrix,
                    wL::AbstractVector, wR::AbstractVector, aux_vars,
                    nrm::AbstractVector, fluxD::AbstractMatrix{Tres}) where {Tres}
 
@@ -489,3 +484,5 @@ function applyFlux(params::ParamType, qL::AbstractMatrix, qR::AbstractMatrix,
 
   return nothing
 end
+
+
