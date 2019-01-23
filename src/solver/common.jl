@@ -109,7 +109,7 @@ function getDataTypes(opts::Dict)
 
   # GREP: RUNTYPE run_type flag
   if flag == 1 || flag == 101 || flag == 8  || flag == 9 || flag == 10 || flag == 30 || flag == 31 || flag == 90  # normal run
-    if opts["perturb_Ma"]
+    if (opts["perturb_Ma"] == true || opts["perturb_Ma_CN"] == true)
       println("perturb_Ma set, setting Tsol & Tres to Complex128")
       Tmsh = Float64
       Tsbp = Float64
@@ -179,8 +179,8 @@ function getDataTypes(opts::Dict)
       throw(ErrorException("Illegal or no jac_method specified for steady Newton initialization."))
     end
   elseif flag == 20 || flag == 21 # jac_method needs to be symbol
-    if opts["perturb_Ma"]
-      println("perturb_Ma set, setting Tsol & Tres to Complex128")
+    if (opts["perturb_Ma_CN"] == true)
+      println("perturb_Ma_CN set, setting Tsol & Tres to Complex128")
       Tmsh = Float64
       Tsbp = Float64
       Tsol = Complex128
@@ -204,7 +204,7 @@ function getDataTypes(opts::Dict)
       else
         throw(ErrorException("Illegal or no jac_method specified for CN initialization."))
       end
-    end   # end of else after 'if opts["perturb_Ma"]'
+    end   # end of else after 'if opts["perturb_Ma_CN"]'
   elseif flag == 660 # jac_method needs to be symbol
     if jac_method == 1 # Crank-Nicolson, unsteady adjoint, FD Jac
       Tmsh = Float64

@@ -347,7 +347,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
     Ma = opts["Ma"]
     println(" typeof(Ma): ", typeof(Ma))
-    if opts["perturb_Ma"] == true
+    if opts["perturb_Ma"] == true     # NOTE: I am intentionally not perturbing Ma
+                                      #       at solver initialization for opts["perturb_Ma_CN"].
+                                      #       This has to be done within the time-stepper.
       Ma_pert = opts["perturb_Ma_magnitude"]
       pert = complex(0, Ma_pert)
       Ma += pert

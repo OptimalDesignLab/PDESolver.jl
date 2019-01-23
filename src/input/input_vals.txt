@@ -434,7 +434,13 @@ Note that any values associated with these options are shared with the regular
                       not otherwise be, (Bool), default false
 
 # Direct sensitivity of drag wrt Ma options
-"perturb_Ma": perturb Mach number using complex step
+"perturb_Ma": perturb Mach number using complex step (only for RK4 & LSERK)
+"perturb_Ma_CN": perturb Mach number using complex step (only for CN)
+                 The difference is that this perturbation gets applied and removed every time
+                 step, and it is only to the unsteady residual (therefore the spatial residual
+                 at the current and next time step). The other "perturb_Ma" applies the complex 
+                 perturbation upon solver initialization and calculations are performed every
+                 time step to analyze the derivative at each time step.
 "perturb_Ma_magnitude": magnitude of the complex perturbation to be applied to Ma.
                         This is a real value, example: 1e-20.
                         It gets complexified later, in types.jl.

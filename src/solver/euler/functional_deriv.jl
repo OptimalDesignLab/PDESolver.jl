@@ -114,7 +114,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   #   - new drag_coefficient objective
   #---------------------------------------------------------------------------
   # won't run in finite difference of Ma, but that's ok since that doesn't need dJdu
-  if opts["perturb_Ma"]
+  if (opts["perturb_Ma"] == true || opts["perturb_Ma_CN"] == true)
     fac = (2.0/(eqn.params.Ma)^2)
     for i = 1:length(func_deriv_arr)
       func_deriv_arr[i] = fac*func_deriv_arr[i]
@@ -265,10 +265,12 @@ function calcIntegrandDeriv{Tsol, Tres, Tmsh}(opts, params::ParamType{2},
                             integrand_deriv::AbstractArray{Tsol, 1}, node_info,
                             functionalData::MassFlowData)
 
-  if opts["perturb_Ma"]
-    error("perturb_Ma is set, but attempting calcIntegrandDeriv with a complex step.
+  if (opts["perturb_Ma"] == true || opts["perturb_Ma_CN"] == true)
+    error("perturb_Ma or perturb_Ma_CN is set, but attempting 
+           calcIntegrandDeriv with a complex step.
+
            You must change this function (mass flow calcIntegrandDeriv) before trying
-           to use perturb_Ma.")
+           to use perturb_Ma or perturb_Ma_CN.")
   end
 
   node_info = [1, 2, 3]
