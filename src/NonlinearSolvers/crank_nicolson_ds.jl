@@ -95,15 +95,22 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   t_steps = round(Int, t_max/h)
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Start direct sensitivity setup
+  # Start direct sensitivity setup    1111
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # include("crank_nicolson_ds-DS_setup.jl")
+  old_res_vec = zeros(eqn.res_vec)    # corresponds to eqn
+  new_res_vec = zeros(eqn.res_vec)    # corresponds to eqn_nextstep
+  res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
 
-  include("crank_nicolson_ds-DS_setup.jl")
-  flush(BSTDOUT)
-
+  pc_DSouter, lo_DSouter = getCNPCandLO(mesh, sbp, eqn, opts)
+  ls_DSouter = StandardLinearSolver(pc, lo, eqn.comm, opts)
+  newton_data_DSouter, rhs_vec_DSouter = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
+  newton_data_DSouter.itermax = 30
+  recalc_policy_DSouter = getRecalculationPolicy(opts, "CN")
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End direct sensitivity setup: needs to be before eqn_deepcopy call to setup eqn_nextstep
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  flush(BSTDOUT)
 
   # eqn_nextstep = deepcopy(eqn)
   eqn_nextstep = eqn_deepcopy(mesh, sbp, eqn, opts)
@@ -241,21 +248,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
 
-    # This allows the solution to be updated from _nextstep without a deepcopy.
-    # There are two memory locations used by eqn & eqn_nextstep, 
-    #   and this flips the location of eqn & eqn_nextstep every time step
-    eqn_temp = eqn
-    eqn = eqn_nextstep
-    eqn_nextstep = eqn_temp
-
-    # Note: we now need to copy the updated q over for the initial newton guess
-    for j = 1:mesh.numDof
-      eqn_nextstep.q_vec[i] = eqn.q_vec[i]
-    end
-    array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec, eqn_nextstep.q)
-
-    flush(BSTDOUT)
-
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["write_drag"]
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
@@ -267,17 +259,33 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Start direct sensitivity calc's for each time step
+    # Start direct sensitivity calc's for each time step      2222
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    include("crank_nicolson_ds-DS_everytimestep.jl")
-    if opts["perturb_Ma_CN"] == true
-      Ma_pert = opts["perturb_Ma_magnitude"]
-      pert = complex(0, Ma_pert)
-      Ma += pert
-    end
+    if opts["perturb_Ma_CN"]
+      include("crank_nicolson_ds-DS_everytimestep.jl")
+    end   # end of opts["perturb_Ma_CN"]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # End direct sensitivity calc's for each time step
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    #--------------------------------------------------------------------------------------------------
+    # Return to original CN code: moving eqn_nextstep into eqn
+  
+    # This allows the solution to be updated from _nextstep without a deepcopy.
+    # There are two memory locations used by eqn & eqn_nextstep, 
+    #   and this flips the location of eqn & eqn_nextstep every time step
+    eqn_temp = eqn
+    eqn = eqn_nextstep
+    eqn_nextstep = eqn_temp
+
+    # Note: we now need to copy the updated q over for the initial newton guess
+    for j = 1:mesh.numDof
+      eqn_nextstep.q_vec[j] = eqn.q_vec[j]
+    end
+    array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec, eqn_nextstep.q)
+
+    flush(BSTDOUT)
+
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # direct-sensitivity: moved these breaks here. Before they were before the eqn/eqn_nextstep/eqn_temp flip
@@ -318,7 +326,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   end
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # Start direct sensitivity calc's after time step loop
+  # Start direct sensitivity calc's after time step loop    3333
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   include("crank_nicolson_ds-DS_end.jl")
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
