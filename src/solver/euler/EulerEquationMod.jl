@@ -346,16 +346,40 @@ abstract type AbstractShockSensor end
 """
   Abstract type for all shock capturing methods.  This type determines what
   kind of dissipation to add when there is a shock present.  Ideally, any
-  shock capturing scheme should be able to be paired with any shock sensor
+  shock capturing scheme should be able to be paired with any shock sensor.
+
+  New shock capturing scheme should generally not subtype this type directly,
+  instead they should subtype either [`AbstractVolumeShockCapturing`](@ref)
+  or [`AbstractFaceShockCapturing`](@ref).
 """
 abstract type AbstractShockCapturing end
 
+#TODO: more docs for these: required methods etc.
+
+"""
+  Abstract type for shock capturing methods that only have volume terms.
+  These scheme are substantially simpler and do not require constructing
+  a reduced mesh.
+"""
+abstract type AbstractVolumeShockCapturing <: AbstractShockCapturing end
+
+"""
+  Abstract type for shock capturing methods that do face integrals (these
+  scheme may do volume integrals as well).  These schemes require constructing
+  a reduced mesh for the elements that have shocks in them.
+"""
+abstract type AbstractFaceShockCapturing <: AbstractShockCapturing end
 
 """
   Abstract type for diffusion tensors.  Used mostly for shock capturing
 """
 abstract type AbstractDiffusion end
 
+
+"""
+  Abstract type for Local Discontinuous Galerkin flux functions
+"""
+abstract type AbstractLDGFlux end
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation

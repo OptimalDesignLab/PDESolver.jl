@@ -53,7 +53,8 @@ end
 """
 function reset(data::ShockedElements)
 
-  fill!(elnums_mesh, 0)
+  fill!(data.elnums_mesh, 0)
+  fill!(data.elnums_all, 0)
   data.idx_shock = 1
   data.numShock = 0
   data.numNeighbor = 0

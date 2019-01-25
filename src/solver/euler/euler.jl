@@ -283,7 +283,7 @@ function majorIterationCallback(itr::Integer,
     vals = real(eqn.q_vec)  # remove unneded imaginary part
 
     #TODO: testing
-    writeShockSensorField(mesh, sbp, eqn, opts, eqn.params.sensor_pp)
+    writeShockSensorField(mesh, sbp, eqn, opts, eqn.shock_sensor)
 
     saveSolutionToMesh(mesh, vals)
     fname = string("solution_", itr)
@@ -914,8 +914,8 @@ function evalShockCapturing(mesh::AbstractMesh{Tmsh},
   # If there are more, need something more sophisiticated to choose.
   # Perhaps add an abstract typed field to eqn containing the structs
 
-  sensor = eqn.params.sensor_pp
-  capture = eqn.params.projection_shock_capturing
+  sensor = eqn.shock_sensor
+  capture = eqn.shock_capturing
   applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
 
   return nothing

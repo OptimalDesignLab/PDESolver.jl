@@ -16,8 +16,8 @@ function test_shocksensorPP()
     jac = ones(Float64, mesh.numNodesPerElement)
     res = zeros(eltype(eqn.res), mesh.numDofPerNode, mesh.numNodesPerElement)
 
-    sensor = eqn.params.sensor_pp
-    capture = eqn.params.projection_shock_capturing
+    sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
+    capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, opts)
     # initial condition is constant, check the sensor reports no shock
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, jac)
 
@@ -161,7 +161,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

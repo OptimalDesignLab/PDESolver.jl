@@ -95,11 +95,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
   get_ira0data::GetIRA0Data{Tsol}
 
-  # shock sensors
-  sensor_pp::ShockSensorPP{Tsol, Tres}
-
-  # shock capturing
-  projection_shock_capturing::ProjectionShockCapturing{Tsol, Tres}
+  shockmesh::ShockedElements{Tres}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -224,10 +220,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
     get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
-    sensor_pp = ShockSensorPP{Tsol, Tres}(sbp)
-
-    projection_shock_capturing = ProjectionShockCapturing{Tsol, Tres}(sbp, mesh.numDofPerNode)
-
+    shockmesh = ShockedElements{Tres}(mesh)
 
     h = maximum(mesh.jac)
 
@@ -320,8 +313,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                face_element_integral_data, calc_face_integrals_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                get_ira0data,
-               sensor_pp,
-               projection_shock_capturing,
+               shockmesh,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
@@ -489,6 +481,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
+  shock_sensor::AbstractShockSensor
+  shock_capturing::AbstractShockCapturing
 
   assembler::AssembleElementData  # temporary place to stash the assembler
 
@@ -695,7 +689,10 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
+   getShockSensor(mesh, sbp, eqn, opts)
+   getShockCapturing(mesh, sbp, eqn, opts)
    eqn.assembler = NullAssembleElementData
+
    if open_files
      eqn.file_dict = openLoggingFiles(mesh, opts)
    else

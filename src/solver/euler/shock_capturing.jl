@@ -15,8 +15,9 @@
    * data: an [`AbstractShockCaputring`](@ref) object
 """
 function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
-                             eqn::EulerData, opts, sensor::AbstractShockSensor,
-                             capture::AbstractShockCapturing)
+                             eqn::EulerData, opts,
+                             sensor::AbstractShockSensor,
+                             capture::AbstractVolumeShockCapturing)
 
   for i=1:mesh.numEl
     q_i = ro_sview(eqn.q, :, :, i)
@@ -28,6 +29,37 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
   return nothing
 end
+
+
+function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             sensor::AbstractShockSensor,
+                             capture::AbstractFaceShockCapturing)
+
+  # re-using the shockmesh from one iteration to the next makes allows
+  # the algorithm to re-use existing arrays that depend on the number of
+  # elements with the shock in it.
+  shockmesh = eqn.params.shockmesh
+  reset(shockmesh)
+  for i=1:mesh.numEl
+    q_i = ro_sview(eqn.q, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
+
+    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+    if ee > 0
+      # push to shockmesh
+      push!(shockmesh, i, ee)
+    end
+  end
+
+  completeShockElements(mesh, shockmesh)
+
+  # call LDG
+  applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+
+  return nothing
+end
+
 
 #------------------------------------------------------------------------------
 # Method from: Persson and Peraire, "Sub-Cell Shock Capturing for DG Methods"
@@ -128,6 +160,18 @@ function getFilteredSolution(params::ParamType, vand::VandermondeData,
   smallmatvec!(vand.filt, u_nodal, u_filt)
         
   return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# ShockSensorNone
+
+function getShockSensor(params::ParamType, sbp::AbstractOperator,
+                          sensor::ShockSensorNone,
+                          q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tmsh}
+
+  error("getShockSensor called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
 end
 
 

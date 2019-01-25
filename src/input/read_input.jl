@@ -345,6 +345,16 @@ if !arg_dict["use_DG"]
   get!(arg_dict, "precompute_q_bndry", true)
 end
 
+if arg_dict["addShockCapturing"]
+  get!(arg_dict, "shock_sensor_name", "SensorPP")
+  get!(arg_dict, "shock_capturing_name", "LDG")
+else
+  get!(arg_dict, "shock_sensor_name", "SensorNone")
+  get!(arg_dict, "shock_capturing_name", "ShockCapturingNone")
+end
+
+
+
 # if not already specified, set to true just in case
 get!(arg_dict, "precompute_q_face", true)
 get!(arg_dict, "precompute_q_bndry", true)

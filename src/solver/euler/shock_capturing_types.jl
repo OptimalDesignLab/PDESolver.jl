@@ -47,7 +47,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   num_dot::Vector{Tres}
   den_dot::Vector{Tres}
 
-  function ShockSensorPP{Tsol, Tres}(sbp::AbstractOperator) where {Tsol, Tres}
+  function ShockSensorPP{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
 
     Vp = VandermondeData(sbp, sbp.degree)
     Vp1 = VandermondeData(sbp, sbp.degree-1)
@@ -71,10 +71,23 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
 end
 
 
+"""
+  Shock sensor that errors if called.  This is used when shock capturing is
+  not supposed to be added.
+"""
+struct ShockSensorNone{Tsol, Tres} <: AbstractShockSensor
+
+  function ShockSensorNone{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
+    return new()
+  end
+end
+
+
+
 #------------------------------------------------------------------------------
 # Projection-based shock capturing
 
-mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
+mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractVolumeShockCapturing
   filt::Matrix{Float64}  # the filter operator
 
   # storage
@@ -85,8 +98,9 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractShockCapturing
   ee_jac::Matrix{Tres}
   A0inv::Matrix{Tsol}
 
-  function ProjectionShockCapturing{Tsol, Tres}(sbp::AbstractOperator, numDofPerNode::Integer) where {Tsol, Tres}
+  function ProjectionShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
 
+    numDofPerNode = mesh.numDofPerNode
     filt = zeros(Float64, sbp.numnodes, sbp.numnodes)
     getFilterOperator!(sbp, filt)
     println("max entry in filt = ", maximum(abs.(filt)))
@@ -173,20 +187,47 @@ end
   shock mesh is known before this type is usable.
 
   The sizes of these arrays may be larger than required.
+
+  **Fields**
+
+   * w_el: `numDofPerNode` x `numNodesPerElement` x `shockmesh.numEl` array
+           for storing entropy variables
+   * q_j: `numDofPerNode` x `numNodesPerElement` x `dim` x `shockmesh.numEl`
+          array for storing theta_j and q_j
+   * convert_entropy: a function for converting conservative variables to
+                      entropy variables, must have signature
+                      `convert_entropy(params::ParamType, q::AbstractVector,
+                                       w::AbstractVector)`, where `q` and `w`
+                      are of length `numDofPerNode`.  `w` should be overwritten
+   * `flux`: an [`AbstractLDGFlux`](@ref)
+   * diffusion: an [`AbstractDiffusion`](@ref).
 """
-mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractShockCapturing
+mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
   # Note: the variable names are from Chen and Shu's "Entropy Stable High Order
   #       DG Methods" paper
   w_el::Array{Tsol, 3}  # entropy variables for all elements in elnums_all
   q_j::Array{Tres, 4}  # auxiliary equation solution for elements in
                        # elnums_all (this gets used for both theta and q)
+  convert_entropy::Any  # convert to entropy variables
+  flux::AbstractLDGFlux
+  diffusion::AbstractDiffusion
   function LDGShockCapturing{Tsol, Tres}() where {Tsol, Tres}
     # we don't know the right sizes yet, so just make them zero size
     w_el = Array{Tsol}(0, 0, 0)
     q_j = Array{Tsol}(0, 0, 0, 0)
 
-    return new(w_el, q_j)
+    # default values
+    convert_entropy = convertToIR_
+    flux = LDG_ESFlux()
+    diffusion = ShockDiffusion{Tres}()
+
+    return new(w_el, q_j, convert_entropy, flux, diffusion)
   end
+
+  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
+    return LDGShockCapturing{Tsol, Tres}()
+  end
+
 end
 
 
@@ -204,35 +245,58 @@ end
 function allocateArrays(capture::LDGShockCapturing{Tsol, Tres}, mesh::AbstractMesh,
                         shockmesh::ShockedElements) where {Tsol, Tres}
 
-  println("shockmesh.numEl = ", shockmesh.numEl)
   # can't resize multi-dimension arrays, so reallocate
-  if size(capture.q_j, 4) < shockmesh.numShock
-      capture.q_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
-                                mesh.dim, shockmesh.numEl)
+  println("shockmesh.numEl = ", shockmesh.numEl)
+  println("shockmesh.numShock = ", shockmesh.numShock)
+  println("shockmesh.numNeighbor = ", shockmesh.numNeighbor)
+  if size(capture.q_j, 4) < shockmesh.numEl
+    println("resizing q_j to ", shockmesh.numEl, " elements")
+    capture.q_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                              mesh.dim, shockmesh.numEl)
     # the final dimension must be numEl, not numShock, because q_j is zero
     # for the neighboring elements later
   end
 
   if size(capture.w_el, 3) < shockmesh.numEl
+    println("resizing w_el to ", shockmesh.numEl, " elements")
     capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
                                shockmesh.numEl)
   end
 
+  setDiffusionArray(capture.diffusion, shockmesh.ee)
+
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# Viscoscity and fluxes for LDG
 """
   Diagonal viscoscity (constant for each element), used for shock capturing
 """
-struct ShockDiffusion{T} <: AbstractDiffusion
+mutable struct ShockDiffusion{T} <: AbstractDiffusion
   ee::Vector{T}
+  function ShockDiffusion{T}() where {T}
+    ee = Vector{T}(0)
+    return new(ee)
+  end
+
+  function ShockDiffusion{T}(ee::AbstractVector{T}) where {T}
+    return new(ee)
+  end
 end
 
 function ShockDiffusion(ee::AbstractVector{T}) where {T}
   return ShockDiffusion{T}(ee)
 end
 
-abstract type AbstractLDGFlux end
+"""
+  Function to set the elementwise diffusion coefficient
+"""
+function setDiffusionArray(obj::ShockDiffusion, vals::AbstractArray)
+  obj.ee = vals
+end
+
 
 """
   Entropy stable LDG flux
@@ -251,3 +315,56 @@ struct LDG_ESFlux  <: AbstractLDGFlux
 end
 
 
+"""
+  Shock capturing type that errors out.  Used when shock capturing is not
+  supposed to be added.
+"""
+struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
+
+  function ErrorShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                           opts) where {Tsol, Tres}
+    return new()
+  end
+end
+
+
+#------------------------------------------------------------------------------
+# Creating shock sensors
+global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSensor}(
+"SensorNone" => ShockSensorNone,
+"SensorPP" => ShockSensorPP,
+)
+
+function getShockSensor(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+
+  name = opts["shock_sensor_name"]
+  obj = ShockSensorDict[name]{Tsol, Tres}(mesh, sbp, opts)
+  eqn.shock_sensor = obj
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# Creating shock capturing
+
+global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockCapturing}(
+"ShockCapturingNone" => ErrorShockCapturing,
+"ElementProjection" => ProjectionShockCapturing,
+"LDG" => LDGShockCapturing
+)
+
+
+"""
+  This function populates the `eqn.shock_capturing` field of the mesh with the
+  shock capturing object for the scheme.  The shock capturing scheme is
+  determined by opts["shock_capturing_name"]
+"""
+function getShockCapturing(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+
+  name = opts["shock_capturing_name"]
+  obj = ShockCapturingDict[name]{Tsol, Tres}(mesh, sbp, opts)
+  eqn.shock_capturing = obj
+
+  return nothing
+end

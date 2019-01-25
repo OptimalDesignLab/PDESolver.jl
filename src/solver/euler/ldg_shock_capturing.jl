@@ -10,10 +10,14 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   # shockmesh should be updated before this function is called
   #TODO: need to get entropy variables conversion function from somewhere
 
+  convert_func = capture.convert_entropy
+  flux = capture.flux
+  diffusion = capture.diffusion
+  #=
   convert_func = convertToIR_
   flux = LDG_ESFlux()
   diffusion = ShockDiffusion(shockmesh.ee)
-
+  =#
   allocateArrays(capture, mesh, shockmesh)
   computeEntropyVariables(mesh, eqn, capture, shockmesh, convert_func)
 
