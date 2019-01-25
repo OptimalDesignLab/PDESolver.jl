@@ -161,7 +161,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
 
 
 #------------------------------------------------------------------------------
@@ -494,9 +494,16 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
   iface_idx = getInterfaceList(mesh)
 
   # test that Dx = -M * Qx^T + M*Ex, where Dx is exact for polynomials
-  qx_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  qxT_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   op = SummationByParts.Subtract()
+
+  # test Dx
+  dx_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+  # test Qx
+  qx_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
 
   qface = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   work2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
@@ -510,24 +517,36 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
     q_i = ro_sview(eqn.q, :, :, i)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
     
-    # do Qx
-    fill!(qx_term, 0)
+    # do Qx^T
+    fill!(qxT_term, 0)
 #    fill!(work, 0)
-    EulerEquationMod.applyQxTransposed(sbp, q_i, dxidx_i, work, qx_term, op)
+    EulerEquationMod.applyQxTransposed(sbp, q_i, dxidx_i, work, qxT_term, op)
 
     # Do Ex: interpolate to face, apply normal vector (apply nbrperm and fac),
     #        reverse interpolate
     applyE(mesh, i, sview(iface_idx, :, i), q_i, qface,  work2, E_term)
 
+    # test apply Dx
+    fill!(dx_term, 0)
+    EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, work, dx_term)
+
+    # test apply Qx
+    fill!(qx_term, 0)
+    EulerEquationMod.applyQx(sbp, q_i, dxidx_i, work, qx_term)
 
     # check against analytical derivative
     for j=1:mesh.numNodesPerElement
       for d=1:mesh.dim
         fac = mesh.jac[j, i]/sbp.w[j]
         for k=1:mesh.numDofPerNode
-          val = fac*(qx_term[k, j, d] + E_term[k, j, d])
+          val = fac*(qxT_term[k, j, d] + E_term[k, j, d])
+          val2 = dx_term[k, j, d]
+          val3 = fac*qx_term[k, j, d]
           @test abs(val - qderiv[k, d, j, i]) < 1e-12
+          @test abs(val2 - qderiv[k, d, j, i]) < 1e-12
+          @test abs(val3 - qderiv[k, d, j, i]) < 1e-12
         end
       end
     end
@@ -537,6 +556,7 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
   # make sure some elements were done
   @test nel > 0
+
 
   testQx2(mesh, sbp, eqn, opts)
 
@@ -551,9 +571,18 @@ function testQx2(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts)  where {Tsol, Tres
   degree = sbp.degree
   wx = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   wxi = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  res1_tmp = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  res1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  res2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  res1_qxT_tmp = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res1_qx_tmp = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res1_dx_tmp = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+  res1_qxT = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  res1_dx = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  res1_qx = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  
+  res2_qxT = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  res2_dx = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  res2_qx = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
 
   for i=1:mesh.numEl
 
@@ -578,26 +607,35 @@ function testQx2(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts)  where {Tsol, Tres
     end   # end j
 
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
 
     # call first method
     # This computes [Qx, Qy, Qz] * w_d, sum only Q_x * w_d into res1
-    fill!(res1, 0)
+    fill!(res1_qxT, 0); fill!(res1_qx, 0); fill!(res1_dx, 0)
     for d=1:mesh.dim
-      fill!(res1_tmp, 0)
-      EulerEquationMod.applyQxTransposed(sbp, sview(wx, :, :, d), dxidx_i,
-                                         wxi, res1_tmp)
+      fill!(res1_qxT_tmp, 0); fill!(res1_qx_tmp, 0), fill!(res1_dx_tmp, 0)
+      wx_d = sview(wx, :, :, d)
+      EulerEquationMod.applyQxTransposed(sbp, wx_d, dxidx_i, wxi, res1_qxT_tmp)
+      EulerEquationMod.applyQx(sbp, wx_d, dxidx_i, wxi, res1_qx_tmp)
+      EulerEquationMod.applyDx(sbp, wx_d, dxidx_i, jac_i, wxi, res1_dx_tmp)
       for j=1:mesh.numNodesPerElement
         for k=1:mesh.numDofPerNode
-          res1[k, j] += res1_tmp[k, j, d]
+          res1_qxT[k, j] += res1_qxT_tmp[k, j, d]
+          res1_qx[k, j] += res1_qx_tmp[k, j, d]
+          res1_dx[k, j] += res1_dx_tmp[k, j, d]
         end
       end
     end  # end d
 
     # second method
-    fill!(res2, 0)
-    EulerEquationMod.applyQxTransposed(sbp, wx, dxidx_i, wxi, res2)
+    fill!(res2_qxT, 0); fill!(res2_qx, 0); fill!(res2_dx, 0)
+    EulerEquationMod.applyQxTransposed(sbp, wx, dxidx_i, wxi, res2_qxT)
+    EulerEquationMod.applyQx(sbp, wx, dxidx_i, wxi, res2_qx)
+    EulerEquationMod.applyDx(sbp, wx, dxidx_i, jac_i, wxi, res2_dx)
 
-    @test maximum(abs.(res2 - res1)) < 1e-13
+    @test maximum(abs.(res2_qxT - res1_qxT)) < 1e-13
+    @test maximum(abs.(res2_qx - res1_qx)) < 1e-13
+    @test maximum(abs.(res2_dx - res1_dx)) < 1e-13
   end  # end i
 
   return nothing

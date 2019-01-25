@@ -422,6 +422,7 @@ include("homotopy.jl")
 include("shock_capturing_mesh.jl")
 include("shock_capturing.jl")
 include("ldg_shock_capturing.jl")
+include("sbp_cartesian.jl")
 
 # Jacobian calculation
 include("evalJacobian.jl")
