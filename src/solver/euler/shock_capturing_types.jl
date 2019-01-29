@@ -246,11 +246,7 @@ function allocateArrays(capture::LDGShockCapturing{Tsol, Tres}, mesh::AbstractMe
                         shockmesh::ShockedElements) where {Tsol, Tres}
 
   # can't resize multi-dimension arrays, so reallocate
-  println("shockmesh.numEl = ", shockmesh.numEl)
-  println("shockmesh.numShock = ", shockmesh.numShock)
-  println("shockmesh.numNeighbor = ", shockmesh.numNeighbor)
   if size(capture.q_j, 4) < shockmesh.numEl
-    println("resizing q_j to ", shockmesh.numEl, " elements")
     capture.q_j = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
                               mesh.dim, shockmesh.numEl)
     # the final dimension must be numEl, not numShock, because q_j is zero
@@ -258,7 +254,6 @@ function allocateArrays(capture::LDGShockCapturing{Tsol, Tres}, mesh::AbstractMe
   end
 
   if size(capture.w_el, 3) < shockmesh.numEl
-    println("resizing w_el to ", shockmesh.numEl, " elements")
     capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
                                shockmesh.numEl)
   end
@@ -329,7 +324,79 @@ end
 
 
 #------------------------------------------------------------------------------
+# BR2 Shock Capturing
+
+"""
+  Abstract type for the different diffusion penalties that can be expressed
+  in the framework of Yan et.al. "Interior Penalties for Summation-by-Parts
+  Discretization os Linear Second-Order Differential Equations"
+"""
+abstract type AbstractDiffusionPenalty end
+
+struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
+end
+
+"""
+  BR2 shock capturing
+
+  **Fields**
+
+   * grad_w: stores Lambda * D * q at volume nodes, numDofPerNode x
+             numNodesPerElement x dim x shockmesh.numEl
+"""
+mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
+  w_el::Array{Tsol, 3}
+  grad_w::Array{Tres, 4}
+  convert_entropy::Any  # convert to entropy variables
+  flux::AbstractLDGFlux
+  diffusion::AbstractDiffusion
+  penalty::AbstractDiffusionPenalty
+
+  function SBPParabolicSC{Tsol, Tres}() where {Tsol, Tres}
+    # we don't know the right sizes yet, so just make them zero size
+    w_el = Array{Tsol}(0, 0, 0)
+    grad_w = Array{Tres}(0, 0, 0, 0)
+
+    # default values
+    convert_entropy = convertToIR_
+    flux = LDG_ESFlux()
+    diffusion = ShockDiffusion{Tres}()
+    penalty = BR2Penalty{Tsol, Tres}()
+
+    return new(w_el, grad_w, convert_entropy, flux, diffusion, penalty)
+  end
+
+  function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
+    return SBPParabolicSC{Tsol, Tres}()
+  end
+
+
+end
+
+function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
+                        shockmesh::ShockedElements) where {Tsol, Tres}
+
+  # can't resize multi-dimension arrays, so reallocate
+  if size(capture.grad_w, 4) < shockmesh.numEl
+    capture.grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                                 mesh.dim, shockmesh.numEl)
+  end
+
+  if size(capture.w_el, 3) < shockmesh.numEl
+    capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
+                               shockmesh.numEl)
+  end
+
+  setDiffusionArray(capture.diffusion, shockmesh.ee)
+
+  return nothing
+end
+
+
+
+#------------------------------------------------------------------------------
 # Creating shock sensors
+
 global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSensor}(
 "SensorNone" => ShockSensorNone,
 "SensorPP" => ShockSensorPP,

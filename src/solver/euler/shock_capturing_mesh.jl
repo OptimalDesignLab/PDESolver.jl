@@ -229,6 +229,7 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   data.numEl = numEl
   if length(data.elnums_all) < numEl
     resize!(data.elnums_all, numEl)
+    resize!(data.ee, numEl)
   end
   idx = 1
   @simd for i=1:data.numShock
@@ -237,6 +238,7 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   end
   @simd for i=1:data.numNeighbor
     data.elnums_all[idx] = data.elnums_neighbor[i]
+    data.ee[idx] = 0
     idx += 1
   end
 

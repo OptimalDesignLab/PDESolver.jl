@@ -93,6 +93,37 @@ function applyDx(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
   return nothing
 end
 
+
+function applyDxTransposed(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
+                 jac::AbstractVector,
+                 wxi::Abstract3DArray, wx::Abstract3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+
+  numDofPerNode, numNodesPerElement, dim = size(wx)
+
+  # Dx^T * w = (Dxi^T * |dxi/dx| * u + Deta^T * |deta/dx|* w)
+  # so rotate w using mapping jacobian first, then apply D
+  for d1=1:dim
+
+    for d2=1:dim
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          # we only need temporary storage in the shape of w, but to be
+          # consistent with the other functions we use the wxi array
+          wxi[k, j, d2] = w[k, j]*(dxidx[d2, d1, j]*jac[j])
+        end
+      end
+
+      differentiateElement!(sbp, d2, ro_sview(wxi, :, :, d2), sview(wx, :, :, d1), op, true)
+    end  # end d2
+  end  # end d1
+
+  return nothing
+end
+
+
+
 """
   Computes Qx * w in all Cartesian directions.  See [`applyQxTranspose`](@ref)
   for arguments.  Note that the user must zero out `wx` if required.
@@ -217,6 +248,35 @@ function applyDx(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
 
   return nothing
 end
+
+
+function applyDxTransposed(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
+                 jac::AbstractVector,
+                 wxi::Abstract3DArray, wx::AbstractMatrix,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+
+  numDofPerNode, numNodesPerElement, dim = size(w)
+
+  for d1=1:dim
+
+    for d2=1:dim
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          # we only need temporary storage in the shape of w, but to be
+          # consistent with the other functions we use the wxi array
+          wxi[k, j, d2] = w[k, j, d1]*(dxidx[d2, d1, j]*jac[j])
+        end
+      end
+
+      differentiateElement!(sbp, d2, ro_sview(wxi, :, :, d2), wx, op, true)
+    end  # end d2
+  end  # end d1
+
+  return nothing
+end
+
+
 
 
 """
