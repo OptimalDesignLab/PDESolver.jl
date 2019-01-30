@@ -222,6 +222,16 @@ function test_ldg()
     test_br2_gradw(mesh, sbp, eqn, opts)
     test_br2_volume(mesh, sbp, eqn, opts)
     test_br2_face(mesh, sbp, eqn, opts)
+    test_br2_Dgk(mesh, sbp, eqn, opts)
+#=
+    for i=1:10
+      println("i = ", i)
+      ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
+      ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+      test_br2_ESS(mesh, sbp, eqn, opts)
+    end
+=#
+
   end
 
   return nothing
@@ -1018,7 +1028,7 @@ function test_br2_gradw(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
     end
   end
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
   EulerEquationMod.computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
@@ -1040,7 +1050,7 @@ function test_br2_volume(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tso
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
 
@@ -1084,11 +1094,8 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
-  println("shockmesh.numEl = ", shockmesh.numEl)
-  println("shockmesh.numShock = ", shockmesh.numShock)
-  println("length(shockmesh.ee) = ", length(shockmesh.ee))
 
   # set w_el to be polynomial
   setWPoly(mesh, shockmesh, capture.w_el, degree)
@@ -1122,7 +1129,7 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     jacR = ro_sview(mesh.jac, :, elnumR)
 
     # test T3 by checking consistency with boundaryIntegrate
-    rand!(delta_w); fill!(res_w, 0)
+    rand_realpart!(delta_w); fill!(res_w, 0)
     fill!(theta, 0); fill!(res_theta, 0)
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
@@ -1136,7 +1143,7 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
 
     # test T2 by checking consistency with boundaryIntegrate
     fill!(delta_w, 0); fill!(res_w, 0)
-    rand!(theta); fill!(res_theta, 0)
+    rand_realpart!(theta); fill!(res_theta, 0)
 
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
@@ -1149,7 +1156,7 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     end
 
     # test entropy stability of T1
-    rand!(delta_w); fill!(res_w, 0)
+    rand_realpart!(delta_w); fill!(res_w, 0)
     fill!(theta, 0); fill!(res_theta, 0)
 
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
@@ -1157,14 +1164,114 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
                                   theta, wL, wR, nrm_face, jacL, jacR, res_w,
                                   res_theta)
     for k=1:mesh.numDofPerNode
-      println("val = ", dot(delta_w[k, :], res_w[k, :]))
       @test dot(delta_w[k, :], res_w[k, :]) > 0
     end
 
   end
 
+  return nothing
+end
 
 
+function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+
+  degree = sbp.degree
+  iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
+
+  fill!(eqn.res, 0)
+  # set w_el to be polynomial
+  setWPoly(mesh, shockmesh, capture.w_el, degree)
+  setWPolyDeriv(mesh, shockmesh, capture.grad_w, degree)
+
+  w_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  for i=1:shockmesh.numInterfaces
+    iface = shockmesh.ifaces[i].iface
+    idx_orig = shockmesh.ifaces[i].idx_orig
+    elnumL = shockmesh.elnums_all[iface.elementL]
+    elnumR = shockmesh.elnums_all[iface.elementR]
+
+    wL = ro_sview(capture.w_el, :, :, iface.elementL)
+    wR = ro_sview(capture.w_el, :, :, iface.elementR)
+    nrm_face = ro_sview(mesh.nrm_face, :, :, idx_orig)
+    dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
+    dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
+    jacL = ro_sview(mesh.jac, :, elnumL)
+    jacR = ro_sview(mesh.jac, :, elnumR)
+    resL = sview(eqn.res, :, :, elnumL)
+    resR = sview(eqn.res, :, :, elnumR)
+
+    # the solution is polynomial, so it doesn't matter which element we
+    # interpolate from (except for the nbrperm stuff)
+    boundaryFaceInterpolate!(mesh.sbpface, iface.faceL, wL, w_face)
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.numDofPerNode
+        w_face[k, j] *= mesh.sbpface.wface[j]
+      end
+    end
+
+    EulerEquationMod.applyDgkTranspose(capture, sbp, mesh.sbpface, iface,
+                  capture.diffusion, w_face, wL, wR, nrm_face, dxidxL, dxidxR,
+                  jacL, jacR, resL, resR)
+
+  end
+
+  # now use applyE for every element, then apply Dx^T and Dy^T
+
+  work = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  work2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
+  work3 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  E_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  for i=1:shockmesh.numShock
+    i_full = shockmesh.elnums_all[i]
+    w_i = ro_sview(capture.w_el, :, :, i)
+
+    applyE(mesh, i_full, sview(iface_idx, :, i_full), w_i, work, work2, E_term)
+
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
+    jac_i = ro_sview(mesh.jac, :, i_full)
+
+    fill!(res2, 0)
+    EulerEquationMod.applyDxTransposed(sbp, E_term, dxidx_i, jac_i, work3, res2)
+
+    @test maximum(abs.(res2 - eqn.res[:, :, i_full])) < 1e-12
+  end
 
   return nothing
 end
+
+
+function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+
+  # construct the shock mesh with all elements in it that are fully interior
+  iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
+
+  # add random component to q
+  # test entropy stability
+  q_pert = 0.1*rand(size(eqn.q_vec))
+  eqn.q_vec .+= q_pert
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  fill!(eqn.res, 0)
+
+  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  w_vec = zeros(Tsol, mesh.numDof)
+  copy!(w_vec, eqn.q_vec)
+  EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)
+
+  val = dot(w_vec, eqn.res_vec)
+  println("val = ", val)
+  @test val < 0
+
+  return nothing
+end
+
+

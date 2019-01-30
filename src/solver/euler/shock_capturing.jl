@@ -262,7 +262,7 @@ end
 
 #------------------------------------------------------------------------------
 # Debugging/testing
-
+#=
 using PumiInterface
 using apf
 
@@ -291,4 +291,4 @@ function writeShockSensorField(mesh, sbp, eqn, opts, sensor::AbstractShockSensor
 end
 
 
-
+=#

@@ -98,7 +98,7 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractVolumeShockCaptur
   ee_jac::Matrix{Tres}
   A0inv::Matrix{Tsol}
 
-  function ProjectionShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
+  function ProjectionShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
 
     numDofPerNode = mesh.numDofPerNode
     filt = zeros(Float64, sbp.numnodes, sbp.numnodes)
@@ -224,7 +224,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     return new(w_el, q_j, convert_entropy, flux, diffusion)
   end
 
-  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
+  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, eqn, sbp::AbstractOperator, opts) where {Tsol, Tres}
     return LDGShockCapturing{Tsol, Tres}()
   end
 
@@ -317,7 +317,7 @@ end
 struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
   function ErrorShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                           opts) where {Tsol, Tres}
+                                           eqn, opts) where {Tsol, Tres}
     return new()
   end
 end
@@ -334,6 +334,28 @@ end
 abstract type AbstractDiffusionPenalty end
 
 struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
+
+  delta_w_n::Matrix{Tsol}
+  qL::Array{Tres, 3}
+  qR::Array{Tres, 3}
+  t1L::Array{Tres, 3}
+  t1R::Array{Tres, 3}
+  t2L::Array{Tres, 3}
+  t2R::Array{Tres, 3}
+
+  function BR2Penalty{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
+
+    delta_w_n = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    qL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    qR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    t1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    t1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    t2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
+    t2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
+
+    return new(delta_w_n, qL, qR, t1L, t1R, t2L, t2R)
+  end
+
 end
 
 """
@@ -348,29 +370,55 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
   w_el::Array{Tsol, 3}
   grad_w::Array{Tres, 4}
   convert_entropy::Any  # convert to entropy variables
-  flux::AbstractLDGFlux
   diffusion::AbstractDiffusion
   penalty::AbstractDiffusionPenalty
 
-  function SBPParabolicSC{Tsol, Tres}() where {Tsol, Tres}
-    # we don't know the right sizes yet, so just make them zero size
+  #------------------
+  # temporary arrays
+  
+  # getFaceVariables
+  w_faceL::Matrix{Tsol}
+  w_faceR::Matrix{Tsol}
+  grad_faceL::Matrix{Tres}
+  grad_faceR::Matrix{Tres}
+
+  # applyDgkTranspose
+  temp1::Matrix{Tres}
+  temp2L::Array{Tres, 3}
+  temp2R::Array{Tres, 3}
+  temp3L::Array{Tres, 3}
+  temp3R::Array{Tres, 3}
+  work::Array{Tres, 3}
+
+
+  function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
+    # we don't know the right sizes yet, so make them zero size
     w_el = Array{Tsol}(0, 0, 0)
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
     convert_entropy = convertToIR_
-    flux = LDG_ESFlux()
     diffusion = ShockDiffusion{Tres}()
-    penalty = BR2Penalty{Tsol, Tres}()
+    penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
 
-    return new(w_el, grad_w, convert_entropy, flux, diffusion, penalty)
+
+    # temporary arrays
+    w_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    w_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+    grad_faceL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+    grad_faceR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+    temp1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+    temp2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    temp2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    temp3L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    temp3R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+    return new(w_el, grad_w, convert_entropy, diffusion, penalty,
+              w_faceL, w_faceR, grad_faceL, grad_faceR,
+              temp1, temp2L, temp3R, temp3L, temp3R, work)
   end
-
-  function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
-    return SBPParabolicSC{Tsol, Tres}()
-  end
-
-
 end
 
 function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
@@ -418,7 +466,8 @@ end
 global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockCapturing}(
 "ShockCapturingNone" => ErrorShockCapturing,
 "ElementProjection" => ProjectionShockCapturing,
-"LDG" => LDGShockCapturing
+"LDG" => LDGShockCapturing,
+"SBPParabolic" => SBPParabolicSC,
 )
 
 
@@ -430,8 +479,40 @@ global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockC
 function getShockCapturing(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
   name = opts["shock_capturing_name"]
-  obj = ShockCapturingDict[name]{Tsol, Tres}(mesh, sbp, opts)
+  obj = ShockCapturingDict[name]{Tsol, Tres}(mesh, sbp, eqn, opts)
   eqn.shock_capturing = obj
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# Diffusion penalties for SBPParabolic
+
+global const DiffusionPenaltyDict = Dict{String, Type{T} where T <: AbstractDiffusionPenalty}(
+"BR2" => BR2Penalty,
+)
+
+"""
+  Returns a fully constructed [`AbstractDiffusionPenalty`](@ref).
+
+  **Inputs**
+  
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * name: name of penalty to get, defaults to opts["DiffusionPenalty"]
+
+  **Outputs**
+
+   * obj: `AbstractDiffusionPenalty` object
+"""
+function getDiffusionPenalty(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                             name::String=opts["DiffusionPenalty"]
+                            ) where {Tsol, Tres}
+
+  return DiffusionPenaltyDict[name]{Tsol, Tres}(mesh, sbp, opts)
+end
+
+  

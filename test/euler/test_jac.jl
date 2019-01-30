@@ -513,6 +513,14 @@ function rand_realpart(dims...)
   return a
 end
 
+function rand_realpart!(a::AbstractArray)
+
+  rand!(a)
+  for i=1:length(a)
+    a[i] = real(a[i])
+  end
+end
+
 
 function test_pressure(params::AbstractParamType{Tdim}) where Tdim
 

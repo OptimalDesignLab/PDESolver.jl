@@ -353,6 +353,8 @@ else
   get!(arg_dict, "shock_capturing_name", "ShockCapturingNone")
 end
 
+get!(arg_dict, "DiffusionPenalty", "BR2")
+
 
 
 # if not already specified, set to true just in case
