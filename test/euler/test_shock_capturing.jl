@@ -218,19 +218,19 @@ function test_ldg()
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_ldg_ESS(mesh, sbp, eqn, opts)
-
+#=
     test_br2_gradw(mesh, sbp, eqn, opts)
     test_br2_volume(mesh, sbp, eqn, opts)
     test_br2_face(mesh, sbp, eqn, opts)
     test_br2_Dgk(mesh, sbp, eqn, opts)
-#=
-    for i=1:10
+=#
+    for i=1:1000
       println("i = ", i)
       ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts)
     end
-=#
+
 
   end
 
@@ -1138,7 +1138,7 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     fill!(tmp_el, 0)
     boundaryFaceIntegrate!(mesh.sbpface, iface_red.faceL, delta_w, tmp_el)
     for k=1:mesh.numDofPerNode
-      @test maximum(abs.(2*sum(res_theta[k, :]) - sum(tmp_el[k, :]))) < 1e-12
+      @test maximum(abs.(2*sum(res_theta[k, :]) + sum(tmp_el[k, :]))) < 1e-12
     end
 
     # test T2 by checking consistency with boundaryIntegrate
@@ -1152,7 +1152,7 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     fill!(tmp_el, 0)
     boundaryFaceIntegrate!(mesh.sbpface, iface_red.faceL, theta, tmp_el)
     for k=1:mesh.numDofPerNode
-      @test maximum(abs.(2*sum(res_w[k, :]) + sum(tmp_el[k, :]))) < 1e-12
+      @test maximum(abs.(2*sum(res_w[k, :]) - sum(tmp_el[k, :]))) < 1e-12
     end
 
     # test entropy stability of T1

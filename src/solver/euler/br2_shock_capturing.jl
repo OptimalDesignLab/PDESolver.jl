@@ -101,13 +101,15 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
   # not replaced by -Qx^T + Ex.  The entire discretization should be
   # entropy-stable however.
   work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  op = SummationByParts.Subtract()
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
 
     gradq_i = ro_sview(capture.grad_w, :, :, :, i)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     res_i = sview(eqn.res, :, :, i_full)
-    applyQx(sbp, gradq_i, dxidx_i, work, res_i)
+    #applyQx(sbp, gradq_i, dxidx_i, work, res_i)
+    applyQxTransposed(sbp, gradq_i, dxidx_i, work, res_i, op)
   end
 
   return nothing
@@ -123,6 +125,7 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
   theta = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   t1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  t1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   t2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   op = SummationByParts.Subtract()
 
@@ -161,7 +164,12 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
 
     # need to apply R^T * t1, not R^T * B * t1, so
     # interiorFaceIntegrate won't work.  Use the reverse mode instead
-    interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1, t1)
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.numDofPerNode
+        t1L[k, j] = -t1[k, j]
+      end
+    end
+    interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1, t1L)
 
     # apply Dgk^T and Dgn^T
     applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2,
@@ -276,6 +284,7 @@ end
 
 
 """
+  Applis the penalty for element kappa (the left element)
 """
 function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
                       diffusion::AbstractDiffusion, iface::Interface,
@@ -298,12 +307,13 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   for d1=1:dim
     for j=1:numNodesPerFace
       for k=1:numDofPerNode
-        delta_w_n[k, j] = alpha_g*delta_w[k, j]*nrm_face[d1, j]
+        delta_w_n[k, j] = 0.25*alpha_g*delta_w[k, j]*nrm_face[d1, j]
       end
     end
     
     qL_d = sview(qL, :, :, d1); qR_d = sview(qR, :, :, d1)
     interiorFaceIntegrate!(sbpface, iface, delta_w_n, qL_d, qR_d)
+    #TODO: unary minus instead
     scale!(qR_d, -1)  # interiorFaceIntegrates -= the second output
   end
 
@@ -338,8 +348,8 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   # apply T2 and T3
   for j=1:numNodesPerFace
     for k=1:numDofPerNode
-      res1[k, j] += -0.5*sbpface.wface[j]*theta[k, j]
-      res2[k, j] +=  0.5*sbpface.wface[j]*delta_w[k, j]
+      res1[k, j] +=  0.5*sbpface.wface[j]*theta[k, j]
+      res2[k, j] += -0.5*sbpface.wface[j]*delta_w[k, j]
     end
   end
 
