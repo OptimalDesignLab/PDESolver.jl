@@ -218,13 +218,13 @@ function test_ldg()
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_ldg_ESS(mesh, sbp, eqn, opts)
-#=
+
     test_br2_gradw(mesh, sbp, eqn, opts)
     test_br2_volume(mesh, sbp, eqn, opts)
     test_br2_face(mesh, sbp, eqn, opts)
     test_br2_Dgk(mesh, sbp, eqn, opts)
-=#
-    for i=1:1000
+
+    for i=1:10
       println("i = ", i)
       ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
@@ -1064,25 +1064,21 @@ function test_br2_volume(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tso
   fill!(eqn.res, 0)
   EulerEquationMod.computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
-  # test against analytic second derivative
-  vals = zeros(Tres, mesh.numDofPerNode)
+  # test: w^T Dx^T H Dx w = wx^T H wx
+  vals = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
+    fill!(vals, 0)
     for j=1:mesh.numNodesPerElement
-      # apply Minv to get back to [Dx, Dy] * Lambda * [Dx * w, Dy*v] form
       for k=1:mesh.numDofPerNode
         eqn.res[k, j, i_full] *= mesh.jac[j, i_full]/sbp.w[j]
-      end
-
-      fill!(vals, 0)
-      for k=1:mesh.numDofPerNode
         for d1=1:mesh.dim
-          vals[k] += w_deriv2[k, j, d1, d1, i]
+          vals[k, j] += w_deriv2[k, j, d1, d1, i]
         end
       end
+    end
 
-      @test maximum(abs.(eqn.res[:, j, i_full] - vals)) < 1e-12
-    end  # end j
+    @test maximum(abs.(vals - eqn.res[:, :, i_full])) < 1e-12
   end  # end i
 
   return nothing
@@ -1112,8 +1108,10 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   # test applyPenalty
   delta_w = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   theta = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-  res_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-  res_theta = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res_wL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res_wR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res_thetaL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res_thetaR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
   tmp_el = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
   for i=1:shockmesh.numInterfaces
@@ -1129,42 +1127,45 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     jacR = ro_sview(mesh.jac, :, elnumR)
 
     # test T3 by checking consistency with boundaryIntegrate
-    rand_realpart!(delta_w); fill!(res_w, 0)
-    fill!(theta, 0); fill!(res_theta, 0)
+    rand_realpart!(delta_w); fill!(res_wL, 0); fill!(res_wR, 0)
+    fill!(theta, 0); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, jacL, jacR, res_w,
-                                  res_theta)
+                                  theta, wL, wR, nrm_face, jacL, jacR, res_wL,
+                                  res_wR, res_thetaL, res_thetaR)
     fill!(tmp_el, 0)
     boundaryFaceIntegrate!(mesh.sbpface, iface_red.faceL, delta_w, tmp_el)
     for k=1:mesh.numDofPerNode
-      @test maximum(abs.(2*sum(res_theta[k, :]) + sum(tmp_el[k, :]))) < 1e-12
+      @test maximum(abs.(2*sum(res_thetaL[k, :]) + sum(tmp_el[k, :]))) < 1e-12
+      @test maximum(abs.(2*sum(res_thetaR[k, :]) - sum(tmp_el[k, :]))) < 1e-12
     end
 
     # test T2 by checking consistency with boundaryIntegrate
-    fill!(delta_w, 0); fill!(res_w, 0)
-    rand_realpart!(theta); fill!(res_theta, 0)
+    fill!(delta_w, 0); fill!(res_wL, 0); fill!(res_wR, 0)
+    rand_realpart!(theta); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
 
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, jacL, jacR, res_w,
-                                  res_theta)
+                                  theta, wL, wR, nrm_face, jacL, jacR, res_wL,
+                                  res_wR, res_thetaL, res_thetaR)
     fill!(tmp_el, 0)
     boundaryFaceIntegrate!(mesh.sbpface, iface_red.faceL, theta, tmp_el)
     for k=1:mesh.numDofPerNode
-      @test maximum(abs.(2*sum(res_w[k, :]) - sum(tmp_el[k, :]))) < 1e-12
+      @test maximum(abs.(2*sum(res_wL[k, :]) - sum(tmp_el[k, :]))) < 1e-12
+      @test maximum(abs.(2*sum(res_wR[k, :]) - sum(tmp_el[k, :]))) < 1e-12
     end
 
     # test entropy stability of T1
-    rand_realpart!(delta_w); fill!(res_w, 0)
-    fill!(theta, 0); fill!(res_theta, 0)
+    rand_realpart!(delta_w); fill!(res_wL, 0); fill!(res_wR, 0)
+    fill!(theta, 0); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
 
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, jacL, jacR, res_w,
-                                  res_theta)
+                                  theta, wL, wR, nrm_face, jacL, jacR, res_wL,
+                                  res_wR, res_thetaL, res_thetaR)
     for k=1:mesh.numDofPerNode
-      @test dot(delta_w[k, :], res_w[k, :]) > 0
+      @test dot(delta_w[k, :], res_wL[k, :]) > 0
+      @test -dot(delta_w[k, :], res_wR[k, :]) > 0
     end
 
   end
@@ -1213,7 +1214,7 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
     end
 
     EulerEquationMod.applyDgkTranspose(capture, sbp, mesh.sbpface, iface,
-                  capture.diffusion, w_face, wL, wR, nrm_face, dxidxL, dxidxR,
+                  capture.diffusion, w_face, w_face, wL, wR, nrm_face, dxidxL, dxidxR,
                   jacL, jacR, resL, resR)
 
   end
