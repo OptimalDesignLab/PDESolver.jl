@@ -131,6 +131,11 @@ struct RelativeInterface
   # add peer?
 end
 
+struct RelativeBoundary
+  bndry::Boundary
+  idx_orig::Int
+end
+
 
 #TODO: docs
 mutable struct ShockedElements{Tres}
@@ -147,6 +152,7 @@ mutable struct ShockedElements{Tres}
   ee::Vector{Tres}  # the numerical viscoscity of each element in
                     # neighbor_elnums
   ifaces::Vector{RelativeInterface}
+  bndryfaces::Vector{RelativeBoundary}
 
   # current indices in elnums_shock and elnums_neighbor
   idx_shock::Int
@@ -157,6 +163,7 @@ mutable struct ShockedElements{Tres}
   numNeighbor::Int  # number of elements that neighbor an element with a shock
                     # in it, but don't have a shock in it
   numInterfaces::Int  # number of interfaces in ifaces
+  numBoundaryFaces::Int
   numEl::Int  # total number of elements
   function ShockedElements{Tres}(mesh::AbstractMesh) where {Tres}
 
@@ -167,17 +174,20 @@ mutable struct ShockedElements{Tres}
     elnums_all = Array{Int}(0)  # do this later
     elnums_mesh = zeros(mesh.numEl)
     ee = Array{Tres}(size_guess)
-    ifaces = Array{Interface}(0)
+    ifaces = Array{RelativeInterface}(0)
+    bndryfaces = Array{RelativeBoundary}(0)
 
     idx_shock = 1
 
     numShock = 0
     numNeighbor = 0
     numInterfaces = 0
+    numBoundaryFaces = 0
     numEl = 0
 
     return new(elnums_shock, elnums_neighbor, elnums_all, elnums_mesh, ee,
-               ifaces, idx_shock, numShock, numNeighbor, numInterfaces, numEl)
+               ifaces, bndryfaces, idx_shock, numShock, numNeighbor,
+               numInterfaces, numBoundaryFaces, numEl)
   end
 end
 

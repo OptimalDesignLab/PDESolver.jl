@@ -15,6 +15,10 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
+  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh,
+                      capture.diffusion)
+
+
   return nothing
 end
 
@@ -179,6 +183,52 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
 
   return nothing
 end
+
+
+function computeBoundaryTerm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicSC{Tsol, Tres},
+                      shockmesh::ShockedElements, diffusion::AbstractDiffusion,
+                      ) where {Tsol, Tres}
+
+  # for shock capturing, apply the Neumann boundary condition
+  # Lambda * grad_w = 0.  The resulting term is -R^T * B * Dgk * u
+
+  temp_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  temp2_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  op = SummationByParts.Subtract()
+  for i=1:shockmesh.numBoundaryFaces
+    bndry_i = shockmesh.bndryfaces[i].bndry
+    idx_orig = shockmesh.bndryfaces[i].idx_orig
+    elnum_orig = shockmesh.elnums_all[bndry_i.element]
+
+
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+    res_i = sview(eqn.res, :, :, elnum_orig)
+
+    # grad_w already has Lambda * [Dx; Dy]*u, now apply R and N
+    fill!(temp2_face, 0)
+    for d1=1:mesh.dim
+      gradw_d = ro_sview(capture.grad_w, :, :, d1, bndry_i.element)
+      fill!(temp_face, 0)
+      boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, gradw_d, temp_face)
+
+      for j=1:mesh.numNodesPerFace
+        for k=1:mesh.numDofPerNode
+          temp2_face[k, j] += nrm_i[d1, j]*temp_face[k, j]
+        end
+      end
+    end  # end d1
+
+    # apply R^T B
+    boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, temp2_face, res_i, op)
+
+  end  # end i
+
+  return nothing
+end
+
+
+
 
 
 """

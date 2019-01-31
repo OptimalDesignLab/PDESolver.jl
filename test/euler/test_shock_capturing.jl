@@ -211,6 +211,7 @@ function test_ldg()
 
     testQx(mesh, sbp, eqn, opts)
     test_shockmesh(mesh, sbp, eqn, opts)
+    
     test_thetaface(mesh, sbp, eqn, opts)
     test_qj(mesh, sbp, eqn, opts)
     test_qface(mesh, sbp, eqn, opts)
@@ -224,12 +225,13 @@ function test_ldg()
     test_br2_face(mesh, sbp, eqn, opts)
     test_br2_Dgk(mesh, sbp, eqn, opts)
 
-    for i=1:10
+    for i=1:1000
       println("i = ", i)
       ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts)
     end
+    
 
 
   end
@@ -504,6 +506,27 @@ function getInteriorMesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tso
 
   return iface_idx, shockmesh
 end
+
+"""
+  Like `getInteriorMesh`, but puts all elements in the shockmesh
+"""
+function getEntireMesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+
+  degree = sbp.degree
+
+  # construct the shock mesh with all elements in it that are fully interior
+  iface_idx = getInterfaceList(mesh)
+  shockmesh = EulerEquationMod.ShockedElements{Tres}(mesh)
+
+  for i=1:mesh.numEl
+    push!(shockmesh, i, 1.0)
+  end
+
+  EulerEquationMod.completeShockElements(mesh, shockmesh)
+
+  return iface_idx, shockmesh
+end
+
 
 
 """
@@ -783,6 +806,8 @@ function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   # make sure no elements are double-counted
   @test length(unique(shockmesh.elnums_all[1:shockmesh.numEl])) == mesh.numEl
 
+  @test shockmesh.numBoundaryFaces == 0  # neighbor elements should not add
+                                         # boundaries
   # check interfaces
   for i=1:shockmesh.numInterfaces
     iface_red = shockmesh.ifaces[i]
@@ -792,6 +817,29 @@ function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
     @test elnum_fullL == Int(mesh.interfaces[idx_orig].elementL)
     @test elnum_fullR == Int(mesh.interfaces[idx_orig].elementR)
   end
+
+
+  # add only boundary elements, to check that Boundaries are correctly added
+  shockmesh2 = EulerEquationMod.ShockedElements{Tres}(mesh)
+
+  for i in boundary_els
+    push!(shockmesh2, i, 1.0)
+  end
+  EulerEquationMod.completeShockElements(mesh, shockmesh2)
+
+  @test shockmesh2.numShock == length(boundary_els)
+  @test shockmesh2.numBoundaryFaces == length(mesh.bndryfaces)
+  
+  # check original indices
+  idx_orig = zeros(Int, 0)
+  for i=1:shockmesh2.numBoundaryFaces
+    idx_orig_i = shockmesh2.bndryfaces[i].idx_orig
+    push!(idx_orig, idx_orig_i)
+  end
+  sort!(idx_orig)
+  @test idx_orig == collect(1:mesh.numBoundaryFaces)
+
+
 end
 
 
@@ -1248,7 +1296,8 @@ end
 function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
   # construct the shock mesh with all elements in it that are fully interior
-  iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+#  iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+  iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
 
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)

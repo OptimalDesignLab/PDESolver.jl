@@ -147,6 +147,22 @@ end
   return idx+1, sz
 end
 
+
+@inline function push_bndry(data::ShockedElements, bndry::RelativeBoundary,
+                            idx::Integer, sz::Integer)
+
+  if idx > sz
+    sz = max(2*sz, 8)
+    resize!(data.bndryfaces, sz)
+  end
+
+  data.bndryfaces[idx] = bndry
+
+  return idx+1, sz
+end
+
+
+
 """
   Replaces the element numbers for an interface
 
@@ -162,6 +178,13 @@ end
 """
 function replace_interface(iface::Interface, elementL::Integer, elementR::Integer)
   return Interface(elementL, elementR, iface.faceL, iface.faceR, iface.orient)
+end
+
+"""
+  Similar to [`replace_interface`](@ref), but for `Boundary` objects.
+"""
+function replace_boundary(bndry::Boundary, elnum::Integer)
+  return Boundary(elnum, bndry.face)
 end
 
 
@@ -214,6 +237,20 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
       idx_if, sz_if = push_iface(data, iface_new, idx_if, sz_if)
     end  # end if
   end  # end for
+
+  # get the list of boundary faces
+  idx_b = 1
+  sz_b = length(data.bndryfaces)
+  for i=1:mesh.numBoundaryFaces
+    bndry_i = mesh.bndryfaces[i]
+    elnum = data.elnums_mesh[bndry_i.element]
+    if elnum > 0 && elnum <= data.numShock
+      bndry_new = RelativeBoundary(replace_boundary(bndry_i, elnum), i)
+      idx_b, sz_b = push_bndry(data, bndry_new, idx_b, sz_b)
+    end
+  end
+  data.numBoundaryFaces = idx_b - 1
+
 
   #TODO: handle parallel interfaces
   @assert mesh.commsize == 1
