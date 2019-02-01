@@ -51,9 +51,9 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
 
   wxi = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  for i=1:shockmesh.numShock
+  @simd for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
-    for j=1:mesh.numNodesPerElement
+    @simd for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i_full)
       w_j = sview(capture.w_el, :, j, i)
 
@@ -75,9 +75,9 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
 
   # the diffusion is zero in the neighboring elements, so convert to entropy
   # but zero out grad_w
-  for i=(shockmesh.numShock+1):shockmesh.numEl
+  @simd for i=(shockmesh.numShock+1):shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
-    for j=1:mesh.numNodesPerElement
+    @simd for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i_full)
       w_j = sview(capture.w_el, :, j, i)
       convert_entropy(eqn.params, q_j, w_j)
@@ -132,7 +132,6 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
   t1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   t2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   t2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-#  t2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   op = SummationByParts.Subtract()
 
   for i=1:shockmesh.numInterfaces
@@ -158,11 +157,12 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
     jacL = ro_sview(mesh.jac, :, elnumL)
     jacR = ro_sview(mesh.jac, :, elnumR)
+    alphas = ro_sview(capture.alpha, :, i)
 
 
     # apply the penalty coefficient matrix
     applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w, theta,
-                 wL, wR, nrm_face, jacL, jacR, t1L, t1R, t2L, t2R)
+                 wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L, t2R)
 
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     resL = sview(eqn.res, :, :, elnumL)
@@ -212,8 +212,8 @@ function computeBoundaryTerm(mesh, sbp, eqn, opts,
       fill!(temp_face, 0)
       boundaryFaceInterpolate!(mesh.sbpface, bndry_i.face, gradw_d, temp_face)
 
-      for j=1:mesh.numNodesPerFace
-        for k=1:mesh.numDofPerNode
+      @simd for j=1:mesh.numNodesPerFace
+        @simd for k=1:mesh.numDofPerNode
           temp2_face[k, j] += nrm_i[d1, j]*temp_face[k, j]
         end
       end
@@ -250,8 +250,8 @@ function getFaceVariables(capture::SBPParabolicSC{Tsol, Tres},
 
   interiorFaceInterpolate!(sbpface, iface_red, wL, wR, w_faceL, w_faceR)
 
-  for j=1:numNodesPerFace
-    for k=1:numDofPerNode
+  @simd for j=1:numNodesPerFace
+    @simd for k=1:numDofPerNode
       delta_w[k, j] = w_faceL[k, j] - w_faceR[k, j]
     end
   end
@@ -263,8 +263,8 @@ function getFaceVariables(capture::SBPParabolicSC{Tsol, Tres},
     interiorFaceInterpolate!(sbpface, iface_red, gradwL_d, gradwR_d,
                              grad_faceL, grad_faceR)
 
-    for j=1:numNodesPerFace
-      for k=1:numDofPerNode
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
         theta[k, j] += nrm_face[d, j]*(grad_faceL[k, j] - grad_faceR[k, j])
       end
     end
@@ -293,16 +293,13 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
   numNodesPerElement = size(resL, 2)
   numDofPerNode = size(wL, 1)
 
-  @unpack capture temp1 temp2L temp2R temp3L temp3R work
+  @unpack capture temp1L temp1R temp2L temp2R temp3L temp3R work
   fill!(temp2L, 0); fill!(temp2R, 0)
 
-  #TODO: rename temp1 to temp1L
-  temp1L = zeros(Tres, numDofPerNode, numNodesPerFace)
-  temp1R = zeros(Tres, numDofPerNode, numNodesPerFace)
   # apply N and R^T
-  for d=1:dim
-    for j=1:numNodesPerFace
-      for k=1:numDofPerNode
+  @simd for d=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
         temp1L[k, j] =  nrm_face[d, j]*t2L[k, j]
         temp1R[k, j] = -nrm_face[d, j]*t2R[k, j]
       end
@@ -334,6 +331,7 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
                       delta_w::AbstractMatrix{Tsol}, theta::AbstractMatrix{Tres},
                       wL::AbstractMatrix, wR::AbstractMatrix,
                       nrm_face::AbstractMatrix,
+                      alphas::AbstractVector,
                       jacL::AbstractVector, jacR::AbstractVector,
                       res1L::AbstractMatrix, res1R::AbstractMatrix,
                       res2L::AbstractMatrix, res2R::AbstractMatrix
@@ -352,17 +350,22 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   # apply T1
   # multiply by normal vector, then R^T B
   alpha_g = 1/(dim + 1)  # = 1/number of faces of a simplex
-  for d1=1:dim
-    for j=1:numNodesPerFace
-      for k=1:numDofPerNode
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
         delta_w_n[k, j] = 0.25*alpha_g*delta_w[k, j]*nrm_face[d1, j]
       end
     end
     
     qL_d = sview(qL, :, :, d1); qR_d = sview(qR, :, :, d1)
     interiorFaceIntegrate!(sbpface, iface, delta_w_n, qL_d, qR_d)
-    #TODO: unary minus instead
-    scale!(qR_d, -1)  # interiorFaceIntegrates -= the second output
+
+    # interiorFaceIntegrates -= the second output
+    @simd for j=1:numNodesPerElement
+      @simd for k=1:numDofPerNode
+        qR_d[k, j] = -qR_d[k, j]
+      end
+    end
   end
 
   # apply Lambda matrix
@@ -370,11 +373,11 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   applyDiffusionTensor(diffusion, wR, iface.elementR, qR, t1R)
 
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
-  for d1=1:dim
-    for j=1:numNodesPerElement
-      facL = jacL[j]/sbp.w[j]
-      facR = jacR[j]/sbp.w[j]
-      for k=1:numDofPerNode
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerElement
+      facL = alphas[1]*jacL[j]/sbp.w[j]
+      facR = alphas[2]*jacR[j]/sbp.w[j]
+      @simd for k=1:numDofPerNode
         t1L[k, j, d1] *= facL
         t1R[k, j, d1] *= facR
       end
@@ -385,8 +388,8 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
     t2L_d = sview(t2L, :, :, d1);    t2R_d = sview(t2R, :, :, d1)
     interiorFaceInterpolate!(sbpface, iface, t1L_d, t1R_d, t2L_d, t2R_d)
 
-    for j=1:numNodesPerFace
-      for k=1:numDofPerNode
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
         val = sbpface.wface[j]*nrm_face[d1, j]*(t2L_d[k, j] + t2R_d[k, j])
 
         res1L[k, j] += val
@@ -398,8 +401,8 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
 
   #----------------------------
   # apply T2 and T3
-  for j=1:numNodesPerFace
-    for k=1:numDofPerNode
+  @simd for j=1:numNodesPerFace
+    @simd for k=1:numDofPerNode
       val1 =  0.5*sbpface.wface[j]*theta[k, j]  # this one is the problem
       val2 = -0.5*sbpface.wface[j]*delta_w[k, j]
       res1L[k, j] += val1

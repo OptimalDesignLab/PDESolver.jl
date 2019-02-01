@@ -225,14 +225,15 @@ function test_ldg()
     test_br2_face(mesh, sbp, eqn, opts)
     test_br2_Dgk(mesh, sbp, eqn, opts)
 
-    for i=1:1000
-      println("i = ", i)
+    for i=1:10
       ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
-      test_br2_ESS(mesh, sbp, eqn, opts)
+      test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=true)
+      
+      ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
+      ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+      test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
     end
-    
-
 
   end
 
@@ -1141,6 +1142,18 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
+  # test alpha sums to 1
+  alpha_sum = zeros(shockmesh.numEl)
+  for i=1:shockmesh.numInterfaces
+    iface_i = shockmesh.ifaces[i].iface
+    alpha_sum[iface_i.elementL] += capture.alpha[1, i]
+    alpha_sum[iface_i.elementR] += capture.alpha[2, i]
+  end
+
+  for i=1:shockmesh.numShock
+    @test abs(alpha_sum[i] - 1) < 1e-15
+  end
+
   # set w_el to be polynomial
   setWPoly(mesh, shockmesh, capture.w_el, degree)
   setWPolyDeriv(mesh, shockmesh, capture.grad_w, degree)
@@ -1171,6 +1184,7 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
     wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
     nrm_face = ro_sview(mesh.nrm_face, :, :, idx_orig)
+    alphas = ro_sview(capture.alpha, :, i)
     jacL = ro_sview(mesh.jac, :, elnumL)
     jacR = ro_sview(mesh.jac, :, elnumR)
 
@@ -1179,8 +1193,9 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     fill!(theta, 0); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, jacL, jacR, res_wL,
-                                  res_wR, res_thetaL, res_thetaR)
+                                  theta, wL, wR, nrm_face, alphas,
+                                  jacL, jacR, res_wL, res_wR,
+                                  res_thetaL, res_thetaR)
     fill!(tmp_el, 0)
     boundaryFaceIntegrate!(mesh.sbpface, iface_red.faceL, delta_w, tmp_el)
     for k=1:mesh.numDofPerNode
@@ -1194,8 +1209,9 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
 
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, jacL, jacR, res_wL,
-                                  res_wR, res_thetaL, res_thetaR)
+                                  theta, wL, wR, nrm_face, alphas, 
+                                  jacL, jacR, res_wL, res_wR,
+                                  res_thetaL, res_thetaR)
     fill!(tmp_el, 0)
     boundaryFaceIntegrate!(mesh.sbpface, iface_red.faceL, theta, tmp_el)
     for k=1:mesh.numDofPerNode
@@ -1209,8 +1225,9 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
 
     EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, jacL, jacR, res_wL,
-                                  res_wR, res_thetaL, res_thetaR)
+                                  theta, wL, wR, nrm_face, alphas,
+                                  jacL, jacR, res_wL, res_wR,
+                                  res_thetaL, res_thetaR)
     for k=1:mesh.numDofPerNode
       @test dot(delta_w[k, :], res_wL[k, :]) > 0
       @test -dot(delta_w[k, :], res_wR[k, :]) > 0
@@ -1293,11 +1310,14 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
 end
 
 
-function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts; fullmesh=false) where {Tsol, Tres}
 
   # construct the shock mesh with all elements in it that are fully interior
-#  iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
-  iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
+  if fullmesh
+    iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
+  else
+    iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+  end
 
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)

@@ -238,7 +238,10 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     end  # end if
   end  # end for
 
-  # get the list of boundary faces
+  data.numNeighbor = data.idx_shock - 1 - data.numShock
+  data.numInterfaces = idx_if - 1
+
+ # get the list of boundary faces
   idx_b = 1
   sz_b = length(data.bndryfaces)
   for i=1:mesh.numBoundaryFaces
@@ -254,9 +257,6 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
 
   #TODO: handle parallel interfaces
   @assert mesh.commsize == 1
-
-  data.numNeighbor = data.idx_shock - 1 - data.numShock
-  data.numInterfaces = idx_if - 1
 
   # setup elnums_all
   # TODO: I think the previous step could use the same array for elnums_shock

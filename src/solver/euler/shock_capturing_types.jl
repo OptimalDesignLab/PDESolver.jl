@@ -382,6 +382,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
   convert_entropy::Any  # convert to entropy variables
   diffusion::AbstractDiffusion
   penalty::AbstractDiffusionPenalty
+  alpha::Array{Float64, 2}  # 2 x numInterfaces
 
   #------------------
   # temporary arrays
@@ -393,7 +394,8 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
   grad_faceR::Matrix{Tres}
 
   # applyDgkTranspose
-  temp1::Matrix{Tres}
+  temp1L::Matrix{Tres}
+  temp1R::Matrix{Tres}
   temp2L::Array{Tres, 3}
   temp2R::Array{Tres, 3}
   temp3L::Array{Tres, 3}
@@ -410,6 +412,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
     convert_entropy = convertToIR_
     diffusion = ShockDiffusion{Tres}()
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
+    alpha = zeros(Float64, 0, 0)
 
 
     # temporary arrays
@@ -418,16 +421,17 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
     grad_faceL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
     grad_faceR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-    temp1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+    temp1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+    temp1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
     temp2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
     temp2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
     temp3L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
     temp3R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
     work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
-    return new(w_el, grad_w, convert_entropy, diffusion, penalty,
+    return new(w_el, grad_w, convert_entropy, diffusion, penalty, alpha,
               w_faceL, w_faceR, grad_faceL, grad_faceR,
-              temp1, temp2L, temp3R, temp3L, temp3R, work)
+              temp1L, temp1R, temp2L, temp3R, temp3L, temp3R, work)
   end
 end
 
@@ -446,6 +450,29 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
   end
 
   setDiffusionArray(capture.diffusion, shockmesh.ee)
+
+  # I think the alpha_gk parameter should be 0 for faces on the Neumann boundary
+  # Count the number of faces each element has in the mesh to compute alpha_gk
+  # such that is sums to 1.
+  if size(capture.alpha, 2) < shockmesh.numEl
+    capture.alpha = zeros(2, shockmesh.numInterfaces)
+  end
+  fill!(capture.alpha, 0)
+
+  el_counts = zeros(UInt8, shockmesh.numEl)
+  for i=1:shockmesh.numInterfaces
+    iface_i = shockmesh.ifaces[i].iface
+    el_counts[iface_i.elementL] += 1
+    el_counts[iface_i.elementR] += 1
+  end
+
+  # for neighbor elements alpha doesn't sum to 1, but thats ok because
+  # lambda = 0 there, so alpha multiplies zero.
+  for i=1:shockmesh.numInterfaces
+    iface_i = shockmesh.ifaces[i].iface
+    capture.alpha[1, i] = 1/el_counts[iface_i.elementL]
+    capture.alpha[2, i] = 1/el_counts[iface_i.elementR]
+  end
 
   return nothing
 end
