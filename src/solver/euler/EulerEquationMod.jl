@@ -367,11 +367,67 @@ abstract type AbstractVolumeShockCapturing <: AbstractShockCapturing end
   Abstract type for shock capturing methods that do face integrals (these
   scheme may do volume integrals as well).  These schemes require constructing
   a reduced mesh for the elements that have shocks in them.
+
+  These types must implement 2 functions:
+
+  ```
+    allocateArrays(capture::AbstractFaceShockCapturing,
+                   mesh::AbstractMesh,
+                   shockmesh::ShockedElements)
+  ```
+  **Inputs**
+
+   * capture: [`LDGShockCapturing`](@ref)
+   * mesh
+   * shockmesh: a `ShockedElements` object, fully initialized
+
+  This function is called every time the `shockmesh` is updated, and performs
+  any setup work that depends on the `shockmesh`
+
+
+  ```
+  applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+                     eqn::EulerData, opts,
+                     capture::AbstractFaceShockCapturing,
+                     shockmesh::ShockedElements)
+  ```
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: `eqn.res` should be updated
+   * opts
+   * capture: the shock capturing scheme to be used (this argument must
+              be specialized)
+   * shockmesh
+
 """
 abstract type AbstractFaceShockCapturing <: AbstractShockCapturing end
 
 """
-  Abstract type for diffusion tensors.  Used mostly for shock capturing
+  Abstract type for diffusion tensors.  Used mostly for shock capturing.
+  This type specifies the diffusion tensor.  It must implement 1 function:
+
+  ```
+    applyDiffusionTensor(obj::ShockDiffusion, w::AbstractMatrix,
+                    i::Integer, dx::Abstract3DArray, flux::Abstract3DArray)
+
+  ```
+  **Inputs**
+
+   * obj: the [`AbstractDiffusion`](@ref) object
+   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
+        for the element
+   * i: the element number.  This is useful for diffusions where the coeffients
+        are precomputed and stored in an array
+   * dx: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
+         x `dim`
+
+  **Inputs/Outputs**
+
+   * flux: array to overwrite with the result, same size as `dx`
+
 """
 abstract type AbstractDiffusion end
 
@@ -380,6 +436,72 @@ abstract type AbstractDiffusion end
   Abstract type for Local Discontinuous Galerkin flux functions
 """
 abstract type AbstractLDGFlux end
+
+
+"""
+  Abstract type for the different diffusion penalties that can be expressed
+  in the framework of Yan et.al. "Interior Penalties for Summation-by-Parts
+  Discretizations of Linear Second-Order Differential Equations".
+
+  Each type must implement a method of:
+
+  ```
+   applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
+                diffusion::AbstractDiffusion, iface::Interface,
+                delta_w::AbstractMatrix{Tsol}, theta::AbstractMatrix{Tres},
+                wL::AbstractMatrix, wR::AbstractMatrix,
+                nrm_face::AbstractMatrix,
+                alphas::AbstractVector,
+                jacL::AbstractVector, jacR::AbstractVector,
+                res1L::AbstractMatrix, res1R::AbstractMatrix,
+                res2L::AbstractMatrix, res2R::AbstractMatrix
+               ) where {Tsol, Tres}
+
+
+  ```
+
+  **Inputs**
+
+   * penalty: the [`BR2Penalty`](@ref) object
+   * sbp
+   * sbpface
+   * diffusion: the [`AbstractDiffusion`](@ref) object
+   * iface: `Interface` object
+   * delta_w: difference of entropy variables at the face, as compuated by
+              [`getFaceVariables`](@ref)
+   * theta: Dgk * wL + Dgn * wR, as compuated by `getFaceVariables`
+   * wL: entropy variables for the left element, `numDofPerNode` x
+         `numNodesPerElement`
+   * wR: entropy variables for the right element, same size as `wR`
+   * nrm_face: (scaled) normal vectors at the face, `dim` x `numNodesPerFace`
+   * alphas: vector of length 2 containing alpha_gk and alpha_gn
+   * jacL: mapping jacobian determinant for the left element,
+           `numNodesPerElement`
+   * jacR: mapping jacobian determinant for the right element, same size as
+           `jacR`
+
+  **Inputs/Outputs**
+  
+   * res1L: `numDofPerNode` x `numNodesPerElement`
+   * res1R: same size as above
+   * res2L: same size as above
+   * res2R: same size as above
+
+  All output arrays are overwritten
+
+  This method should compute
+
+  
+  [res1L   = [T1 T2  [delta_w   and   [res1R   = [T1 T2  [-delta_w
+   res2L]     T3 T4]  theta]           res2R]     T3 T4]  theta]
+
+
+  Note the minus sign in front of delta_w for the right element
+  
+"""
+abstract type AbstractDiffusionPenalty end
+
+
 
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation

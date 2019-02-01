@@ -131,8 +131,8 @@ end
 
    * data: `ShockElements`
    * iface: a `RelativeInterface`
-   * idx: the current index in data.interfaces
-   * sz: the current size of data.interfaces
+   * idx: the current index in data.ifaces
+   * sz: the current size of data.ifaces
 """
 @inline function push_iface(data::ShockedElements, iface::RelativeInterface,
                     idx::Integer, sz::Integer)
@@ -147,7 +147,17 @@ end
   return idx+1, sz
 end
 
+"""
+  Internal function for pushing new boundary
 
+  **Inputs**
+
+   * data: `ShockElements`
+   * iface: a `RelativeBoundary`
+   * idx: the current index in data.bndryfaces
+   * sz: the current size of data.bndryfaces
+
+"""
 @inline function push_bndry(data::ShockedElements, bndry::RelativeBoundary,
                             idx::Integer, sz::Integer)
 
@@ -187,7 +197,15 @@ function replace_boundary(bndry::Boundary, elnum::Integer)
   return Boundary(elnum, bndry.face)
 end
 
+"""
+  After all the elements that have shocks in them have been added, finished
+  constructing the mesh data structure.
 
+  **Inputs**
+
+   * mesh
+   * shockmesh
+"""
 function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
 
   # Use mesh.interfaces to get both data.interfaces and the neighbor elements

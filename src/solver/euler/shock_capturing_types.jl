@@ -131,13 +131,65 @@ struct RelativeInterface
   # add peer?
 end
 
+"""
+  Boundary time that also contains the index of the boundary in the parent mesh.
+"""
 struct RelativeBoundary
   bndry::Boundary
   idx_orig::Int
 end
 
 
-#TODO: docs
+"""
+  Stores a limited about of information about the mesh defined by the elements
+  with shocks in them and their neighbors.
+
+  Definitions:
+
+    shocked
+    neighbor
+
+  The way this data structure is meant to be used is:
+
+   1) at the beginning of a simulation, construct this object
+   2) every time the residual/Jacobian is evaluated, call `push!` repeatedly
+      to add the elements that have shocks in them
+   3) call [`completeShockMesh`](@ref) to finish constructing the data
+      structure
+   4) evaluate the shock capturing scheme
+
+
+  Note that steps 2-4 will happen repeatedly.  This data structure is optimized
+  to be re-used several times, under the assumption that the shock will not
+  change position too much.  The function [`reset`](@ref) should be called
+  before step 2.
+
+  Note that the sizes of the arrays are *minimum* sizes.  In practice they
+  may be larger.  Do not call `size()` on these arrays, use the appropriate
+  integer field.
+
+  **Fields**
+
+   * elnums_all: the element numbers on the original mesh of the elements on
+                 the reduced mesh, length `shockmesh.numEl`  This maps element
+                 numbers *from* the reduced mesh *to* the full mesh
+   * elnum_mesh: the element numbers on the reduced mesh of the elements
+                 on the reduced mesh, length `mesh.numEl`.  This maps element
+                 numbers *from* the original mesh *to* the reduced mesh.
+   * ifaces: array of [`RelativeInterface`](@ref) objects for the faces
+            between elements in the reduced mesh (both elements with shocks in
+            them and neighbors. length `shockmesh.numInterfaces`
+   * bndryfaces: array of [`RelativeBoundary`](@ref) objects.  Contains only
+                 boundary faces that are on the boundary of the original mesh
+                 and the element has a shock in it (neighbor elements are
+                 not included).
+   * numShock: number of elements with shocks in them
+   * numNeighbor: number of elements that do not have shocks in them, but
+                  are adjacent to elements that do
+   * numInterfaces: number of interfaces
+   * numBoundaryFaces: number of boundary faces
+   * numEl: total number of elements
+"""
 mutable struct ShockedElements{Tres}
   elnums_shock::Vector{Int}  # elements (global numbering)  where shock
                              # indicator is non-zero
@@ -337,12 +389,8 @@ end
 # BR2 Shock Capturing
 
 """
-  Abstract type for the different diffusion penalties that can be expressed
-  in the framework of Yan et.al. "Interior Penalties for Summation-by-Parts
-  Discretization os Linear Second-Order Differential Equations"
+  Penalty for BR2
 """
-abstract type AbstractDiffusionPenalty end
-
 struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
 
   delta_w_n::Matrix{Tsol}
@@ -368,13 +416,44 @@ struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
 
 end
 
+
 """
-  BR2 shock capturing
+  Computes any diffusion scheme from the SBPParabolic paper.
+
+  Note that the sizes for the arrays are the *minimum* sizes.  In practice
+  they may be larger.  Do not call `size()` on these arrays, use the appropriate
+  integer field of `mesh` or `shockmesh`.
 
   **Fields**
 
+   * w_el: entropy variables at each volume node of each element,
+           `numDofPerNode` x `numNodesPerElement` x `shockmesh.numEl`
    * grad_w: stores Lambda * D * q at volume nodes, numDofPerNode x
-             numNodesPerElement x dim x shockmesh.numEl
+             numNodesPerElement x dim x shockmesh.numEl.  Should be zero
+             for all neighboring elements (see `ShockedElement`) because
+             the viscoscity is zero there, but storing values in this array
+             significantly simplifies the code
+   * convert_entropy: a function that converts from the conservative to
+                      entropy variables, must have signature:
+                      `convert_entropy(params::ParamType, q_c, q_e)`
+                      where `q_c` contains the conservative variables ata
+                      a node and `q_e` is overwritten with the entropy
+                      variables.  Defaults to `convertToIR_`.
+  * diffusion: an [`AbstractDiffusion`](@ref) object that specifies the
+               diffusion tensor. Defaults to `ShockDiffusion`
+  * penalty: an [`AbstractDiffusionPenalty`](@ref) object that specifies which
+             scheme to use.  Defaults to opts["DiffusionPenalty"]
+  * alpha: a 2 x `shockmesh.numInterfaces` array containing alpha_gk and
+           alpha_gn for each interface.
+
+  Note that `convert_entropy`, `diffusion` and `penalty` are abstract types
+  and should only be accessed through a function barrier in performance
+  critical functions.  The user is allowed to change these fields at any
+  time to customize the behavior of the scheme.
+
+  Note that this function is not fully constructed by the constructor,
+  see the `allocateArrays` function.
+
 """
 mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
   w_el::Array{Tsol, 3}
@@ -435,6 +514,11 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
   end
 end
 
+
+"""
+  Sets up the shock capturing object for use, using the fully initialized
+  `shockmesh`.  Also does some other misc. setup stuff that needs `shockmesh`.
+"""
 function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
                         shockmesh::ShockedElements) where {Tsol, Tres}
 

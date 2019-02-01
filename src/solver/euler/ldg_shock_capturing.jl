@@ -218,7 +218,7 @@ end
    * dx: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
          x `dim`
 
-  **Outputs**
+  **Inputs/Outputs**
 
    * flux: array to overwrite with the result, same size as `dx`
 

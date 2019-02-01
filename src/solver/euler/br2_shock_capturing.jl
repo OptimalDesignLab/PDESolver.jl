@@ -1,6 +1,8 @@
 # shock capturing using the SBP-BR2 discretization of the second derivative term
 
-
+"""
+  Applies [`SBPParabolic`](@ref) shock capturing.
+"""
 function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
                              capture::SBPParabolicSC{Tsol, Tres},
@@ -15,8 +17,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh,
-                      capture.diffusion)
+  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
 
   return nothing
@@ -93,7 +94,22 @@ end
 
 """
   Computes the volume terms, using the intermediate variable calcualted by
-  [`computeGradW`](@ref)
+  [`computeGradW`](@ref).  The residual is updated with
+
+  [Qx Qy] * [Lambda] * [Dx * w
+                        Dy * w]
+
+  Note that this used Qx, not Qx^T, so the term has not been integrated by
+  parts.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * capture: [`SBPParbaolicSC`](@ref)
+   * shockmesh
 """
 function computeVolumeTerm(mesh, sbp, eqn, opts,
                            capture::SBPParabolicSC{Tsol, Tres},
@@ -120,6 +136,22 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
 end
 
 
+"""
+  Computes the interior face term for any [`SBPParabolic`](@ref) shock
+  capturing scheme.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: `eqn.res` is updated with the result
+   * opts
+   * shockmesh
+   * diffusion: the [`AbstractDiffusion`](@ref) to use (must be consistent
+                with the one passed to [`computeGradW`](@ref).
+   * penalty: [`AbstractDiffusionPenalty`](@ref) specifying which scheme to use
+
+"""
 function computeFaceTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements, diffusion::AbstractDiffusion,
@@ -140,16 +172,11 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     elnumL = shockmesh.elnums_all[iface_red.elementL]
     elnumR = shockmesh.elnums_all[iface_red.elementR]
 
-    # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
     wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
     wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
     gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
     gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
     nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
-
-    getFaceVariables(capture, mesh.sbpface, iface_red, wL, wR, gradwL, gradwR,
-                     nrm_face, delta_w, theta)
-
 
     # get data needed for next steps
     nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
@@ -158,16 +185,20 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     jacL = ro_sview(mesh.jac, :, elnumL)
     jacR = ro_sview(mesh.jac, :, elnumR)
     alphas = ro_sview(capture.alpha, :, i)
+    resL = sview(eqn.res, :, :, elnumL)
+    resR = sview(eqn.res, :, :, elnumR)
 
+
+
+    # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
+    getFaceVariables(capture, mesh.sbpface, iface_red, wL, wR, gradwL, gradwR,
+                     nrm_face, delta_w, theta)
 
     # apply the penalty coefficient matrix
     applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w, theta,
                  wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L, t2R)
 
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
-    resL = sview(eqn.res, :, :, elnumL)
-    resR = sview(eqn.res, :, :, elnumR)
-
     # need to apply R^T * t1, not R^T * B * t1, so
     # interiorFaceIntegrate won't work.  Use the reverse mode instead
     scale!(t1L, -1); scale!(t1R, -1)  # negate these because the SAT has a 
@@ -185,9 +216,27 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
 end
 
 
+"""
+  Computes a Neumann boundary condition Lambda * grad w = 0 for all faces
+  on the boundary.  This term is required to make the entire shock capturing
+  scheme entropy stable.
+
+  This term does not depend on what penalty scheme is used, so it does not
+  take an `AbstractPenalty` object.  It uses `capture.grad_w`, so it does
+  not need an `AbstractDiffusion` object either.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * capture: an [`SBPParabolic`](@ref) object
+   * shockmesh
+"""
 function computeBoundaryTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
-                      shockmesh::ShockedElements, diffusion::AbstractDiffusion,
+                      shockmesh::ShockedElements,
                       ) where {Tsol, Tres}
 
   # for shock capturing, apply the Neumann boundary condition
@@ -232,14 +281,34 @@ end
 
 
 """
-  Compute delta_w and theta.
+  Compute delta_w = Rgk * wL - Rgn - wR and theta = Dgk * wL + Dgn * wR
+  at the face.
+
+  **Inputs**
+
+   * capture: an [`SBPParabolic`](@ref) object
+   * sbpface
+   * iface_red: an `Interface` object from the `shockmesh`
+   * wL: the entropy variables for the left element, `numDofPerNode` x
+         `numNodesPerElement`
+   * wR: the entropy variables for the right element, same size as `wL`
+   * gradwL: Lambda * [Dx, Dy]*wL (as computed by [`computeGradW`](@ref),
+             `numDofPerNode` x `numNodesPerElement` x `dim`
+   * gradwR: same as `gradwR`, but for the right element
+   * nrm_face: the (scaled) normal vectors for the face, `dim` x
+               `numNodesPerFace`
+
+  **Inputs/Outputs**
+
+   * delta_w: `numDofPerNode` x `numNodesPerFace`, overwritten
+   * theta: `numDofPerNode` x `numNodesPerFace`, overwritten
 """
 function getFaceVariables(capture::SBPParabolicSC{Tsol, Tres},
                           sbpface::AbstractFace, iface_red::Interface,
                           wL::AbstractMatrix, wR::AbstractMatrix,
                           gradwL::Abstract3DArray, gradwR::Abstract3DArray,
                           nrm_face::AbstractMatrix,
-                          delta_w::AbstractArray, theta::AbstractArray
+                          delta_w::AbstractMatrix, theta::AbstractArray
                          ) where {Tsol, Tres}
 
   numDofPerNode, numNodesPerElement = size(wL)
@@ -277,6 +346,37 @@ end
 
 
 """
+  This function applies Dgk^T and Dgn^T.
+
+  **Inputs**
+
+   * capture: an [`SBPParabolic`](@ref) object
+   * sbp
+   * sbpface
+   * iface: an `Interface` from `shockmesh`
+   * diffusion: an [`AbstractDiffusion`](@ref)
+   * t2L: array to multiply Dgk^T with, `numDofPerNode` x `numNodesPerFace`
+   * t2R: array to multiply Dgn^T with, `numDofPerNode` x `numNodesPerFace`
+   * wL: entropy variables for left element, `numDofPerNode` x
+         `numNodesPerElement`
+   * wR: entropy variables for the right element, same size as `wL`
+   * nrm_face: (scaled) normal vectors at the face, `dim` x `numNodesPerFace`
+   * dxidxL: (scaled) mapping jacobian at left element, `dim` x `dim` x 
+             `numNodesPerElement`
+   * dxidxR: (scaled) mapping jacobian at the right element, same size as
+             `dxidxL`
+   * jacL: mapping jacobian determinant for left element, `numNodesPerElement`
+   * jacR: mapping jacobian determinant for the right element,
+           `numNodesPerElement`
+   * op: a `SummationByParts.UnaryFunctor`, determins if the output arrays are
+         added to or subtracted from
+
+  **Inputs/Outputs**
+
+   * resL: array to update with Dgk^T * t2L, `numDofPerNode` x
+           `numNodesPerElement`
+   * resR: array to update with Dgn^T * t2R, same size as `resL`
+
 """
 function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
                            sbpface, iface::Interface,
@@ -324,7 +424,44 @@ end
 
 
 """
-  Applies the penalty for element kappa (the left element)
+  Applies the penalty for the SBP-SAT generalization of the modified scheme
+  of Bassi and Rebay (BR2).  More specifically, it applies the penalty matrix
+  for both sides of the face at the same time:
+
+  [res1L   = [T1 T2  [delta_w
+   res2L]     T3 T4]  theta]
+ 
+  and similarly for the right element.  Note that delta_w is negated for
+  the right element, and this function performs the required negation.
+
+  **Inputs**
+
+   * penalty: the [`BR2Penalty`](@ref) object
+   * sbp
+   * sbpface
+   * diffusion: the [`AbstractDiffusion`](@ref) object
+   * iface: `Interface` object
+   * delta_w: difference of entropy variables at the face, as compuated by
+              [`getFaceVariables`](@ref)
+   * theta: Dgk * wL + Dgn * wR, as compuated by `getFaceVariables`
+   * wL: entropy variables for the left element, `numDofPerNode` x
+         `numNodesPerElement`
+   * wR: entropy variables for the right element, same size as `wR`
+   * nrm_face: (scaled) normal vectors at the face, `dim` x `numNodesPerFace`
+   * alphas: vector of length 2 containing alpha_gk and alpha_gn
+   * jacL: mapping jacobian determinant for the left element,
+           `numNodesPerElement`
+   * jacR: mapping jacobian determinant for the right element, same size as
+           `jacR`
+
+  **Inputs/Outputs**
+  
+   * res1L: `numDofPerNode` x `numNodesPerElement`
+   * res1R: same size as above
+   * res2L: same size as above
+   * res2R: same size as above
+
+  All output arrays are overwritten
 """
 function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
                       diffusion::AbstractDiffusion, iface::Interface,
