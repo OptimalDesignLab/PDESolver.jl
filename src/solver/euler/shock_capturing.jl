@@ -123,11 +123,18 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
 
   Se = num/den
   se = log10(Se)
+  #=
   # should this be a separate function from computing Se?
   if se < s0 - kappa
     ee = zero(Tres)
   elseif se > s0 - kappa && se < s0 + kappa
     ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
+  else
+    ee = Tres(e0)
+  end
+  =#
+  if se > s0 - kappa
+    ee = Tres(0)
   else
     ee = Tres(e0)
   end

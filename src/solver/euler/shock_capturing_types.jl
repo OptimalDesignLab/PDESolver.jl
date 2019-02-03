@@ -55,7 +55,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     # constants from Barter's thesis
     s0 = -(4 + 4.25*log10(sbp.degree))
     kappa = 0.5
-    e0 = 10  # this is a bit weird, because PP says it should be O(h/p)
+    e0 = 1  # this is a bit weird, because PP says it should be O(h/p)
     
     up = zeros(Tsol, sbp.numnodes)
     up_tilde = zeros(Tsol, sbp.numnodes)
