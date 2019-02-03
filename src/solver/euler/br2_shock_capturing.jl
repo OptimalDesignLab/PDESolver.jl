@@ -9,6 +9,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
 
+  allocateArrays(capture, mesh, shockmesh)
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
@@ -486,11 +487,11 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   #--------------------------
   # apply T1
   # multiply by normal vector, then R^T B
-  alpha_g = 1/(dim + 1)  # = 1/number of faces of a simplex
+  #alpha_g = 1/(dim + 1)  # = 1/number of faces of a simplex
   @simd for d1=1:dim
     @simd for j=1:numNodesPerFace
       @simd for k=1:numDofPerNode
-        delta_w_n[k, j] = 0.25*alpha_g*delta_w[k, j]*nrm_face[d1, j]
+        delta_w_n[k, j] = 0.25*delta_w[k, j]*nrm_face[d1, j]
       end
     end
     
@@ -512,8 +513,8 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
   @simd for d1=1:dim
     @simd for j=1:numNodesPerElement
-      facL = alphas[1]*jacL[j]/sbp.w[j]
-      facR = alphas[2]*jacR[j]/sbp.w[j]
+      facL = (1/alphas[1])*jacL[j]/sbp.w[j]
+      facR = (1/alphas[2])*jacR[j]/sbp.w[j]
       @simd for k=1:numDofPerNode
         t1L[k, j, d1] *= facL
         t1R[k, j, d1] *= facR

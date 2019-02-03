@@ -234,7 +234,6 @@ function convertToConservativeFromIR_(params::ParamType{2},
   k1 = 0.5*gamma_1*(qe[2]^2 + qe[3]^2)/qe[4]
   s = gamma - gamma_1*qe[1] + k1
   rho_int = exp(-s/gamma_1)*(gamma_1/(-gamma_1*qe[4])^gamma)^(1/gamma_1)
-  println("rho_int = ", rho_int)
   rho_int *= gamma_1
   qc[1] = -qe[4]*rho_int
   qc[2] = qe[2]*rho_int

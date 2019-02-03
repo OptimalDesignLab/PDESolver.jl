@@ -455,7 +455,7 @@ end
   see the `allocateArrays` function.
 
 """
-mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
+mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   w_el::Array{Tsol, 3}
   grad_w::Array{Tres, 4}
   convert_entropy::Any  # convert to entropy variables
@@ -510,7 +510,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractShockCapturing
 
     return new(w_el, grad_w, convert_entropy, diffusion, penalty, alpha,
               w_faceL, w_faceR, grad_faceL, grad_faceR,
-              temp1L, temp1R, temp2L, temp3R, temp3L, temp3R, work)
+              temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work)
   end
 end
 
@@ -538,7 +538,7 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
   # I think the alpha_gk parameter should be 0 for faces on the Neumann boundary
   # Count the number of faces each element has in the mesh to compute alpha_gk
   # such that is sums to 1.
-  if size(capture.alpha, 2) < shockmesh.numEl
+  if size(capture.alpha, 2) < shockmesh.numInterfaces
     capture.alpha = zeros(2, shockmesh.numInterfaces)
   end
   fill!(capture.alpha, 0)
