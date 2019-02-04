@@ -286,7 +286,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     return new(w_el, q_j, convert_entropy, flux, diffusion)
   end
 
-  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, eqn, sbp::AbstractOperator, opts) where {Tsol, Tres}
+  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
     return LDGShockCapturing{Tsol, Tres}()
   end
 

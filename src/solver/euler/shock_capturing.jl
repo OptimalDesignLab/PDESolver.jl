@@ -54,7 +54,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
   completeShockElements(mesh, shockmesh)
 
-  # call LDG
+  # call shock capturing scheme
   applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
 
   return nothing
@@ -123,7 +123,7 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
 
   Se = num/den
   se = log10(Se)
-  #=
+  
   # should this be a separate function from computing Se?
   if se < s0 - kappa
     ee = zero(Tres)
@@ -132,13 +132,7 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
   else
     ee = Tres(e0)
   end
-  =#
-  if se > s0 - kappa
-    ee = Tres(0)
-  else
-    ee = Tres(e0)
-  end
-
+  
   return Se, ee
 end
 
