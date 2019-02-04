@@ -9,7 +9,6 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
 
-  allocateArrays(capture, mesh, shockmesh)
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
@@ -202,8 +201,12 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     # need to apply R^T * t1, not R^T * B * t1, so
     # interiorFaceIntegrate won't work.  Use the reverse mode instead
-    scale!(t1L, -1); scale!(t1R, -1)  # negate these because the SAT has a 
-                                      # minus sign in front of it
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.numDofPerNode
+        t1L[k, j] = -t1L[k, j]  # the SAT has a minus sign in front of it
+        t1R[k, j] = -t1R[k, j]
+      end
+    end
     interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1L, t1R)
 
     # apply Dgk^T and Dgn^T

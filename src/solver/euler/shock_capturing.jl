@@ -53,6 +53,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   end
 
   completeShockElements(mesh, shockmesh)
+  allocateArrays(capture, mesh, shockmesh)
 
   # call shock capturing scheme
   applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)

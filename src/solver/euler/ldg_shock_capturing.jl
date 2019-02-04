@@ -18,7 +18,6 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   flux = LDG_ESFlux()
   diffusion = ShockDiffusion(shockmesh.ee)
   =#
-  allocateArrays(capture, mesh, shockmesh)
   computeEntropyVariables(mesh, eqn, capture, shockmesh, convert_func)
 
   computeThetaVolumeContribution(mesh, sbp, eqn, opts, capture, shockmesh)

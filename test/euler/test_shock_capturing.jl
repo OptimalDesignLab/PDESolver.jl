@@ -202,6 +202,9 @@ function test_ldg()
     "force_solution_complex" => true,
     "force_mesh_complex" => true,
     "solve" => false,
+    "addVolumeIntegrals" => false,
+    "addFaceIntegrals" => false,
+    "addBoundaryIntegrals" => false,
     )
 
 
