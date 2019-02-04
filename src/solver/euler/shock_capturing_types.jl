@@ -633,7 +633,10 @@ function getDiffusionPenalty(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
                              name::String=opts["DiffusionPenalty"]
                             ) where {Tsol, Tres}
 
-  return DiffusionPenaltyDict[name]{Tsol, Tres}(mesh, sbp, opts)
+  obj = DiffusionPenaltyDict[name]{Tsol, Tres}(mesh, sbp, opts)
+  assertArraysUnique(obj)
+
+  return obj
 end
 
   
