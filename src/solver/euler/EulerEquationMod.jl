@@ -492,8 +492,8 @@ abstract type AbstractLDGFlux end
   This method should compute
 
   
-  [res1L   = [T1 T2  [delta_w   and   [res1R   = [T1 T2  [-delta_w
-   res2L]     T3 T4]  theta]           res2R]     T3 T4]  theta]
+  [res1L   = [T1 T3  [delta_w   and   [res1R   = [T1 T3  [-delta_w
+   res2L]     T2 T4]  theta]           res2R]     T2 T4]  theta]
 
 
   Note the minus sign in front of delta_w for the right element

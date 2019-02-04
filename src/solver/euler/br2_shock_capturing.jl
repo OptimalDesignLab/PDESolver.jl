@@ -432,8 +432,8 @@ end
   of Bassi and Rebay (BR2).  More specifically, it applies the penalty matrix
   for both sides of the face at the same time:
 
-  [res1L   = [T1 T2  [delta_w
-   res2L]     T3 T4]  theta]
+  [res1L   = [T1 T3  [delta_w
+   res2L]     T2 T4]  theta]
  
   and similarly for the right element.  Note that delta_w is negated for
   the right element, and this function performs the required negation.
