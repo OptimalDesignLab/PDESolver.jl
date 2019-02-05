@@ -1090,6 +1090,7 @@ function test_br2_gradw(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   dw_dx = zeros(Tsol, mesh.numDofPerNode)
   for i=1:shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
+    println("i = ", i, ", i_full = ", i_full)
     @test maximum(abs.(capture.w_el[:, :, i] - w_vals[:, :, i_full])) < 1e-13
   end
 

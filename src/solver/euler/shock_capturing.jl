@@ -36,6 +36,17 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              sensor::AbstractShockSensor,
                              capture::AbstractFaceShockCapturing)
 
+  if mesh.commsize > 1 && 
+    getParallelData(eqn.shared_data) != PARALLEL_DATA_ELEMENT
+
+    error("shock capturing requires PARALLEL_DATA_ELEMENT")
+  end
+
+  assertReceivesWaited(shared_data)  # parallel communication for the regular
+                                     # face integrals should already have
+                                     # finished parallel communication
+
+
   # re-using the shockmesh from one iteration to the next makes allows
   # the algorithm to re-use existing arrays that depend on the number of
   # elements with the shock in it.
@@ -53,6 +64,24 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   end
 
   completeShockElements(mesh, shockmesh)
+
+  # compute the shock viscoscity for shared elements
+  for peer=1:shockmesh.npeers
+    peer_full = shockmesh.peer_indices[peer]
+    data = eqn.shared_data[peer_full]
+    metrics = mesh.remote_metrics[peer_full]
+
+    for i in data.shared_els[peer]
+      i_full = getSharedElementIndex(data, mesh, peer, i)
+      q_i = ro_sview(data.q_recv, :, :, i_full)
+      jac_i = ro_sview(metrics.jac, :, i_full)
+
+      Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+      setViscoscity(shockmesh, i, ee)
+    end
+  end
+
+
   allocateArrays(capture, mesh, shockmesh)
 
   # call shock capturing scheme

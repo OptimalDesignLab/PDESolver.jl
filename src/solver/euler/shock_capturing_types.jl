@@ -128,7 +128,7 @@ end
 struct RelativeInterface
   iface::Interface  # needed for SBP
   idx_orig::Int
-  # add peer?
+  #peeridx::Int32  # index of the peer on the *original* mesh
 end
 
 """
@@ -206,6 +206,8 @@ mutable struct ShockedElements{Tres}
   ifaces::Vector{RelativeInterface}
   bndryfaces::Vector{RelativeBoundary}
 
+  shared_interfaces::Vector{Vector{RelativeInterface}}
+
   # current indices in elnums_shock and elnums_neighbor
   idx_shock::Int
 
@@ -214,9 +216,25 @@ mutable struct ShockedElements{Tres}
                  # the number of elements with shocks
   numNeighbor::Int  # number of elements that neighbor an element with a shock
                     # in it, but don't have a shock in it
+  numShared::Vector{Int}  # number of elements that are owned by other processes
+                          # but share a face with a shocked element
   numInterfaces::Int  # number of interfaces in ifaces
+  numSharedInterfaces::Vector{Int}  # number of interfaces shared with each
+                                    # peer process
   numBoundaryFaces::Int
+
+  npeers::Int  # number of peers
+  peer_indices::Vector{Int}  # array containing the *index* of the peer
+                             # process in the original mesh list of peer
+                             # processes
+
   numEl::Int  # total number of elements
+
+  # useful ranges for iterating
+  local_els::UnitRange{Int}
+  neighbor_els::UnitRange{Int}
+  shared_els::Vector{UnitRange{Int}}
+
   function ShockedElements{Tres}(mesh::AbstractMesh) where {Tres}
 
     # try to guess initial size
@@ -224,22 +242,33 @@ mutable struct ShockedElements{Tres}
     elnums_shock = zeros(Int, size_guess)
     elnums_neighbor = zeros(Int, size_guess)  # the size here is approximate
     elnums_all = Array{Int}(0)  # do this later
-    elnums_mesh = zeros(mesh.numEl)
+    elnums_mesh = zeros(mesh.numGlobalEl)
     ee = Array{Tres}(size_guess)
     ifaces = Array{RelativeInterface}(0)
     bndryfaces = Array{RelativeBoundary}(0)
+    shared_interfaces = Vector{Vector{RelativeInterface}}(0)
 
     idx_shock = 1
 
     numShock = 0
     numNeighbor = 0
+    numShared = Vector{Int}(0)
     numInterfaces = 0
+    numSharedInterfaces = Vector{Int}(0)
     numBoundaryFaces = 0
+    npeers = 0
+    peer_indices = Vector{Int}(0)
     numEl = 0
+    local_els = 0:0
+    neighbor_els = 0:0
+    shared_els = Vector{UnitRange{Int}}(0)
 
     return new(elnums_shock, elnums_neighbor, elnums_all, elnums_mesh, ee,
-               ifaces, bndryfaces, idx_shock, numShock, numNeighbor,
-               numInterfaces, numBoundaryFaces, numEl)
+               ifaces, bndryfaces, shared_interfaces, idx_shock, numShock,
+               numNeighbor, numShared,
+               numInterfaces, numSharedInterfaces, numBoundaryFaces, npeers,
+               peer_indices, numEl,
+               local_els, neighbor_els, shared_els)
   end
 end
 

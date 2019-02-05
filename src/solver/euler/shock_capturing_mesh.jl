@@ -95,6 +95,41 @@ end
 
 
 """
+  Sets the viscoscity for an element of the shockmesh.  This function
+  should only be called *after* [`completeShockElements`](@ref) has been
+  called.  Unlike `push!`, this function does not add a new element to the
+  shockmesh, it only sets the viscoscity for an existing element.
+
+  **Inputs**
+
+   * data: `ShockedElements`
+   * elnum: element number
+   * ee: viscoscity value
+"""
+function setViscoscity(data::ShockedElements, elnum::Integer, ee::Number)
+
+  data.ee[elnum] = ee
+end
+
+"""
+  Gets the viscsocity for a given element.
+
+  **Inputs**
+
+   * data::`ShockedElements`
+   * elnum: the element number
+
+  **Outputs**
+
+   * val: the viscoscity value
+"""
+function getViscoscity(data::ShockedElements, elnum::Integer)
+
+  return data.ee[elnum]
+end
+
+
+"""
   Adds a new element to the list of neighboring elements.  Internal function
 
   **Inputs**
@@ -124,6 +159,8 @@ end
   return idx+1, sz
 end
 
+
+
 """
   Internal function for pushing a new interface
 
@@ -146,6 +183,23 @@ end
 
   return idx+1, sz
 end
+
+
+@inline function push_sharediface(data::ShockedElements, iface::RelativeInterface,
+                    idx::Integer, sz::Integer)
+
+  if idx > sz
+    sz = max(2*sz, 8)
+    resize!(data.shared_interfaces, sz)
+  end
+
+  data.shared_interfaces[end][idx] = iface
+  data.numSharedInterfaces[end] += 1
+
+  return idx+1, sz
+end
+
+
 
 """
   Internal function for pushing new boundary
@@ -196,6 +250,10 @@ end
 function replace_boundary(bndry::Boundary, elnum::Integer)
   return Boundary(elnum, bndry.face)
 end
+
+#TODO: make idx and sz fields of the type
+#      make the push_* functions update the counts
+#      get rid of shocked and neighbors arrays, use only elnums_all
 
 """
   After all the elements that have shocks in them have been added, finished
@@ -259,6 +317,10 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   data.numNeighbor = data.idx_shock - 1 - data.numShock
   data.numInterfaces = idx_if - 1
 
+  # get shared interfaces
+  setupShockmeshParallel(mesh, data, idx_nb, sz_nb)
+
+
  # get the list of boundary faces
   idx_b = 1
   sz_b = length(data.bndryfaces)
@@ -273,14 +335,15 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   data.numBoundaryFaces = idx_b - 1
 
 
-  #TODO: handle parallel interfaces
-  @assert mesh.commsize == 1
-
   # setup elnums_all
   # TODO: I think the previous step could use the same array for elnums_shock
   #       and elnums_neighbor, making this step unnecessary
 
   numEl = data.numShock + data.numNeighbor
+  for i=1:data.npeers
+    numEl += data.numShared[i]
+  end
+
   data.numEl = numEl
   if length(data.elnums_all) < numEl
     resize!(data.elnums_all, numEl)
@@ -291,11 +354,109 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     data.elnums_all[idx] = data.elnums_shock[i]
     idx += 1
   end
-  @simd for i=1:data.numNeighbor
+  @simd for i=1:(data.numNeighbor + sum(data.numShared))
     data.elnums_all[idx] = data.elnums_neighbor[i]
-    data.ee[idx] = 0
+    data.ee[idx] = 0  # for shared faces, this will be set to the correct value
+                      # later
     idx += 1
   end
 
+  # setup ranges
+  data.local_els = 1:data.numShock
+  data.neighbor_els = (data.numShock+1):(data.numShock + data.numNeighbor)
+  startidx = data.numShock + data.numNeighbor + 1
+  data.shared_els = Vector{UnitRange{Int}}(data.npeers)
+  for i=1:data.npeers
+    data.shared_els[i] = startidx:(startidx + data.numShared[i] - 1)
+    startidx = data.shared_els[i][end] + 1
+  end
+
+
   return nothing
+end
+
+
+function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements,
+                               idx_nb::Integer, sz_nb::Integer)
+
+  # Its possible to re-use the arrays from last iteration, but it would be
+  # tricky when the set of peer processes changes from one iteration to the next
+  data.peer_indices = Array{Int}(0)
+  data.shared_interfaces = Vector{Vector{RelativeInterface}}(0)
+  data.numSharedInterfaces = Array{Int}(0)
+  data.numShared = Array{Int}(0)
+  const INITIAL_SIZE = 8
+  for peer=1:mesh.npeers
+    idx_if = 1
+    sz_if = INITIAL_SIZE
+    for i=1:length(mesh.shared_interfaces[peer])
+      iface_i = mesh.shared_interfaces[peer][i]
+
+      # elementL is always the local one, so only need to check that one
+      elementL = data.elnums_mesh[iface_i.elementL]
+      elementR = data.elnums_mesh[iface_i.elementR]
+
+      if (elementL > 0) && (elementL <= data.numShock)
+
+        # add the peer
+        if peer_indices[end] != peer
+          data.npeers += 1
+          push!(data.peer_indices, peer)
+          # make the new vector non-zero size to save re-allocating it on the
+          # first push
+          push!(data.shared_interfaces, Vector{RelativeInterface}(INITIAL_SIZE))
+          push!(data.numSharedInterfaces, 0)
+          push!(data.numShared, 0)
+        end
+
+
+        # add elementR to the list of elements
+        if elementR == 0
+          elnum_full = iface_i.elementR
+          elementR = data.idx_shock
+          data.idx_shock += 1
+
+          idx_nb, sz_nb = push_neighbor(data, elnum_full, idx_nb, sz_nb)
+          data.numShared[end] += 1
+        end
+    
+
+        # add the interface
+        iface_new = RelativeInterface(replace_interface(iface_i, elementL, elementR), i)
+
+        idx_if, sz_if = push_sharediface(data, iface_new, idx_if, sz_if)
+
+      end  # end if elementL
+
+    end  # end i
+  end  # end peer
+
+  return nothing
+end
+
+
+#TODO: make one of these for regular meshes
+"""
+  Helper function to get the index of a shared element in the `RemoteMetrics`
+  arrays.
+
+  **Inputs**
+
+   * data: a `ShockedElements`
+   * mesh: the original mesh
+   * peeridx: the peer index on the `ShockedElements`
+   * elnum: the element number on the `ShockedElements`
+
+  **Outputs**
+
+   * idx: the index of the shared element in, for example, `RemoteMetrics`
+          arrays
+"""
+function getSharedElementIndex(data::ShockedElements, mesh::AbstractMesh,
+                               peeridx::Integer, elnum::Integer)
+
+  peeridx2 = data.peer_indices[peeridx]
+  firstnum = mesh.shared_element_offsets[peeridx2]
+  elnum2 = data.elnums_all[elnum]
+  return elnum2 - firstnum + 1
 end

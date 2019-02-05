@@ -47,12 +47,13 @@ end
 """
 function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements, convert_entropy,
-                      diffusion::AbstractDiffusion
+                      diffusion::AbstractDiffusion,
                      ) where {Tsol, Tres}
+
 
   wxi = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  @simd for i=1:shockmesh.numShock
+  @simd for i in shockmesh.local_els
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i_full)
@@ -76,7 +77,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
 
   # the diffusion is zero in the neighboring elements, so convert to entropy
   # but zero out grad_w
-  @simd for i=(shockmesh.numShock+1):shockmesh.numEl
+  @simd for i in shockmesh.neighbor_els
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i_full)
@@ -87,6 +88,40 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
     gradw_i = sview(capture.grad_w, :, :, :, i)
     fill!(gradw_i, 0)
   end
+
+  for peer=1:shockmesh.npeers
+    peer_full = shockmesh.peer_indices[peer]
+    data = eqn.shared_data[peer_full]
+    metrics = mesh.remote_metrics[peer_full]
+
+    for i in shockmesh.shared_els[peer]
+      i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
+
+      # compute entropy variables
+      for j=1:mesh.numNodesPerElement
+        q_j = ro_sview(data.q_recv, :, j, i_full)
+        w_j = sview(capture.w_el, :, j, i_full)
+        convert_entropy(eqn.params, q_j, w_j)
+      end
+
+      # compute diffusion tensor
+      ee = getViscoscity(shockmesh, i)
+
+      lambda_gradq_i = sview(capture.grad_w, :, :, :, i)
+      if ee > 0
+        w_i = ro_sview(capture.w_el, :, :, i)
+        dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
+        jac_i = ro_sview(metrics.jac, :, i_full)
+        fill!(gradw, 0)
+
+        applyDx(sbp, w_i, dxidx_i, jac_i)
+        applyDiffusionTensor(diffusion, w_i, i, grad_w, lambda_gradq_i)
+      else
+        fill!(lambda_gradq_i, 0)
+      end
+
+    end  # end i
+  end  # end peer
 
   return nothing
 end
@@ -172,13 +207,12 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     elnumL = shockmesh.elnums_all[iface_red.elementL]
     elnumR = shockmesh.elnums_all[iface_red.elementR]
 
+    # get data needed for next steps
     wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
     wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
     gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
     gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
-    nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
 
-    # get data needed for next steps
     nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
     dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
     dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
@@ -215,6 +249,86 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
                       op)
 
   end  # end loop i
+
+  return nothing
+end
+
+
+"""
+  Does the same thing as `compuateFaceTerm`, but for the shared faces, updating
+  the residual on the local element only
+"""
+function computeSharedFaceTerm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicSC{Tsol, Tres},
+                      shockmesh::ShockedElements, diffusion::AbstractDiffusion,
+                      penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
+
+  delta_w = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
+  theta = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+
+  t1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  t1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  t2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  t2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  op = SummationByParts.Subtract()
+
+
+  # don't care about resR for shared faces
+  resR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  for peer=1:shockmesh.npeers
+    peer_full = shockmesh.peer_indices[peer]
+    metrics = mesh.remote_metrics[peer_full]
+    data = eqn.shared_data[peer_full]  # unneeded?
+
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_red = shockmesh.shared_interfaces[peer][i].iface
+      iface_idx = shockmesh.shared_interfaces[peer][i].idx_orig
+      elnumL = shockmesh.elnums_all[iface_red.elementL]
+      elnumR = getSharedElementIndex(data, mesh, peer, iface_red.elementR)
+
+      # get data needed for next steps
+      wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
+      wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+      gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
+      gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
+
+      nrm_face = ro_sview(mesh.nrm_sharedface[peer_full], :, :, iface_idx)
+      dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
+      dxidxR = ro_sview(metrics.dxidx, :, :, :, elnumR)
+      jacL = ro_sview(mesh.jac, :, elnumL)
+      jacR = ro_sview(metrics.jac, :, elnumR)
+      alphas = ro_sview(capture.alpha, :, i)  #TODO: fix this
+      resL = sview(eqn.res, :, :, elnumL)
+
+      # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
+      getFaceVariables(capture, mesh.sbpface, iface_red, wL, wR, gradwL, gradwR,
+                       nrm_face, delta_w, theta)
+
+      # apply the penalty coefficient matrix
+      applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w,
+                   theta, wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L,
+                   t2R)
+
+      # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
+      # need to apply R^T * t1, not R^T * B * t1, so
+      # interiorFaceIntegrate won't work.  Use the reverse mode instead
+      for j=1:mesh.numNodesPerFace
+        for k=1:mesh.numDofPerNode
+          t1L[k, j] = -t1L[k, j]  # the SAT has a minus sign in front of it
+          t1R[k, j] = -t1R[k, j]
+        end
+      end
+      #TODO: this could be a boundaryIntegrate now that resR doesn't matter
+      interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR,
+                                   t1L, t1R)
+
+      # apply Dgk^T and Dgn^T
+      #TODO: could write a specialized version of this to only do element kappa
+      applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion,
+                        t2L, t2R, wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR,
+                        resL, resR, op)
+    end  # end i
+  end  # end peer
 
   return nothing
 end
