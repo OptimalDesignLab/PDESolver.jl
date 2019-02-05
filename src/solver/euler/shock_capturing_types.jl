@@ -191,11 +191,8 @@ end
    * numEl: total number of elements
 """
 mutable struct ShockedElements{Tres}
-  elnums_shock::Vector{Int}  # elements (global numbering)  where shock
-                             # indicator is non-zero
-  elnums_neighbor::Vector{Int}  # elements (global numbering) that neighbor
-                                # elnums_shock but are in elnums_shock
-  elnums_all::Vector{Int}  # union of elnums_shock and elnums_neighbor
+  elnums_all::Vector{Int}  # union of elnums_shock and elnums_neighbor,
+                           # and shared elements
   elnums_mesh::Vector{Int}  # temporary array, length mesh.numEl
                             # contains the indices of the selected elements
                             # in elnums_all
@@ -207,9 +204,6 @@ mutable struct ShockedElements{Tres}
   bndryfaces::Vector{RelativeBoundary}
 
   shared_interfaces::Vector{Vector{RelativeInterface}}
-
-  # current indices in elnums_shock and elnums_neighbor
-  idx_shock::Int
 
   numShock::Int  # number of elements with shocks in them.  Because we try
                  # to pre-allocate elnums_shock, its length may be greater than
@@ -235,20 +229,30 @@ mutable struct ShockedElements{Tres}
   neighbor_els::UnitRange{Int}
   shared_els::Vector{UnitRange{Int}}
 
+
+  # internal state used for push operations
+  idx_all::Int  # current index in elnums_all
+  sz_all::Int  # current size of elnums_all
+
+  idx_if::Int  # current index in ifaces
+  sz_if::Int  # current size of ifaces
+
+  idx_sf::Vector{Int}  # current index in shared_interfaces
+  sz_sf::Vector{Int}   # current size of shared_interfaces
+
+  idx_b::Int  # current index in bndryfaces
+  sz_b::Int  # current size of bndryfaces
+
   function ShockedElements{Tres}(mesh::AbstractMesh) where {Tres}
 
     # try to guess initial size
     size_guess = max(div(mesh.numEl, 10), 1)
-    elnums_shock = zeros(Int, size_guess)
-    elnums_neighbor = zeros(Int, size_guess)  # the size here is approximate
-    elnums_all = Array{Int}(0)  # do this later
+    elnums_all = Array{Int}(size_guess)  # do this later
     elnums_mesh = zeros(mesh.numGlobalEl)
     ee = Array{Tres}(size_guess)
     ifaces = Array{RelativeInterface}(0)
     bndryfaces = Array{RelativeBoundary}(0)
     shared_interfaces = Vector{Vector{RelativeInterface}}(0)
-
-    idx_shock = 1
 
     numShock = 0
     numNeighbor = 0
@@ -263,12 +267,22 @@ mutable struct ShockedElements{Tres}
     neighbor_els = 0:0
     shared_els = Vector{UnitRange{Int}}(0)
 
-    return new(elnums_shock, elnums_neighbor, elnums_all, elnums_mesh, ee,
-               ifaces, bndryfaces, shared_interfaces, idx_shock, numShock,
+    idx_all = 1
+    sz_all = size_guess
+    idx_if = 1
+    sz_if = 0
+    idx_sf = Vector{Int}(0)
+    sz_sf = Vector{Int}(0)
+    idx_b = 1
+    sz_b = 0
+
+    return new(elnums_all, elnums_mesh, ee,
+               ifaces, bndryfaces, shared_interfaces, numShock,
                numNeighbor, numShared,
                numInterfaces, numSharedInterfaces, numBoundaryFaces, npeers,
                peer_indices, numEl,
-               local_els, neighbor_els, shared_els)
+               local_els, neighbor_els, shared_els,
+               idx_all, sz_all, idx_if, sz_if, idx_sf, sz_sf, idx_b, sz_b)
   end
 end
 

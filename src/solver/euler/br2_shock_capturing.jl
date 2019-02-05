@@ -9,15 +9,16 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
 
-  computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
+  println("\nEntered applyShockCapturing")
+  @time computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  @time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
-  computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
+  @time computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  @time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
 
   return nothing
@@ -244,6 +245,7 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1L, t1R)
 
     # apply Dgk^T and Dgn^T
+    # TODO: there is an allocation here that I can't figure out the source of
     applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
                       wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
                       op)
@@ -326,7 +328,7 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
       #TODO: could write a specialized version of this to only do element kappa
       applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion,
                         t2L, t2R, wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR,
-                        resL, resR, op)
+                       resL, resR, op)
     end  # end i
   end  # end peer
 
@@ -505,7 +507,7 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
                            dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                            jacL::AbstractVector, jacR::AbstractVector,
                            resL::AbstractMatrix, resR::AbstractMatrix,
-                           op::SummationByParts.UnaryFunctor=SummationByParts.Add()) where {Tsol, Tres}
+                           op::SummationByParts.UnaryFunctor) where {Tsol, Tres}
 
   dim, numNodesPerFace = size(nrm_face)
   numNodesPerElement = size(resL, 2)

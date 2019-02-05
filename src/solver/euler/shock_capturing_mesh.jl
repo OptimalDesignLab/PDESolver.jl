@@ -1,6 +1,7 @@
 # functions that extract the mininum data necessary from the mesh to do a
 # DG-type shock capturing scheme.
 
+#TODO: is this unused?
 """
   This function gets the list of elements (and other required data) to do
   shock capturing with a DG-type dissipation.
@@ -55,16 +56,21 @@ function reset(data::ShockedElements)
 
   fill!(data.elnums_mesh, 0)
   fill!(data.elnums_all, 0)
-  data.idx_shock = 1
   data.numShock = 0
   data.numNeighbor = 0
   data.numInterfaces = 0
   data.numEl = 0
 
+  data.idx_all = 1
+  data.idx_if = 1
+  data.idx_b = 1
+  fill!(data.idx_sf, 1)
+
   return nothing
 end
 
 import Base.push!
+
 
 """
   Adds a new element to the list of elements that have a shock in them
@@ -75,22 +81,22 @@ import Base.push!
    * elnum: the element number
    * ee: the viscoscity value
 """
-function push!(data::ShockedElements, elnum::Int, ee::Number)
+@inline function push!(data::ShockedElements, elnum::Int, ee::Number)
 
-  idx = data.idx_shock
-  
-  if idx > length(data.elnums_shock)
-    currsize = length(data.elnums_shock)
-    newsize = max(currsize*2, 8)
-    resize!(data.elnums_shock, newsize)
-    resize!(data.ee, newsize)
+  idx = data.idx_all
+  sz = data.sz_all
+  if idx > sz
+    sz = max(sz*2, 8)
+    resize!(data.elnums_all, sz)
+    resize!(data.ee, sz)
+    data.sz_all = sz
   end
 
-  data.elnums_shock[idx] = elnum
+  data.elnums_all[idx] = elnum
   data.elnums_mesh[elnum] = idx
   data.ee[idx] = ee
 
-  data.idx_shock += 1
+  data.idx_all += 1
 end
 
 
@@ -137,27 +143,54 @@ end
    * data: `ShockedElements`
    * elnum: the new element number
    * idx: the index to insert the new element number
-   * sz: the current size of data.elnums_neighbor
-
-  **Outputs**
-
-   * newidx: the next index to insert to
-   * sz: the size of `data.elnums_neighbor`
 """
-@inline function push_neighbor(data::ShockedElements, elnum::Integer, idx::Integer,
-                       sz::Integer)
+@inline function push_neighbor(data::ShockedElements, elnum::Integer)
+
+  idx = data.idx_all
+  sz = data.sz_all
 
   if idx > sz
     sz = max(2*sz, 8)
-    resize!(data.elnums_neighbor, sz)
+    resize!(data.elnums_all, sz)
+    data.sz_all = sz
   end
 
-  data.elnums_neighbor[idx] = elnum
-  data.elnums_mesh[elnum] = idx + data.numShock  #TODO: get rid of elnumsNeighbor
+  data.elnums_all[idx] = elnum
+  data.elnums_mesh[elnum] = idx
+  data.idx_all += 1
 
-
-  return idx+1, sz
+  return nothing
 end
+
+"""
+  Internal function for adding element to list of shared elements (ie.
+  elements that live on other processes that share a face with an element
+  on this process that has a shock in it.
+
+  **Inputs**
+
+   * data: `ShockedElements`
+   * elnum: new element number
+"""
+@inline function push_shared(data::ShockedElements, elnum::Integer)
+
+  idx = data.idx_all
+  sz = data.sz_all
+
+  if idx > sz
+    sz = max(2*sz, 8)
+    resize!(data.elnums_all, sz)
+    data.sz_all = sz
+  end
+
+  data.elnums_all[idx] = elnum
+  data.elnums_mesh[elnum] = idx
+  data.idx_all += 1
+  data.numShared[end] += 1
+
+  return nothing
+end
+
 
 
 
@@ -171,32 +204,39 @@ end
    * idx: the current index in data.ifaces
    * sz: the current size of data.ifaces
 """
-@inline function push_iface(data::ShockedElements, iface::RelativeInterface,
-                    idx::Integer, sz::Integer)
+@inline function push_iface(data::ShockedElements, iface::RelativeInterface)
+
+  idx = data.idx_if
+  sz = data.sz_if
 
   if idx > sz
     sz = max(2*sz, 8)
     resize!(data.ifaces, sz)
+    data.sz_if = sz
   end
 
   data.ifaces[idx] = iface
+  data.idx_if += 1
 
-  return idx+1, sz
+  return nothing
 end
 
 
-@inline function push_sharediface(data::ShockedElements, iface::RelativeInterface,
-                    idx::Integer, sz::Integer)
+@inline function push_sharediface(data::ShockedElements, iface::RelativeInterface)
 
+  idx = data.idx_sf[end]
+  sz = data.sz_sf[end]
   if idx > sz
     sz = max(2*sz, 8)
-    resize!(data.shared_interfaces, sz)
+    resize!(data.shared_interfaces[end], sz)
+    data.sz_sf[end] = sz
   end
 
   data.shared_interfaces[end][idx] = iface
   data.numSharedInterfaces[end] += 1
+  data.idx_sf[end] += 1
 
-  return idx+1, sz
+  return nothing
 end
 
 
@@ -207,22 +247,24 @@ end
   **Inputs**
 
    * data: `ShockElements`
-   * iface: a `RelativeBoundary`
-   * idx: the current index in data.bndryfaces
-   * sz: the current size of data.bndryfaces
+   * bndry: a `RelativeBoundary`
 
 """
-@inline function push_bndry(data::ShockedElements, bndry::RelativeBoundary,
-                            idx::Integer, sz::Integer)
+@inline function push_bndry(data::ShockedElements, bndry::RelativeBoundary)
+
+  idx = data.idx_b
+  sz = data.sz_b
 
   if idx > sz
     sz = max(2*sz, 8)
     resize!(data.bndryfaces, sz)
+    data.sz_b = sz
   end
 
   data.bndryfaces[idx] = bndry
+  data.idx_b += 1
 
-  return idx+1, sz
+  return nothing
 end
 
 
@@ -275,13 +317,11 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   # elements with positive shock indicator, and (n+1):m for the neighboring
   # elements
 
-  data.numShock = data.idx_shock - 1
+  #TODO: update reset
+
+  data.numShock = data.idx_all - 1
   # neighbor stuff
-  idx_nb = 1
-  sz_nb = length(data.elnums_neighbor)
   # iface stuff
-  idx_if = 1  # iface stuff
-  sz_if = length(data.ifaces)
   for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
     elementL = data.elnums_mesh[iface_i.elementL]
@@ -290,76 +330,60 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     # if an element has not been seen before and its neighbor has a shock in
     # it, add to the list of neighbor elements
     if (elementL > 0 && elementL <= data.numShock) || (elementR > 0 && elementR <= data.numShock)
-      new_elnum = data.idx_shock
 
       if elementL == 0
         elnum_full = iface_i.elementL  # element numbering in the full numbering
-        elementL = data.idx_shock  # element number in the reduced numbering
-        data.idx_shock += 1
+        elementL = data.idx_all  # element number in the reduced numbering
 
-        idx_nb, sz_nb = push_neighbor(data, elnum_full, idx_nb, sz_nb)
+        push_neighbor(data, elnum_full)
         
       elseif elementR == 0  # it shouldn't be possible to see the same pair of
                           # elements more than once (even on periodic meshes)
         elnum_full = iface_i.elementR
-        elementR = data.idx_shock
-        data.idx_shock += 1
+        elementR = data.idx_all
 
-        idx_nb, sz_nb = push_neighbor(data, elnum_full, idx_nb, sz_nb)
+        push_neighbor(data, elnum_full)
       end
 
       # record the new interface
       iface_new = RelativeInterface(replace_interface(iface_i, elementL, elementR), i)
-      idx_if, sz_if = push_iface(data, iface_new, idx_if, sz_if)
+      push_iface(data, iface_new)
     end  # end if
   end  # end for
 
-  data.numNeighbor = data.idx_shock - 1 - data.numShock
-  data.numInterfaces = idx_if - 1
+  data.numNeighbor = data.idx_all - 1 - data.numShock
+  data.numInterfaces = data.idx_if - 1
 
   # get shared interfaces
-  setupShockmeshParallel(mesh, data, idx_nb, sz_nb)
+  setupShockmeshParallel(mesh, data)
 
 
  # get the list of boundary faces
-  idx_b = 1
-  sz_b = length(data.bndryfaces)
   for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
     elnum = data.elnums_mesh[bndry_i.element]
     if elnum > 0 && elnum <= data.numShock
       bndry_new = RelativeBoundary(replace_boundary(bndry_i, elnum), i)
-      idx_b, sz_b = push_bndry(data, bndry_new, idx_b, sz_b)
+      push_bndry(data, bndry_new)
     end
   end
-  data.numBoundaryFaces = idx_b - 1
+  data.numBoundaryFaces = data.idx_b - 1
 
 
-  # setup elnums_all
-  # TODO: I think the previous step could use the same array for elnums_shock
-  #       and elnums_neighbor, making this step unnecessary
-
+  # compute final counts that will be useful for the user
   numEl = data.numShock + data.numNeighbor
   for i=1:data.npeers
     numEl += data.numShared[i]
   end
-
   data.numEl = numEl
-  if length(data.elnums_all) < numEl
-    resize!(data.elnums_all, numEl)
-    resize!(data.ee, numEl)
+
+  if length(data.ee) < data.sz_all
+    resize!(data.ee, data.sz_all)  # keep ee same size as elnums_all, because
+                                   # that is what push! assumes
   end
-  idx = 1
-  @simd for i=1:data.numShock
-    data.elnums_all[idx] = data.elnums_shock[i]
-    idx += 1
-  end
-  @simd for i=1:(data.numNeighbor + sum(data.numShared))
-    data.elnums_all[idx] = data.elnums_neighbor[i]
-    data.ee[idx] = 0  # for shared faces, this will be set to the correct value
-                      # later
-    idx += 1
-  end
+  ee_other = sview(data.ee, (data.numShock+1):data.numEl)
+  fill!(ee_other, 0)  # neighbor elements have 0 viscoscity, shared elements
+                      # will be fixed later
 
   # setup ranges
   data.local_els = 1:data.numShock
@@ -376,8 +400,7 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
 end
 
 
-function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements,
-                               idx_nb::Integer, sz_nb::Integer)
+function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements)
 
   # Its possible to re-use the arrays from last iteration, but it would be
   # tricky when the set of peer processes changes from one iteration to the next
@@ -385,10 +408,11 @@ function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements,
   data.shared_interfaces = Vector{Vector{RelativeInterface}}(0)
   data.numSharedInterfaces = Array{Int}(0)
   data.numShared = Array{Int}(0)
+  data.idx_sf = Array{Int}(0)
+  data.sz_sf = Array{Int}(0)
   const INITIAL_SIZE = 8
+  found_peer = false
   for peer=1:mesh.npeers
-    idx_if = 1
-    sz_if = INITIAL_SIZE
     for i=1:length(mesh.shared_interfaces[peer])
       iface_i = mesh.shared_interfaces[peer][i]
 
@@ -399,7 +423,10 @@ function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements,
       if (elementL > 0) && (elementL <= data.numShock)
 
         # add the peer
-        if peer_indices[end] != peer
+        # need the found_peer flag because peer_indices[0] is an error, so
+        # don't evaluate unless length(peer_indices) > 0
+        if !found_peer || data.peer_indices[end] != peer
+          found_peer = true
           data.npeers += 1
           push!(data.peer_indices, peer)
           # make the new vector non-zero size to save re-allocating it on the
@@ -407,33 +434,29 @@ function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements,
           push!(data.shared_interfaces, Vector{RelativeInterface}(INITIAL_SIZE))
           push!(data.numSharedInterfaces, 0)
           push!(data.numShared, 0)
+          push!(data.idx_sf, 1)
+          push!(data.sz_sf, INITIAL_SIZE)
         end
-
 
         # add elementR to the list of elements
         if elementR == 0
           elnum_full = iface_i.elementR
-          elementR = data.idx_shock
-          data.idx_shock += 1
+          elementR = data.idx_all
 
-          idx_nb, sz_nb = push_neighbor(data, elnum_full, idx_nb, sz_nb)
-          data.numShared[end] += 1
+          push_shared(data, elnum_full)
         end
-    
 
         # add the interface
         iface_new = RelativeInterface(replace_interface(iface_i, elementL, elementR), i)
-
-        idx_if, sz_if = push_sharediface(data, iface_new, idx_if, sz_if)
+        push_sharediface(data, iface_new)
 
       end  # end if elementL
-
     end  # end i
   end  # end peer
 
   return nothing
 end
-
+#TODO: have push_* functions return the new element number
 
 #TODO: make one of these for regular meshes
 """

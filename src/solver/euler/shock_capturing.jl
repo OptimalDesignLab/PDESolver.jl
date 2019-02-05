@@ -42,7 +42,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     error("shock capturing requires PARALLEL_DATA_ELEMENT")
   end
 
-  assertReceivesWaited(shared_data)  # parallel communication for the regular
+  assertReceivesWaited(eqn.shared_data)  # parallel communication for the regular
                                      # face integrals should already have
                                      # finished parallel communication
 
@@ -63,7 +63,8 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     end
   end
 
-  completeShockElements(mesh, shockmesh)
+  @time completeShockElements(mesh, shockmesh)
+  println("completeShockedElements @time printed above")
 
   # compute the shock viscoscity for shared elements
   for peer=1:shockmesh.npeers
@@ -85,7 +86,8 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   allocateArrays(capture, mesh, shockmesh)
 
   # call shock capturing scheme
-  applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+  @time applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+  println("shock capturing calculation @time printed above")
 
   return nothing
 end

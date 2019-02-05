@@ -800,7 +800,7 @@ function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   boundary_els = unique(boundary_els)
   sort!(boundary_els)
 
-  boundary_els_shock = sort!(shockmesh.elnums_all[(shockmesh.numShock+1):end])
+  boundary_els_shock = sort!(shockmesh.elnums_all[(shockmesh.numShock+1):shockmesh.numEl])
 
   @test length(boundary_els) == length(boundary_els_shock)
   @test maximum(boundary_els - boundary_els_shock) == 0
@@ -1090,7 +1090,6 @@ function test_br2_gradw(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   dw_dx = zeros(Tsol, mesh.numDofPerNode)
   for i=1:shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
-    println("i = ", i, ", i_full = ", i_full)
     @test maximum(abs.(capture.w_el[:, :, i] - w_vals[:, :, i_full])) < 1e-13
   end
 
