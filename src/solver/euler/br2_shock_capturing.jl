@@ -20,6 +20,10 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
   @time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
+  @time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
+                              capture.diffusion, capture.penalty)
+
+
 
   return nothing
 end
@@ -101,21 +105,21 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
       # compute entropy variables
       for j=1:mesh.numNodesPerElement
         q_j = ro_sview(data.q_recv, :, j, i_full)
-        w_j = sview(capture.w_el, :, j, i_full)
+        w_j = sview(capture.w_el, :, j, i)
         convert_entropy(eqn.params, q_j, w_j)
       end
 
       # compute diffusion tensor
       ee = getViscoscity(shockmesh, i)
-
       lambda_gradq_i = sview(capture.grad_w, :, :, :, i)
+
       if ee > 0
         w_i = ro_sview(capture.w_el, :, :, i)
         dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
         jac_i = ro_sview(metrics.jac, :, i_full)
-        fill!(gradw, 0)
+        fill!(grad_w, 0)
 
-        applyDx(sbp, w_i, dxidx_i, jac_i)
+        applyDx(sbp, w_i, dxidx_i, jac_i, wxi, grad_w)
         applyDiffusionTensor(diffusion, w_i, i, grad_w, lambda_gradq_i)
       else
         fill!(lambda_gradq_i, 0)
@@ -223,8 +227,6 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     resL = sview(eqn.res, :, :, elnumL)
     resR = sview(eqn.res, :, :, elnumR)
 
-
-
     # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
     getFaceVariables(capture, mesh.sbpface, iface_red, wL, wR, gradwL, gradwR,
                      nrm_face, delta_w, theta)
@@ -277,16 +279,19 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
 
   # don't care about resR for shared faces
   resR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  for peer=1:shockmesh.npeers
+  for _peer=1:shockmesh.npeers
+    # finish parallel communication for this set of faces
+    peer = receiveAlpha(capture, shockmesh)
+
     peer_full = shockmesh.peer_indices[peer]
     metrics = mesh.remote_metrics[peer_full]
-    data = eqn.shared_data[peer_full]  # unneeded?
+    #data = eqn.shared_data[peer_full]  # unneeded?
 
     for i=1:shockmesh.numSharedInterfaces[peer]
       iface_red = shockmesh.shared_interfaces[peer][i].iface
       iface_idx = shockmesh.shared_interfaces[peer][i].idx_orig
       elnumL = shockmesh.elnums_all[iface_red.elementL]
-      elnumR = getSharedElementIndex(data, mesh, peer, iface_red.elementR)
+      elnumR = getSharedElementIndex(shockmesh, mesh, peer, iface_red.elementR)
 
       # get data needed for next steps
       wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
@@ -299,7 +304,7 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
       dxidxR = ro_sview(metrics.dxidx, :, :, :, elnumR)
       jacL = ro_sview(mesh.jac, :, elnumL)
       jacR = ro_sview(metrics.jac, :, elnumR)
-      alphas = ro_sview(capture.alpha, :, i)  #TODO: fix this
+      alphas = ro_sview(capture.alpha_parallel[peer], :, i)
       resL = sview(eqn.res, :, :, elnumL)
 
       # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
@@ -328,7 +333,7 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
       #TODO: could write a specialized version of this to only do element kappa
       applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion,
                         t2L, t2R, wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR,
-                       resL, resR, op)
+                        resL, resR, op)
     end  # end i
   end  # end peer
 
@@ -507,7 +512,7 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
                            dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                            jacL::AbstractVector, jacR::AbstractVector,
                            resL::AbstractMatrix, resR::AbstractMatrix,
-                           op::SummationByParts.UnaryFunctor) where {Tsol, Tres}
+                           op::SummationByParts.UnaryFunctor=SummationByParts.Add()) where {Tsol, Tres}
 
   dim, numNodesPerFace = size(nrm_face)
   numNodesPerElement = size(resL, 2)
@@ -634,6 +639,9 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
     @simd for j=1:numNodesPerElement
       facL = (1/alphas[1])*jacL[j]/sbp.w[j]
       facR = (1/alphas[2])*jacR[j]/sbp.w[j]
+      #facL = (3)*jacL[j]/sbp.w[j]
+      #facR = (3)*jacR[j]/sbp.w[j]
+
       @simd for k=1:numDofPerNode
         t1L[k, j, d1] *= facL
         t1R[k, j, d1] *= facR
@@ -671,3 +679,91 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# helper functions
+
+"""
+  Send the number of faces not on a Neumann boundary each element has to
+  other processes.
+
+  **Inputs**
+
+   * comm: `AlphaComm` object
+   * shockmesh: `ShockedElements`
+   * el_counts: array containing the number of faces each local element has
+                that are not on a Neumann boundary
+               
+"""
+function sendAlphas(comm::AlphaComm, shockmesh::ShockedElements,
+                    el_counts::AbstractVector{I}) where {I <: Integer}
+
+  # extract the required values into the send buffers
+
+  # allocateArrays checks that previous communications are complete
+
+  # We only need to send number of faces per element, but that would require
+  # uniquely identifying the elements on either side of the partition boundary.
+  # Instead, send the same value for all faces of the element and let the
+  # the receiver do the face -> element reduction
+
+  # post receives
+  for peer=1:shockmesh.npeers
+    Irecv!(comm, peer)
+  end
+
+  # send
+  for peer=1:shockmesh.npeers
+    # pack the buffer
+    for j=1:shockmesh.numSharedInterfaces[peer]
+      iface_i = shockmesh.shared_interfaces[peer][j].iface
+      comm.send_bufs[peer][j] = el_counts[iface_i.elementL]
+    end
+
+    Isend(comm, peer)
+  end
+
+  return nothing
+end
+
+
+"""
+  Receives the parallel communication started by `sendAlphas`.  Specifically,
+  it receives the communication from one peer process and returns the index
+  of that process.  This function should be called exactly the same number of
+  times that there are peer process.
+
+  On exit, `capture.alpha` will be populated with the correct alpha values
+  for the element shared with the peer process.
+
+  **Inputs**
+
+   * capture: `SBPParabolicSC` shock capturing object
+   * shockmesh: `ShockedElements`
+
+  **Outputs**
+
+   * idx: the index of the peer that communication was received from.
+"""
+function receiveAlpha(capture::SBPParabolicSC, shockmesh::ShockedElements)
+
+
+  peer = Waitany!(capture.alpha_comm)
+  comm = capture.alpha_comm
+
+  # unpack buffer and calculate alpha
+  for j=1:shockmesh.numSharedInterfaces[peer]
+    iface_i = shockmesh.shared_interfaces[peer][j]
+    capture.alpha_parallel[peer][2, j] = 1/comm.recv_bufs[peer][j]
+    # the buffer was packed with el_counts for the parent element of each
+    # face, so all thats required it so take 1/the value
+  end
+
+
+
+  return peer
+end
+
+
+

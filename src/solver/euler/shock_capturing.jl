@@ -63,8 +63,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     end
   end
 
-  @time completeShockElements(mesh, shockmesh)
-  println("completeShockedElements @time printed above")
+  completeShockElements(mesh, shockmesh)
 
   # compute the shock viscoscity for shared elements
   for peer=1:shockmesh.npeers
@@ -72,8 +71,8 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     data = eqn.shared_data[peer_full]
     metrics = mesh.remote_metrics[peer_full]
 
-    for i in data.shared_els[peer]
-      i_full = getSharedElementIndex(data, mesh, peer, i)
+    for i in shockmesh.shared_els[peer]
+      i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
       q_i = ro_sview(data.q_recv, :, :, i_full)
       jac_i = ro_sview(metrics.jac, :, i_full)
 
@@ -86,12 +85,13 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   allocateArrays(capture, mesh, shockmesh)
 
   # call shock capturing scheme
-  @time applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
-  println("shock capturing calculation @time printed above")
+  applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
 
   return nothing
 end
 
+
+#TODO: move shock sensor implementation to own file
 
 #------------------------------------------------------------------------------
 # Method from: Persson and Peraire, "Sub-Cell Shock Capturing for DG Methods"
@@ -205,6 +205,17 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
                          ) where {Tsol, Tmsh}
 
   error("getShockSensor called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
+end
+
+#------------------------------------------------------------------------------
+# ShockSensorEverywhere
+
+function getShockSensor(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorEverywhere{Tsol, Tres},
+                        q::AbstractMatrix, jac::AbstractVector,
+                        ) where {Tsol, Tres}
+
+  return Tsol(1.0), Tres(1.0)
 end
 
 

@@ -83,6 +83,20 @@ struct ShockSensorNone{Tsol, Tres} <: AbstractShockSensor
 end
 
 
+#------------------------------------------------------------------------------
+# Sensor for testing only: there is a shock everywhere
+
+"""
+  Shock sensor that always says there is a shock and returns a viscoscity 
+  of 1
+"""
+mutable struct ShockSensorEverywhere{Tsol, Tres} <: AbstractShockSensor
+
+  function ShockSensorEverywhere{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres}
+    return new()
+  end
+end
+
 
 #------------------------------------------------------------------------------
 # Projection-based shock capturing
@@ -459,6 +473,133 @@ struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
 
 end
 
+"""
+  Parallel communications for alpha
+"""
+struct AlphaComm
+  tag::Cint
+  send_req::Vector{MPI.Request}
+  recv_req::Vector{MPI.Request}
+  recv_waited::Vector{Bool}
+  send_bufs::Vector{Vector{UInt8}}  # make the buffers UInt8 so (hopefully)
+  recv_bufs::Vector{Vector{UInt8}}  # the send will be done eagerly
+  comm::MPI.Comm
+  peer_parts::Vector{Int}  # the list of all processes that might be
+                           # communicated with (same order as mesh.peer_parts)
+  peer_parts_red::Vector{Cint}  # list of peer parts that will actually be
+                                # communicated with
+  function AlphaComm(comm::MPI.Comm, peer_parts::Vector{Int})
+
+    tag = getNextTag(TagManager)
+    send_req = Vector{MPI.Request}(0)
+    recv_req = Vector{MPI.Request}(0)
+    recv_waited = Vector{Bool}(0)
+    send_bufs = Vector{Vector{UInt8}}(0)
+    recv_bufs = Vector{Vector{UInt8}}(0)
+    peer_parts_red = Vector{Cint}(0)
+
+    return new(tag, send_req, recv_req, recv_waited, send_bufs, recv_bufs,
+               comm, peer_parts, peer_parts_red)
+  end
+end
+
+function allocateArrays(comm::AlphaComm, shockmesh::ShockedElements)
+
+  # make sure previous communications have finished before reallocating arrays
+  MPI.Waitall!(comm.send_req)
+  assertReceivesWaited(comm)
+
+  resize!(comm.send_bufs, shockmesh.npeers)
+  resize!(comm.recv_bufs, shockmesh.npeers)
+  resize!(comm.send_req, shockmesh.npeers)
+  resize!(comm.recv_req, shockmesh.npeers)
+  resize!(comm.recv_waited, shockmesh.npeers)
+  resize!(comm.peer_parts_red, shockmesh.npeers)
+
+  # extract needed MPI ranks
+  for i=1:shockmesh.npeers
+    comm.peer_parts_red[i] = comm.peer_parts[shockmesh.peer_indices[i]]
+    comm.recv_bufs[i] = Vector{UInt8}(shockmesh.numSharedInterfaces[i])
+    comm.send_bufs[i] = Vector{UInt8}(shockmesh.numSharedInterfaces[i])
+  end
+
+  return nothing
+end
+
+
+import MPI: Waitall!, Waitany!, Isend, Irecv!
+
+"""
+  Wrapper around MPI.Waitall! for the receive requests
+"""
+function Waitall!(comm::AlphaComm)
+  
+  MPI.Waitall!(comm.recv_req)
+end
+
+"""
+  Wrapper around MPI.Waitany! for the receive requests.
+  Returns only the index, not the Status object.
+"""
+function Waitany!(comm::AlphaComm)
+
+  idx, stat = MPI.Waitany!(comm.recv_req)
+  comm.recv_req[idx] = MPI.REQUEST_NULL
+  comm.recv_waited[idx] = true
+
+  return idx
+end
+
+
+import Utils: assertReceivesWaited
+
+"""
+  Asserts all receives have been waited on
+"""
+function assertReceivesWaited(comm::AlphaComm)
+
+  if length(comm.recv_waited) > 0
+    for i=1:length(comm.recv_waited)
+      @assert comm.recv_waited[i]
+    end
+  end
+
+  return nothing
+end
+
+
+"""
+  Starts communication for a given peer index (note: this is the index in
+  the range 1:shockmesh.npeer)
+
+  **Inputs**
+
+   * comm: `AlphaComm` object
+   * peeridx: peer index
+"""
+function Isend(comm::AlphaComm, peeridx::Integer)
+
+  req = MPI.Isend(comm.send_bufs[peeridx], comm.peer_parts_red[peeridx],
+                  comm.tag, comm.comm)
+  comm.send_req[peeridx] = req
+
+  return nothing
+end
+
+"""
+  Counterpart to Isend, starts the receive for a given peer index.  Same
+  arguments as Isend.
+"""
+function Irecv!(comm::AlphaComm, peeridx::Integer)
+
+  req = MPI.Irecv!(comm.recv_bufs[peeridx], comm.peer_parts_red[peeridx],
+                   comm.tag, comm.comm)
+  comm.recv_waited[peeridx] = false
+  comm.recv_req[peeridx] = req
+
+  return nothing
+end
+
 
 """
   Computes any diffusion scheme from the SBPParabolic paper.
@@ -505,6 +646,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   diffusion::AbstractDiffusion
   penalty::AbstractDiffusionPenalty
   alpha::Array{Float64, 2}  # 2 x numInterfaces
+  alpha_parallel::Array{Array{Float64, 2}, 1}  # one array for each peer
 
   #------------------
   # temporary arrays
@@ -524,6 +666,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   temp3R::Array{Tres, 3}
   work::Array{Tres, 3}
 
+  alpha_comm::AlphaComm # MPI communications for alpha
 
   function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
     # we don't know the right sizes yet, so make them zero size
@@ -535,6 +678,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     diffusion = ShockDiffusion{Tres}()
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
+    alpha_parallel = Array{Array{Float64, 2}}(0)
 
 
     # temporary arrays
@@ -551,9 +695,11 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     temp3R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
     work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
+    alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
+
     return new(w_el, grad_w, convert_entropy, diffusion, penalty, alpha,
-              w_faceL, w_faceR, grad_faceL, grad_faceR,
-              temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work)
+               alpha_parallel, w_faceL, w_faceR, grad_faceL, grad_faceR,
+              temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work, alpha_comm)
   end
 end
 
@@ -577,14 +723,30 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
   end
 
   setDiffusionArray(capture.diffusion, shockmesh.ee)
+  allocateArrays(capture.alpha_comm, shockmesh)
+
+  #TODO: move alpha stuff to own function in different file
 
   # I think the alpha_gk parameter should be 0 for faces on the Neumann boundary
   # Count the number of faces each element has in the mesh to compute alpha_gk
   # such that is sums to 1.
   if size(capture.alpha, 2) < shockmesh.numInterfaces
     capture.alpha = zeros(2, shockmesh.numInterfaces)
+  else
+    fill!(capture.alpha, 0)
   end
-  fill!(capture.alpha, 0)
+
+  oldsize = length(capture.alpha_parallel)
+  resize!(capture.alpha_parallel, shockmesh.npeers)
+  for peer=1:shockmesh.npeers
+    len_i = shockmesh.numSharedInterfaces[peer]
+    # don't try to get the size of alpha_parallel[peer] if it is undefined
+    if peer > oldsize || size(capture.alpha_parallel[peer], 2) < len_i
+      capture.alpha_parallel[peer] = zeros(2, len_i)
+    else
+      fill!(capture.alpha_parallel[peer], 0)
+    end
+  end
 
   el_counts = zeros(UInt8, shockmesh.numEl)
   for i=1:shockmesh.numInterfaces
@@ -593,12 +755,33 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
     el_counts[iface_i.elementR] += 1
   end
 
+
+
+  for peer=1:shockmesh.npeers
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_i = shockmesh.shared_interfaces[peer][i].iface
+      el_counts[iface_i.elementL] += 1
+      # only do local elements, because we can't see all faces of remote
+      # elements
+    end
+  end
+
+  # start parallel communications
+  sendAlphas(capture.alpha_comm, shockmesh, el_counts)
+
   # for neighbor elements alpha doesn't sum to 1, but thats ok because
   # lambda = 0 there, so alpha multiplies zero.
   for i=1:shockmesh.numInterfaces
     iface_i = shockmesh.ifaces[i].iface
     capture.alpha[1, i] = 1/el_counts[iface_i.elementL]
     capture.alpha[2, i] = 1/el_counts[iface_i.elementR]
+  end
+
+  for peer=1:shockmesh.npeers
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_i = shockmesh.shared_interfaces[peer][i].iface
+      capture.alpha_parallel[peer][1, i] = 1/el_counts[iface_i.elementL]
+    end
   end
 
   return nothing
@@ -611,6 +794,7 @@ end
 
 global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSensor}(
 "SensorNone" => ShockSensorNone,
+"SensorEverywhere" => ShockSensorEverywhere,
 "SensorPP" => ShockSensorPP,
 )
 

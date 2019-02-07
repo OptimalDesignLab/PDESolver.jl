@@ -149,13 +149,13 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("face integral @time printed above")
   end
 
-  time.t_shock += @elapsed if opts["addShockCapturing"]
-    evalShockCapturing(mesh, sbp, eqn, opts)
-  end
-
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
 #    println("evalSharedFaceIntegrals @time printed above")
+  end
+
+  time.t_shock += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing(mesh, sbp, eqn, opts)
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)

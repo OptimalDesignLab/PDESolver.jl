@@ -151,6 +151,6 @@ function checkNextTag(next_tag::Integer)
 
   # this triggers one tag early, but that will have to do
   if next_tag == typemax(Cint)
-    error("reached maximum MPI tag.  Consider freeing some tags (also, how did you manage to use so many tags in the first place)")
+    error("reached maximum MPI tag.  Consider freeing some tags (also, how did you manage to use so many tags in the first place?)")
   end
 end

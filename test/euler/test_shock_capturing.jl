@@ -195,8 +195,8 @@ function test_ldg()
     "smb_name" => "SRCMESHES/vortex_3x3_.smb",
     "dmg_name" => ".null",
     "itermax" => 20,
-    "res_abstol" => 1e-9,
-    "res_reltol" => 1e-9,
+    "res_abstol" => 1e-12,
+    "res_reltol" => 1e-12,
     "do_postproc" => true,
     "exact_soln_func" => "ICIsentropicVortex",
     "force_solution_complex" => true,
@@ -211,7 +211,7 @@ function test_ldg()
   @testset "Local DG shock capturing" begin
 
     mesh, sbp, eqn, opts = solvePDE(opts)
-
+#=
     testQx(mesh, sbp, eqn, opts)
     test_shockmesh(mesh, sbp, eqn, opts)
     
@@ -237,6 +237,10 @@ function test_ldg()
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
     end
+=#
+    ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
+    ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+    test_br2_serialpart(mesh, sbp, eqn, opts)
 
   end
 
@@ -1343,6 +1347,44 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts; fullmesh=fals
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
+
+  return nothing
+end
+
+
+function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+
+
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+
+  # solve the PDE to get a solution with non-zero jump between elements
+  # that can be reproduced in parallel
+  opts["solve"] = true
+  opts["addVolumeIntegrals"] = true
+  opts["addFaceIntegrals"] = true
+  opts["addBoundaryIntegrals"] = true
+
+  solvePDE(mesh, sbp, eqn, opts)
+
+  w_vec = zeros(Tsol, mesh.numDof)
+  copy!(w_vec, eqn.q_vec)
+  EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)
+
+  fill!(eqn.res, 0)
+  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+
+  val = dot(w_vec, eqn.res_vec)
+  println("val = ", val)
+  @test val < 0
+
+  # save this for parallel tests
+  f = open("br2_entropy_serial.dat", "w")
+  println(f, real(val))
+  close(f)
+
+  saveSolutionToMesh(mesh, eqn.q_vec)
+  writeVisFiles(mesh, "br2_serial")
 
   return nothing
 end
