@@ -685,6 +685,81 @@ end
 # helper functions
 
 """
+  Computes the alpha parameter.  Starts parallel communication so alpha
+  for remote elements can be computed later.
+
+  **Inputs**
+
+   * caputure: `capture.alpha` is overwritten.
+   * mesh
+   * shockmesh
+"""
+function computeAlpha(capture::SBPParabolicSC, mesh::AbstractMesh,
+                      shockmesh::ShockedElements)
+
+  # I think the alpha_gk parameter should be 0 for faces on the Neumann boundary
+  # Count the number of faces each element has in the mesh to compute alpha_gk
+  # such that is sums to 1.
+  if size(capture.alpha, 2) < shockmesh.numInterfaces
+    capture.alpha = zeros(2, shockmesh.numInterfaces)
+  else
+    fill!(capture.alpha, 0)
+  end
+
+  oldsize = length(capture.alpha_parallel)
+  resize!(capture.alpha_parallel, shockmesh.npeers)
+  for peer=1:shockmesh.npeers
+    len_i = shockmesh.numSharedInterfaces[peer]
+    # don't try to get the size of alpha_parallel[peer] if it is undefined
+    if peer > oldsize || size(capture.alpha_parallel[peer], 2) < len_i
+      capture.alpha_parallel[peer] = zeros(2, len_i)
+    else
+      fill!(capture.alpha_parallel[peer], 0)
+    end
+  end
+
+  # count number of faces of each element not on boundary
+  el_counts = zeros(UInt8, shockmesh.numEl)
+  for i=1:shockmesh.numInterfaces
+    iface_i = shockmesh.ifaces[i].iface
+    el_counts[iface_i.elementL] += 1
+    el_counts[iface_i.elementR] += 1
+  end
+
+  for peer=1:shockmesh.npeers
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_i = shockmesh.shared_interfaces[peer][i].iface
+      el_counts[iface_i.elementL] += 1
+      # only do local elements, because we can't see all faces of remote
+      # elements
+    end
+  end
+
+  # start parallel communications
+  sendAlphas(capture.alpha_comm, shockmesh, el_counts)
+
+  # compute alpha from face counts
+  # for neighbor elements alpha doesn't sum to 1, but thats ok because
+  # lambda = 0 there, so alpha multiplies zero.
+  for i=1:shockmesh.numInterfaces
+    iface_i = shockmesh.ifaces[i].iface
+    capture.alpha[1, i] = 1/el_counts[iface_i.elementL]
+    capture.alpha[2, i] = 1/el_counts[iface_i.elementR]
+  end
+
+  for peer=1:shockmesh.npeers
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_i = shockmesh.shared_interfaces[peer][i].iface
+      capture.alpha_parallel[peer][1, i] = 1/el_counts[iface_i.elementL]
+    end
+  end
+
+  return nothing
+end
+
+
+
+"""
   Send the number of faces not on a Neumann boundary each element has to
   other processes.
 
@@ -706,7 +781,7 @@ function sendAlphas(comm::AlphaComm, shockmesh::ShockedElements,
   # We only need to send number of faces per element, but that would require
   # uniquely identifying the elements on either side of the partition boundary.
   # Instead, send the same value for all faces of the element and let the
-  # the receiver do the face -> element reduction
+  # the receiver sort it out
 
   # post receives
   for peer=1:shockmesh.npeers
@@ -748,7 +823,6 @@ end
 """
 function receiveAlpha(capture::SBPParabolicSC, shockmesh::ShockedElements)
 
-
   peer = Waitany!(capture.alpha_comm)
   comm = capture.alpha_comm
 
@@ -759,8 +833,6 @@ function receiveAlpha(capture::SBPParabolicSC, shockmesh::ShockedElements)
     # the buffer was packed with el_counts for the parent element of each
     # face, so all thats required it so take 1/the value
   end
-
-
 
   return peer
 end
