@@ -97,16 +97,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Start direct sensitivity setup    1111
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # include("crank_nicolson_ds-DS_setup.jl")
-  old_res_vec = zeros(eqn.res_vec)    # corresponds to eqn
-  new_res_vec = zeros(eqn.res_vec)    # corresponds to eqn_nextstep
-  res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
+  DS_setup_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_setup.jl")
+  println(BSTDOUT, " typeof(opts): ", typeof(opts))
+  flush(BSTDOUT)
+  include(DS_setup_file)
 
-  pc_DSouter, lo_DSouter = getCNPCandLO(mesh, sbp, eqn, opts)
-  ls_DSouter = StandardLinearSolver(pc, lo, eqn.comm, opts)
-  newton_data_DSouter, rhs_vec_DSouter = setupNewton(mesh, mesh, sbp, eqn, opts, ls)
-  newton_data_DSouter.itermax = 30
-  recalc_policy_DSouter = getRecalculationPolicy(opts, "CN")
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End direct sensitivity setup: needs to be before eqn_deepcopy call to setup eqn_nextstep
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -262,7 +257,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # Start direct sensitivity calc's for each time step      2222
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma_CN"]
-      include("crank_nicolson_ds-DS_everytimestep.jl")
+      DS_everytimestep_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_everytimestep.jl")
+      include(DS_everytimestep_file)
     end   # end of opts["perturb_Ma_CN"]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # End direct sensitivity calc's for each time step
@@ -328,7 +324,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Start direct sensitivity calc's after time step loop    3333
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  include("crank_nicolson_ds-DS_end.jl")
+  DS_end_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_end.jl")
+  include(DS_end_file)
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End direct sensitivity calc's after time step loop
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
