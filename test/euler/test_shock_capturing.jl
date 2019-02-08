@@ -249,7 +249,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
 
 
 """
@@ -1074,7 +1074,7 @@ function test_ldg_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   fill!(eqn.res, 0)
 
-  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+  EulerEquationMod.calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
 
   array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
@@ -1368,7 +1368,7 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts; fullmesh=fals
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   fill!(eqn.res, 0)
 
-  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+  EulerEquationMod.calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
 
   array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 

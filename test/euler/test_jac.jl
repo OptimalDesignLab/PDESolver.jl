@@ -2657,16 +2657,7 @@ function test_sbp_cartesian(mesh, sbp, eqn, opts)
     dxidx_i = sview(mesh.dxidx, :, :, :, i)
     jac_i = sview(mesh.jac, :, i)
 
-    #fill!(res, 0)
-    #q_i .+= pert*q_dot[:, :, i]
-    #q_i[1, 1] += pert
-    #q_i[2, 1] += pert
-    #EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, wxi, res)
-
     # use differentiated version (4D -> 5D)
-    #t1_dot[1, 1, 1, 1] = 1
-    #t1_dot[2, 1, 1, 1] = 1
-    #t1_dot[:, 1, :, 1] = q_dot[:, :, i]
     EulerEquationMod.calcDx(sbp, dxidx_i, jac_i, Dx)
     EulerEquationMod.applyOperatorJac(Dx, q_dot, t2_dot)
 

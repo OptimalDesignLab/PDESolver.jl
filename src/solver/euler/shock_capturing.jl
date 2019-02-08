@@ -24,7 +24,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
 
-    applyShockCapturing(eqn.params, sbp, sensor, capture, q_i, jac_i, res_i)
+    calcShockCapturing(eqn.params, sbp, sensor, capture, q_i, jac_i, res_i)
   end
 
   return nothing
@@ -85,7 +85,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   allocateArrays(capture, mesh, shockmesh)
 
   # call shock capturing scheme
-  applyShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+  calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
 
   return nothing
 end
@@ -126,7 +126,7 @@ function getFilterOperator!(sbp::TetSBP{T}, diss::AbstractArray{T,2}) where {T}
 end
 
 
-function applyShockCapturing(params::ParamType, sbp::AbstractOperator,
+function calcShockCapturing(params::ParamType, sbp::AbstractOperator,
                              sensor::AbstractShockSensor,
                              capture::ProjectionShockCapturing,
                              q::AbstractMatrix, jac::AbstractVector,

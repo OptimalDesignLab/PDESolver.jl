@@ -3,7 +3,7 @@
 """
   Applies [`SBPParabolic`](@ref) shock capturing.
 """
-function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
                              capture::SBPParabolicSC{Tsol, Tres},
                              shockmesh::ShockedElements) where {Tsol, Tres}
