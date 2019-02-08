@@ -50,7 +50,7 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 end
 
 
-#=
+
 function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
                              sensor::AbstractShockSensor,
@@ -104,13 +104,31 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
 
   allocateArrays(capture, mesh, shockmesh)
+  
+  # compute the derivative of the shock sensor for the shocked elements
+  ee_dot = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, shockmesh.numEl)
+  Se_dot_i = zeros(Tres, mesh.numDofPerNOde, mesh.numNodesPerElement)
+  is_nonlinear = BitArray(shockmesh.numEl)
+  for i=1:shockmesh.numEl
+    i_full = shockmesh.elnums_all[i]
+    q_i = ro_sview(eqn.q, :, :, i_full)
+    jac_i = ro_sview(mesh.jac, :, :, i_full)
+    ee_dot_i = sivew(ee_dot, :, :, i)
+
+    Se, ee, is_constant = getShockSensor_diff(eqn.params, sbp, sensor, q_i,
+                                              jac_i, Se_dot_i, ee_dot_i)
+    is_nonlinear[i] = !is_constant
+  end
+
+  #TODO: perhaps remove ee from shockmesh?
+  setDiffusionArray_diff(capture.diffusion, shockmesh.ee, ee_dot, is_nonlinear)
 
   # call shock capturing scheme
-  calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+  calcShockCapturing_diff(mesh, sbp, eqn, opts, capture, shockmesh)
 
   return nothing
 end
-=#
+
 
 
 #------------------------------------------------------------------------------
