@@ -117,6 +117,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       dRdM_vec = zeros(eqn.res_vec)
       b_vec = zeros(eqn.res_vec)
+      dRdq_vn_prod = zeros(eqn.res_vec)
 
       #------------------------------------------------------------------------------
       # DS linear solver
@@ -432,7 +433,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (eqn_nextstep.res_vec[ix_dof] + eqn.res_vec[ix_dof])
 
           # calc dRdq * v^(n) by doing matrix-free complex step
-          dRdq_vn_prod[ix_dof] = imag(res_hat_vec_tmpforprod[ix_dof])/Ma_pert_mag
+          dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
 
           # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
           # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
