@@ -17,7 +17,7 @@ function test_shocksensorPP()
     res = zeros(eltype(eqn.res), mesh.numDofPerNode, mesh.numNodesPerElement)
 
     sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
-    capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, opts)
+    capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts)
     # initial condition is constant, check the sensor reports no shock
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, jac)
 
@@ -25,7 +25,7 @@ function test_shocksensorPP()
     @test ee == 0
 
     fill!(res, 0)
-    EulerEquationMod.applyShockCapturing(eqn.params, sbp, sensor, capture, q, jac, res)
+    EulerEquationMod.calcShockCapturing(eqn.params, sbp, sensor, capture, q, jac, res)
     @test maximum(abs.(res)) < 1e-13
 
     # test when a shock is present
@@ -42,7 +42,7 @@ function test_shocksensorPP()
       q_i = sview(q, :, i)
       EulerEquationMod.convertToIR(eqn.params, q_i, w_i)
     end
-    EulerEquationMod.applyShockCapturing(eqn.params, sbp, sensor, capture, q, jac, res)
+    EulerEquationMod.calcShockCapturing(eqn.params, sbp, sensor, capture, q, jac, res)
 
     @test sum(res .* w) < 0  # the term is negative definite
 
@@ -139,14 +139,14 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
 
   # complex step
   q .+= pert*q_dot
-  EulerEquationMod.applyShockCapturing(params, sbp, sensor, capture, q, jac, res)
+  EulerEquationMod.calcShockCapturing(params, sbp, sensor, capture, q, jac, res)
   res_dot = imag(res)./h
   q .-= pert*q_dot
 
 
   # AD
   res_jac = zeros(numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
-  EulerEquationMod.applyShockCapturing_diff(params, sbp, sensor, capture, q,
+  EulerEquationMod.calcShockCapturing_diff(params, sbp, sensor, capture, q,
                                             jac, res_jac)
 
   res_dot2 = zeros(Complex128, numDofPerNode, numNodesPerElement)
@@ -161,7 +161,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

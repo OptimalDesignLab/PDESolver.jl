@@ -223,9 +223,14 @@ end
 """
 mutable struct ShockDiffusion{T} <: AbstractDiffusion
   ee::Vector{T}
+  ee_dot::Array{T, 3}  # derivative of ee wrt solution
+  is_nonlinear::BitArray{1}  # true if ee depends on the solution for each
+                             # element
   function ShockDiffusion{T}() where {T}
     ee = Vector{T}(0)
-    return new(ee)
+    ee_dot = Array{T}(0, 0, 0)
+    is_nonlinear = BitArray(0)
+    return new(ee, ee_dot, is_nonlinear)
   end
 
   function ShockDiffusion{T}(ee::AbstractVector{T}) where {T}
@@ -242,6 +247,18 @@ end
 """
 function setDiffusionArray(obj::ShockDiffusion, vals::AbstractArray)
   obj.ee = vals
+end
+
+"""
+  Function to set the elementwise diffusion coefficient and its derivative
+"""
+function setDiffusionArray_diff(obj::ShockDiffusion, vals::AbstractArray,
+                                val_dot::AbstractArray{T, 3},
+                                is_nonlinear::BitArray{1}) where {T}
+
+  obj.ee = ee
+  obj.vals_dot = vals_dot
+  obj.is_nonlinear = is_nonlinear
 end
 
 

@@ -28,7 +28,7 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     q_i = sview(eqn.q, :, :, i)
     jac_i = sview(mesh.jac, :, i)
 
-    nonzero_jac = applyShockCapturing_diff(eqn.params, sbp, sensor, capture,
+    nonzero_jac = calcShockCapturing_diff(eqn.params, sbp, sensor, capture,
                                             q_i, jac_i, res_jac)
   
     # assembling into a sparse matrix is non-trivially expensive, don't do
@@ -145,7 +145,7 @@ end
   Differentiated version of `applyShockCapturing` for
   [`ProjectionShockCapturing`](@ref).
 """
-function applyShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
+function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
                                   sensor::AbstractShockSensor,
                                   capture::ProjectionShockCapturing,
                                   u::AbstractMatrix, jac::AbstractVector{Tmsh},
