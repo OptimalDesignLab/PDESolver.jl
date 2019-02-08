@@ -15,8 +15,9 @@
    * assem: an [`AssembleElementData`](@ref)
 """
 function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
-                             eqn::EulerData, opts, sensor::AbstractShockSensor,
-                             capture::AbstractShockCapturing,
+                             eqn::EulerData, opts,
+                             sensor::AbstractShockSensor,
+                             capture::AbstractVolumeShockCapturing,
                              assem::AssembleElementData)
 
 
@@ -49,100 +50,74 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 end
 
 
+#=
+function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             sensor::AbstractShockSensor,
+                             capture::AbstractFaceShockCapturing,
+                             assem::AssembleElementData)
 
-#------------------------------------------------------------------------------
+  if mesh.commsize > 1 && 
+    getParallelData(eqn.shared_data) != PARALLEL_DATA_ELEMENT
 
-"""
-  Differentiated version nof `getShockSensor` for [`ShockSensorPP`](@ref)
-"""
-function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
-                      sensor::ShockSensorPP,
-                      q::AbstractMatrix{Tsol},
-                      jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres}
-# computes the Jacobian of Se and ee wrt q. Does not take in q_dot because
-# that would be way more expensive
-# Se_jac and ee_jac are overwritten
-# The third output argument tells if ee_jac is all zeros (hopefully a common
-# case).
-
-  numDofPerNode, numNodesPerElement = size(q)
-  @unpack sensor up up_tilde up1_tilde s0 kappa e0 num_dot den_dot
-  fill!(num_dot, 0); fill!(den_dot, 0)
-
-  @simd for i=1:numNodesPerElement
-    up[i] = q[1, i]
+    error("shock capturing requires PARALLEL_DATA_ELEMENT")
   end
 
-  # for getFiltered solution, the matrix itself is the Jacobian
-  getFilteredSolution(params, sensor.Vp, up, up_tilde)
-  getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
-  up_tilde_dotT = sensor.Vp.filtT  # use transposed because of memory order
-  up1_tilde_dotT = sensor.Vp1.filtT
-
-  # compute the inner product
-  num = zero(Tres)
-  den = zero(Tres)
-
-  @simd for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]
-    delta_u = up_tilde[i] - up1_tilde[i]
+  assertReceivesWaited(eqn.shared_data)  # parallel communication for the regular
+                                     # face integrals should already have
+                                     # finished parallel communication
 
 
-    num += delta_u*fac*delta_u
-    @simd for j=1:numNodesPerElement
-      delta_u_dot = up_tilde_dotT[j, i] - up1_tilde_dotT[j, i]
-      num_dot[j] += 2*fac*delta_u*delta_u_dot
-    end
+  # re-using the shockmesh from one iteration to the next makes allows
+  # the algorithm to re-use existing arrays that depend on the number of
+  # elements with the shock in it.
+  shockmesh = eqn.params.shockmesh
+  reset(shockmesh)
+  for i=1:mesh.numEl
+    q_i = ro_sview(eqn.q, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
 
-    # use the filtered variables for (u, u).  This is a bit different than
-    # finite element methods, where the original solution has a basis, and the
-    # norm in any basis should be the same.  Here we use the filtered u rather
-    # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
-    @simd for j=1:numNodesPerElement
-      den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
+    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+    if ee > 0
+      # push to shockmesh
+      push!(shockmesh, i, ee)
     end
   end
 
-  Se = num/den
-  fac2 = 1/(den*den)
-  @simd for i=1:numNodesPerElement
-    Se_jac[1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2
-  end
+  completeShockElements(mesh, shockmesh)
 
+  # compute the shock viscoscity for shared elements
+  for peer=1:shockmesh.npeers
+    peer_full = shockmesh.peer_indices[peer]
+    data = eqn.shared_data[peer_full]
+    metrics = mesh.remote_metrics[peer_full]
 
-  se = log10(Se)
-  eejac_zero = true
-  
-  if se < s0 - kappa
-    ee = zero(Tres)
-    fill!(ee_jac, 0)
-  elseif se > s0 - kappa && se < s0 + kappa
-    ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
+    for i in shockmesh.shared_els[peer]
+      i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
+      q_i = ro_sview(data.q_recv, :, :, i_full)
+      jac_i = ro_sview(metrics.jac, :, i_full)
 
-    # derivative of ee wrt Se (not se)
-    fac3 = 0.5*e0*cospi( (se - s0)/(2*kappa) ) * (Float64(pi)/(2*kappa*log(10)*Se))
-    fill!(ee_jac, 0)
-    @simd for i=1:numNodesPerElement
-      ee_jac[1, i] = fac3*Se_jac[1, i]
+      Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+      setViscoscity(shockmesh, i, ee)
     end
-    eejac_zero = false
-  else
-    ee = Tres(e0)
-    fill!(ee_jac, 0)
   end
 
-  return Se, ee, eejac_zero
+
+  allocateArrays(capture, mesh, shockmesh)
+
+  # call shock capturing scheme
+  calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+
+  return nothing
 end
+=#
 
 
 #------------------------------------------------------------------------------
 
 
 """
-  Differentiated version of `applyShockCapturing` for
+  Differentiated version of `calcShockCapturing` for
   [`ProjectionShockCapturing`](@ref).
 """
 function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
