@@ -719,32 +719,29 @@ end
     error("\n Options error: perturb_Ma is true, but the option for setting the perturbation
            magnitude, perturb_Ma_magnitude, is unset or set to 0.0.")
   end
-  if arg_dict["stabilize_v"] == true && arg_dict["perturb_Ma"] == false
-    error("\n Direct sensitivity stabilization turned on, but perturb_Ma is false.")
-  end
   if arg_dict["stabilize_v"] == true && arg_dict["stabilization_method"] == "null"
     error("\n Direct sensitivity stabilization turned on, but no stabilization_method selected.")
   end
-  if arg_dict["perturb_Ma"] == false && arg_dict["write_L2vnorm"] == true
-    error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma set.")
-  end
+
   # Same options for perturb_Ma_CN
   if arg_dict["perturb_Ma_CN"] == true && arg_dict["write_drag"] == false
     error("\n Options error: perturb_Ma_CN is true, but this is only implemented in the
            context of direct sensitivity of Cd wrt Ma, and write_drag == false.")
   end
-  if arg_dict["perturb_Ma_CN"] == true && arg_dict["perturb_Ma_CN_magnitude"] == 0.0
+  if arg_dict["perturb_Ma_CN"] == true && arg_dict["perturb_Ma_magnitude"] == 0.0
     error("\n Options error: perturb_Ma_CN is true, but the option for setting the perturbation
            magnitude, perturb_Ma_CN_magnitude, is unset or set to 0.0.")
-  end
-  if arg_dict["stabilize_v"] == true && arg_dict["perturb_Ma_CN"] == false
-    error("\n Direct sensitivity stabilization turned on, but perturb_Ma_CN is false.")
   end
   if arg_dict["stabilize_v"] == true && arg_dict["stabilization_method"] == "null"
     error("\n Direct sensitivity stabilization turned on, but no stabilization_method selected.")
   end
-  if arg_dict["perturb_Ma_CN"] == false && arg_dict["write_L2vnorm"] == true
-    error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma_CN set.")
+
+  if arg_dict["stabilize_v"] == true && (arg_dict["perturb_Ma_CN"] == false && arg_dict["perturb_Ma"] == false)
+    error("\n Direct sensitivity stabilization turned on, but perturb_Ma_CN and perturb_Ma is false.")
+  end
+  # combined perturb_Ma & perturb_Ma_CN
+  if (arg_dict["perturb_Ma_CN"] == false && arg_dict["perturb_Ma"] == false) && arg_dict["write_L2vnorm"] == true
+    error("\n Cannot compute quantities for write_L2vnorm without perturb_Ma or perturb_Ma_CN set.")
   end
 
   # Make sure that perturb_Ma isn't selected for CN

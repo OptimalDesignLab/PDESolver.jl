@@ -97,10 +97,121 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Start direct sensitivity setup    1111
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  DS_setup_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_setup.jl")
-  println(BSTDOUT, " typeof(opts): ", typeof(opts))
-  flush(BSTDOUT)
-  include(DS_setup_file)
+
+    if opts["perturb_Ma_CN"]
+      term23 = zero(eqn.params.Ma)
+      dDdu = zeros(eqn.res)         # dDdu is of size eqn.q or eqn.res (dDdu is term2 in rk4_ds.jl)
+      dDdu_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+      v_vec = zeros(eqn.res_vec)
+
+      ###### CSR: This section is the only section that contains things that are 
+      #           new to the CN version of the complex step method (CSR: 'complex step residual')
+      old_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn
+      new_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn_nextstep
+      res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
+
+      beforeDS_eqn_q_vec = zeros(eqn.q_vec)
+      beforeDS_eqn_nextstep_q_vec = zeros(eqn.q_vec)
+      beforeDS_eqn_res_vec = zeros(eqn.res_vec)
+      beforeDS_eqn_nextstep_res_vec = zeros(eqn.res_vec)
+
+      dRdM_vec = zeros(eqn.res_vec)
+      b_vec = zeros(eqn.res_vec)
+
+      #------------------------------------------------------------------------------
+      # DS linear solver
+      pc_ds, lo_ds = getCNDSPCandLO(mesh, sbp, eqn, opts)
+      ls_ds = StandardLinearSolver(pc_ds, lo_ds, eqn.comm, opts)
+      newton_data_ds, rhs_vec_ds = setupNewton(mesh, mesh, sbp, eqn, opts, ls_ds)
+      newton_data_ds.itermax = 30
+      recalc_policy_ds = getRecalculationPolicy(opts, "CN")
+
+    end   # end if opts["perturb_Ma_CN"]
+
+
+    #------------------------------------------------------------------------------
+    # capture direct sensitivity at the IC
+    # v is the direct sensitivity, du/dM
+    # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+    if opts["write_drag"]
+      objective = createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional num
+      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+      # note about drag writing: file_dict populated and file opened in src/solver/euler/types.jl
+      @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+      @mpi_master println(f_drag, 1, " ", drag)
+      println("i: ", 1, "  myrank: ", myrank,"  drag: ", drag)
+      @mpi_master flush(f_drag)
+    end
+    if opts["write_L2vnorm"]
+      @mpi_master f_L2vnorm = eqn.file_dict[opts["write_L2vnorm_fname"]]
+    end
+
+    if opts["write_L2vnorm"]
+      # for visualization of element level DS energy
+      old_q_vec = zeros(eqn.q_vec)
+      R_stab = zeros(eqn.q_vec)
+      v_energy = zeros(eqn.q_vec)
+
+      @mpi_master f_v_energy_stageall = open("v_energy_data_stageall.dat", "w")
+    end
+    if opts["perturb_Ma_CN"]
+
+      # this is the IC, so it gets the first time step's quad_weight
+      i = 1       # note that timestep loop below starts at i = 2
+      finaliter = calcFinalIter(t_steps, itermax)
+      quad_weight = calcQuadWeight(i, dt, finaliter)
+
+      #------------------------------------------------------------------------------
+      # allocation of objects for stabilization routine
+      if opts["stabilize_v"]
+
+        stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
+        stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
+        clipJacData = ClipJacData(mesh.numDofPerNode*mesh.numNodesPerElement)
+
+        # Bv = zeros(Float64, length(q_vec), )
+        Bv = zeros(Complex128, length(eqn.q_vec))
+        tmp_imag = zeros(Float64, length(eqn.q_vec))
+        dqimag_vec = zeros(Bv)
+
+        @mpi_master f_stabilize_v = open("stabilize_v_updates.dat", "w")        # TODO: buffered IO
+
+      end
+
+      # Note: no stabilization of q_vec at the IC
+      #   no evalResidual yet, and hasn't entered the time-stepper yet
+      #   so no appropriate scaling factors like delta_t or fac or anything
+
+      v_vec = zeros(eqn.q_vec)      # direct sensitivity vector       This is at the IC
+      # for v_ix = 1:length(v_vec)
+        # v_vec[v_ix] = imag(eqn.q_vec[v_ix])/Ma_pert_mag
+      # end
+      fill!(v_vec, 0.0)       # v at IC is all 0's  ++++ new CS'ing R method (CSR) <- CSR comment on all lines new to CS'ing R method
+
+      q_vec_save_imag = Array{Float64}(length(eqn.q_vec))     # set up array for saving imag component of q (CSR)
+
+      dDdu = zeros(eqn.q)      # First allocation of dDdu. fill! used below, during timestep loop
+      # evalFunctional calls disassembleSolution, which puts q_vec into q
+      # should be calling evalFunctional, not calcFunctional.
+      evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, dDdu)    # dDdu is func_deriv_arr
+      println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  dDdu: ", vecnorm(dDdu), "  v_vec: ", vecnorm(v_vec))    # matches rk4_ds to 1e-5 or so, consistent with drag variation
+
+      # do the dot product of the two terms, and save
+      # this dot product is: dJdu*dudM
+      dDdu_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
+      array3DTo1D(mesh, sbp, eqn, opts, dDdu, dDdu_vec)      # dDdu -> dDdu_vec
+
+      for v_ix = 1:length(v_vec)
+        # this accumulation occurs across all dofs and all time steps.
+        term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
+      end
+
+      if opts["write_L2vnorm"]
+        L2_v_norm = calcNorm(eqn, v_vec)
+        @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+      end
+
+    end   # end if opts["perturb_Ma_CN"]
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End direct sensitivity setup: needs to be before eqn_deepcopy call to setup eqn_nextstep
@@ -257,8 +368,195 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # Start direct sensitivity calc's for each time step      2222
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma_CN"]
-      DS_everytimestep_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_everytimestep.jl")
-      include(DS_everytimestep_file)
+      # This entire code block is called with an include().
+      # It is wrapped in:  if opts["perturb_Ma_CN"]
+      # Such that it should only be included/evaluated when opts["perturb_Ma_CN"] is set
+
+      if i != 1     # can't do F(q^(n+1)) + F(q^(n)) until we have both
+
+        # Store both q_vec's & both res_vec's. Will be put back after all DS calcs.
+        for ix_dof = 1:mesh.numDof
+          beforeDS_eqn_q_vec[ix_dof] = eqn.q_vec[ix_dof]
+          beforeDS_eqn_nextstep_q_vec[ix_dof] = eqn_nextstep.q_vec[ix_dof]
+
+          beforeDS_eqn_res_vec[ix_dof] = eqn.res_vec[ix_dof]
+          beforeDS_eqn_nextstep_res_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
+        end
+
+
+        #------------------------------------------------------------------------------
+        # This section calculates dR/dM
+
+        Ma_pert_mag = opts["perturb_Ma_magnitude"]
+        pert = complex(0, Ma_pert_mag)
+        eqn.params.Ma += pert
+
+        # now evalResidual to store into F(q^(n+1))
+        f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
+
+        for ix_dof = 1:mesh.numDof
+          old_res_vec_Maimag[ix_dof] = new_res_vec_Maimag[ix_dof]        # F(q^(n)) -- with Ma perturbation
+          new_res_vec_Maimag[ix_dof] = eqn_nextstep.res_vec[ix_dof]      # F(q^(n+1)) -- with Ma perturbation
+
+          # form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
+          res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+        end
+
+        # obtain dR/dM using the complex step method
+        for ix_dof = 1:mesh.numDof
+          dRdM_vec[ix_dof] = imag(dRdM_vec[ix_dof])/Ma_pert_mag
+        end
+
+        eqn.params.Ma -= pert
+        #------------------------------------------------------------------------------
+
+        #------------------------------------------------------------------------------
+        # This section calculates dR/dq * v^(n)
+
+        # v_vec currently holds v at timestep n: v^(n)
+
+        # need to add epsilon*v_vec*im (evi) to q_vec, then re-evaluate res_hat at the updated q
+        # so: need to add evi to old_q_vec too. Because to form res_hat, need F(q^(n)) and F(q^(n+1))
+        for ix_dof = 1:mesh.numDof
+          eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
+          eqn_nextstep.q_vec[ix_dof] += Ma_pert_mag*im*v_vec[ix_dof]
+        end
+
+
+        f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
+        f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
+
+        for ix_dof = 1:mesh.numDof
+          
+          # form unsteady residual (res_hat) with F(q^(n) + evi) and F(q^(n+1) + evi)
+          res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (eqn_nextstep.res_vec[ix_dof] + eqn.res_vec[ix_dof])
+
+          # calc dRdq * v^(n) by doing matrix-free complex step
+          dRdq_vn_prod[ix_dof] = imag(res_hat_vec_tmpforprod[ix_dof])/Ma_pert_mag
+
+          # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
+          # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
+          # eqn_nextstep.q_vec[ix_dof] = complex(real(eqn_nextstep.q_vec[ix_dof]))
+
+          # combine (-dRdM - dRdq * v^(n)) into b
+          b_vec[ix_dof] = - dRdM_vec[ix_dof] - dRdq_vn_prod[ix_dof]
+
+        end
+
+        #------------------------------------------------------------------------------
+        # Now the calculation of v_ix at n+1
+        # Solve:
+        #   dR/dq^(n+1) v^(n+1) = b
+        #--------
+
+        fill!(v_vec, 0.0)
+
+        # Recalculate dRdq
+        calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+
+        # linearSolve: solves Ax=b for x
+        #   ls::StandardLinearSolver
+        #   b::AbstractVector     -> RHS
+        #   x::AbstractVector     -> what is solved for
+        #   verbose=5
+        linearSolve(ls_ds, b_vec, v_vec, verbose)      
+        #--------
+
+        #------------------------------------------------------------------------------
+        # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
+        #   before the DS calcs
+        for ix_dof = 1:mesh.numDof
+          eqn.q_vec[ix_dof] = beforeDS_eqn_q_vec[ix_dof]
+          eqn_nextstep.q_vec[ix_dof] = beforeDS_eqn_nextstep_q_vec[ix_dof]
+
+          eqn.res_vec[ix_dof] = beforeDS_eqn_res_vec[ix_dof]
+          eqn_nextstep.res_vec[ix_dof] = beforeDS_eqn_nextstep_res_vec[ix_dof]
+        end
+
+        #### The above is all new CSR code
+
+        #------------------------------------------------------------------------------
+        # getting from v_vec to term23
+        fill!(dDdu, 0.0)
+        evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, dDdu)    # dDdu is func_deriv_arr
+        fill!(dDdu_vec, 0.0)     # not sure this is necessary
+        array3DTo1D(mesh, sbp, eqn, opts, dDdu, dDdu_vec)      # dDdu -> dDdu_vec
+
+        for v_ix = 1:length(v_vec)
+          # this accumulation occurs across all dofs and all time steps.
+          term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
+        end
+
+        #------------------------------------------------------------------------------
+        # here is where we should be calculating the 'energy' to show that it is increasing over time
+        #   'energy' = L2 norm of the solution
+        # JEH: So, at each time step, evaluate: sum_{i,j,k} q[i,j,k]*q[i,j,k]*sbp.w[j]*jac[j,k]
+        #      (here I assume jac is proportional to the element volume)
+        if opts["write_L2vnorm"]
+          L2_v_norm = calcNorm(eqn, v_vec)
+          @mpi_master println(f_L2vnorm, i, "  ", L2_v_norm)
+
+          if (i % opts["output_freq"]) == 0
+            @mpi_master flush(f_L2vnorm)
+          end
+        end
+
+
+
+      end     # end 'if i != 1'
+
+      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      # start of old DS code (the above is mostly new CSR stuff (except for the dDdu & term23 stuff))
+      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      # for visualization of element level DS energy: end of all stages
+      if opts["write_L2vnorm"]
+        # special case for calculating v_energy:
+        #   Need to calculate v_vec after the first stage for use in the first-stage-only v_energy calculation.
+        # TODO: why only first-stage?
+        # TODO: stage parameter divide
+        # TODO: store old_q_vec
+        #   Previously, this would only be done at the end of all the stages
+        # for v_ix = 1:length(v_vec)
+          # v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
+        # end
+        # RK4: the v_vec assignment is commented out because it should be set inside perturb_Ma just above
+        fill!(R_stab, 0.0)
+        for j = 1:length(eqn.q_vec)
+          # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
+          R_stab[j] = (eqn.q_vec[j] - old_q_vec[j])/(dt)
+        end
+        fill!(v_energy, 0.0)
+        for j = 1:length(eqn.q_vec)
+          v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+        end
+
+        if (i % output_freq) == 0
+          saveSolutionToMesh(mesh, v_energy)
+          fname = string("v_energy_stageall_", i)
+          writeVisFiles(mesh, fname)
+        end
+
+        # i  calcNorm    avg   min   max
+        v_energy_mean_local = mean(v_energy)
+        # v_energy_min_local = minimum(v_energy)      # not doing abs on purpose
+        # v_energy_max_local = maximum(v_energy)
+
+        v_energy_mean = MPI.Allreduce(v_energy_mean_local, MPI.SUM, mesh.comm)
+        # v_energy_min = MPI.Allreduce(v_energy_min_local, MPI.SUM, mesh.comm)
+        # v_energy_max = MPI.Allreduce(v_energy_max_local, MPI.SUM, mesh.comm)
+
+        v_energy_norm = calcNorm(eqn, v_energy)
+
+        # @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm), "  ", real(v_energy_mean), "  ", real(v_energy_min), "  ", real(v_energy_max))
+        @mpi_master println(f_v_energy_stageall, i, "  ", real(v_energy_norm))
+        if (i % 500) == 0
+          @mpi_master flush(f_v_energy_stageall)
+        end
+
+      end
+      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     end   # end of opts["perturb_Ma_CN"]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # End direct sensitivity calc's for each time step
@@ -324,8 +622,83 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Start direct sensitivity calc's after time step loop    3333
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  DS_end_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_end.jl")
-  include(DS_end_file)
+
+      if opts["perturb_Ma"]
+
+        @mpi_master if opts["stabilize_v"]
+          close(f_stabilize_v)
+        end
+
+        @mpi_master close(f_drag)
+
+        @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+        @mpi_master println(" Ma_pert: ", Ma_pert)
+        eqn.params.Ma -= Ma_pert      # need to remove perturbation now
+        @mpi_master println(" pert removed from Ma")
+        @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+
+        finaliter = calcFinalIter(t_steps, itermax)
+        Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter)   # will use eqn.params.Ma
+        term23 = term23 * 1.0/t     # final step of time average: divide by total time
+        global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
+        total_dCddM = dCddM + global_term23
+
+        # Cd calculations
+        @mpi_master begin
+          f_total_dCddM = open("total_dCddM.dat", "w")
+          println(f_total_dCddM, " Cd: ", Cd)
+          println(f_total_dCddM, " dCd/dM: ", dCddM)
+          println(f_total_dCddM, " global_term23: ", global_term23)
+          println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
+          flush(f_total_dCddM)
+          close(f_total_dCddM)
+          println(" Cd: ", Cd)
+          println(" dCd/dM: ", dCddM)
+          println(" global_term23: ", global_term23)
+          println(" total dCd/dM: ", total_dCddM)
+        end
+
+      end   # end if opts["perturb_Ma"]
+
+      @mpi_master begin
+        f_Ma = open("Ma.dat", "w")
+        println(f_Ma, eqn.params.Ma)
+        close(f_Ma)
+        f_dt = open("delta_t.dat", "w")
+        println(f_dt, dt)
+        close(f_dt)
+
+        println(" ")
+        println(" run parameters that were used:")
+        if opts["perturb_Ma"]
+          println("    Ma: ", eqn.params.Ma + Ma_pert)
+        else
+          println("    Ma: ", eqn.params.Ma)
+        end
+        println("    aoa: ", eqn.params.aoa)
+        println("    dt: ", dt)
+        println("    a_inf: ", eqn.params.a_free)
+        println("    rho_inf: ", eqn.params.rho_free)
+        println("    c: ", 1.0)
+        println("    mesh.coord_order: ", mesh.coord_order)
+        println(" ")
+        println("    opts[stabilization_method]: ", opts["stabilization_method"])
+        println("    opts[output_freq]: ", opts["output_freq"])
+        println("    opts[use_itermax]: ", opts["use_itermax"])
+        println("    opts[itermax]: ", opts["itermax"])
+        println("    opts[use_checkpointing]: ", opts["use_checkpointing"])
+        println("    opts[checkpoint_freq]: ", opts["checkpoint_freq"])
+        println("    opts[ncheckpoints]: ", opts["ncheckpoints"])
+        println(" ")
+      end
+
+      if opts["write_L2vnorm"]
+        @mpi_master close(f_L2vnorm)
+        # @mpi_master close(f_v_energy)
+        @mpi_master close(f_v_energy_stageall)
+      end
+      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # End direct sensitivity calc's after time step loop
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -342,4 +715,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   flush(BSTDOUT)
 
 end   # end of crank_nicolson_ds function
+
+DS_functions_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_functions.jl")
+include(DS_functions_file)
 
