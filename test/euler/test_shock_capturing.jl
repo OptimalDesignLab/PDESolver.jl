@@ -211,8 +211,9 @@ function test_ldg()
   @testset "Local DG shock capturing" begin
 
     mesh, sbp, eqn, opts = solvePDE(opts)
-#=
+
     testQx(mesh, sbp, eqn, opts)
+#=
     test_shockmesh(mesh, sbp, eqn, opts)
     
     test_thetaface(mesh, sbp, eqn, opts)
@@ -237,18 +238,18 @@ function test_ldg()
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
     end
-=#
+
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_br2_serialpart(mesh, sbp, eqn, opts)
-
+=#
   end
 
   return nothing
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """
@@ -618,6 +619,17 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
   # test Dx^T
   dxT_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
+  # test calculating the operator matrices themselves
+  Dx = zeros(Tres, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  Qx = zeros(Tres, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  DxT = zeros(Tres, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  QxT = zeros(Tres, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+
+
+  dx_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  qx_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+
   qface = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   work2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
   E_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
@@ -653,6 +665,22 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
     fill!(dxT_term, 0)
     EulerEquationMod.applyDxTransposed(sbp, q_i, dxidx_i, jac_i, work, dxT_term)
 
+    # test explicitly computed operator matrices
+    EulerEquationMod.calcDx(sbp, dxidx_i, jac_i, Dx)
+    EulerEquationMod.calcQx(sbp, dxidx_i, Qx)
+    EulerEquationMod.calcDxTransposed(sbp, dxidx_i, jac_i, DxT)
+    EulerEquationMod.calcQxTransposed(sbp, dxidx_i, QxT)
+
+
+    for d1=1:mesh.dim
+      for k=1:mesh.numDofPerNode
+        dx_term2[k, :, d1] = Dx[:, :, d1]*q_i[k, :]
+        qx_term2[k, :, d1] = Qx[:, :, d1]*q_i[k, :]
+      end
+      @test maximum(abs.(DxT[:, :, d1] - Dx[:, :, d1].')) < 1e-13
+      @test maximum(abs.(QxT[:, :, d1] - Qx[:, :, d1].')) < 1e-13
+    end
+
     # check against analytical derivative
     for j=1:mesh.numNodesPerElement
       for d=1:mesh.dim
@@ -664,6 +692,10 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
           @test abs(val - qderiv[k, d, j, i]) < 1e-12
           @test abs(val2 - qderiv[k, d, j, i]) < 1e-12
           @test abs(val3 - qderiv[k, d, j, i]) < 1e-12
+          
+
+          @test abs(dx_term2[k, j, d] - dx_term[k, j, d]) < 1e-12
+          @test abs(qx_term2[k, j, d] - qx_term[k, j, d]) < 1e-12
 
         end
       end

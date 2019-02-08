@@ -283,6 +283,9 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 
+    test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
+
+    #=
     # SBPDiagonalE, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -487,13 +490,13 @@ function test_jac_terms_long()
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
 
-
+=#
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -2619,3 +2622,99 @@ function test_BJacobiPC(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+
+function test_sbp_cartesian(mesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01*rand(size(eqn.q))
+
+  #q_dot = rand_realpart(size)
+
+  Dx = zeros(Complex128, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  wxi = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+  t2_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+             mesh.numNodesPerElement, mesh.numNodesPerElement)
+  t3_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement,
+                         mesh.numNodesPerElement)
+
+  q2 = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res2 = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  for i=1:mesh.numEl
+
+    q_dot = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement,
+                           mesh.numNodesPerElement)
+    q_i = eqn.q[:, :, i]
+    dxidx_i = sview(mesh.dxidx, :, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
+
+    #fill!(res, 0)
+    #q_i .+= pert*q_dot[:, :, i]
+    #q_i[1, 1] += pert
+    #q_i[2, 1] += pert
+    #EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, wxi, res)
+
+    # use differentiated version (4D -> 5D)
+    #t1_dot[1, 1, 1, 1] = 1
+    #t1_dot[2, 1, 1, 1] = 1
+    #t1_dot[:, 1, :, 1] = q_dot[:, :, i]
+    EulerEquationMod.calcDx(sbp, dxidx_i, jac_i, Dx)
+    EulerEquationMod.applyOperatorJac(Dx, q_dot, t2_dot)
+
+    for q=1:mesh.numNodesPerElement
+      for j=1:mesh.numDofPerNode
+        q_i .+= pert*q_dot[:, j, :, q]
+        fill!(res, 0)
+        EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, wxi, res)
+        q_i .-= pert*q_dot[:, j, :, q]
+        for d=1:mesh.dim
+          @test maximum(abs.(t2_dot[:, j, d, :, q] - imag(res[:, :, d])./h)) < 1e-13
+        end
+      end
+    end
+
+    # test the second method (5D -> 4D)
+    q_dot2 = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                           mesh.numNodesPerElement, mesh.numNodesPerElement)
+    EulerEquationMod.applyOperatorJac(Dx, q_dot2, t3_dot)
+
+    for d=1:mesh.dim
+      q2_d = sview(q2, :, :, d)
+      copy!(q2, q_i)
+    end
+
+    for q=1:mesh.numNodesPerElement
+      for j=1:mesh.numDofPerNode
+        for d=1:mesh.dim
+          q2[:, :, d] .+= pert*q_dot2[:, j, d, :, q]
+        end
+
+        fill!(res2, 0)
+        EulerEquationMod.applyDx(sbp, q2, dxidx_i, jac_i, wxi, res2)
+
+        for d=1:mesh.dim
+          q2[:, :, d] .-= pert*q_dot2[:, j, d, :, q]
+        end
+
+        @test maximum(abs.(t3_dot[:, j, :, q] - imag(res2)/h)) < 1e-13
+      end
+    end
+
+  end
+
+  return nothing
+end
+
+
+
+
+

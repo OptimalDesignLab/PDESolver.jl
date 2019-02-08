@@ -578,6 +578,7 @@ include("bc_solvers_diff.jl")
 include("bc_diff.jl")
 include("homotopy_diff.jl")
 include("shock_capturing_diff.jl")
+include("sbp_cartesian_diff.jl")
 
 
 """

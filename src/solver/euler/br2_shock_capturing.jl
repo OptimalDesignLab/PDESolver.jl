@@ -247,7 +247,13 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1L, t1R)
 
     # apply Dgk^T and Dgn^T
-    # TODO: there is an allocation here that I can't figure out the source of
+    # TODO: there is an allocation here caused by the number of arguments
+    #       to the function, however the allocation is context dependent.
+    #       Pulling this function out of PDESolver removes the allocation.
+    #       The allocation can be avoided by packing dxidxL, jacL, and resL
+    #       into a tuple (and similarly for the corresponding R arguments),
+    #       however the allocation does not appear to cause a significant
+    #       performance problem.
     applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
                       wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
                       op)
@@ -543,7 +549,7 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
   # a lot of flops.
   applyDxTransposed(sbp, temp3L, dxidxL, jacL, work, resL, op)
   applyDxTransposed(sbp, temp3R, dxidxR, jacR, work, resR, op)
-  
+
   return nothing
 end
 
