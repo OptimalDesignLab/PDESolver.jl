@@ -408,7 +408,7 @@ abstract type AbstractVolumeShockCapturing <: AbstractShockCapturing end
 
 
   ```
-  applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+  calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                      eqn::EulerData, opts,
                      capture::AbstractFaceShockCapturing,
                      shockmesh::ShockedElements)
