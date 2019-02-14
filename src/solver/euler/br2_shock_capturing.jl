@@ -13,15 +13,15 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   @time computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  @time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  #@time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   @time computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  @time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  #@time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
-  @time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
-                              capture.diffusion, capture.penalty)
+  #@time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
+  #                            capture.diffusion, capture.penalty)
 
 
 
@@ -155,13 +155,13 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
                            capture::SBPParabolicSC{Tsol, Tres},
                            shockmesh::ShockedElements) where {Tsol, Tres}
 
+  println("\nentered computeVolumeTerm")
   # computeGradW computes Lambda * D * w, so all that remains to do is
   # compute Qx * grad_q_x
   # Note that this term is not entropy stable by itself, because Qx was
   # not replaced by -Qx^T + Ex.  The entire discretization should be
   # entropy-stable however.
   work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  op = SummationByParts.Subtract()
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
 
@@ -169,6 +169,7 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     res_i = sview(eqn.res, :, :, i_full)
     applyQx(sbp, gradq_i, dxidx_i, work, res_i)
+
     #applyQxTransposed(sbp, gradq_i, dxidx_i, work, res_i, op)
   end
 
@@ -231,10 +232,17 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     getFaceVariables(capture, mesh.sbpface, iface_red, wL, wR, gradwL, gradwR,
                      nrm_face, delta_w, theta)
 
+    #println("delta_w_dot = \n", imag(delta_w)./1e-20)
+    #println("theta_dot = \n", imag(theta)./1e-20)
+
     # apply the penalty coefficient matrix
     applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w, theta,
                  wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L, t2R)
 
+    println("t2L_dot = \n", imag(t2L)./1e-20)
+    println("t2R_dot = \n", imag(t2R)./1e-20)
+
+#=
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     # need to apply R^T * t1, not R^T * B * t1, so
     # interiorFaceIntegrate won't work.  Use the reverse mode instead
@@ -245,7 +253,7 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
       end
     end
     interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1L, t1R)
-
+=#
     # apply Dgk^T and Dgn^T
     # TODO: there is an allocation here caused by the number of arguments
     #       to the function, however the allocation is context dependent.
@@ -540,10 +548,20 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
     interiorFaceInterpolate_rev!(sbpface, iface, tmp2L, tmp2R, temp1L, temp1R)
   end
 
+  for d=1:dim
+    println("temp2L_dot = \n", imag(temp2L[:, :, d])./1e-20)
+    println("temp2R_dot = \n", imag(temp2R[:, :, d])./1e-20)
+  end
 
   # multiply by D^T Lambda
   applyDiffusionTensor(diffusion, wL, iface.elementL, temp2L, temp3L)
   applyDiffusionTensor(diffusion, wR, iface.elementR, temp2R, temp3R)
+
+  for d=1:dim
+    println("temp3L_dot = \n", imag(temp3L[:, :, d])./1e-20)
+    println("temp3R_dot = \n", imag(temp3R[:, :, d])./1e-20)
+  end
+
 
   # saving temp3 to a mesh-wide array and then applying Dx^T would save
   # a lot of flops.
@@ -636,12 +654,16 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
     end
   end
 
+#  println("qL_dot = ", imag(qL)./1e-20)
+#  println("qR_dot = ", imag(qR)./1e-20)
+
   # apply Lambda matrix
   applyDiffusionTensor(diffusion, wL, iface.elementL, qL, t1L)
   applyDiffusionTensor(diffusion, wR, iface.elementR, qR, t1R)
 
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
   @simd for d1=1:dim
+    println("d = ", d1)
     @simd for j=1:numNodesPerElement
       facL = (1/alphas[1])*jacL[j]/sbp.w[j]
       facR = (1/alphas[2])*jacR[j]/sbp.w[j]
@@ -662,6 +684,10 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
     @simd for j=1:numNodesPerFace
       @simd for k=1:numDofPerNode
         val = sbpface.wface[j]*nrm_face[d1, j]*(t2L_d[k, j] + t2R_d[k, j])
+#        println("fac = ", sbpface.wface[j]*nrm_face[d1, j])
+#        println("t2L_d_dot = ", imag(t2L_d[k, j])./1e-20)
+#        println("t2R_d_dot = ", imag(t2R_d[k, j])./1e-20)
+#        println("val = ", imag(val)./1e-20)
 
         res1L[k, j] += val
         res1R[k, j] -= val  # delta_w is reversed for elementR
@@ -674,7 +700,7 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   # apply T2 and T3
   @simd for j=1:numNodesPerFace
     @simd for k=1:numDofPerNode
-      val1 =  0.5*sbpface.wface[j]*theta[k, j]  # this one is the problem
+      val1 =  0.5*sbpface.wface[j]*theta[k, j]
       val2 = -0.5*sbpface.wface[j]*delta_w[k, j]
       res1L[k, j] += val1
       res1R[k, j] += val1

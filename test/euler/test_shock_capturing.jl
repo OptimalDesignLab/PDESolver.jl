@@ -161,7 +161,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
 
 
 #------------------------------------------------------------------------------
@@ -689,11 +689,13 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
           val = fac*(qxT_term[k, j, d] + E_term[k, j, d])
           val2 = dx_term[k, j, d]
           val3 = fac*qx_term[k, j, d]
+          val4 = fac*qx_term2[k, j, d]
           @test abs(val - qderiv[k, d, j, i]) < 1e-12
           @test abs(val2 - qderiv[k, d, j, i]) < 1e-12
           @test abs(val3 - qderiv[k, d, j, i]) < 1e-12
+          @test abs(dx_term2[k, j, d] - qderiv[k, d, j, i]) < 1e-12
+          @test abs(val4 - qderiv[k, d, j, i]) < 1e-12
           
-
           @test abs(dx_term2[k, j, d] - dx_term[k, j, d]) < 1e-12
           @test abs(qx_term2[k, j, d] - qx_term[k, j, d]) < 1e-12
 

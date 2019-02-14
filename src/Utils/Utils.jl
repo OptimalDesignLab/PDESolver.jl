@@ -62,7 +62,7 @@ export calcSCurvilinear, calcSCurvilinear_rev, calcECurvilinear, calcDCurvilinea
 export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev
 
 # io.jl
-export BufferedIO, BSTDOUT, BSTDERR
+export BufferedIO, BSTDOUT, BSTDERR, printArray
 
 # parallel_types.jl
 export SharedFaceData, getSharedFaceData, setParallelData, getParallelData,

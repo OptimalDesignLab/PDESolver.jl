@@ -276,6 +276,24 @@ function test_jac_terms_long()
     fname3 = "input_vals_jac3d.jl"
 
 
+    #TESTING
+    # SBPOmega, SparseMatrixCSC
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname)
+    opts_tmp["jac_type"] = 2
+    opts_tmp["operator_type"] = "SBPOmega"
+    opts_tmp["order"] = 2
+    make_input(opts_tmp, fname4)
+    mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
+
+    test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
+    Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
+    capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
+
+
+
+    #=
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -283,9 +301,7 @@ function test_jac_terms_long()
     make_input(opts_tmp, fname4)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
 
-    test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
-
-    #=
+    
     # SBPDiagonalE, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -2642,9 +2658,12 @@ function test_sbp_cartesian(mesh, sbp, eqn, opts)
   res = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
   t2_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
-             mesh.numNodesPerElement, mesh.numNodesPerElement)
-  t3_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement,
+                 mesh.numNodesPerElement, mesh.numNodesPerElement)
+  t3_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode,
+                 mesh.numNodesPerElement,
                          mesh.numNodesPerElement)
+  t4_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                 mesh.numNodesPerElement, mesh.numNodesPerElement)
 
   q2 = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   res2 = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement)
@@ -2700,6 +2719,24 @@ function test_sbp_cartesian(mesh, sbp, eqn, opts)
       end
     end
 
+    # test the 3rd methods: (3D -> 5D)
+    # test consistency with 4D method
+    q_dot3 = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode,
+                           mesh.numNodesPerElement)
+    q_dot3b = zeros(mesh.numDofPerNode, mesh.numDofPerNode,
+                    mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+        for p=1:mesh.numDofPerNode
+          q_dot3b[p, k, j, j] = q_dot3[p, k, j]
+        end
+      end
+    end
+    EulerEquationMod.applyOperatorJac(Dx, q_dot3, t4_dot)
+    EulerEquationMod.applyOperatorJac(Dx, q_dot3b, t2_dot)
+
+    @test maximum(abs.(t4_dot - t2_dot)) < 1e-13
   end
 
   return nothing
@@ -2707,5 +2744,57 @@ end
 
 
 
+function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+      capture::EulerEquationMod.AbstractFaceShockCapturing) where {Tsol, Tres}
 
+  h = 1e-20
+  pert = Complex128(0, h)
 
+  # use a spatially varying solution
+  srand(1234)
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.1*rand(size(eqn.q))
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  
+  # get explicitly computed linear operator
+  opts["calc_jac_explicit"] = true
+  val_orig = opts["preallocate_jacobian_coloring"]
+  opts["preallocate_jacobian_coloring"] = true
+  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+  opts["preallocate_jacobian_coloring"] = val_orig
+
+  jac = getBaseLO(lo).A
+  assembler = NonlinearSolvers._AssembleElementData(jac, mesh, sbp, eqn, opts)
+
+  println("mesh.dofs[:, :, 1] = \n", mesh.dofs[:, :, 1])
+  println("mesh.dofs[:, :, 2] = \n", mesh.dofs[:, :, 2])
+
+  # complex step
+  q_dot = rand_realpart(size(eqn.q_vec))
+#  q_dot = zeros(size(eqn.q_vec))
+#  q_dot[25] = 1
+  q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+  array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
+
+  eqn.q .+= pert*q_dot_arr
+  fill!(eqn.res, 0)
+
+  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+  #println("real(eqn.res) = ", real(eqn.res))
+  eqn.q .-= pert*q_dot_arr
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  res_dot = imag(eqn.res_vec)/h
+
+  # explictly compute jacobian
+  EulerEquationMod.applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
+
+  b = jac*q_dot
+  #println("diff = ", real(b - res_dot))
+  #println("\nb = ", real(b))
+  #println("\nres_dot = ", real(res_dot))
+  @test maximum(abs.(b - res_dot)) < 1e-13
+
+  return nothing 
+end

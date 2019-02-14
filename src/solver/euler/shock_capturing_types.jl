@@ -253,11 +253,11 @@ end
   Function to set the elementwise diffusion coefficient and its derivative
 """
 function setDiffusionArray_diff(obj::ShockDiffusion, vals::AbstractArray,
-                                val_dot::AbstractArray{T, 3},
+                                vals_dot::AbstractArray{T, 3},
                                 is_nonlinear::BitArray{1}) where {T}
 
-  obj.ee = ee
-  obj.vals_dot = vals_dot
+  obj.ee =vals
+  obj.ee_dot = vals_dot
   obj.is_nonlinear = is_nonlinear
 end
 

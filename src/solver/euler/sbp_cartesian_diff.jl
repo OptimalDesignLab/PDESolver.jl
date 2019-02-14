@@ -1,5 +1,7 @@
 # differentiated version of SBP cartesian
 
+import SummationByParts: UnaryFunctor, Add, Subtract
+
 #------------------------------------------------------------------------------
 # Computing operator matrices
 
@@ -141,8 +143,14 @@ end
 # Applying operator matrices
 
 
-function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 4},
-                          t2::AbstractArray{T2, 5}) where {T, T2}
+
+function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 3},
+                          t2::AbstractArray{T2, 5}, zero_output::Bool=true,
+                          op::UnaryFunctor=Add()) where {T, T2}
+# t1 is numDofPerNode x numDofPerNode x numNodesPerElement (nodewise jacobian
+# at every element).  This is similar to the 4D case, except t1[i, j, k, q] 
+# = 0 when k != q
+
 # compute Dx * t1, Dy * t1, Dz*t1
 
   numNodesPerElement = size(Dx, 1)
@@ -162,10 +170,59 @@ function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 4},
       # For arrays larger than the L1 cache, this is probably better than
       # zeroing out the full matrix and then doing a second pass to write the
       # final values
+      if zero_output
+        @simd for d=1:dim
+          @simd for i=1:numDofPerNode
+            @simd for j=1:numDofPerNode
+              t2[i, j, d, p, q] = 0
+            end
+          end
+        end
+      end
       @simd for d=1:dim
         @simd for i=1:numDofPerNode
           @simd for j=1:numDofPerNode
-            t2[i, j, d, p, q] = 0
+            t2[i, j, d, p, q] += op(Dx[p, q, d]*t1[i, j, q])
+          end
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+
+
+function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 4},
+                          t2::AbstractArray{T2, 5}, zero_output::Bool=true,
+                          op::UnaryFunctor=Add()) where {T, T2}
+# 4D -> 5D
+# compute Dx * t1, Dy * t1, Dz*t1
+
+  numNodesPerElement = size(Dx, 1)
+  dim = size(Dx, 3)
+  numDofPerNode = size(t1, 1)
+#=
+  @assert size(t2, 1) == numDofPerNode
+  @assert size(t2, 2) == numDofPerNode
+  @assert size(t2, 3) == dim
+  @assert size(t2, 4) == numNodesPerElement
+  @assert size(t2, 5) == numNodesPerElement
+=#
+
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      # zero out next tile
+      # For arrays larger than the L1 cache, this is probably better than
+      # zeroing out the full matrix and then doing a second pass to write the
+      # final values
+      if zero_output
+        @simd for d=1:dim
+          @simd for i=1:numDofPerNode
+            @simd for j=1:numDofPerNode
+              t2[i, j, d, p, q] = 0
+            end
           end
         end
       end
@@ -173,7 +230,7 @@ function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 4},
         @simd for d=1:dim
           @simd for i=1:numDofPerNode
             @simd for j=1:numDofPerNode
-              t2[i, j, d, p, q] += Dx[p, k, d]*t1[i, j, k, q]
+              t2[i, j, d, p, q] += op(Dx[p, k, d]*t1[i, j, k, q])
             end
           end
         end
@@ -186,7 +243,9 @@ end
 
 
 function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 5},
-                          t2::AbstractArray{T2, 4}) where {T, T2}
+                          t2::AbstractArray{T2, 4}, zero_output::Bool=true,
+                          op::UnaryFunctor=Add()) where {T, T2}
+# 5D -> 4D
 # compute Dx * t1, Dy * t1, Dz*t1
 
   numNodesPerElement = size(Dx, 1)
@@ -202,9 +261,11 @@ function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 5},
     @simd for p=1:numNodesPerElement
 
       # zero out next tile
-      @simd for i=1:numDofPerNode
-        @simd for j=1:numDofPerNode
-          t2[i, j, p, q] = 0
+      if zero_output
+        @simd for i=1:numDofPerNode
+          @simd for j=1:numDofPerNode
+            t2[i, j, p, q] = 0
+          end
         end
       end
 
@@ -212,7 +273,7 @@ function applyOperatorJac(Dx::Abstract3DArray, t1::AbstractArray{T, 5},
         @simd for d=1:dim
           @simd for i=1:numDofPerNode
             @simd for j=1:numDofPerNode
-              t2[i, j, p, q] += Dx[p, k, d]*t1[i, j, d, k, q]
+              t2[i, j, p, q] += op(Dx[p, k, d]*t1[i, j, d, k, q])
             end
           end
         end

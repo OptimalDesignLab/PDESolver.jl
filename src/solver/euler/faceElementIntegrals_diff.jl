@@ -472,7 +472,7 @@ function calcEntropyPenaltyIntegral_diff(
 
   # given flux jacobians wrt entropy variables at the face, compute jacobian
   # of residual contribution wrt entropy variables at solution nodes
-  interiorFaceIntegrate_jac!(sbpface, iface, flux_dotL, flux_dotR,
+  interiorFaceCombined_jac!(sbpface, iface, flux_dotL, flux_dotR,
                              jacLL_tmp, jacLR_tmp, jacRL_tmp, jacRR_tmp,
                              SummationByParts.Subtract())
                              

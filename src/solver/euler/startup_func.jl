@@ -231,6 +231,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
   saveSolutionToMesh(mesh, q_vec)
 
   writeVisFiles(mesh, "solution_ic")
+  println("opts[calc_dt] = ", opts["calc_dt"])
   if opts["calc_dt"]
     wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
     @mpi_master println("max wave speed = ", wave_speed)

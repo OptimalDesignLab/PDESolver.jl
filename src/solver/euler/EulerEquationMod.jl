@@ -534,6 +534,11 @@ abstract type AbstractDiffusionPenalty end
 # low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
 
+# TEMPORARY
+const Abstract4DArray{T} = AbstractArray{T, 4}
+const Abstract5DArray{T} = AbstractArray{T, 5}
+
+
 include("types.jl")  # type definitions
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("euler_macros.jl")
@@ -581,6 +586,7 @@ include("homotopy_diff.jl")
 include("shock_sensors_diff.jl")
 include("shock_capturing_diff.jl")
 include("sbp_cartesian_diff.jl")
+include("br2_shock_capturing_diff.jl")
 
 
 

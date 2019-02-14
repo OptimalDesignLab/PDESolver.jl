@@ -283,7 +283,9 @@ function majorIterationCallback(itr::Integer,
     vals = real(eqn.q_vec)  # remove unneded imaginary part
 
     #TODO: testing
-    writeShockSensorField(mesh, sbp, eqn, opts, eqn.shock_sensor)
+    if opts["addShockCapturing"]
+      writeShockSensorField(mesh, sbp, eqn, opts, eqn.shock_sensor)
+    end
 
     saveSolutionToMesh(mesh, vals)
     fname = string("solution_", itr)

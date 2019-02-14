@@ -167,12 +167,12 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
     end  # end loop j
 
     # multiply by lambda here and it will get carried through
-    # interiorFaceIntegrate_jac
+    # interiorFaceCombined_jac
     scale!(flux_dotL, lambda)
     scale!(flux_dotR, lambda)
 
     # compute dR/dq
-    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
+    interiorFaceCombined_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
     # assemble into the Jacobian
@@ -231,7 +231,7 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
       end  # end loop j
 
       
-      boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, flux_dotL, res_jac,
+      boundaryFaceCombined_jac!(mesh.sbpface, bndry_i.face, flux_dotL, res_jac,
                                SummationByParts.Subtract())
 
       assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
@@ -288,12 +288,12 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
       end  # end loop j
 
       # multiply by lambda here and it will get carried through
-      # interiorFaceIntegrate_jac
+      # interiorFaceCombined_jac
       scale!(flux_dotL, lambda)
       scale!(flux_dotR, lambda)
 
       # compute dR/dq
-      interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
+      interiorFaceCombined_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 

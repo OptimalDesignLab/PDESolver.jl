@@ -325,6 +325,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, comm::MPI.Comm=MPI.COMM_W
       else
         throw(ArgumentError("3D SBPOmega3 not supported"))
       end
+    elseif opts["operator_type$suffix"] == "SBPDiagonalEFrobenius"
+      shape_type = 8
+      if dim == 2
+        sbp = getTriSBPDiagE(degree=order, Tsbp=Tsbp, mincond=false)
+      else
+        throw(ArgumentError("3D SBPOmega3 not supported"))
+      end
     else
       op_type = opts["operator_type$suffix"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -344,7 +351,9 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, comm::MPI.Comm=MPI.COMM_W
     if dim == 2
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
-      if opts["operator_type$suffix"] == "SBPDiagonalE"
+      if opts["operator_type$suffix"] == "SBPDiagonalE" ||
+         opts["operator_type$suffix"] == "SBPDiagonalEFrobenius"
+
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
       elseif opts["operator_type$suffix"] == "SBPDiagonalE2"
         println("getting TriFaceForDiagE2")

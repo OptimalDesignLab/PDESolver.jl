@@ -187,11 +187,18 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
+get!(arg_dict, "force_recalc_dt", false)
+
 if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
 end
+
+if arg_dict["force_recalc_dt"]
+  arg_dict["calc_dt"] = true
+end
+
 # should this really have a default value?
 get!(arg_dict, "CFL", 0.4)
 get!(arg_dict, "use_itermax", haskey(arg_dict, "itermax"))
