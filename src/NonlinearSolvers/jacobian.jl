@@ -1318,7 +1318,9 @@ end
 
 """
   Assembles the jacobian of a boundary integral into the matrix.
-  Specialized versions take advantage of the sparsity of the `sbpface`.
+  Specialized versions take advantage of the sparsity of the `sbpface`, ie.
+  it only assembles nodes that are in the stencil of R.  See
+  [`AssembleBoundaryFull`](@ref) for assembling the entire block.
 
   **Inputs**
 
@@ -1338,7 +1340,8 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::DenseFace,
   numNodesPerElement = size(jac, 4)
   numDofPerNode = size(jac, 1)
 
-#  for q in permL # =1:numNodesPerElement
+#  for q=1:numNodesPerElement
+#    qL = q
   for q=1:sbpface.stencilsize
     qL = sbpface.perm[q, bndry.face]
 
@@ -1347,7 +1350,8 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::DenseFace,
       helper.idy[j] = mesh.dofs[j, qL, elnum] + mesh.dof_offset
     end
 
-#    for p in permL  # =1:numNodesPerElement
+#    for p=1:numNodesPerElement
+#      pL = p
     for p=1:sbpface.stencilsize
       pL = sbpface.perm[p, bndry.face]
 
@@ -1365,7 +1369,6 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::DenseFace,
 
       # assemble them into matrix
       set_values1!(helper.A, helper.idx, helper.idy, helper.vals, ADD_VALUES)
-
     end  # end loop p
   end  # end loop q
 
@@ -1407,3 +1410,16 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::SparseFace,
 end
 
 
+"""
+  This function assembles the entire element Jacobian into the sparse matrix
+  for a given boundary.  Same arguments as [`AssembleBoundary`](@ref)
+"""
+function assembleBoundaryFull(helper::_AssembleElementData,
+                              sbpface::AbstractFace,
+                              mesh::AbstractMesh, bndry::Boundary,
+                              jac::AbstractArray{T, 4}) where T
+
+  assembleElement(helper, mesh, bndry.element, jac)
+
+  return nothing
+end

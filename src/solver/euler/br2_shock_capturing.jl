@@ -13,12 +13,12 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   @time computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  #@time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  @time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   @time computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  #@time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  @time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   #@time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
   #                            capture.diffusion, capture.penalty)
@@ -239,10 +239,6 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w, theta,
                  wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L, t2R)
 
-    println("t2L_dot = \n", imag(t2L)./1e-20)
-    println("t2R_dot = \n", imag(t2R)./1e-20)
-
-
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     # need to apply R^T * t1, not R^T * B * t1, so
     # interiorFaceIntegrate won't work.  Use the reverse mode instead
@@ -262,9 +258,9 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     #       into a tuple (and similarly for the corresponding R arguments),
     #       however the allocation does not appear to cause a significant
     #       performance problem.
-#    applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
-#                      wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
-#                      op)
+    applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
+                      wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
+                      op)
 
   end  # end loop i
 
@@ -409,7 +405,6 @@ function computeBoundaryTerm(mesh, sbp, eqn, opts,
 
     # apply R^T B
     boundaryFaceIntegrate!(mesh.sbpface, bndry_i.face, temp2_face, res_i, op)
-
   end  # end i
 
   return nothing
@@ -548,20 +543,9 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
     interiorFaceInterpolate_rev!(sbpface, iface, tmp2L, tmp2R, temp1L, temp1R)
   end
 
-  for d=1:dim
-    println("temp2L_dot = \n", imag(temp2L[:, :, d])./1e-20)
-    println("temp2R_dot = \n", imag(temp2R[:, :, d])./1e-20)
-  end
-
   # multiply by D^T Lambda
   applyDiffusionTensor(diffusion, wL, iface.elementL, temp2L, temp3L)
   applyDiffusionTensor(diffusion, wR, iface.elementR, temp2R, temp3R)
-
-  for d=1:dim
-    println("temp3L_dot = \n", imag(temp3L[:, :, d])./1e-20)
-    println("temp3R_dot = \n", imag(temp3R[:, :, d])./1e-20)
-  end
-
 
   # saving temp3 to a mesh-wide array and then applying Dx^T would save
   # a lot of flops.
@@ -654,16 +638,12 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
     end
   end
 
-#  println("qL_dot = ", imag(qL)./1e-20)
-#  println("qR_dot = ", imag(qR)./1e-20)
-
   # apply Lambda matrix
   applyDiffusionTensor(diffusion, wL, iface.elementL, qL, t1L)
   applyDiffusionTensor(diffusion, wR, iface.elementR, qR, t1R)
 
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
   @simd for d1=1:dim
-    println("d = ", d1)
     @simd for j=1:numNodesPerElement
       facL = (1/alphas[1])*jacL[j]/sbp.w[j]
       facR = (1/alphas[2])*jacR[j]/sbp.w[j]
@@ -684,11 +664,6 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
     @simd for j=1:numNodesPerFace
       @simd for k=1:numDofPerNode
         val = sbpface.wface[j]*nrm_face[d1, j]*(t2L_d[k, j] + t2R_d[k, j])
-#        println("fac = ", sbpface.wface[j]*nrm_face[d1, j])
-#        println("t2L_d_dot = ", imag(t2L_d[k, j])./1e-20)
-#        println("t2R_d_dot = ", imag(t2R_d[k, j])./1e-20)
-#        println("val = ", imag(val)./1e-20)
-
         res1L[k, j] += val
         res1R[k, j] -= val  # delta_w is reversed for elementR
       end
