@@ -2774,7 +2774,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   # complex step
   q_dot = rand_realpart(size(eqn.q_vec))
 #  q_dot = zeros(size(eqn.q_vec))
-#  q_dot[25] = 1
+#  q_dot[1] = 1
   q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
 

@@ -242,7 +242,7 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     println("t2L_dot = \n", imag(t2L)./1e-20)
     println("t2R_dot = \n", imag(t2R)./1e-20)
 
-#=
+
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     # need to apply R^T * t1, not R^T * B * t1, so
     # interiorFaceIntegrate won't work.  Use the reverse mode instead
@@ -253,7 +253,7 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
       end
     end
     interiorFaceInterpolate_rev!(mesh.sbpface, iface_red, resL, resR, t1L, t1R)
-=#
+
     # apply Dgk^T and Dgn^T
     # TODO: there is an allocation here caused by the number of arguments
     #       to the function, however the allocation is context dependent.
@@ -262,9 +262,9 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     #       into a tuple (and similarly for the corresponding R arguments),
     #       however the allocation does not appear to cause a significant
     #       performance problem.
-    applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
-                      wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
-                      op)
+#    applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
+#                      wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
+#                      op)
 
   end  # end loop i
 
