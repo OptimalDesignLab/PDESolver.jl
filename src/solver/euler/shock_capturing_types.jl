@@ -300,6 +300,7 @@ end
 """
 struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
 
+  # primal method
   delta_w_n::Matrix{Tsol}
   qL::Array{Tres, 3}
   qR::Array{Tres, 3}
@@ -308,17 +309,73 @@ struct BR2Penalty{Tsol, Tres} <: AbstractDiffusionPenalty
   t2L::Array{Tres, 3}
   t2R::Array{Tres, 3}
 
+  # diff method
+  t1_dotL::Array{Tres, 5}
+  t1_dotR::Array{Tres, 5}
+
+  # the first L/R indicates if this is element kappa or nu
+  # the second L/R indices if the derivative is wrt qL or qR
+  t2LL::Array{Tres, 5}
+  t2LR::Array{Tres, 5}
+  t2RL::Array{Tres, 5}
+  t2RR::Array{Tres, 5}
+
+  t3LL::Array{Tres, 5}
+  t3LR::Array{Tres, 5}
+  t3RL::Array{Tres, 5}
+  t3RR::Array{Tres, 5}
+
+  # re-use t1_dotL,R
+  t4RL::Array{Tres, 5}
+  t4RR::Array{Tres, 5}
+
   function BR2Penalty{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
 
-    delta_w_n = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    qL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    qR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    t1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    t1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    t2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
-    t2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
+    @unpack mesh numDofPerNode numNodesPerFace numNodesPerElement dim
 
-    return new(delta_w_n, qL, qR, t1L, t1R, t2L, t2R)
+    delta_w_n = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    qL = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    qR = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    t1L = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    t1R = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    t2L = zeros(Tres, numDofPerNode, numNodesPerFace, dim)
+    t2R = zeros(Tres, numDofPerNode, numNodesPerFace, dim)
+
+    t1_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                   numNodesPerElement)
+    t1_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                     numNodesPerElement)
+
+    t2LL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                      numNodesPerElement)
+    t2LR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                      numNodesPerElement)
+   
+    t2RL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                      numNodesPerElement)
+    t2RR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                      numNodesPerElement)
+   
+    t3LL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                       numNodesPerElement)
+    t3LR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                       numNodesPerElement)
+
+    t3RL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                       numNodesPerElement)
+    t3RR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                       numNodesPerElement)
+
+
+    t4RL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                     numNodesPerElement)
+    t4RR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                       numNodesPerElement)
+
+
+    return new(delta_w_n, qL, qR, t1L, t1R, t2L, t2R,
+               t1_dotL, t1_dotR, t2LL, t2LR, t2RL, t2RR, t3LL, t3LR, t3RL, t3RR,
+               t4RL, t4RR)
   end
 
 end
@@ -507,6 +564,17 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   grad_faceL::Matrix{Tres}
   grad_faceR::Matrix{Tres}
 
+  # getFaceVariables_diff
+  wL_dot::Array{Tsol, 3}
+  wR_dot::Array{Tsol, 3}
+  Dx::Array{Float64, 3}
+  t1::Array{Tres, 3}
+  t1_dot::Array{Tres, 5}
+  t2L_dot::Array{Tres, 5}
+  t2R_dot::Array{Tres, 5}
+  t3L_dot::Array{Tres, 5}
+  t3R_dot::Array{Tres, 5}
+
   # applyDgkTranspose
   temp1L::Matrix{Tres}
   temp1R::Matrix{Tres}
@@ -516,9 +584,34 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   temp3R::Array{Tres, 3}
   work::Array{Tres, 3}
 
+  # applyDgkTranspose_diff
+  t3L_dotL::Array{Tres, 5}
+  t3L_dotR::Array{Tres, 5}
+  t3R_dotL::Array{Tres, 5}
+  t3R_dotR::Array{Tres, 5}
+
+  t4L_dotL::Array{Tres, 5}
+  t4L_dotR::Array{Tres, 5}
+  t4R_dotL::Array{Tres, 5}
+  t4R_dotR::Array{Tres, 5}
+
+  t5L_dotL::Array{Tres, 5}
+  t5L_dotR::Array{Tres, 5}
+  t5R_dotL::Array{Tres, 5}
+  t5R_dotR::Array{Tres, 5}
+
+  # computeBoundaryTerm_diff
+  w_dot::Array{Tsol, 3}
+  t2_dot::Array{Tres, 5}
+  t3_dot::Array{Tres, 5}
+  t4_dot::Array{Tres, 4}
+
   alpha_comm::AlphaComm # MPI communications for alpha
 
   function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerFace dim numNodesPerElement
+
     # we don't know the right sizes yet, so make them zero size
     w_el = Array{Tsol}(0, 0, 0)
     grad_w = Array{Tres}(0, 0, 0, 0)
@@ -532,24 +625,95 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
 
 
     # temporary arrays
-    w_faceL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    w_faceR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
-    grad_faceL = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-    grad_faceR = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
-    temp1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-    temp1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-    temp2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    temp2R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    temp3L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    temp3R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-    work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    # getFaceVariables
+    w_faceL = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    w_faceR = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    grad_faceL = zeros(Tres, numDofPerNode, numNodesPerFace)
+    grad_faceR = zeros(Tres, numDofPerNode, numNodesPerFace)
+
+    # getFaceVariables_diff
+    wL_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    wR_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+    t1 = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    t1_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    t2L_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    t2R_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    t3L_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                          numNodesPerElement)
+    t3R_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                          numNodesPerElement)
+
+
+    # applyDgk transpose
+    temp1L = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp1R = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp2L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp2R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    work = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+
+    # applyDgk_transpose_diff
+    t3L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+
+    t4L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+    t5L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+
+    # computeBoundaryTerm_diff
+    w_dot = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode,
+                        mesh.numNodesPerElement)
+    #t1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    #t1_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+    #                     mesh.numNodesPerElement, mesh.numNodesPerElement)
+    t2_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    t3_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+    t4_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
 
     alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
 
     return new(w_el, grad_w, convert_entropy, diffusion, penalty, alpha,
                alpha_parallel, w_faceL, w_faceR, grad_faceL, grad_faceR,
-              temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work, alpha_comm)
+               wL_dot, wR_dot, Dx, t1, t1_dot, t2L_dot, t2R_dot, t3L_dot, t3R_dot,
+              temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work,
+              t3L_dotL, t3L_dotR, t3R_dotL, t3R_dotR,
+              t4L_dotL, t4L_dotR, t4R_dotL, t4R_dotR,
+              t5L_dotL, t5L_dotR, t5R_dotL, t5R_dotR,
+              w_dot, t2_dot, t3_dot, t4_dot,
+              alpha_comm)
   end
 end
 
@@ -620,6 +784,7 @@ function getShockCapturing(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {T
 
   name = opts["shock_capturing_name"]
   obj = ShockCapturingDict[name]{Tsol, Tres}(mesh, sbp, eqn, opts)
+  assertArraysUnique(obj)
   eqn.shock_capturing = obj
 
   return nothing

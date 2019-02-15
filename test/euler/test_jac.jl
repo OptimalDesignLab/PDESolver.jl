@@ -279,7 +279,7 @@ function test_jac_terms_long()
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname)
+    opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2
     opts_tmp["operator_type"] = "SBPOmega"
     opts_tmp["order"] = 2
@@ -289,7 +289,7 @@ function test_jac_terms_long()
     test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
     Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
     capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
-    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, partial_shock=true)
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, partial_shock=false)
 
 
 
@@ -2803,7 +2803,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   #println("\nres_dot = ", real(res_dot))
   @test maximum(abs.(b - res_dot)) < 1e-13
 
-  println("b = \n", real(b))
-  println("res_dot = \n", real(res_dot))
+  #println("b = \n", real(b))
+  #println("res_dot = \n", real(res_dot))
   return nothing 
 end

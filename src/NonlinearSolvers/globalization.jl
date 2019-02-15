@@ -241,7 +241,6 @@ function updateEuler(lo::NewtonLinearObject)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
 
-  println(BSTDOUT, "typeof(lo) = ", typeof(lo))
   tau_l_old = lo.tau_l
   res_norm_i_1, res_norm_i = useEulerConstants(lo)
 
