@@ -281,7 +281,7 @@ function test_jac_terms_long()
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2
-    opts_tmp["operator_type"] = "SBPOmega"
+    opts_tmp["operator_type"] = "SBPGamma"
     opts_tmp["order"] = 2
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)

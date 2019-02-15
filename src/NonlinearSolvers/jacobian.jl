@@ -1,6 +1,5 @@
 # functions for computing the jacobian
 
-include("jacobian_diag.jl")
 
 """
   This function computes the Jacobian of an evalResidual-like function.
@@ -673,9 +672,32 @@ function calcJacCol(jac_row, res::AbstractArray{T, 1}, epsilon) where T <: Compl
 
 end
 
-
 #------------------------------------------------------------------------------
 # explicitly computed jacobian
+
+
+"""
+  This special `DenseFace` contains all the nodes of the element in its stencil.
+  This is useful for tricking `AssembleInterface` into assembling the entire
+  Jacobian block instead of only the part in the stencil of the real `sbpface`.
+"""
+struct FullFace{T} <: SummationByParts.DenseFace{T}
+  stencilsize::Int  # = numNodesPerElement
+  perm::Array{Int, 2}
+end
+
+function FullFace(numNodesPerElement::Integer, dim::Integer)
+
+  perm = Array{Int}(numNodesPerElement, dim + 1)
+  for d=1:(dim+1)
+    for i=1:numNodesPerElement
+      perm[i, d] = i
+    end
+  end
+
+  return FullFace{Float64}(numNodesPerElement, perm)
+end
+
 
 global const assem_min_volume_nodes = 3  # minimum number of volume nodes
 """
@@ -725,6 +747,7 @@ mutable struct _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   idx_bb::Array{PetscInt, 1}
   idy_bb::Array{PetscInt, 1}
 
+  fullface::FullFace{Float64}
 end
 
 
@@ -753,10 +776,13 @@ function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
   idx_bb = zeros(PetscInt, 1)
   idy_bb = zeros(PetscInt, 1)
 
+  fullface = FullFace(mesh.numNodesPerElement, mesh.dim)
+
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,
                                          vals_i, idx_ib, idy_ib, vals_sf,
-                                         idx_bb, idy_bb)
+                                         idx_bb, idy_bb,
+                                         fullface)
 end
 
 function _AssembleElementData()
@@ -779,10 +805,13 @@ function _AssembleElementData()
   idx_bb = Array{PetscInt}(0)
   idy_bb = Array{PetscInt}(0)
 
+  fullface = FullFace(0, 0)
+
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,
                                          vals_i, idx_ib, idy_ib, vals_sf,
-                                         idx_bb, idy_bb)
+                                         idx_bb, idy_bb,
+                                         fullface)
 end
 
 """
@@ -1410,12 +1439,22 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::SparseFace,
 end
 
 
+#------------------------------------------------------------------------------
+# Generic methods (internally they call one of the AssembleElementData
+# implementation-specific functions
+
 """
   This function assembles the entire element Jacobian into the sparse matrix
-  for a given boundary.  Same arguments as [`AssembleBoundary`](@ref)
+  for a given boundary.
+
+  **Inputs**
+
+   * helper: [`AssembleElementData`](@ref)
+   * mesh
+   * bndry: a `Boundary` object
+   * jac: the element jacobian
 """
-function assembleBoundaryFull(helper::_AssembleElementData,
-                              sbpface::AbstractFace,
+function assembleBoundaryFull(helper::AssembleElementData,
                               mesh::AbstractMesh, bndry::Boundary,
                               jac::AbstractArray{T, 4}) where T
 
@@ -1423,3 +1462,48 @@ function assembleBoundaryFull(helper::_AssembleElementData,
 
   return nothing
 end
+
+
+"""
+  This function assembles all 4 element Jacobians into the sparse matrix for
+  a given interface (rather than only those in the stencil of R).
+
+  **Inputs**
+
+   * helper: an [`AssembleElementData`](@ref)
+   * mesh
+   * iface: an `Interface` object
+   * jacLL
+   * jacLR
+   * jacRL
+   * jacRR
+"""
+function assembleInterfaceFull(helper::AssembleElementData, 
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
+
+  assembleInterface(helper, helper.fullface, mesh, iface, jacLL, jacLR,
+                                                          jacRL, jacRR)
+
+  return nothing
+end
+
+"""
+  Similar to [`assembleInterfaceFull`](@ref), but for shared faces.
+"""
+function assembleSharedFaceFull(helper::AssembleElementData,
+                            mesh::AbstractMesh,
+                            iface::Interface,
+                            jacLL::AbstractArray{T, 4},
+                            jacLR::AbstractArray{T, 4}) where T
+
+  assembleSharedFace(helper, helper.fullface, mesh, iface, jacLL, jacLR)
+
+  return nothing
+end
+
+
+include("jacobian_diag.jl")
