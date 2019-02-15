@@ -13,12 +13,12 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   @time computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  @time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  #@time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   @time computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  @time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  #@time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   #@time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
   #                            capture.diffusion, capture.penalty)
@@ -231,9 +231,6 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
     getFaceVariables(capture, mesh.sbpface, iface_red, wL, wR, gradwL, gradwR,
                      nrm_face, delta_w, theta)
-
-    #println("delta_w_dot = \n", imag(delta_w)./1e-20)
-    #println("theta_dot = \n", imag(theta)./1e-20)
 
     # apply the penalty coefficient matrix
     applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w, theta,

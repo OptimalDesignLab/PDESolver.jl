@@ -279,7 +279,7 @@ function test_jac_terms_long()
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname)
+    opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2
     opts_tmp["operator_type"] = "SBPOmega"
     opts_tmp["order"] = 2
@@ -2772,9 +2772,9 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   println("mesh.dofs[:, :, 2] = \n", mesh.dofs[:, :, 2])
 
   # complex step
-  q_dot = rand_realpart(size(eqn.q_vec))
-  #q_dot = zeros(size(eqn.q_vec))
-  #q_dot[1] = 1
+  #q_dot = rand_realpart(size(eqn.q_vec))
+  q_dot = zeros(size(eqn.q_vec))
+  q_dot[1] = 1
   q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
 
