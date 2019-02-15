@@ -107,7 +107,7 @@ function applyLambdaDot_diff(obj::ShockDiffusion, w::AbstractMatrix,
   
   numDofPerNode = size(t1, 1)
   dim = size(t2_dot, 3)
-  numNodesPerElement = size(t1, 3)
+  numNodesPerElement = size(t1, 2)
 
   if obj.is_nonlinear[elnum]
     @simd for q=1:numNodesPerElement
@@ -115,7 +115,7 @@ function applyLambdaDot_diff(obj::ShockDiffusion, w::AbstractMatrix,
         @simd for d=1:dim
           @simd for i=1:numDofPerNode
             @simd for j=1:numDofPerNode
-              t2_dot[i, j, d, p, q] += obj.ee_dot[i, p, elnum]*t1[i, p, d]
+              t2_dot[i, j, d, p, q] += obj.ee_dot[j, q, elnum]*t1[i, p, d]
             end
           end
         end

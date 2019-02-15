@@ -389,8 +389,11 @@ function evalShockCapturing_diff(mesh::AbstractMesh{Tmsh},
                        opts, assembler::AssembleElementData
                        ) where {Tmsh,  Tsol, Tres, Tdim}
 
-  sensor = eqn.params.sensor_pp
-  capture = eqn.params.projection_shock_capturing
+  #sensor = eqn.params.sensor_pp
+  #capture = eqn.params.projection_shock_capturing
+  sensor = eqn.shock_sensor
+  capture = eqn.shock_capturing
+
   applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
 
   return nothing

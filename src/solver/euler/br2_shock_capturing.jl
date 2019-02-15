@@ -10,15 +10,15 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
 
   println("\nEntered applyShockCapturing")
-  @time computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
+  computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  #@time computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
-  @time computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
+  computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  #@time computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   #@time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
   #                            capture.diffusion, capture.penalty)
@@ -58,6 +58,8 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
 
   wxi = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+  # do local elements
   @simd for i in shockmesh.local_els
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
@@ -94,6 +96,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
     fill!(gradw_i, 0)
   end
 
+  # do shared elements
   for peer=1:shockmesh.npeers
     peer_full = shockmesh.peer_indices[peer]
     data = eqn.shared_data[peer_full]

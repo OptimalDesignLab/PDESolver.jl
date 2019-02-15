@@ -279,7 +279,7 @@ function test_jac_terms_long()
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname3)
+    opts_tmp = read_input_file(fname)
     opts_tmp["jac_type"] = 2
     opts_tmp["operator_type"] = "SBPOmega"
     opts_tmp["order"] = 2
@@ -289,7 +289,7 @@ function test_jac_terms_long()
     test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
     Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
     capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
-    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, partial_shock=true)
 
 
 
@@ -2745,7 +2745,7 @@ end
 
 
 function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
-      capture::EulerEquationMod.AbstractFaceShockCapturing) where {Tsol, Tres}
+      capture::EulerEquationMod.AbstractFaceShockCapturing; partial_shock=false) where {Tsol, Tres}
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -2755,8 +2755,15 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-  eqn.q .+= 0.1*rand(size(eqn.q))
-  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  if partial_shock
+    # this only works for the 2 element mesh
+    eqn.q[1] += 0.01
+    eqn.q[25] += 0.01
+    sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
+  else
+    eqn.q .+= 0.1*rand(size(eqn.q))
+    sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  end
   
   # get explicitly computed linear operator
   opts["calc_jac_explicit"] = true
@@ -2772,9 +2779,9 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   println("mesh.dofs[:, :, 2] = \n", mesh.dofs[:, :, 2])
 
   # complex step
-  #q_dot = rand_realpart(size(eqn.q_vec))
-  q_dot = zeros(size(eqn.q_vec))
-  q_dot[1] = 1
+  q_dot = rand_realpart(size(eqn.q_vec))
+#  q_dot = zeros(size(eqn.q_vec))
+#  q_dot[1] = 1
   q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
   array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
 
