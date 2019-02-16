@@ -90,7 +90,7 @@ export Checkpointer, AbstractCheckpointData, readCheckpointData,
 export interpField
 
 # identity_array.jl
-export IdentityArray
+export IdentityArray, FullFace
 
 """
   Generic function to free any memory belonging to other libraries

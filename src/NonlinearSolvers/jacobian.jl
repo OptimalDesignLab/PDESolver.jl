@@ -675,30 +675,6 @@ end
 #------------------------------------------------------------------------------
 # explicitly computed jacobian
 
-
-"""
-  This special `DenseFace` contains all the nodes of the element in its stencil.
-  This is useful for tricking `AssembleInterface` into assembling the entire
-  Jacobian block instead of only the part in the stencil of the real `sbpface`.
-"""
-struct FullFace{T} <: SummationByParts.DenseFace{T}
-  stencilsize::Int  # = numNodesPerElement
-  perm::Array{Int, 2}
-end
-
-function FullFace(numNodesPerElement::Integer, dim::Integer)
-
-  perm = Array{Int}(numNodesPerElement, dim + 1)
-  for d=1:(dim+1)
-    for i=1:numNodesPerElement
-      perm[i, d] = i
-    end
-  end
-
-  return FullFace{Float64}(numNodesPerElement, perm)
-end
-
-
 global const assem_min_volume_nodes = 3  # minimum number of volume nodes
 """
   Helper object for assembling element and interface jacobians into the
@@ -746,8 +722,6 @@ mutable struct _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   # temporary arrays for block boundary face jacobian assembly
   idx_bb::Array{PetscInt, 1}
   idy_bb::Array{PetscInt, 1}
-
-  fullface::FullFace{Float64}
 end
 
 
@@ -776,13 +750,10 @@ function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
   idx_bb = zeros(PetscInt, 1)
   idy_bb = zeros(PetscInt, 1)
 
-  fullface = FullFace(mesh.numNodesPerElement, mesh.dim)
-
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,
                                          vals_i, idx_ib, idy_ib, vals_sf,
-                                         idx_bb, idy_bb,
-                                         fullface)
+                                         idx_bb, idy_bb)
 end
 
 function _AssembleElementData()
@@ -805,13 +776,10 @@ function _AssembleElementData()
   idx_bb = Array{PetscInt}(0)
   idy_bb = Array{PetscInt}(0)
 
-  fullface = FullFace(0, 0)
-
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,
                                          vals_i, idx_ib, idy_ib, vals_sf,
-                                         idx_bb, idy_bb,
-                                         fullface)
+                                         idx_bb, idy_bb)
 end
 
 """
@@ -1485,7 +1453,8 @@ function assembleInterfaceFull(helper::AssembleElementData,
                            jacRL::AbstractArray{T, 4},
                            jacRR::AbstractArray{T, 4}) where T
 
-  assembleInterface(helper, helper.fullface, mesh, iface, jacLL, jacLR,
+  fullface = FullFace(mesh.numNodesPerElement, mesh.dim)
+  assembleInterface(helper, fullface, mesh, iface, jacLL, jacLR,
                                                           jacRL, jacRR)
 
   return nothing
@@ -1500,7 +1469,8 @@ function assembleSharedFaceFull(helper::AssembleElementData,
                             jacLL::AbstractArray{T, 4},
                             jacLR::AbstractArray{T, 4}) where T
 
-  assembleSharedFace(helper, helper.fullface, mesh, iface, jacLL, jacLR)
+  fullface = FullFace(mesh.numNodesPerElement, mesh.dim)
+  assembleSharedFace(helper, fullface, mesh, iface, jacLL, jacLR)
 
   return nothing
 end

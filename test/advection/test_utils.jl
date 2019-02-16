@@ -294,6 +294,25 @@ function test_identityarray()
     end
 
     @test isbits(typeof(obj))  # test that this can be stack-allocated
+
+    # also test FullFace
+    @test isbits(FullFace{Float64})
+
+    # test sview
+    obj1 = sview(obj, :, 2)
+    @inferred sview(obj, :, 2)
+    @test size(obj1) == (3,)
+    for i=1:3
+      @test obj1[i] == i
+    end
+
+    obj2 = sview(obj, 2:3, 2)
+    @inferred sview(obj, 2:3, 2)
+    @test size(obj2) == (2,)
+    for i=1:2
+      @test obj2[i] == i + 1
+    end
+
   end  # testset
 
 end

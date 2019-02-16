@@ -250,13 +250,11 @@ end
 
 mutable struct AssembleDiagJacData{T} <: AssembleElementData
   A::DiagJac{T}
-  fullface::FullFace{Float64}
 end
 
 function AssembleDiagJacData(mesh, sbp, eqn, opts, jac::DiagJac{T}) where T
 
-  fullface = FullFace{Float64}(mesh.numNodesPerElement, mesh.dim)
-  return AssembleDiagJacData{T}(jac, fullface)
+  return AssembleDiagJacData{T}(jac)
 end
 
 """
