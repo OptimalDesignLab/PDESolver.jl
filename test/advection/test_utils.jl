@@ -238,6 +238,7 @@ function test_utils2(mesh, sbp, eqn, opts)
 
     test_calcBCNormal(mesh, eqn)
     test_norms(mesh, sbp, eqn, opts)
+    test_identityarray()
 
     #TODO: test other things too
   end
@@ -252,6 +253,48 @@ function test_utils3(mesh, sbp, eqn, opts)
     test_calcBCNormal(mesh, eqn)
     test_area(mesh, sbp, eqn, opts)
   end
+
+end
+
+function test_identityarray()
+
+  @testset "IdentityArray" begin
+    @test size(IdentityArray{Int}(1)) == (1,)
+    @test size(IdentityArray{Int}(1, 2)) == (1, 2)
+    @test size(IdentityArray{Int}(1, 2, 3)) == (1, 2, 3)
+    @test size(IdentityArray{Int}(1, 2, 3, 4)) == (1, 2, 3, 4)
+    @test size(IdentityArray{Int}(1, 2, 3, 4, 5)) == (1, 2, 3, 4, 5)
+    @test size(IdentityArray{Int}(1, 2, 3, 4, 5, 6)) == (1, 2, 3, 4, 5, 6)
+    @test size(IdentityArray{Int}(1, 2, 3, 4, 5, 6, 7)) == (1, 2, 3, 4, 5, 6, 7)
+
+    obj = IdentityArray{Int}(5)
+    for i=1:5
+      @test obj[i] == i
+    end
+
+    @test_throws ErrorException (obj[1] = 1)
+
+    obj = IdentityArray{Int}(3, 4)
+    for i=1:size(obj, 2)
+      for j=1:size(obj, 1)
+        @test obj[j, i] == j
+      end
+    end
+
+    # test linear indexing
+    @test obj[4] == 1
+    @test_throws ErrorException (obj[1, 2] = 1)
+
+    obj = IdentityArray{Int32}(3, 4)
+    for i=1:size(obj, 2)
+      for j=1:size(obj, 1)
+        @test obj[j, i] == j
+        @test typeof(obj[j, i]) == Int32  # make sure the return type matches eltype
+      end
+    end
+
+    @test isbits(typeof(obj))  # test that this can be stack-allocated
+  end  # testset
 
 end
 

@@ -25,6 +25,7 @@ include("curvilinear.jl")
 include("area.jl")
 include("checkpoint.jl")
 include("interpolation.jl")
+include("identity_array.jl")
 
 export free
 export array1DTo3D, writeQ, array3DTo1D, removeComplex, assembleArray
@@ -87,6 +88,9 @@ export Checkpointer, AbstractCheckpointData, readCheckpointData,
 
 # interpolation.jl
 export interpField
+
+# identity_array.jl
+export IdentityArray
 
 """
   Generic function to free any memory belonging to other libraries
