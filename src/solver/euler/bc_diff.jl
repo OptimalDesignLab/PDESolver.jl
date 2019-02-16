@@ -90,10 +90,14 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
   #   We need to pass in only the real parts of these to the complex step 
   #   derivative evaluation below, because there might be a complex 
   #   perturbation already present in these quantities.
-  tmpreal_q_j = zeros(Tsol1, mesh.numDofPerNode)
+
+  # Note: can't type tmpreal_q_j on Tsol1; Tsol1 might be Float64 even if jac_method == 2 for complex step
+  #   Solution: just type it based on q_face[1,1]
+  #   Before the addition of the tmpreal_q_j feature, q_j was perturbed directly.
+  #   q_j was an sview of q_face; see in the loop over nodes below.
+  tmpreal_q_j = zeros(typeof(q_face[1,1]), mesh.numDofPerNode)
   tmpreal_coords = zeros(Tmsh, mesh.dim)
   tmpreal_nrm_xy = zeros(Tmsh, mesh.dim)
-
 
   h = 1e-20
   pert = Tsol(0, h)

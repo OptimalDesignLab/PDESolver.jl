@@ -724,6 +724,14 @@ end
   end
 
   # Same options for perturb_Ma_CN
+  if arg_dict["perturb_Ma_CN"] == true && arg_dict["run_type"] != 21
+    error("\n Option perturb_Ma_CN is set, but the run_type is not 21 (for CN direct-sensitivity run).")
+  end
+  if arg_dict["perturb_Ma"] == true && arg_dict["run_type"] == 21
+    error("\n Option perturb_Ma is set, but the run_type is 21 (for CN direct-sensitivity run).
+            You need to use the option perturb_Ma_CN, not perturb_Ma.")
+  end
+
   if arg_dict["perturb_Ma_CN"] == true && arg_dict["write_drag"] == false
     error("\n Options error: perturb_Ma_CN is true, but this is only implemented in the
            context of direct sensitivity of Cd wrt Ma, and write_drag == false.")

@@ -460,7 +460,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   b::AbstractVector     -> RHS
         #   x::AbstractVector     -> what is solved for
         #   verbose=5
-        linearSolve(ls_ds, b_vec, v_vec, verbose)      
+        linearSolve(ls_ds, b_vec, v_vec)      
         #--------
 
         #------------------------------------------------------------------------------
