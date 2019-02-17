@@ -215,9 +215,24 @@ function allocateArrays(capture::LDGShockCapturing{Tsol, Tres}, mesh::AbstractMe
   return nothing
 end
 
+"""
+  Entropy stable LDG flux
+"""
+struct LDG_ESFlux  <: AbstractLDGFlux
+  alpha::Float64
+  beta::Float64  # Chen and Shu say this can be an arbitrary vector, but my
+                 # analysis says all entries must the the same, so it acts
+                 # like a scalar
+  function LDG_ESFlux()
+    alpha = 1
+    beta = 1
+
+    return new(alpha, beta)
+  end
+end
 
 #------------------------------------------------------------------------------
-# Viscoscity and fluxes for LDG
+# Shock Viscoscity Model
 """
   Diagonal viscoscity (constant for each element), used for shock capturing
 """
@@ -262,22 +277,8 @@ function setDiffusionArray_diff(obj::ShockDiffusion, vals::AbstractArray,
 end
 
 
-"""
-  Entropy stable LDG flux
-"""
-struct LDG_ESFlux  <: AbstractLDGFlux
-  alpha::Float64
-  beta::Float64  # Chen and Shu say this can be an arbitrary vector, but my
-                 # analysis says all entries must the the same, so it acts
-                 # like a scalar
-  function LDG_ESFlux()
-    alpha = 1
-    beta = 1
 
-    return new(alpha, beta)
-  end
-end
-
+#------------------------------------------------------------------------------
 
 """
   Shock capturing type that errors out.  Used when shock capturing is not

@@ -427,32 +427,6 @@ abstract type AbstractVolumeShockCapturing <: AbstractShockCapturing end
 """
 abstract type AbstractFaceShockCapturing <: AbstractShockCapturing end
 
-"""
-  Abstract type for diffusion tensors.  Used mostly for shock capturing.
-  This type specifies the diffusion tensor.  It must implement 1 function:
-
-  ```
-    applyDiffusionTensor(obj::ShockDiffusion, w::AbstractMatrix,
-                    i::Integer, dx::Abstract3DArray, flux::Abstract3DArray)
-
-  ```
-  **Inputs**
-
-   * obj: the [`AbstractDiffusion`](@ref) object
-   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
-        for the element
-   * i: the element number.  This is useful for diffusions where the coeffients
-        are precomputed and stored in an array
-   * dx: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
-         x `dim`
-
-  **Inputs/Outputs**
-
-   * flux: array to overwrite with the result, same size as `dx`
-
-"""
-abstract type AbstractDiffusion end
-
 
 """
   Abstract type for Local Discontinuous Galerkin flux functions

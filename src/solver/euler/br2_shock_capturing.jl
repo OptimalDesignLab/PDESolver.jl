@@ -639,8 +639,10 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   end
 
   # apply Lambda matrix
-  applyDiffusionTensor(diffusion, wL, iface.elementL, qL, t1L)
-  applyDiffusionTensor(diffusion, wR, iface.elementR, qR, t1R)
+  applyDiffusionTensor(diffusion, wL, iface.elementL, sbpface, iface.faceL,
+                       qL, t1L)
+  applyDiffusionTensor(diffusion, wR, iface.elementR, sbpface, iface.faceR,
+                       qR, t1R)
 
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
   @simd for d1=1:dim
