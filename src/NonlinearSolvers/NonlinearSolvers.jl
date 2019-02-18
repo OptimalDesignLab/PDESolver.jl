@@ -49,7 +49,7 @@ export predictorCorrectorHomotopy
 
 # jacobian.jl
 export AssembleElementData, assembleElement, assembleInterface,
-       assembleSharedFace, assembleBoundary,
+       assembleInterfaceVisc, assembleSharedFace, assembleBoundary,
        assembleBoundaryFull, assembleInterfaceFull, assembleSharedFaceFull,
        NullAssembleElementData
 

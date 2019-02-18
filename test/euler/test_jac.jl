@@ -280,9 +280,9 @@ function test_jac_terms_long()
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
-    opts_tmp["jac_type"] = 2
-    opts_tmp["operator_type"] = "SBPDiagonalE"
-    opts_tmp["order"] = 2
+    opts_tmp["jac_type"] = 3  # was 2
+    opts_tmp["operator_type"] = "SBPGamma"
+    opts_tmp["order"] = 1
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
@@ -1937,6 +1937,10 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
   assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
 
+  assembly_end(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_end(jac2, MAT_FINAL_ASSEMBLY)
+
+
   # multiply against a random vector to make sure the jacobian is
   # the same
   for i=1:10
@@ -2797,7 +2801,15 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   # explictly compute jacobian
   EulerEquationMod.applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
 
-  b = jac*q_dot
+  assembly_begin(jac, MAT_FINAL_ASSEMBLY)
+  assembly_end(jac, MAT_FINAL_ASSEMBLY)
+
+
+  b = zeros(mesh.numDof)
+  t = 0.0
+  ctx_residual = (evalResidual,)
+  applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, q_dot, b)
+#  b = jac*q_dot
   #println("diff = ", real(b - res_dot))
   #println("\nb = ", real(b))
   #println("\nres_dot = ", real(res_dot))
@@ -2805,5 +2817,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
 
   #println("b = \n", real(b))
   #println("res_dot = \n", real(res_dot))
+  #println("q_dot = ", real(q_dot))
+  #println("full(A) = ", full(jac))
   return nothing 
 end

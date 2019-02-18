@@ -722,6 +722,8 @@ mutable struct _AssembleElementData{T <: AbstractMatrix} <: AssembleElementData
   # temporary arrays for block boundary face jacobian assembly
   idx_bb::Array{PetscInt, 1}
   idy_bb::Array{PetscInt, 1}
+
+  nonstencil_nodes::Array{Int, 2}
 end
 
 
@@ -750,10 +752,13 @@ function _AssembleElementData(A::AbstractMatrix, mesh, sbp, eqn, opts)
   idx_bb = zeros(PetscInt, 1)
   idy_bb = zeros(PetscInt, 1)
 
+  nonstencil_nodes = getNonStencilNodes(sbp, mesh.sbpface)
+
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,
                                          vals_i, idx_ib, idy_ib, vals_sf,
-                                         idx_bb, idy_bb)
+                                         idx_bb, idy_bb,
+                                         nonstencil_nodes)
 end
 
 function _AssembleElementData()
@@ -776,10 +781,13 @@ function _AssembleElementData()
   idx_bb = Array{PetscInt}(0)
   idy_bb = Array{PetscInt}(0)
 
+  nonstencil_nodes = Array{Int}(0, 0)
+
   return _AssembleElementData{typeof(A)}(A, idx, idy, vals, idx_b, idy_b, vals_b,
                                          idx_i, idy_i,
                                          vals_i, idx_ib, idy_ib, vals_sf,
-                                         idx_bb, idy_bb)
+                                         idx_bb, idy_bb,
+                                         nonstencil_nodes)
 end
 
 """
@@ -1007,6 +1015,8 @@ function assembleInterface(helper::_AssembleElementData,
 
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
+  idx1 = 1:mesh.numDofPerNode
+  idx2 = (mesh.numDofPerNode+1):(2*mesh.numDofPerNode)
 
   permL = sview(sbpface.perm, :, iface.faceL)
   permR = sview(sbpface.perm, :, iface.faceR)
@@ -1100,6 +1110,133 @@ function assembleInterface(helper::_AssembleElementData,
 
   return nothing
 end
+
+"""
+  Assemble an interface for the viscous terms when T4 = 0.  Same signature as
+  `assembleInterface`.
+
+  Note that this does not special case diagonal E operators because that may not
+  be correct for all viscoscity modes (ie. ShockDiffusion).
+"""
+function assembleInterfaceVisc(helper::_AssembleElementData, 
+                           sbpface::AbstractFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
+
+  elL = iface.elementL; elR = iface.elementR
+  stencilL = sview(sbpface.perm, :, iface.faceL)
+  stencilR = sview(sbpface.perm, :, iface.faceR)
+  nonstencilL = sview(helper.nonstencil_nodes, :, iface.faceL)
+  nonstencilR = sview(helper.nonstencil_nodes, :, iface.faceR)
+
+  idx = helper.idx_i
+  idy = helper.idy_i
+  vals = helper.vals_i
+
+  # do the square blocks
+
+  # LL and RL
+  for _q=1:length(stencilL)
+    qL = stencilL[_q]
+    qR = stencilR[_q]
+
+    for j=1:mesh.numDofPerNode
+      idy[j                     ] = mesh.dofs[j, qL, elL]
+      idy[j + mesh.numDofPerNode] = mesh.dofs[j, qR, elR]
+    end
+
+
+    for _p =1:length(stencilL)  # assume stencilL and R are the same length
+      pL = stencilL[_p]
+      pR = stencilR[_p]
+      for i=1:mesh.numDofPerNode
+        idx[i                     ] = mesh.dofs[i, pL, elL]
+        idx[i + mesh.numDofPerNode] = mesh.dofs[i, pR, elR]
+      end
+
+      for j=1:mesh.numDofPerNode
+        for i=1:mesh.numDofPerNode
+          vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
+          vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
+          vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
+          vals[i + mesh.numDofPerNode, j + mesh.numDofPerNode] = real(jacRR[i, j, pR, qR])
+        end
+      end  # end j
+
+      set_values1!(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end p
+  end  # end q
+
+  # do the remaining rectangles
+
+  # columns
+  for _q = 1:length(stencilL)
+    qL = stencilL[_q]
+    qR = stencilR[_q]
+
+    for j=1:mesh.numDofPerNode
+      idy[j                     ] = mesh.dofs[j, qL, elL]
+      idy[j + mesh.numDofPerNode] = mesh.dofs[j, qR, elR]
+    end
+
+    for _p=1:length(nonstencilL)  # assume nonstencilL and R are the same length
+      pL = nonstencilL[_p]
+      pR = nonstencilR[_p]
+
+      for i=1:mesh.numDofPerNode
+        idx[i                     ] = mesh.dofs[i, pL, elL]
+        idx[i + mesh.numDofPerNode] = mesh.dofs[i, pR, elR]
+      end
+
+      for j=1:mesh.numDofPerNode
+        for i=1:mesh.numDofPerNode
+          vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
+          vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
+          vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
+          vals[i + mesh.numDofPerNode, j + mesh.numDofPerNode] = real(jacRR[i, j, pR, qR])
+        end
+      end  # end j
+
+      set_values1!(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end p
+  end  # end q
+
+  # rows
+  for _p = 1:length(stencilL)
+    pL = stencilL[_p]
+    pR = stencilR[_p]
+
+    for i=1:mesh.numDofPerNode
+      idx[i                     ] = mesh.dofs[i, pL, elL]
+      idx[i + mesh.numDofPerNode] = mesh.dofs[i, pR, elR]
+    end
+
+    for _q=1:length(nonstencilL)
+      qL = nonstencilL[_q]
+      qR = nonstencilR[_q]
+
+      for j=1:mesh.numDofPerNode
+        idy[j                     ] = mesh.dofs[j, qL, elL]
+        idy[j + mesh.numDofPerNode] = mesh.dofs[j, qR, elR]
+
+        for i=1:mesh.numDofPerNode
+          vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
+          vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
+          vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
+          vals[i + mesh.numDofPerNode, j + mesh.numDofPerNode] = real(jacRR[i, j, pR, qR])
+        end
+      end  # end j
+
+      set_values1!(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end q
+  end  # end p
+
+  return nothing
+end
+
 
 
 
@@ -1208,6 +1345,138 @@ function assembleInterface(helper::_AssembleElementData{PetscMat},
     MatSetValuesBlocked(helper.A, helper.idx_ib, helper.idy_ib, helper.vals_i, ADD_VALUES)
 #      set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
   end  # end loop p
+
+  return nothing
+end
+
+function assembleInterfaceVisc(helper::_AssembleElementData{PetscMat}, 
+                           sbpface::AbstractFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
+
+  println("called Petsc version")
+  elL = iface.elementL; elR = iface.elementR
+  stencilL = sview(sbpface.perm, :, iface.faceL)
+  stencilR = sview(sbpface.perm, :, iface.faceR)
+  nonstencilL = sview(helper.nonstencil_nodes, :, iface.faceL)
+  nonstencilR = sview(helper.nonstencil_nodes, :, iface.faceR)
+  numDofPerNode = mesh.numDofPerNode
+
+  idx = helper.idx_ib
+  idy = helper.idy_ib
+  vals = helper.vals_i
+
+  # do the square blocks
+
+  # LL and RL
+  for _q=1:length(stencilL)
+    qL = stencilL[_q]
+    qR = stencilR[_q]
+
+    # block indices (zero-based)
+    dof1 = mesh.dofs[1, qL, elL]
+    idy[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, qR, elR]
+    idy[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    for _p =1:length(stencilL)  # assume stencilL and R are the same length
+      pL = stencilL[_p]
+      pR = stencilR[_p]
+
+      # block indices (zero-based)
+      dof1 = mesh.dofs[1, pL, elL]
+      idx[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+      dof1 = mesh.dofs[1, pR, elR]
+      idx[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      for j=1:mesh.numDofPerNode
+        for i=1:mesh.numDofPerNode
+          vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
+          vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
+          vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
+          vals[i + mesh.numDofPerNode, j + mesh.numDofPerNode] = real(jacRR[i, j, pR, qR])
+        end
+      end  # end j
+
+      MatSetValuesBlocked(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end p
+  end  # end q
+
+  # do the remaining rectangles
+
+  # columns
+  for _q = 1:length(stencilL)
+    qL = stencilL[_q]
+    qR = stencilR[_q]
+
+    # block indices (zero-based)
+    dof1 = mesh.dofs[1, qL, elL]
+    idy[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, qR, elR]
+    idy[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+
+    for _p=1:length(nonstencilL)  # assume nonstencilL and R are the same length
+      pL = nonstencilL[_p]
+      pR = nonstencilR[_p]
+
+      # block indices (zero-based)
+      dof1 = mesh.dofs[1, pL, elL]
+      idx[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+      dof1 = mesh.dofs[1, pR, elR]
+      idx[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      for j=1:mesh.numDofPerNode
+        for i=1:mesh.numDofPerNode
+          vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
+          vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
+          vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
+          vals[i + mesh.numDofPerNode, j + mesh.numDofPerNode] = real(jacRR[i, j, pR, qR])
+        end
+      end  # end j
+
+      MatSetValuesBlocked(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end p
+  end  # end q
+
+  # rows
+  for _p = 1:length(stencilL)
+    pL = stencilL[_p]
+    pR = stencilR[_p]
+
+    # block indices (zero-based)
+    dof1 = mesh.dofs[1, pL, elL]
+    idx[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+    dof1 = mesh.dofs[1, pR, elR]
+    idx[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+
+    for _q=1:length(nonstencilL)
+      qL = nonstencilL[_q]
+      qR = nonstencilR[_q]
+
+      # block indices (zero-based)
+      dof1 = mesh.dofs[1, qL, elL]
+      idy[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+      dof1 = mesh.dofs[1, qR, elR]
+      idy[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+
+      for j=1:mesh.numDofPerNode
+        for i=1:mesh.numDofPerNode
+          vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
+          vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
+          vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
+          vals[i + mesh.numDofPerNode, j + mesh.numDofPerNode] = real(jacRR[i, j, pR, qR])
+        end
+      end  # end j
+
+      MatSetValuesBlocked(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end q
+  end  # end p
 
   return nothing
 end
@@ -1475,5 +1744,68 @@ function assembleSharedFaceFull(helper::AssembleElementData,
   return nothing
 end
 
+#------------------------------------------------------------------------------
+# Internal functions
+
+"""
+  Get the list of nodes that are not in the stencil of the interpolation
+  operator R for a given face.
+
+  **Inputs**
+
+   * sbpface: `AbstractFace`
+   * face: the local face number
+   * numNodesPerElement: the total number of nodes in the element
+
+  **Inputs/Outputs**
+
+   * nodes: an array to be populated with the non-stencil nodes.  This array
+            may be longer than required.  The first `n` indices will be
+            populated.
+
+  **Outputs**
+
+   * n: the number of non-stencil nodes
+"""
+function getNonStencilNodes(sbpface::AbstractFace, face::Integer,
+                            numNodesPerElement::Integer, nodes::AbstractVector)
+
+  stencil_nodes = sview(sbpface.perm, :, face)
+  idx = 1
+  for i=1:numNodesPerElement
+    if !(i in stencil_nodes)
+      nodes[idx] = i
+      idx += 1
+    end
+  end
+
+  return idx - 1
+end
+
+
+"""
+  Construct a table of the non-stencil nodes for all faces of the element.
+
+  **Inputs**
+
+   * sbp: `AbstractOperator`
+   * sbpface: `AbstractFace`
+
+  **Outputs**
+
+   * table: num_nonstencil x number of faces per element.
+"""
+function getNonStencilNodes(sbp::AbstractOperator, sbpface::AbstractFace)
+
+  num_nonstencil = sbp.numnodes - size(sbpface.perm, 1)
+  table = Array{Int}(num_nonstencil, size(sbpface.perm, 2))
+  for i=1:size(sbpface.perm, 2)
+    nodes_i = sview(table, :, i)
+    n = getNonStencilNodes(sbpface, i, sbp.numnodes, nodes_i)
+    @assert n == num_nonstencil
+  end
+
+  return table
+end
 
 include("jacobian_diag.jl")

@@ -151,8 +151,7 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
   subtract = SummationByParts.Subtract()
   add = SummationByParts.Add()
 
-  tDgk = 0.0
-  @time for i=1:shockmesh.numInterfaces
+  for i=1:shockmesh.numInterfaces
     iface_red = shockmesh.ifaces[i].iface
     iface_idx = shockmesh.ifaces[i].idx_orig
     elnumL = shockmesh.elnums_all[iface_red.elementL]
@@ -186,13 +185,14 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                           theta, theta_dotL, theta_dotR)
 
     # apply the penalty coefficient matrix
-    applyPenalty_diff(penalty, sbp, mesh.sbpface, diffusion, iface_red, 
-                      delta_w, delta_w_dotL, delta_w_dotR,
+    has_T4 = applyPenalty_diff(penalty, sbp, mesh.sbpface, diffusion,
+                      iface_red, delta_w, delta_w_dotL, delta_w_dotR,
                       theta, theta_dotL, theta_dotR,
                       wL, wR, nrm_face, alphas, jacL, jacR,
                       res1L_dotL, res1L_dotR, res1R_dotL, res1R_dotR,
                       t2L, t2R,
                       res2L_dotL, res2L_dotR, res2R_dotL, res2R_dotR)
+
 
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     fill!(res_jacLL, 0); fill!(res_jacRL, 0)
@@ -203,7 +203,7 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                                res_jacLR, res_jacRR, subtract, subtract, false)
 
     # apply Dgk^T and Dgn^T
-    @time applyDgkTranspose_diff(capture, sbp, mesh.sbpface, iface_red, diffusion,
+    applyDgkTranspose_diff(capture, sbp, mesh.sbpface, iface_red, diffusion,
                       t2L, res2L_dotL, res2L_dotR,
                       t2R, res2R_dotL, res2R_dotR,
                       wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR,
@@ -211,8 +211,15 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                       subtract)
 
     iface_full = replace_interface(iface_red, elnumL, elnumR)
-    assembleInterfaceFull(assem, mesh, iface_full, res_jacLL,
-                          res_jacLR, res_jacRL, res_jacRR)
+    if !has_T4
+      assembleInterfaceVisc(assem, mesh.sbpface, mesh, iface_full, res_jacLL,
+                            res_jacLR, res_jacRL, res_jacRR)
+    else
+      #TODO: the sparsity pattern of the Jacobian may be incorrect for this case
+      assembleInterfaceFull(assem, mesh, iface_full, res_jacLL,
+                            res_jacLR, res_jacRL, res_jacRR)
+    end
+
 
   end  # end loop i
 
@@ -661,7 +668,7 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   end
 
 
-  return nothing
+  return false
 end
 
 

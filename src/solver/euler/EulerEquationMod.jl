@@ -483,6 +483,11 @@ abstract type AbstractLDGFlux end
    * res2L: same size as above
    * res2R: same size as above
 
+  **Outputs**
+
+   * has_T4: true of the T5 penalty is not equal to zero (this allows the
+             caller to figure out the sparsity pattern more precisely)
+
   All output arrays are overwritten
 
   This method should compute
