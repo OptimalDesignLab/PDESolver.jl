@@ -55,10 +55,7 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
     end
   else
     
-    disctype = INVISCID  # TODO: update this when merging with viscous
-    if opts["preallocate_jacobian_coloring"]
-      disctype = COLORING
-    end
+    disctype = getSparsityPattern(mesh, sbp, eqn, opts)
     face_type = getFaceType(mesh.sbpface)
     _dnnz, _onnz = getBlockSparsityCounts(mesh, mesh.sbpface, disctype, face_type)
     dnnz = convert(Vector{PetscInt}, _dnnz)
@@ -79,6 +76,9 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
   # Petsc objects if this comes before preallocation
   MatSetOption(A, PETSc2.MAT_ROW_ORIENTED, PETSC_FALSE)
 
+  if opts["addShockCapturing"]
+    writeSparsityPattern(A, mesh, sbp, eqn, opts, disctype)
+  end
 
   return A
 end
@@ -201,3 +201,69 @@ function getFaceType(sbpface::AbstractFace)
   return face_type
 end
 
+"""
+  This function writes all zeros to the matrix.  This should only be used
+  immediately after the matrix is created, to write the row and column
+  indices to the matrix.  Otherwise use `MatZeroEntries`
+
+  For most cases this is unnecessary, but for shock capturing it is required,
+  because the physics module will only write the diffusion term entries to
+  the elements of the matrix that have a shock in them.  On the first assemply,
+  Petsc will remove any non-written to entries from the matrix structure.
+  Thus if the shock moves position after the first Jacobian assembly, there
+  won't be enough space in the matrix.  This function solves the problem by
+  writing to all the entries (although this result in the Jacobian using more
+  memory than is strictly necessary.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * A: the Petsc matrix
+   * disc_type: the sparsity pattern enum
+"""
+function writeSparsityPattern(mesh, sbp, eqn, opts, A::PetscMat, disc_type)
+
+  assem = _AssembleElement(A, mesh, sbp, eqn, opts)
+
+  jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement,
+              mesh.numNodesPerElement)
+
+  # volume terms
+  for i=1:mesh.numEl
+    assembleElement(assem, mesh, i, jac)
+  end
+
+  # interface terms
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    if disc_type == INVISCID
+      assembleInterface(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
+    elseif disc_type == VISCOUSTIGHT
+      assembleIinterfaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
+    elseif disc_type == COLORING
+      assembleInterfaceFull(assem, mesh, iface_i, jac, jac, jac, jac)
+    end  # else disc_type == VISCOUS: don't currently have assembly functions
+         # for this, and I'm not sure the sparsity pattern is correct either.
+  end
+
+  # shared face terms
+  for peer=1:mesh.npeers
+    ifaces = mesh.shared_interfaces[peer]
+    for i=1:length(ifaces)
+      iface_i = ifaces[i]
+
+      if disc_type == INVISCID
+        assembleSharedFAce(assem, mesh.sbpface, mesh, iface_i, jac, jac)
+      elseif disc_type == VISCOUSTIGHT
+        assembleSharedFaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac)
+      elseif disc_type == COLORING
+        assembleSharedInterfaceFull(assem, mesh, iface_i, jac, jac)
+      end
+    end
+  end
+
+  return nothing
+end

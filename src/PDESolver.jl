@@ -12,10 +12,11 @@ export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        evalJacobianStrong, createFunctional,
        evalFunctional, evalFunctionalDeriv_q, evalFunctionalDeriv_m,
        updateMetricDependents,
-       solvePDE, evalResidual_revm, evalResidual_revq, evaldRdqProduct
+       solvePDE, evalResidual_revm, evalResidual_revq, evaldRdqProduct,
+       _getSparsityPattern
 
 # from interface2.jl
-export createObjects, createLinearSolver
+export createObjects, createLinearSolver, getSparsityPattern
 
 # from startup_func
 export run_solver

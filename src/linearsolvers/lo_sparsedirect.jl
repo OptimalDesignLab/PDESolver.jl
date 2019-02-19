@@ -42,10 +42,7 @@ function SparseDirectLO(pc::PCNone, mesh::AbstractMesh, sbp::AbstractOperator,
     jac = SparseMatrixCSC(mesh.sparsity_bnds, Float64)
   else
     face_type = getFaceType(mesh.sbpface)
-    disc_type = INVISCID
-    if opts["preallocate_jacobian_coloring"]
-      disc_type = COLORING
-    end
+    disc_type = getSparsityPattern(mesh, sbp, eqn, opts)
     jac = SparseMatrixCSC(mesh, Float64, disc_type, face_type)
   end
 

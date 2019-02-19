@@ -296,11 +296,14 @@ function SparseMatrixCSC(mesh::AbstractDGMesh, ::Type{Tv}, disc_type::Integer, f
 
 
   # interface terms
+  nonstencil_table = getNonStencilNodes(mesh.numNodesPerElement, mesh.sbpface)
   for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
 
     permL = sview(sbpface.perm, :, iface_i.faceL)
     permR = sview(sbpface.perm, :, iface_i.faceR)
+    nonstencilL = sview(nonstencil_table, :, iface_i.faceL)
+    nonstencilR = sview(nonstencil_table, :, iface_i.faceR)
 
     if disc_type == INVISCID
       for j=1:length(permL)
@@ -411,7 +414,6 @@ function SparseMatrixCSC(mesh::AbstractDGMesh, ::Type{Tv}, disc_type::Integer, f
         end
       end
 
-      #TODO: need nonstencil
       # do nonstencilL to permR
       for j=1:length(nonstencilL)
         dofL = mesh.dofs[k, nonstencilL[j], iface_i.elementL]

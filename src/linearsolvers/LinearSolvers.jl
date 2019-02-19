@@ -22,7 +22,7 @@ export LinearSolver, StandardLinearSolver,  # Linear Solver types
 
 
 
-
+using PDESolver
 using ODLCommonTools
 using Utils
 using SummationByParts

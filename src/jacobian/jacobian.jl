@@ -1788,22 +1788,28 @@ end
 
   **Inputs**
 
-   * sbp: `AbstractOperator`
+   * sbp: `AbstractOperator` or the number of nodes per element
    * sbpface: `AbstractFace`
 
   **Outputs**
 
    * table: num_nonstencil x number of faces per element.
 """
-function getNonStencilNodes(sbp::AbstractOperator, sbpface::AbstractFace)
+function getNonStencilNodes(numNodesPerElement::Integer, sbpface::AbstractFace)
 
-  num_nonstencil = sbp.numnodes - size(sbpface.perm, 1)
+  num_nonstencil = numNodesPerElement - size(sbpface.perm, 1)
   table = Array{Int}(num_nonstencil, size(sbpface.perm, 2))
   for i=1:size(sbpface.perm, 2)
     nodes_i = sview(table, :, i)
-    n = getNonStencilNodes(sbpface, i, sbp.numnodes, nodes_i)
+    n = getNonStencilNodes(sbpface, i, numNodesPerElement, nodes_i)
     @assert n == num_nonstencil
   end
 
   return table
+end
+
+
+function getNonStencilNodes(sbp::AbstractOperator, sbpface::AbstractFace)
+
+  return getNonStencilNodes(sbp.numnodes, sbpface)
 end
