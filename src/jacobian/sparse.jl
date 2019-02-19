@@ -376,6 +376,7 @@ function SparseMatrixCSC(mesh::AbstractDGMesh, ::Type{Tv}, disc_type::Integer, f
           rowval_rangeL = sview(rowval, idx_rangeL)
           rowval_rangeR = sview(rowval, idx_rangeR)
 
+
           idxL = getStartIdx(rowval_rangeL)
           idxR = getStartIdx(rowval_rangeR)
           for p=1:length(permR)
@@ -392,46 +393,54 @@ function SparseMatrixCSC(mesh::AbstractDGMesh, ::Type{Tv}, disc_type::Integer, f
 
     elseif disc_type == VISCOUSTIGHT
       # connect nodes on perm of elementL to all volume nodes of elementR
-      
+     
       # do permL to all of R
       for j=1:length(permL)
-        dofL = mesh.dofs[k, permL[j], iface_i.elementL]
-        dofR = mesh.dofs[k, permR[j], iface_i.elementR]
-        idx_rangeL = colptr[dofL]:(colptr[dofL+1]-1)
-        idx_rangeR = colptr[dofR]:(colptr[dofR+1]-1)
-        rowval_rangeL = sview(rowval, idx_rangeL)
-        rowval_rangeR = sview(rowval, idx_rangeR)
+        for k=1:mesh.numDofPerNode
+          dofL = mesh.dofs[k, permL[j], iface_i.elementL]
+          dofR = mesh.dofs[k, permR[j], iface_i.elementR]
+          idx_rangeL = colptr[dofL]:(colptr[dofL+1]-1)
+          idx_rangeR = colptr[dofR]:(colptr[dofR+1]-1)
+          rowval_rangeL = sview(rowval, idx_rangeL)
+          rowval_rangeR = sview(rowval, idx_rangeR)
 
-        idxL = getStartIdx(rowval_rangeL)
-        idxR = getStartIdx(rowval_rangeR)
-        for p=1:mesh.numNodesPerElement
-          for k=1:mesh.numDofPerNode
-            rowval_rangeL[idxL] = mesh.dofs[k, p, iface_i.elementR]
-            idxL += 1
-            rowval_rangeR[idxR] = mesh.dofs[k, p, iface_i.elementL]
-            idxR += 1
+          idxL = getStartIdx(rowval_rangeL)
+          idxR = getStartIdx(rowval_rangeR)
+          for p=1:mesh.numNodesPerElement
+            for q=1:mesh.numDofPerNode
+              @assert idxL <= length(rowval_rangeL)
+              @assert idxR <= length(rowval_rangeR)
+              rowval_rangeL[idxL] = mesh.dofs[q, p, iface_i.elementR]
+              idxL += 1
+              rowval_rangeR[idxR] = mesh.dofs[q, p, iface_i.elementL]
+              idxR += 1
+            end
           end
         end
       end
 
       # do nonstencilL to permR
       for j=1:length(nonstencilL)
-        dofL = mesh.dofs[k, nonstencilL[j], iface_i.elementL]
-        dofR = mesh.dofs[k, nonstencilR[j], iface_i.elementR]
-        idx_rangeL = colptr[dofL]:(colptr[dofL+1]-1)
-        idx_rangeR = colptr[dofR]:(colptr[dofR+1]-1)
-        rowval_rangeL = sview(rowval, idx_rangeL)
-        rowval_rangeR = sview(rowval, idx_rangeR)
+        for k=1:mesh.numDofPerNode
+          dofL = mesh.dofs[k, nonstencilL[j], iface_i.elementL]
+          dofR = mesh.dofs[k, nonstencilR[j], iface_i.elementR]
+          idx_rangeL = colptr[dofL]:(colptr[dofL+1]-1)
+          idx_rangeR = colptr[dofR]:(colptr[dofR+1]-1)
+          rowval_rangeL = sview(rowval, idx_rangeL)
+          rowval_rangeR = sview(rowval, idx_rangeR)
 
-        idxL = getStartIdx(rowval_rangeL)
-        idxR = getStartIdx(rowval_rangeR)
+          idxL = getStartIdx(rowval_rangeL)
+          idxR = getStartIdx(rowval_rangeR)
 
-        for p=1:length(permR)
-          for k=1:mesh.numDofPerNode
-            rowval_rangeL[idxL] = mesh.dofs[k, permR[p], iface_i.elementR]
-            idxL += 1
-            rowval_rangeR[idxR] = mesh.dofs[k, permL[p], iface_i.elementL]
-            idxR += 1
+          for p=1:length(permR)
+            for q=1:mesh.numDofPerNode
+              @assert idxL <= length(rowval_rangeL)
+              @assert idxR <= length(rowval_rangeR)
+              rowval_rangeL[idxL] = mesh.dofs[q, permR[p], iface_i.elementR]
+              idxL += 1
+              rowval_rangeR[idxR] = mesh.dofs[q, permL[p], iface_i.elementL]
+              idxR += 1
+            end
           end
         end
       end
@@ -533,7 +542,8 @@ function getBlockSparsityCounts(mesh::AbstractDGMesh, sbpface,
     error("unsupported AbstractFace type: $(typeof(sbpface))")
   end
 
-  @assert disc_type == INVISCID || disc_type == VISCOUS || disc_type == COLORING
+  @assert disc_type == INVISCID || disc_type == VISCOUS ||
+          disc_type == COLORING || disc_type == VISCOUSTIGHT
 
   bs = mesh.numDofPerNode
   @assert mesh.numDof % bs == 0
@@ -550,12 +560,16 @@ function getBlockSparsityCounts(mesh::AbstractDGMesh, sbpface,
     end
   end
 
+  nonstencil_table = getNonStencilNodes(mesh.numNodesPerElement, mesh.sbpface)
   # face terms
   for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
 
     permL = sview(sbpface.perm, :, iface_i.faceL)
     permR = sview(sbpface.perm, :, iface_i.faceR)
+    nonstencilL = sview(nonstencil_table, :, iface_i.faceL)
+    nonstencilR = sview(nonstencil_table, :, iface_i.faceR)
+
 
     if disc_type == INVISCID
       for j=1:length(permL)
@@ -601,7 +615,15 @@ function getBlockSparsityCounts(mesh::AbstractDGMesh, sbpface,
         dnnz[block_nodeR] += mesh.numNodesPerElement
       end
 
+      for j=1:length(nonstencilL)
+        dofL = mesh.dofs[1, nonstencilL[j], iface_i.elementL]
+        dofR = mesh.dofs[1, nonstencilR[j], iface_i.elementR]
+        block_nodeL = div(dofL - 1, bs) + 1
+        block_nodeR = div(dofR - 1, bs) + 1
 
+        dnnz[block_nodeL] += length(permR)
+        dnnz[block_nodeR] += length(permL)
+      end
 
     else  # disc_type == COLORING
       # all volume nodes to all volume nodes
@@ -628,6 +650,9 @@ function getBlockSparsityCounts(mesh::AbstractDGMesh, sbpface,
 
       permL = sview(sbpface.perm, :, iface_i.faceL)
       permR = sview(sbpface.perm, :, iface_i.faceR)
+      nonstencilL = sview(nonstencil_table, :, iface_i.faceL)
+      nonstencilR = sview(nonstencil_table, :, iface_i.faceR)
+
 
       if disc_type == INVISCID
         for j=1:length(permL)
@@ -654,8 +679,17 @@ function getBlockSparsityCounts(mesh::AbstractDGMesh, sbpface,
         for j=1:length(permL)
           dofL = mesh.dofs[1, permL[j], iface_i.elementL]
           block_nodeL = div(dofL - 1, bs) + 1
+
           onnz[block_nodeL] += mesh.numNodesPerElement
         end
+
+        for j=1:length(nonstencilL)
+          dofL = mesh.dofs[1, nonstencilL[j], iface_i.elementL]
+          block_nodeL = div(dofL - 1, bs) + 1
+
+          onnz[block_nodeL] += length(permR)
+        end
+
 
       else
         for j=1:mesh.numNodesPerElement
