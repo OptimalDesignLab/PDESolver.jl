@@ -29,6 +29,7 @@ using SummationByParts
 using Base.LinAlg.BLAS
 using MPI
 using PETSc2
+using Jacobian
 
 import Utils.free
 # import SuiteSparse stuff

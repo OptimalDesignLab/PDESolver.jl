@@ -20,8 +20,8 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
   computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
-  #@time computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
-  #                            capture.diffusion, capture.penalty)
+  computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
+                              capture.diffusion, capture.penalty)
 
 
 

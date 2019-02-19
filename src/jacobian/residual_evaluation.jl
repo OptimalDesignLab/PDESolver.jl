@@ -1,8 +1,6 @@
 # residual_evaluation.jl: some functions used by NonlinearSolvers relating to 
 # residual evaluation
 
-# TODO: calcResidual shouldn't need exporting
-export calcResidual, physicsRhs
 import Utils.array1DTo3D
 
 """

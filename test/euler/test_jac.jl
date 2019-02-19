@@ -275,7 +275,7 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-
+#=
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -291,9 +291,9 @@ function test_jac_terms_long()
     capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
     test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, partial_shock=false)
 
+=#
 
-
-    #=
+    
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -454,8 +454,11 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPOmega"
     opts_tmp["order"] = 2
     opts_tmp["need_adjoint"] = true
+    opts_tmp["addShockCapturing"] = true
+    opts_tmp["shock_capturing_name"] = "ElementProjection"
     make_input(opts_tmp, fname4)
     mesh_r2, sbp_r2, eqn_r2, opts_r2 = run_solver(fname4)
+    opts_r2["addShockCapturing"] = false
 
     test_revm_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
     test_revq_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
@@ -506,7 +509,7 @@ function test_jac_terms_long()
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
 
-=#
+
   end
 
   return nothing
@@ -1820,7 +1823,7 @@ function test_jac_assembly(mesh, sbp, eqn, _opts)
   
   jac1 = SparseMatrixCSC(mesh, Float64, COLORING, LinearSolvers.getFaceType(mesh.sbpface))
   jac2 = zeros(mesh.numDof, mesh.numDof)
-  assembler = NonlinearSolvers._AssembleElementData(jac2, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(jac2, mesh, sbp, eqn, opts)
 
   # compute jacobian via coloring
   opts["calc_jac_explicit"] = false
@@ -1921,7 +1924,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   # computing coloring jacobian
   opts["calc_jac_explicit"] = false
@@ -2023,7 +2026,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   function _evalHomotopy(mesh, sbp, eqn, opts, t)
     evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
@@ -2098,7 +2101,7 @@ function test_diagjac(mesh, sbp, eqn, opts)
   pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
   jac2 = getBaseLO(lo2).A
 
-  assem2 = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assem2 = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
  
   evalJacobian(mesh, sbp, eqn, opts, assem1)
@@ -2777,7 +2780,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   opts["preallocate_jacobian_coloring"] = val_orig
 
   jac = getBaseLO(lo).A
-  assembler = NonlinearSolvers._AssembleElementData(jac, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(jac, mesh, sbp, eqn, opts)
 
   println("mesh.dofs[:, :, 1] = \n", mesh.dofs[:, :, 1])
   println("mesh.dofs[:, :, 2] = \n", mesh.dofs[:, :, 2])

@@ -135,8 +135,8 @@ function applyBDiagPC(pc::NewtonBDiagPC, mesh, sbp, eqn, opts, x::AbstractVector
   return nothing
 end
 
-
-
+# these names are too generic to export
+import Jacobian: getValues, setValues
 
 
 """

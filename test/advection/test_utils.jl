@@ -239,6 +239,7 @@ function test_utils2(mesh, sbp, eqn, opts)
     test_calcBCNormal(mesh, eqn)
     test_norms(mesh, sbp, eqn, opts)
     test_identityarray()
+    test_sparsematrix()
 
     #TODO: test other things too
   end
@@ -315,6 +316,60 @@ function test_identityarray()
 
   end  # testset
 
+end
+
+function test_sparsematrix()
+
+  @testset "SparseMatrixCSC" begin
+    # test SparseMatrixCSC
+    mat_dense = [1 3 0 0; 2 4 6 0; 0 5 7 0; 0 0 0 8]
+    sparse_bnds = [1 1 2 4; 2 3 3 4]
+
+    mat = SparseMatrixCSC(sparse_bnds, Float64)
+    @time mat = SparseMatrixCSC(sparse_bnds, Float64)
+    mat2 = sparse(mat_dense)
+
+    @test ( mat.colptr )== mat2.colptr
+    @test ( mat.rowval )== mat2.rowval
+    @test ( mat2[1,1] )== 1
+    @test ( mat2[2,1] )== 2
+    @test ( mat2[1,2] )== 3
+    @test ( mat2[2,2] )== 4
+    @test ( mat2[3,2] )== 5
+    @test ( mat2[2,3] )== 6
+    @test ( mat2[3,3] )== 7
+    @test ( mat2[4,4] )== 8
+
+    mat2[3,2] = 9
+    @test ( mat2[3,2] )== 9
+
+    mat2[4,4] = 10
+    @test ( mat2[4,4] )== 10
+
+    # functions for checking sparsity
+    cnt, out_of_bounds = checkSparseColumns(mat_dense, sparse_bnds, 1e-14)
+    @test ( cnt )== 0
+
+    cnt, out_of_bounds = checkSparseRows(mat_dense, sparse_bnds, 1e-14)
+    @test ( cnt )== 0
+
+    # modify sparse_bnds to verify the functions detect out of bounds entries
+    sparse_bnds2 = copy(sparse_bnds)
+    sparse_bnds2[2, 1] = 1
+    cnt, out_of_bounds = checkSparseColumns(mat_dense, sparse_bnds2, 1e-14)
+    @test ( cnt )== 1
+    @test ( out_of_bounds )== [true, false, false, false]
+
+    cnt, out_of_bounds = checkSparseRows(mat_dense, sparse_bnds2, 1e-14)
+    @test ( cnt )== 1
+    @test ( out_of_bounds )== [true, false, false, false]
+
+
+    cnt = findLarge(mat_dense, 7.5)
+    @test ( cnt )== 1
+
+  end
+  return nothing
 end
 
 

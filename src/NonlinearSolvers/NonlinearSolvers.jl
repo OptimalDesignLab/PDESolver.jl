@@ -10,9 +10,9 @@ using ODLCommonTools
 using Utils
 import ODLCommonTools.sview
 import MPI
-using PETSc2
-using Utils
+using PETSc2  #TODO: see if this can be removed
 using SummationByParts
+using Jacobian
 using LinearSolvers
 
 import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
@@ -22,7 +22,7 @@ import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("lserk.jl")
-  export lserk54
+export lserk54
 
 include("jac_recalc.jl")
 include("newton.jl")
@@ -46,11 +46,5 @@ include("crank_nicolson_uadj/crank_nicolson_uadj_checkpointstraight.jl")
 
 # predictor_corrector.jl
 export predictorCorrectorHomotopy
-
-# jacobian.jl
-export AssembleElementData, assembleElement, assembleInterface,
-       assembleInterfaceVisc, assembleSharedFace, assembleBoundary,
-       assembleBoundaryFull, assembleInterfaceFull, assembleSharedFaceFull,
-       NullAssembleElementData
 
 end

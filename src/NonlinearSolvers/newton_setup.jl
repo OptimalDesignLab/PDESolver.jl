@@ -125,9 +125,6 @@ function NewtonData(mesh, sbp,
                     delta_q_vec, fconv, verbose)
 end
 
-include("residual_evaluation.jl")  # some functions for residual evaluation
-include("jacobian.jl")
-
 @doc """
 ### NonlinearSolvers.setupNewton
   Performs setup work for [`newtonInner`](@ref), including creating a 

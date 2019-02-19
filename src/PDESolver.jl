@@ -28,6 +28,7 @@ push!(LOAD_PATH, joinpath(Pkg.dir("PumiInterface"), "src"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/solver"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/NonlinearSolvers"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/linearsolvers"))
+push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/jacobian"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Utils"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/Debugging"))
 push!(LOAD_PATH, joinpath(Pkg.dir("PDESolver"), "src/input"))
@@ -78,13 +79,13 @@ using Input
 using ODLCommonTools
 using PdePumiInterface  # common mesh interface - pumi
 using SummationByParts  # SBP operators
-using LinearSolvers
+#using LinearSolvers
 #using NonlinearSolvers   # non-linear solvers
 using ArrayViews
 import ArrayViews.view
 using Utils
 import ODLCommonTools.sview
-using Input
+#using Input
 
 include("defs.jl")  # common definitions
 include("registration.jl")  # registering physics modules

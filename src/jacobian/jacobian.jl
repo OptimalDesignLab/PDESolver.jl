@@ -180,7 +180,7 @@ end   # end of physicsJac function
 # Functions for calculating the Jacobian
 #------------------------------------------------------------------------------
 @doc """
-### NonlinearSolvers.calcJacFD
+### Jacobians.calcJacFD
 
   This function calculates the Jacobian using finite differences, perturbing
   one degree of freedom at a time.  This is slow and not very accurate.  
@@ -244,7 +244,7 @@ end
 
 
 @doc """
-### NonlinearSolvers.calcJacComplex
+### Jacobians.calcJacComplex
 
   This function calculates the Jacobian (dense) using the complex step method, 
   perturbing one degree of freedom at a time.  This is very slow.  The jacobian
@@ -325,7 +325,7 @@ function AssembleData(A::T, mesh, sbp, eqn, opts) where T
 end
 
 @doc """
-### NonlinearSolvers.calcJacobianSparse
+### Jacobians.calcJacobianSparse
 
   This function calculate the Jacobian sparsely (only the entries 
     within the sparsity bounds), using either finite differences or algorithmic 
@@ -439,7 +439,7 @@ end  # end function
 
 
 @doc """
-### NonlinearSolvers.applyPerturbation
+### Jacobians.applyPerturbation
 
   This function applies a perturbation to a the specified degree of freedom
   on each element according to a mask.
@@ -571,7 +571,7 @@ end
 
 
 @doc """
-### NonlinearSolvers.calcJacCol
+### Jacobians.calcJacCol
 
   This function extracts the entries for one column of the Jacobian from two residual evaluates that come from finite differences.
 
@@ -643,7 +643,7 @@ function assembleElement(helper::AssembleData, mesh,
 end
 
 @doc """
-### NonlinearSolvers.calcJacCol
+### Jacobians.calcJacCol
 
   This function extracts the entries for one column of the Jacobian from a 
   complex step residual evaluation
@@ -1807,5 +1807,3 @@ function getNonStencilNodes(sbp::AbstractOperator, sbpface::AbstractFace)
 
   return table
 end
-
-include("jacobian_diag.jl")

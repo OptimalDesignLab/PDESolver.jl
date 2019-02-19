@@ -7,7 +7,8 @@ using SolverCommon
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
-using NonlinearSolvers
+#using NonlinearSolvers
+using Jacobian
 using LinearSolvers
 using Input
 # using ForwardDiff

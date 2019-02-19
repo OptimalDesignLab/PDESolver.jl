@@ -1,5 +1,4 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
-# includes residual_evaluation.jl
 
 export newton
 import Utils.free
