@@ -1,4 +1,5 @@
-# shock capturing using the SBP-BR2 discretization of the second derivative term
+# shock capturing using any the SBP-SAT discretization of the second derivative
+# term
 
 """
   Applies [`SBPParabolic`](@ref) shock capturing.

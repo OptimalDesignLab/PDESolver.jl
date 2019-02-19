@@ -485,7 +485,7 @@ include("shock_diffusion.jl")
 include("shock_capturing.jl")
 include("shock_sensors.jl")
 include("ldg_shock_capturing.jl")
-include("br2_shock_capturing.jl")
+include("sbp_sat_shock_capturing.jl")
 include("sbp_cartesian.jl")
 
 # Jacobian calculation
@@ -498,7 +498,7 @@ include("homotopy_diff.jl")
 include("shock_sensors_diff.jl")
 include("shock_capturing_diff.jl")
 include("sbp_cartesian_diff.jl")
-include("br2_shock_capturing_diff.jl")
+include("sbp_sat_shock_capturing_diff.jl")
 
 
 

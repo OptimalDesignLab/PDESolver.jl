@@ -1,4 +1,4 @@
-# differentiated version of br2_shock_capturing.jl
+# differentiated version of sbp_sat_shock_capturing.jl
 
 function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
