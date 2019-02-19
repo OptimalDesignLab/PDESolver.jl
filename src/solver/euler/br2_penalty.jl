@@ -345,7 +345,7 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   # T2 and T3
   @simd for q=1:numNodesPerElement
     @simd for p=1:numNodesPerFace
-      @simd for j=1:numDofPerNOde
+      @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
           res2L_dotL[i, j, p, q] = 0
           res2L_dotR[i, j, p, q] = 0
