@@ -310,10 +310,19 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   interiorFaceInterpolate_jac!(sbpface, iface, t3LR, t3RR, t4LR, t4RR)
 
   # apply B * [Nx, Ny] and sum
-  fill!(res1L_dotL, 0); fill!(res1L_dotR, 0)  #TODO: tile this
-  fill!(res1R_dotL, 0); fill!(res1R_dotR, 0)
+#  fill!(res1L_dotL, 0); fill!(res1L_dotR, 0)  #TODO: tile this
+#  fill!(res1R_dotL, 0); fill!(res1R_dotR, 0)
   @simd for q=1:numNodesPerElement
     @simd for p=1:numNodesPerFace
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
+          res1L_dotL[i, j, p, q] = 0
+          res1L_dotR[i, j, p, q] = 0
+          res1R_dotL[i, j, p, q] = 0
+          res1R_dotR[i, j, p, q] = 0
+        end
+      end
+
       @simd for d=1:dim
         fac = sbpface.wface[p]*nrm_face[d, p]
         @simd for j=1:numDofPerNode
@@ -334,10 +343,16 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   end
 
   # T2 and T3
-  fill!(res2L_dotL, 0); fill!(res2L_dotR, 0)
-  fill!(res2R_dotL, 0); fill!(res2R_dotR, 0)
   @simd for q=1:numNodesPerElement
     @simd for p=1:numNodesPerFace
+      @simd for j=1:numDofPerNOde
+        @simd for i=1:numDofPerNode
+          res2L_dotL[i, j, p, q] = 0
+          res2L_dotR[i, j, p, q] = 0
+          res2R_dotL[i, j, p, q] = 0
+          res2R_dotR[i, j, p, q] = 0
+        end
+      end
       fac1 =  0.5*sbpface.wface[p]
       fac2 = -0.5*sbpface.wface[p]
       @simd for j=1:numDofPerNode
@@ -358,6 +373,7 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
 
 
   # also need res2 as output
+  fill!(res2L, 0); fill!(res2R, 0)
   @simd for j=1:numNodesPerFace
     @simd for k=1:numDofPerNode
       val2 = -0.5*sbpface.wface[j]*delta_w[k, j]
