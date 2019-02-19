@@ -275,11 +275,11 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-#=
+
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname3)
+    opts_tmp = read_input_file(fname)
     opts_tmp["jac_type"] = 3  # was 2
     opts_tmp["operator_type"] = "SBPGamma"
     opts_tmp["order"] = 1
@@ -291,9 +291,9 @@ function test_jac_terms_long()
     capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
     test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, partial_shock=false)
 
-=#
 
-    
+
+#=    
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -508,7 +508,7 @@ function test_jac_terms_long()
 
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
-
+=#
 
   end
 
@@ -1969,8 +1969,6 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     else
       @test  matinfo.nz_unneeded  > 0
     end
-      
-
   end
 
   free(lo1)
@@ -2774,10 +2772,12 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   
   # get explicitly computed linear operator
   opts["calc_jac_explicit"] = true
-  val_orig = opts["preallocate_jacobian_coloring"]
-  opts["preallocate_jacobian_coloring"] = true
+  opts["addShockCapturing"] = true
+#  val_orig = opts["preallocate_jacobian_coloring"]
+#  opts["preallocate_jacobian_coloring"] = true
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
-  opts["preallocate_jacobian_coloring"] = val_orig
+#  opts["preallocate_jacobian_coloring"] = val_orig
+  opts["addShockCapturing"] = false
 
   jac = getBaseLO(lo).A
   assembler = Jacobian._AssembleElementData(jac, mesh, sbp, eqn, opts)
@@ -2822,5 +2822,17 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   #println("res_dot = \n", real(res_dot))
   #println("q_dot = ", real(q_dot))
   #println("full(A) = ", full(jac))
+  
+
+  if typeof(jac) <: PetscMat
+    matinfo = MatGetInfo(jac, PETSc2.MAT_LOCAL)
+#    if is_prealloc_exact
+      @test ( matinfo.nz_unneeded )== 0
+#    else
+#      @test  matinfo.nz_unneeded  > 0
+#    end
+  end
+
+
   return nothing 
 end

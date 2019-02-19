@@ -337,3 +337,6 @@ function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
 
   return nothing
 end
+
+
+

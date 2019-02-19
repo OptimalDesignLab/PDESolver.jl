@@ -1357,7 +1357,6 @@ function assembleInterfaceVisc(helper::_AssembleElementData{PetscMat},
                            jacRL::AbstractArray{T, 4},
                            jacRR::AbstractArray{T, 4}) where T
 
-  println("called Petsc version")
   elL = iface.elementL; elR = iface.elementR
   stencilL = sview(sbpface.perm, :, iface.faceL)
   stencilR = sview(sbpface.perm, :, iface.faceR)
