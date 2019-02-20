@@ -53,7 +53,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     Vp1 = VandermondeData(sbp, sbp.degree-1)
 
     # constants from Barter's thesis
-    s0 = -(4 + 4.25*log10(sbp.degree))
+    s0 = -(2 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
     kappa = 0.5
     e0 = 1  # this is a bit weird, because PP says it should be O(h/p)
     

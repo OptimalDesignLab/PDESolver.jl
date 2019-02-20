@@ -56,7 +56,10 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
     # finite element methods, where the original solution has a basis, and the
     # norm in any basis should be the same.  Here we use the filtered u rather
     # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
+    #den += up_tilde[i]*fac*up_tilde[i]
+
+    # see if this makes the sensor less sensitive
+    den = up[i]*fac*up[i]
   end
 
 

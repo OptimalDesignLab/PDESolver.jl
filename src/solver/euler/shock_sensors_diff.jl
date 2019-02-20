@@ -72,10 +72,13 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
     # finite element methods, where the original solution has a basis, and the
     # norm in any basis should be the same.  Here we use the filtered u rather
     # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
-    @simd for j=1:numNodesPerElement
-      den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
-    end
+    #den += up_tilde[i]*fac*up_tilde[i]
+    #@simd for j=1:numNodesPerElement
+    #  den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
+    #end
+
+    den += up[i]*fac*up[i]
+    den_dot[i] += 2*fac*up[i]
   end
 
   Se = num/den
