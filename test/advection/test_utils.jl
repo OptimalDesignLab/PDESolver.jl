@@ -368,7 +368,32 @@ function test_sparsematrix()
     cnt = findLarge(mat_dense, 7.5)
     @test ( cnt )== 1
 
+    # test fastfind
+    A = rand(Int, 999)
+    sort!(A)
+    for i=1:length(A)
+      idx = ODLCommonTools.fastfind(A, A[i])
+      @test ( idx )== i
+    end
+
+    A = rand(Int, 1000)
+    sort!(A)
+    for i=1:length(A)
+      idx = ODLCommonTools.fastfind(A, A[i])
+      @test ( idx )== i
+    end
+
+
+    A = collect(1:10)
+    idx = ODLCommonTools.fastfind(A, 11)
+    @test ( idx )== 0
+
+    A = collect(1:2)
+    idx = ODLCommonTools.fastfind(A, 2)
+    @test ( idx )== 2
+
   end
+
   return nothing
 end
 
