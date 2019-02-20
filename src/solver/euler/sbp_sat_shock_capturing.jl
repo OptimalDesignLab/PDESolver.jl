@@ -14,15 +14,15 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  #computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  #computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
-  computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
-                              capture.diffusion, capture.penalty)
+  #computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
+  #                            capture.diffusion, capture.penalty)
 
 
 

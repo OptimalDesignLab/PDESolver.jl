@@ -275,12 +275,12 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-
+#=
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
-    opts_tmp = read_input_file(fname)
-    opts_tmp["jac_type"] = 3  # was 2
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] =2  # was 2
     opts_tmp["operator_type"] = "SBPGamma"
     opts_tmp["order"] = 1
     make_input(opts_tmp, fname4)
@@ -289,11 +289,11 @@ function test_jac_terms_long()
     test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
     Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
     capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
-    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, partial_shock=false)
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
+=#
 
 
-
-#=    
+    
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -427,6 +427,47 @@ function test_jac_terms_long()
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
 
+    # test shock capturing schemes
+    println("\ntesting shock capturing")
+    shock_capturing_schemes = ["SBPParabolic"]
+    for sc in shock_capturing_schemes
+
+      Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
+
+      println("case4")
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh4,
+                                                        sbp4, eqn4, opts4)
+      test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
+      test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+
+      println("case5")
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh5,
+                                                        sbp5, eqn5, opts5) 
+      test_sbp_cartesian(mesh5, sbp5, eqn5, opts5)
+      test_shock_capturing_jac(mesh5, sbp5, eqn5, opts5, capture)
+
+      println("case6")
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh6,
+                                                        sbp6, eqn6, opts6) 
+      test_sbp_cartesian(mesh6, sbp6, eqn6, opts6)
+      test_shock_capturing_jac(mesh6, sbp6, eqn6, opts6, capture)
+
+      println("case8")
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh8,
+                                                        sbp8, eqn8, opts8) 
+      test_sbp_cartesian(mesh8, sbp8, eqn8, opts8)
+      test_shock_capturing_jac(mesh8, sbp8, eqn8, opts8, capture)
+
+      println("case9")
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
+                                                        sbp9, eqn9, opts9) 
+      test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
+      test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
+    end
+
+
+
+
 
     # test revm products
 
@@ -508,7 +549,7 @@ function test_jac_terms_long()
 
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
-=#
+
 
   end
 
@@ -2748,9 +2789,25 @@ function test_sbp_cartesian(mesh, sbp, eqn, opts)
 end
 
 
+"""
+  Tests jacobian of `AbstractFaceShockCapturing` against complex step.
 
-function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
-      capture::EulerEquationMod.AbstractFaceShockCapturing; partial_shock=false) where {Tsol, Tres}
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * capture: `AbstractFaceShockCapturing`
+
+  **Keyword Arguments**
+
+   * use_sensor: if true use `ShockSensorPP`, otherwise use `ShockSensorEverywher`
+"""
+function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
+      capture::EulerEquationMod.AbstractFaceShockCapturing; use_sensor=true) where {Tsol, Tres}
+
+  opts = copy(_opts)  # don't modify the original
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -2760,16 +2817,17 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
-  if partial_shock
+  if use_sensor
     # this only works for the 2 element mesh
-    eqn.q[1] += 0.01
-    eqn.q[25] += 0.01
+#    eqn.q[1] += 0.02
+#    eqn.q[25] += 0.01
     sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
   else
-    eqn.q .+= 0.1*rand(size(eqn.q))
     sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
   end
   
+  eqn.q .+= 0.1*rand(size(eqn.q))
+
   # get explicitly computed linear operator
   opts["calc_jac_explicit"] = true
   opts["addShockCapturing"] = true

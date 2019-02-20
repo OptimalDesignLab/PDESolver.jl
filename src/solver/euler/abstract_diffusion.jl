@@ -297,7 +297,8 @@ function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
                     t1_dotL::Abstract5DArray, t1_dotR::Abstract5DArray,
                     t2_dotL::Abstract5DArray, t2_dotR::Abstract5DArray)
 
-  nodes = sview(sbpface.perm, :, face)
+  nodes = 1:size(t1_dotL, 4)
+  #nodes = sview(sbpface.perm, :, face)
   applyDiffusionTensor_diff(obj, w, i, nodes, t1, t1_dotL, t1_dotR,
                             t2_dotL, t2_dotR)
 

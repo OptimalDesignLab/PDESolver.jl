@@ -76,8 +76,6 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
   # Petsc objects if this comes before preallocation
   MatSetOption(A, PETSc2.MAT_ROW_ORIENTED, PETSC_FALSE)
 
-  println("addShockCapturing = ", opts["addShockCapturing"])
-  println("disc_type = ", disctype)
   if opts["addShockCapturing"]
     writeSparsityPattern(mesh, sbp, eqn, opts, A, disctype)
   end

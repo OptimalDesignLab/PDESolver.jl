@@ -1234,6 +1234,63 @@ function assembleInterfaceVisc(helper::_AssembleElementData,
     end  # end q
   end  # end p
 
+
+  # remaining on diagonal entries
+  # This is only needed for shock capturing (elements where dLambda/dq != 0)
+  idx = helper.idx
+  idy = helper.idy
+  vals = helper.vals
+
+  for _q=1:length(nonstencilL)
+    qL = nonstencilL[_q]
+    qR = nonstencilR[_q]
+
+    # block indices (zero-based)
+    for j=1:mesh.numDofPerNode
+      idy[j] = mesh.dofs[1, qL, elL]
+    end
+
+    for _p=1:length(nonstencilL)
+      pL = nonstencilL[_p]
+
+      # block indices (zero-based)
+      for i=1:mesh.numDofPerNode
+        idx[i] = mesh.dofs[i, pL, elL]
+      end
+
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
+          vals[i, j] = real(jacLL[i, j, pL, qL])
+        end
+      end
+
+      set_values1!(helper.A, idx, idy, vals, ADD_VALUES)
+    end
+    
+    for j=1:mesh.numDofPerNode
+      idy[j] = mesh.dofs[j, qR, elR]
+    end
+
+    for _p=1:length(nonstencilR)
+      pR = nonstencilR[_p]
+
+      for i=1:mesh.numDofPerNode
+        idx[i] = mesh.dofs[i, pR, elR]
+      end
+
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
+          vals[i, j] = real(jacRR[i, j, pR, qR])
+        end
+      end
+
+      set_values1!(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end p
+    
+  end  # end q
+
+
+
   return nothing
 end
 
@@ -1391,8 +1448,8 @@ function assembleInterfaceVisc(helper::_AssembleElementData{PetscMat},
       dof1 = mesh.dofs[1, pR, elR]
       idx[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
-      for j=1:mesh.numDofPerNode
-        for i=1:mesh.numDofPerNode
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
           vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
           vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
           vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
@@ -1428,8 +1485,8 @@ function assembleInterfaceVisc(helper::_AssembleElementData{PetscMat},
       dof1 = mesh.dofs[1, pR, elR]
       idx[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
-      for j=1:mesh.numDofPerNode
-        for i=1:mesh.numDofPerNode
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
           vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
           vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
           vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
@@ -1463,9 +1520,8 @@ function assembleInterfaceVisc(helper::_AssembleElementData{PetscMat},
       dof1 = mesh.dofs[1, qR, elR]
       idy[2] = div(dof1 - 1, numDofPerNode) + 1 - 1
 
-
-      for j=1:mesh.numDofPerNode
-        for i=1:mesh.numDofPerNode
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
           vals[i,                      j                     ] = real(jacLL[i, j, pL, qL])
           vals[i + mesh.numDofPerNode, j                     ] = real(jacRL[i, j, pR, qL])
           vals[i,                      j + mesh.numDofPerNode] = real(jacLR[i, j, pL, qR])
@@ -1476,6 +1532,55 @@ function assembleInterfaceVisc(helper::_AssembleElementData{PetscMat},
       MatSetValuesBlocked(helper.A, idx, idy, vals, ADD_VALUES)
     end  # end q
   end  # end p
+
+  # remaining on diagonal entries
+  # This is only needed for shock capturing (elements where dLambda/dq != 0)
+  idx = helper.idx_bb
+  idy = helper.idy_bb
+  vals = helper.vals
+
+  for _q=1:length(nonstencilL)
+    qL = nonstencilL[_q]
+    qR = nonstencilR[_q]
+
+    # block indices (zero-based)
+    dof1 = mesh.dofs[1, qL, elL]
+    idy[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    for _p=1:length(nonstencilL)
+      pL = nonstencilL[_p]
+
+      # block indices (zero-based)
+      dof1 = mesh.dofs[1, pL, elL]
+      idx[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
+          vals[i, j] = real(jacLL[i, j, pL, qL])
+        end
+      end
+
+      MatSetValuesBlocked(helper.A, idx, idy, vals, ADD_VALUES)
+    end
+    
+    dof1 = mesh.dofs[1, qR, elR]
+    idy[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+    for _p=1:length(nonstencilR)
+      pR = nonstencilR[_p]
+      dof1 = mesh.dofs[1, pR, elR]
+      idx[1] = div(dof1 - 1, numDofPerNode) + 1 - 1
+
+      @simd for j=1:mesh.numDofPerNode
+        @simd for i=1:mesh.numDofPerNode
+          vals[i, j] = real(jacRR[i, j, pR, qR])
+        end
+      end
+
+      MatSetValuesBlocked(helper.A, idx, idy, vals, ADD_VALUES)
+    end  # end p
+    
+  end  # end q
 
   return nothing
 end

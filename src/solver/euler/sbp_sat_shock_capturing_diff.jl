@@ -11,14 +11,14 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
-  computeVolumeTerm_diff(mesh, sbp, eqn, opts, capture,
-                               capture.diffusion, shockmesh, assem)
+  #computeVolumeTerm_diff(mesh, sbp, eqn, opts, capture,
+  #                             capture.diffusion, shockmesh, assem)
 
   computeFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty, assem)
 
-  computeBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
-                            capture.diffusion, assem)
+  #computeBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+  #                          capture.diffusion, assem)
 
   #@time computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
   #                                 capture.diffusion, capture.penalty)
