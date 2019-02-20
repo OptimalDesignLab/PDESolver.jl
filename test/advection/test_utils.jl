@@ -372,24 +372,24 @@ function test_sparsematrix()
     A = rand(Int, 999)
     sort!(A)
     for i=1:length(A)
-      idx = ODLCommonTools.fastfind(A, A[i])
+      idx = Jacobian.fastfind(A, A[i])
       @test ( idx )== i
     end
 
     A = rand(Int, 1000)
     sort!(A)
     for i=1:length(A)
-      idx = ODLCommonTools.fastfind(A, A[i])
+      idx = Jacobian.fastfind(A, A[i])
       @test ( idx )== i
     end
 
 
     A = collect(1:10)
-    idx = ODLCommonTools.fastfind(A, 11)
+    idx = Jacobian.fastfind(A, 11)
     @test ( idx )== 0
 
     A = collect(1:2)
-    idx = ODLCommonTools.fastfind(A, 2)
+    idx = Jacobian.fastfind(A, 2)
     @test ( idx )== 2
 
   end

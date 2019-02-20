@@ -45,7 +45,7 @@ function installPDESolver()
               "PkgFix" "https://github.com/OptimalDesignLab/PkgFix.jl.git" "upgrade_0.6";
               "ArrayViews"   "https://github.com/JaredCrean2/ArrayViews.jl.git" "work"
               "ODLCommonTools" "https://github.com/OptimalDesignLab/ODLCommonTools.jl.git" "master";
-              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jc_v0.4";
+              "SummationByParts" "https://github.com/OptimalDesignLab/SummationByParts.jl.git" "jcwork";
               "PumiInterface" "https://github.com/OptimalDesignLab/PumiInterface.jl.git" "v0.9";
               "PETSc2" "https://github.com/OptimalDesignLab/PETSc2.jl.git" "v0.3"
               ]

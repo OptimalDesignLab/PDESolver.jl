@@ -6,8 +6,6 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                              shockmesh::ShockedElements,
                              assem::AssembleElementData) where {Tsol, Tres}
 
-
-  println("entered calcShockCapturing_diff")
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 

@@ -9,8 +9,6 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              capture::SBPParabolicSC{Tsol, Tres},
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
-
-  println("\nEntered applyShockCapturing")
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.convert_entropy, capture.diffusion)
 
@@ -159,7 +157,6 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
                            capture::SBPParabolicSC{Tsol, Tres},
                            shockmesh::ShockedElements) where {Tsol, Tres}
 
-  println("\nentered computeVolumeTerm")
   # computeGradW computes Lambda * D * w, so all that remains to do is
   # compute Qx * grad_q_x
   # Note that this term is not entropy stable by itself, because Qx was
