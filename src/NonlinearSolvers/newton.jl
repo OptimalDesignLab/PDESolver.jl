@@ -141,6 +141,9 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
                      rhs_vec, ctx_residual=(), 
                      t=0.0;)
 
+  # println(BSTDOUT, " ---- DEBUG eqn.q_vec[1]: ", eqn.q_vec[1])   # TODO: DEBUG GUESS
+
+
   # verbose 4 = when newtonInner is used as an inner method for time marching 
   #             or something
 
@@ -243,6 +246,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
       res_0[j] = -res_0[j]
     end
 
+    # println(BSTDOUT, " ---- DEBUG eqn.q_vec[1]: ", eqn.q_vec[1])   # TODO: DEBUG GUESS
+
     # calculate Newton step
     flush(BSTDOUT)
     tsolve = @elapsed linearSolve(ls, res_0, delta_q_vec, verbose)
@@ -251,6 +256,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     recordStepNorm(newton_data, step_norm)
 
     # perform Newton update
+
     for j=1:m
       eqn.q_vec[j] += newton_data.step_fac*delta_q_vec[j]
     end

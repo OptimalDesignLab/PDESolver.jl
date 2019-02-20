@@ -577,6 +577,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     for j = 1:mesh.numDof
       eqn_nextstep.q_vec[j] = eqn.q_vec[j]
     end
+
     array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec, eqn_nextstep.q)
 
     flush(BSTDOUT)

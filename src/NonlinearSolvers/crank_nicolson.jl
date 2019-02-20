@@ -222,9 +222,13 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     eqn_nextstep = eqn_temp
 
     # Note: we now need to copy the updated q over for the initial newton guess
-    for i = 1:mesh.numDof
-      eqn_nextstep.q_vec[i] = eqn.q_vec[i]
+    for j = 1:mesh.numDof
+      eqn_nextstep.q_vec[j] = eqn.q_vec[j]
     end
+    # injectval = i*1.11111
+    # eqn_nextstep.q_vec[1] = injectval       # TODO: DEBUG GUESS
+    # println(BSTDOUT, " eqn_nextstep.q_vec[1]: ", eqn_nextstep.q_vec[1], "  after injecting value: ", injectval)
+
     array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec, eqn_nextstep.q)
 
 #    t = t_nextstep
