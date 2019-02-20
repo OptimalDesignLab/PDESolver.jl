@@ -59,9 +59,8 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
     #den += up_tilde[i]*fac*up_tilde[i]
 
     # see if this makes the sensor less sensitive
-    den = up[i]*fac*up[i]
+    den += up[i]*fac*up[i]
   end
-
 
   Se = num/den
   se = log10(Se)
