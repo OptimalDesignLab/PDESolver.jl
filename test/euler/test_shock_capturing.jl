@@ -213,7 +213,7 @@ function test_ldg()
     mesh, sbp, eqn, opts = solvePDE(opts)
 
     testQx(mesh, sbp, eqn, opts)
-#=
+
     test_shockmesh(mesh, sbp, eqn, opts)
     
     test_thetaface(mesh, sbp, eqn, opts)
@@ -242,14 +242,14 @@ function test_ldg()
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_br2_serialpart(mesh, sbp, eqn, opts)
-=#
+
   end
 
   return nothing
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
 
 
 """
