@@ -317,8 +317,6 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   # elements with positive shock indicator, and (n+1):m for the neighboring
   # elements
 
-  #TODO: update reset
-
   data.numShock = data.idx_all - 1
   # neighbor stuff
   # iface stuff
@@ -357,7 +355,7 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
   # get shared interfaces
   setupShockmeshParallel(mesh, data)
 
-
+#=
  # get the list of boundary faces
   for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
@@ -367,6 +365,25 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
       push_bndry(data, bndry_new)
     end
   end
+  data.numBoundaryFaces = data.idx_b - 1
+=#
+  # get boundary faces and Dirichlet info
+  fill!(data.bndry_offsets, 0); data.bndry_offsets[1] = 1
+  for i=1:mesh.numBC
+    bc_range = mesh.bndry_offsets[i]:(mesh.bndry_offsets[i+1]-1)
+    nfaces = 0
+    for j in bc_range
+      bndry_j = mesh.bndryfaces[j]
+      elnum = data.elnums_mesh[bndry_j.element]
+      # check if the element is in the data
+      if elnum > 0 && elnum <= data.numShock
+        bndry_new = RelativeBoundary(replace_boundary(bndry_j, elnum), j)
+        push_bndry(data, bndry_new)
+        nfaces += 1
+      end
+    end  # end j
+    data.bndry_offsets[i+1] = data.bndry_offsets[i] + nfaces
+  end  # end i
   data.numBoundaryFaces = data.idx_b - 1
 
 

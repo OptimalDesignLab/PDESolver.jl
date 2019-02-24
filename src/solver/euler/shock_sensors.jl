@@ -7,7 +7,6 @@
 # with PDE-Based Artificial Viscosity for an Adaptive, Higher-Order DG
 # Finite Element Method", MIT 2008.
 
-
 """
   Computes the shock sensor and the numerical viscoscity for the Persson
   and Perairi paper
@@ -25,10 +24,10 @@
    * Se: the shock sensor value
    * ee: the viscoscity coefficient (constant for the entire element)
 """
-function getShockSensor(params::ParamType, sbp::AbstractOperator,
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                           sensor::ShockSensorPP,
                           q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh},
-                         ) where {Tsol, Tmsh}
+                         ) where {Tsol, Tmsh, Tdim}
 
   Tres = promote_type(Tsol, Tmsh)
   numNodesPerElement = size(q, 2)
@@ -73,6 +72,20 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
   else
     ee = Tres(e0)
   end
+
+  # scale by lambda_max * h/p to get subcell resolution
+  lambda_max = zero(Tsol)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max += getLambdaMax(params, q_i)
+    h_avg += jac[i]*sbp.w[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  h_avg = h_avg^(1/Tdim)
+
+  ee *= lambda_max*h_avg/sbp.degree
   
   return Se, ee
 end

@@ -46,6 +46,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   
   num_dot::Vector{Tres}
   den_dot::Vector{Tres}
+  ee_dot::Vector{Tres}
+  lambda_max_dot::Matrix{Tres}
 
   function ShockSensorPP{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
 
@@ -63,10 +65,11 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
 
     num_dot = zeros(Tres, sbp.numnodes)
     den_dot = zeros(Tres, sbp.numnodes)
-
+    ee_dot = zeros(Tres, mesh.numNodesPerElement)
+    lambda_max_dot = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
 
     return new(Vp, Vp1, s0, kappa, e0, up, up_tilde, up1_tilde,
-               num_dot, den_dot)
+               num_dot, den_dot, ee_dot, lambda_max_dot)
   end
 end
 
@@ -146,11 +149,8 @@ end
            for storing entropy variables
    * q_j: `numDofPerNode` x `numNodesPerElement` x `dim` x `shockmesh.numEl`
           array for storing theta_j and q_j
-   * convert_entropy: a function for converting conservative variables to
-                      entropy variables, must have signature
-                      `convert_entropy(params::ParamType, q::AbstractVector,
-                                       w::AbstractVector)`, where `q` and `w`
-                      are of length `numDofPerNode`.  `w` should be overwritten
+   * entropy_vars: an [`AbstractVariables`](@ref) specifying which entropy
+                   variables to use
    * `flux`: an [`AbstractLDGFlux`](@ref)
    * diffusion: an [`AbstractDiffusion`](@ref).
 """
@@ -160,7 +160,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
   w_el::Array{Tsol, 3}  # entropy variables for all elements in elnums_all
   q_j::Array{Tres, 4}  # auxiliary equation solution for elements in
                        # elnums_all (this gets used for both theta and q)
-  convert_entropy::Any  # convert to entropy variables
+  entropy_vars::AbstractVariables  # convert to entropy variables
   flux::AbstractLDGFlux
   diffusion::AbstractDiffusion
   function LDGShockCapturing{Tsol, Tres}() where {Tsol, Tres}
@@ -169,11 +169,11 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     q_j = Array{Tsol}(0, 0, 0, 0)
 
     # default values
-    convert_entropy = convertToIR_
+    entropy_vars = IRVariables()
     flux = LDG_ESFlux()
     diffusion = ShockDiffusion{Tres}()
 
-    return new(w_el, q_j, convert_entropy, flux, diffusion)
+    return new(w_el, q_j, entropy_vars, flux, diffusion)
   end
 
   function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
@@ -437,12 +437,8 @@ end
              for all neighboring elements (see `ShockedElement`) because
              the viscoscity is zero there, but storing values in this array
              significantly simplifies the code
-   * convert_entropy: a function that converts from the conservative to
-                      entropy variables, must have signature:
-                      `convert_entropy(params::ParamType, q_c, q_e)`
-                      where `q_c` contains the conservative variables ata
-                      a node and `q_e` is overwritten with the entropy
-                      variables.  Defaults to `convertToIR_`.
+  * entropy_vars: an [`AbstractVariables`](@ref) specifying which entropy
+                   variables to use.
   * diffusion: an [`AbstractDiffusion`](@ref) object that specifies the
                diffusion tensor. Defaults to `ShockDiffusion`
   * penalty: an [`AbstractDiffusionPenalty`](@ref) object that specifies which
@@ -462,10 +458,11 @@ end
 mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   w_el::Array{Tsol, 3}
   grad_w::Array{Tres, 4}
-  convert_entropy::Any  # convert to entropy variables
+  entropy_vars::AbstractVariables
   diffusion::AbstractDiffusion
   penalty::AbstractDiffusionPenalty
   alpha::Array{Float64, 2}  # 2 x numInterfaces
+  alpha_b::Array{Float64, 1}  # numBoundaryFaces
   alpha_parallel::Array{Array{Float64, 2}, 1}  # one array for each peer
 
   #------------------
@@ -530,10 +527,11 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
-    convert_entropy = convertToIR_
+    entropy_vars = IRVariables()
     diffusion = ShockDiffusion{Tres}()
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
+    alpha_b = zeros(Float64, 0)
     alpha_parallel = Array{Array{Float64, 2}}(0)
 
 
@@ -618,15 +616,17 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
 
     alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
 
-    return new(w_el, grad_w, convert_entropy, diffusion, penalty, alpha,
-               alpha_parallel, w_faceL, w_faceR, grad_faceL, grad_faceR,
-               wL_dot, wR_dot, Dx, t1, t1_dot, t2L_dot, t2R_dot, t3L_dot, t3R_dot,
-              temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work,
-              t3L_dotL, t3L_dotR, t3R_dotL, t3R_dotR,
-              t4L_dotL, t4L_dotR, t4R_dotL, t4R_dotR,
-              t5L_dotL, t5L_dotR, t5R_dotL, t5R_dotR,
-              w_dot, t2_dot, t3_dot, t4_dot,
-              alpha_comm)
+    return new(w_el, grad_w, entropy_vars, diffusion, penalty, alpha,
+               alpha_b, alpha_parallel, w_faceL, w_faceR, grad_faceL,
+               grad_faceR,
+               wL_dot, wR_dot, Dx, t1, t1_dot, t2L_dot, t2R_dot, t3L_dot,
+               t3R_dot,
+               temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work,
+               t3L_dotL, t3L_dotR, t3R_dotL, t3R_dotR,
+               t4L_dotL, t4L_dotR, t4R_dotL, t4R_dotR,
+               t5L_dotL, t5L_dotR, t5R_dotL, t5R_dotR,
+               w_dot, t2_dot, t3_dot, t4_dot,
+               alpha_comm)
   end
 end
 

@@ -20,6 +20,7 @@ function test_shocksensorPP()
     capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts)
     # initial condition is constant, check the sensor reports no shock
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, jac)
+    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, jac)
 
     @test abs(Se) < 1e-12
     @test ee == 0
@@ -33,7 +34,7 @@ function test_shocksensorPP()
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, jac)
 
     @test abs(Se) > 1e-12
-    @test ee > 0.99
+    @test ee > 0.01
 
     fill!(res, 0)
     w = copy(q)
@@ -161,7 +162,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
 
 
 #------------------------------------------------------------------------------
@@ -249,7 +250,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """
@@ -870,6 +871,8 @@ function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   EulerEquationMod.completeShockElements(mesh, shockmesh2)
 
   @test shockmesh2.numShock == length(boundary_els)
+  println("length(shockmesh.bndryfaces) = ", length(shockmesh2.bndryfaces))
+  println("shockmesh.bndryfaces = ", shockmesh.bndryfaces)
   @test shockmesh2.numBoundaryFaces == length(mesh.bndryfaces)
   
   # check original indices
@@ -1122,7 +1125,7 @@ function test_br2_gradw(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
   EulerEquationMod.computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
-                                capture.convert_entropy, capture.diffusion)
+                                capture.entropy_vars, capture.diffusion)
 
   A0inv = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
   dw_dx = zeros(Tsol, mesh.numDofPerNode)
@@ -1194,6 +1197,29 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   for i=1:shockmesh.numShock
     @test abs(alpha_sum[i] - 1) < 1e-15
   end
+
+  if !shockmesh.isNeumann
+    println("\nTesting alpha values")
+    # in Dirichlet case, all alphas should be 1/numFacesPerElement (at least
+    # for shocked elements)
+    val = 1/(mesh.dim + 1)
+    for i=1:shockmesh.numInterfaces
+      iface_i = shockmesh.ifaces[i].iface
+      if iface_i.elementL <= shockmesh.numShock
+        @test abs(capture.alpha[1, i] - val) < 1e-13
+      end
+      if iface_i.elementR <= shockmesh.numShock
+        @test abs(capture.alpha[2, i] - val) < 1e-13
+      end
+    end
+
+    for i=1:shockmesh.numBoundaryFaces
+      @test abs(capture.alpha_b[i] - val) < 1e-13
+    end
+  end  # end if
+
+
+
 
   # set w_el to be polynomial
   setWPoly(mesh, shockmesh, capture.w_el, degree)
@@ -1351,7 +1377,13 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
 end
 
 
-function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts; fullmesh=false) where {Tsol, Tres}
+function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=false) where {Tsol, Tres}
+
+  opts = copy(_opts)
+  # the scheme is entropy stable when the dirichlet BC = 0
+  for i=1:opts["numBC"]
+    opts[string("BC", i, "_name")] = "zeroBC"
+  end
 
   # construct the shock mesh with all elements in it that are fully interior
   if fullmesh
@@ -1386,9 +1418,10 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts; fullmesh=fals
 end
 
 
-function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where {Tsol, Tres}
 
 
+  opts = copy(_opts)
   sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
 
@@ -1400,6 +1433,12 @@ function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where 
   opts["addBoundaryIntegrals"] = true
 
   solvePDE(mesh, sbp, eqn, opts)
+
+  # the scheme is entropy stable when the dirichlet BC = 0
+  for i=1:opts["numBC"]
+    opts[string("BC", i, "_name")] = "zeroBC"
+  end
+  EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
   w_vec = zeros(Tsol, mesh.numDof)
   copy!(w_vec, eqn.q_vec)

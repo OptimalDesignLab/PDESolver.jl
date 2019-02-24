@@ -81,9 +81,10 @@ function test_shockmesh(mesh, sbp, eqn, opts)
 end
 
 
-function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where {Tsol, Tres}
 # test consistency with the serial version
 
+  opts = copy(_opts)
   sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
 
@@ -91,6 +92,13 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) wher
   # that can be reproduced in parallel
   opts["solve"] = true
   solvePDE(mesh, sbp, eqn, opts)
+
+  # the scheme is entropy stable when the dirichlet BC = 0
+  for i=1:opts["numBC"]
+    opts[string("BC", i, "_name")] = "zeroBC"
+  end
+  EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
+
   # need to communicate the final solution
   startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
 
@@ -112,7 +120,7 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) wher
   println("val2 = ", val2[1])
   println("diff = ", val - val2[1])
 
-  @test abs(val - val2[1]) < 1e-10  # test the entropy dissipation is the same,
+  @test abs(val - val2[1]) < 1e-8  # test the entropy dissipation is the same,
                                     # to the tolerance of the nonlinear solve
 
   saveSolutionToMesh(mesh, eqn.q_vec)
@@ -122,4 +130,4 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) wher
 end
 
 
-add_func1!(EulerTests, test_shockcapturing_parallel, [TAG_SHORTTEST]) 
+add_func1!(EulerTests, test_shockcapturing_parallel, [TAG_SHORTTEST, TAG_TMP]) 

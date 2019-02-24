@@ -1137,8 +1137,6 @@ function assembleInterfaceVisc(helper::_AssembleElementData,
   vals = helper.vals_i
 
   # do the square blocks
-
-  # LL and RL
   for _q=1:length(stencilL)
     qL = stencilL[_q]
     qR = stencilR[_q]
@@ -1234,7 +1232,6 @@ function assembleInterfaceVisc(helper::_AssembleElementData,
     end  # end q
   end  # end p
 
-
   # remaining on diagonal entries
   # This is only needed for shock capturing (elements where dLambda/dq != 0)
   idx = helper.idx
@@ -1247,7 +1244,7 @@ function assembleInterfaceVisc(helper::_AssembleElementData,
 
     # block indices (zero-based)
     for j=1:mesh.numDofPerNode
-      idy[j] = mesh.dofs[1, qL, elL]
+      idy[j] = mesh.dofs[j, qL, elL]
     end
 
     for _p=1:length(nonstencilL)

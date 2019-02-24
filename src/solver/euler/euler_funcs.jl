@@ -1872,19 +1872,21 @@ end  # end function
 """
   Calculate the maximum wave speed for a given state
 
-  Inputs:
-    params: a ParamType
-    qL: a vector of conservative variables at a node
-    dir: a direction vector, length 2 in 2D and 3 in 3D
+  **Inputs**
 
-  Outputs:
-    lambda_max: the maximum wave speed
+   * params: a ParamType
+   * qL: a vector of conservative variables at a node
+   * dir: a direction vector, length 2 in 2D and 3 in 3D
+
+  **Outputs**
+
+   * lambda_max: the maximum wave speed
 
   Aliasing restrictions: none
 """
 function getLambdaMax(params::ParamType{Tdim}, 
-    qL::AbstractVector{Tsol}, 
-    dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
+                      qL::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
 
   Tres = promote_type(Tsol, Tmsh)
   gamma = params.gamma
@@ -1907,6 +1909,39 @@ function getLambdaMax(params::ParamType{Tdim},
   return lambda_max
 end
 
+"""
+  Method to compute the max wave speed in the volume (ie not in any
+  particular direction: sqrt(u*u + w*w) + sqrt(gamma*p/rho)
+
+  **Inputs**
+
+   * params: ParamType
+   * qL; vector of conservative variables at a node
+
+  **Outputs**
+
+   * lambda_max
+"""
+function getLambdaMax(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}) where {Tsol, Tdim}
+
+
+  gamma = params.gamma
+  Un = zero(Tsol)
+  rhoLinv = 1/qL[1]
+
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    u_i = qL[i+1]*rhoLinv
+    Un += u_i*u_i
+  end
+
+  lambda_max = sqrt(Un) + aL
+
+  return lambda_max
+end
 
 
 

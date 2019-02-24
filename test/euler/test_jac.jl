@@ -281,17 +281,17 @@ function test_jac_terms_long()
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] =2  # was 2
-    opts_tmp["operator_type"] = "SBPGamma"
-    opts_tmp["order"] = 1
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["order"] = 2
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
     test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
     Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
     capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
-    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
-=#
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, use_sensor=false)
 
+=#
 
     
     # SBPGamma, Petsc Mat
@@ -427,18 +427,20 @@ function test_jac_terms_long()
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
 
+
     # test shock capturing schemes
     println("\ntesting shock capturing")
     shock_capturing_schemes = ["SBPParabolic"]
     for sc in shock_capturing_schemes
 
-      Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
+      Tsol = eltype(eqn4.q); Tres = eltype(eqn4.res)
 
       println("case4")
       capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh4,
                                                         sbp4, eqn4, opts4)
       test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
       test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+
 
       println("case5")
       capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh5,
@@ -463,6 +465,7 @@ function test_jac_terms_long()
                                                         sbp9, eqn9, opts9) 
       test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
       test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
+
     end
 
 
@@ -550,13 +553,12 @@ function test_jac_terms_long()
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
 
-
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -767,23 +769,34 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
 
 
   lambda_dot = zeros(qL)
+  lambda_dot3 = zeros(qL)
   EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+  EulerEquationMod.getLambdaMax_diff(params, qL, lambda_dot3)
 
   lambda_dot2 = zeros(qL)
+  lambda_dot4 = zeros(qL)
   h=1e-20
   pert = Complex128(0, h)
   for i=1:length(lambda_dot)
+    println("i = ", i)
     qL[i] += pert
     lambda_dot2[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    lambda_dot4[i] = imag(EulerEquationMod.getLambdaMax(params, qL))/h
     qL[i] -= pert
   end
 
+  println("lambda_dot4 = ", real(lambda_dot4))
+  println("lambda_dot3 = ", real(lambda_dot3))
   @test isapprox( norm(lambda_dot - lambda_dot2), 0.0) atol=1e-13
+  @test isapprox( norm(lambda_dot3 - lambda_dot4), 0.0) atol=1e-13
 
   # test accumulation behavior
   lambda_dot_orig = copy(lambda_dot)
+  lambda_dot3_orig = copy(lambda_dot3)
   EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+  EulerEquationMod.getLambdaMax_diff(params, qL, lambda_dot3)
   @test isapprox( norm(lambda_dot - lambda_dot_orig), 0.0) atol=1e-13
+  @test isapprox( norm(lambda_dot3 - lambda_dot3_orig), 0.0) atol=1e-13
 
   # revq
   qL_bar = zeros(qL)
@@ -2808,6 +2821,9 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
       capture::EulerEquationMod.AbstractFaceShockCapturing; use_sensor=true) where {Tsol, Tres}
 
   opts = copy(_opts)  # don't modify the original
+  opts["addVolumeIntegrals"] = false
+  opts["addFaceIntegrals"] = false
+  opts["addBoundaryIntegrals"] = false
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -2827,6 +2843,12 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
   end
   
   eqn.q .+= 0.1*rand(size(eqn.q))
+  eqn.shock_sensor = sensor
+  eqn.shock_capturing = capture
+
+  # set a boundary condition where getDirichletState depends on qface
+  opts["BC1_name"] = "noPenetrationBC"
+  EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
   # get explicitly computed linear operator
   opts["calc_jac_explicit"] = true
@@ -2835,7 +2857,6 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
 #  opts["preallocate_jacobian_coloring"] = true
   pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
 #  opts["preallocate_jacobian_coloring"] = val_orig
-  opts["addShockCapturing"] = false
 
   jac = getBaseLO(lo).A
   assembler = Jacobian._AssembleElementData(jac, mesh, sbp, eqn, opts)
@@ -2845,11 +2866,13 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
 
   # complex step
   q_dot = rand_realpart(size(eqn.q_vec))
-#  q_dot = zeros(size(eqn.q_vec))
-#  q_dot[1] = 1
-  q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-  array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
 
+  #q_dot = zeros(size(eqn.q_vec))
+  #q_dot[1] = 1
+  #q_dot[46] = 1
+#  q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
+#  array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
+#=
   eqn.q .+= pert*q_dot_arr
   fill!(eqn.res, 0)
 
@@ -2858,9 +2881,13 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
   eqn.q .-= pert*q_dot_arr
   array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
   res_dot = imag(eqn.res_vec)/h
+=#
+  res_dot = zeros(eqn.res_vec)
+  evaldRdqProduct(mesh, sbp, eqn, opts, q_dot, res_dot)
 
   # explictly compute jacobian
-  EulerEquationMod.applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
+#  EulerEquationMod.applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
+  evalJacobian(mesh, sbp, eqn, opts, assembler)
 
   assembly_begin(jac, MAT_FINAL_ASSEMBLY)
   assembly_end(jac, MAT_FINAL_ASSEMBLY)
@@ -2870,11 +2897,18 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
   t = 0.0
   ctx_residual = (evalResidual,)
   applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, q_dot, b)
+
+#  dofs1 = vec(mesh.dofs[:, :, 1])
+#  println("res_dot = ", real(res_dot))
+#  println("b = ", real(b))
+#  dofs5 = vec(mesh.dofs[:, :, 5])
 #  b = jac*q_dot
-  #println("diff = ", real(b - res_dot))
-  #println("\nb = ", real(b))
-  #println("\nres_dot = ", real(res_dot))
-  @test maximum(abs.(b - res_dot)) < 1e-13
+#  println("diff = ", real(b - res_dot))
+#  println("\nb = ", real(b))
+#  println("\nres_dot = ", real(res_dot))
+#  println("diff1 = \n", real(b[dofs1] - res_dot[dofs1]))
+#  println("diff5 = \n", real(b[dofs5] - res_dot[dofs5]))
+  @test maximum(abs.(b - res_dot)) < 1e-12
 
   #println("b = \n", real(b))
   #println("res_dot = \n", real(res_dot))

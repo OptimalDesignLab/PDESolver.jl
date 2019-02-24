@@ -183,6 +183,94 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   return nothing
 end
 
+"""
+  Applies the Dirichlet penalty matrix T_gammaD.
+
+  **Inputs**
+
+   * penalty: [`AbstractDiffusionPenalty`](@ref)
+   * sbp
+   * sbpface
+   * diffusion: [`AbstractDiffusion`](@ref)
+   * bndry: `Boundary` object
+   * delta_w: values to multiply the penalty against, `numDofPerNode` x
+              `numNodesPerFace`
+   * wL: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
+   * nrm_face: (scaled) normal vector at each face node, `dim` x
+               `numNodesPerFace`
+   * alpha: the alpha_gk parameter (Number)
+   * jacL: mapping jacobian determinant, `numNodesPerElement`
+
+  **Inputs/Outputs**
+
+   * res1L: `numDofPerNode` x `numNodesPerFace` array to overwrite with
+            the result
+
+"""
+function applyDirichletPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
+                      diffusion::AbstractDiffusion, bndry::Boundary,
+                      delta_w::AbstractMatrix{Tsol},
+                      wL::AbstractMatrix,
+                      nrm_face::AbstractMatrix,
+                      alpha::Number,
+                      jacL::AbstractVector,
+                      res1L::AbstractMatrix,
+                     ) where {Tsol, Tres}
+
+  fill!(res1L, 0)
+  numDofPerNode, numNodesPerFace = size(delta_w)
+  numNodesPerElement = length(jacL)
+  dim = size(nrm_face, 1)
+
+  @unpack penalty delta_w_n qL qR t1L t1R t2L t2R
+  fill!(qL, 0); fill!(qR, 0)
+
+  # multiply by normal vector, then R^T B
+  #alpha_g = 1/(dim + 1)  # = 1/number of faces of a simplex
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
+        delta_w_n[k, j] = delta_w[k, j]*nrm_face[d1, j]
+      end
+    end
+    
+    qL_d = sview(qL, :, :, d1); qR_d = sview(qR, :, :, d1)
+    boundaryFaceIntegrate!(sbpface, bndry.face, delta_w_n, qL_d)
+  end
+
+  # apply Lambda matrix
+  applyDiffusionTensor(diffusion, wL, bndry.element, sbpface, bndry.face,
+                       qL, t1L)
+
+  # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerElement
+      facL = (1/alpha)*jacL[j]/sbp.w[j]
+      #facL = (3)*jacL[j]/sbp.w[j]
+      #facR = (3)*jacR[j]/sbp.w[j]
+
+      @simd for k=1:numDofPerNode
+        t1L[k, j, d1] *= facL
+      end
+    end
+
+    #TODO: make t2L 2D rather than 3D
+    t1L_d = ro_sview(t1L, :, :, d1)
+    t2L_d = sview(t2L, :, :, d1)
+    boundaryFaceInterpolate!(sbpface, bndry.face, t1L_d, t2L_d)
+
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
+        val = sbpface.wface[j]*nrm_face[d1, j]*t2L_d[k, j]
+        res1L[k, j] += val
+      end
+    end
+
+  end  # end d1
+
+  return nothing
+end
+
 
 """
   Differentiated version of BR2 penalty
@@ -387,3 +475,111 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
 end
 
 
+
+"""
+  Differentiated version of BR2 penalty
+"""
+function applyDirichletPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp,
+                      sbpface, diffusion::AbstractDiffusion, bndry::Boundary,
+                      delta_w::AbstractMatrix{Tsol},
+                      delta_w_dot::Abstract4DArray,
+                      wL::AbstractMatrix, nrm_face::AbstractMatrix,
+                      alpha::Number, jacL::AbstractVector,
+                      res_dot::Abstract4DArray,
+                     ) where {Tsol, Tres}
+
+  numDofPerNode, numNodesPerFace = size(delta_w)
+  numNodesPerElement = length(jacL)
+  dim = size(nrm_face, 1)
+  add = SummationByParts.Add()
+
+  # nodes in the stencil of R
+  nodesL = sview(sbpface.perm, :, bndry.face)
+
+  # the first L/R indicates if this is element kappa or nu
+  # the second L/R indices if the derivative is wrt qL or qR
+  @unpack penalty delta_w_n qL t1_dotL t2LL t3LL
+  t4LL = t1_dotL
+
+  fill!(qL, 0);
+
+  # compute primal quantity needed later
+  # multiply by normal vector, then R^T B
+  #alpha_g = 1/(dim + 1)  # = 1/number of faces of a simplex
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
+        delta_w_n[k, j] = delta_w[k, j]*nrm_face[d1, j]
+      end
+    end
+    
+    qL_d = sview(qL, :, :, d1)
+    boundaryFaceIntegrate!(sbpface, bndry.face, delta_w_n, qL_d)
+  end
+
+  # compute derivative quantity
+  # apply B and [Nx, Ny]
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerFace
+      @simd for d=1:dim
+        fac = sbpface.wface[p]*nrm_face[d, p]
+        @simd for j=1:numDofPerNode
+          @simd for i=1:numDofPerNode
+            t1_dotL[i, j, d, p, q] = fac*delta_w_dot[i, j, p, q]
+          end
+        end
+      end
+    end
+  end
+
+  # interpolate back to volume nodes
+  fill!(t2LL, 0)
+  boundaryFaceIntegrate_jac!(sbpface, bndry.face, t1_dotL, t2LL, include_quadrature=false)
+
+  # apply diffusion tensor
+  applyDiffusionTensor_diff(diffusion, wL, bndry.element, sbpface,
+                            bndry.face, qL, t2LL, t3LL)
+
+  # apply inverse mass matrix (only nodes needed for interpolation later)
+  @simd for q=1:numNodesPerElement
+    # elementL
+    @simd for p in nodesL
+      facL = (1/alpha)*jacL[p]/sbp.w[p]
+      @simd for d=1:dim
+        @simd for j=1:numDofPerNode
+          @simd for i=1:numDofPerNode
+            t3LL[i, j, d, p, q] *= facL
+          end
+        end
+      end
+    end
+  end  # end q
+
+
+  # interpolate back to the face
+  fill!(t4LL, 0)
+  boundaryFaceInterpolate_jac!(sbpface, bndry.face, t3LL, t4LL)
+
+  # apply B * [Nx, Ny] and sum
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerFace
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
+          res_dot[i, j, p, q] = 0
+        end
+      end
+
+      @simd for d=1:dim
+        fac = sbpface.wface[p]*nrm_face[d, p]
+        @simd for j=1:numDofPerNode
+          @simd for i=1:numDofPerNode
+            res_dot[i, j, p, q] +=  fac*t4LL[i, j, d, p, q]
+          end
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+ 

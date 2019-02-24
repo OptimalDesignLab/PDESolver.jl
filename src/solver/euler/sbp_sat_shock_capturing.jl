@@ -10,14 +10,18 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
-               capture.convert_entropy, capture.diffusion)
+               capture.entropy_vars, capture.diffusion)
 
   computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  computeBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  if shockmesh.isNeumann
+    computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  else
+    computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  end
 
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
@@ -44,13 +48,12 @@ end
    * opts
    * capture: [`SBPParabolicSC`](@ref)
    * shockmesh: the `ShockedElements`
-   * convert_entropy: function that converts conservative variables to
-                      entropy variables.  Signature must be
-      `convert_entropy(params::ParamType, q::AbstractVector, w::AbstractVector)`
+   * entropy_vars: an [`AbstractVariables`](@ref) object
    * diffusion: an [`AbstractDiffusion`](@ref)
 """
 function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
-                      shockmesh::ShockedElements, convert_entropy,
+                      shockmesh::ShockedElements,
+                      entropy_vars::AbstractVariables,
                       diffusion::AbstractDiffusion,
                      ) where {Tsol, Tres}
 
@@ -66,7 +69,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
       w_j = sview(capture.w_el, :, j, i)
 
       # convert to entropy variables
-      convert_entropy(eqn.params, q_j, w_j)
+      convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
     end
 
     # apply D operator
@@ -88,7 +91,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
     @simd for j=1:mesh.numNodesPerElement
       q_j = ro_sview(eqn.q, :, j, i_full)
       w_j = sview(capture.w_el, :, j, i)
-      convert_entropy(eqn.params, q_j, w_j)
+      convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
     end
 
     gradw_i = sview(capture.grad_w, :, :, :, i)
@@ -108,7 +111,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
       for j=1:mesh.numNodesPerElement
         q_j = ro_sview(data.q_recv, :, j, i_full)
         w_j = sview(capture.w_el, :, j, i)
-        convert_entropy(eqn.params, q_j, w_j)
+        convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
       end
 
       # compute diffusion tensor
@@ -338,10 +341,8 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
                                    t1L, t1R)
 
       # apply Dgk^T and Dgn^T
-      #TODO: could write a specialized version of this to only do element kappa
       applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion,
-                        t2L, t2R, wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR,
-                        resL, resR, op)
+                        t2L, wL, nrm_face, dxidxL, jacL, resL, op)
     end  # end i
   end  # end peer
 
@@ -367,7 +368,7 @@ end
    * capture: an [`SBPParabolic`](@ref) object
    * shockmesh
 """
-function computeBoundaryTerm(mesh, sbp, eqn, opts,
+function computeNeumannBoundaryTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements,
                       ) where {Tsol, Tres}
@@ -408,8 +409,81 @@ function computeBoundaryTerm(mesh, sbp, eqn, opts,
   return nothing
 end
 
+"""
+  Computes a Dirichlet BC that is consistent with the inviscid one
+"""
+function computeDirichletBoundaryTerm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicSC{Tsol, Tres},
+                      shockmesh::ShockedElements,
+                      ) where {Tsol, Tres}
+
+  for i=1:mesh.numBC
+    bc_range = (shockmesh.bndry_offsets[i]:(shockmesh.bndry_offsets[i+1]-1))
+    bc_func = mesh.bndry_funcs[i]
+
+    calcBoundaryFlux(mesh, sbp, eqn, opts, shockmesh, capture,
+                     capture.penalty, capture.diffusion, 
+                     capture.entropy_vars, bc_func, bc_range)
+  end
+
+  return nothing
+end
+
+function calcBoundaryFlux(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
+                      shockmesh::ShockedElements,
+                      capture::SBPParabolicSC{Tsol, Tres},
+                      penalty::AbstractDiffusionPenalty,
+                      diffusion::AbstractDiffusion,
+                      entropy_vars::AbstractVariables, bc_func::BCType,
+                      bc_range::AbstractVector,
+                      ) where {Tsol, Tres}
 
 
+  delta_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  op = SummationByParts.Subtract()
+
+  for i in bc_range
+    bndry_i = shockmesh.bndryfaces[i].bndry
+    idx_orig = shockmesh.bndryfaces[i].idx_orig
+    elnum_orig = shockmesh.elnums_all[bndry_i.element]
+
+    w_i = ro_sview(capture.w_el, :, :, bndry_i.element)
+    q_i = ro_sview(eqn.q, :, :, elnum_orig)
+    coords_i = ro_sview(mesh.coords_bndry, :, :, idx_orig)
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+    alpha = capture.alpha_b[i]
+    dxidxL = ro_sview(mesh.dxidx, :, :, :, elnum_orig)
+    jacL = ro_sview(mesh.jac, :, elnum_orig)
+    res_i = sview(eqn.res, :, :, elnum_orig)
+
+    computeDirichletDelta(capture, eqn.params, mesh.sbpface, bndry_i,
+                          bc_func, entropy_vars, w_i, q_i, coords_i,
+                          nrm_i, delta_w)
+
+    applyDirichletPenalty(penalty, sbp, mesh.sbpface, diffusion,
+                          bndry_i, delta_w, w_i, nrm_i, alpha, jacL,
+                          res1)
+
+    # apply R^T to T_D * delta_w
+    scale!(res1, -1)  # SAT has a - sign in front of it
+
+    boundaryFaceInterpolate_rev!(mesh.sbpface, bndry_i.face, res_i, res1)
+
+    # apply B and then Dgk^T to delta_w
+    for j=1:mesh.numNodesPerFace
+      for i=1:mesh.numDofPerNode
+        delta_w[i, j] *= -mesh.sbpface.wface[j]
+      end
+    end
+
+    applyDgkTranspose(capture, sbp, mesh.sbpface, bndry_i, diffusion,
+                      delta_w, w_i, nrm_i, dxidxL, jacL, res_i, op)
+
+  end
+
+  return nothing
+end
 
 
 """
@@ -475,10 +549,93 @@ function getFaceVariables(capture::SBPParabolicSC{Tsol, Tres},
 end
 
 
+"""
+  Computes the difference between the solution at the face and the
+  prescribed Dirichlet boundary condition.  Specifically, computes the
+  difference between the entropy variables interpolated to the face
+  and the Dirichlet state computed from the interpolated conservative
+  variables (for consistency with the inviscid BC).
+
+  This only works for boundary conditions that define `getDirichletState`.
+
+  **Inputs**
+
+   * capture
+   * params
+   * sbpface
+   * bndry: `Boundary` object
+   * bndry_node: `BoundaryNode` object
+   * func: `BCType` for this boundary condition
+   * entropy_vars: an [`AbstractVariables`](@ref) 
+   * wL: entropy variables for the element, `numDofPerNode` x
+         `numNodesPerElement`
+   * qL: conservative variables for the element, same size as `wL`
+   * coords: `dim` x `numNodesPerFace` array containing the xyz coordinates
+             of the face nodes
+   * nrm_face: `dim` x `numNodesPerFace` containing the normal vector at the
+               face nodes (can be scaled or unscaled, `getDirichletState`
+               should not care).
+   
+  **Inputs/Outputs**
+
+   * delta_w: array to be overwritten with the result. `numDofPerNode` x
+              `numNodesPerFace`
+"""
+function computeDirichletDelta(capture::SBPParabolicSC{Tsol, Tres},
+                               params::ParamType,
+                               sbpface::AbstractFace, bndry::Boundary,
+                               func::BCType, entropy_vars::AbstractVariables,
+                               wL::AbstractMatrix, qL::AbstractMatrix,
+                               coords::AbstractMatrix, nrm_face::AbstractMatrix,
+                               delta_w::AbstractMatrix
+                              ) where {Tsol, Tres}
+
+  numDofPerNode, numNodesPerFace = size(delta_w)
+  numNodesPerElement = size(wL, 2)
+
+  #TODO: maybe interpolating the conservative variables and then converting
+  #      would be more consistent, but Eq. 31 requires the same interpolation
+  #      Rgk * w for both the interface and the boundary term.
+  #      For the boundary state qg we have more leeway because it is zero
+  #      for the energy stability analysis (-> entropy stability when u = w)
+  wface = zeros(Tsol, numDofPerNode, numNodesPerFace)
+  boundaryFaceInterpolate!(sbpface, bndry.face, wL, wface)
+
+  qface = zeros(Tsol, numDofPerNode, numNodesPerFace)
+  qgface = zeros(Tres, numDofPerNode)
+  wgface = zeros(Tres, numDofPerNode)
+  aux_vars = Tres[]
+
+  # the inviscid boundary conditions interpolate q to the face and then
+  # compute qg, so do that here as well for consistency
+  boundaryFaceInterpolate!(sbpface, bndry.face, qL, qface)
+  for i=1:numNodesPerFace
+    q_i = sview(qface, :, i)
+    coords_i = sview(coords, :, i)
+    nrm_i = sview(nrm_face, :, i)
+
+    getDirichletState(func, params, q_i, aux_vars, coords_i, nrm_i, qgface)
+
+    convertToEntropy(entropy_vars, params, qgface, wgface)
+#    fill!(wgface, 0)  #TODO: undo this
+#    println("wgface = ", wgface)
+
+    # compute the delta
+    for j=1:numDofPerNode
+      delta_w[j, i] = wface[j, i] - wgface[j]  
+    end
+  end
+
+  return nothing
+end
+
+
+
+
 
 
 """
-  This function applies Dgk^T and Dgn^T.
+  This function applies Dgk^T * t2L and Dgn^T * t2R.
 
   **Inputs**
 
@@ -553,6 +710,47 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
   return nothing
 end
 
+"""
+  Method to apply Dgk^T * t2L only.
+"""
+function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
+                           sbpface, bndry::Union{Interface, Boundary},
+                           diffusion::AbstractDiffusion,
+                           t2L::AbstractMatrix,
+                           wL::AbstractMatrix,
+                           nrm_face::AbstractMatrix,
+                           dxidxL::Abstract3DArray,
+                           jacL::AbstractVector,
+                           resL::AbstractMatrix,
+                           op::SummationByParts.UnaryFunctor=SummationByParts.Add()) where {Tsol, Tres}
+
+  dim, numNodesPerFace = size(nrm_face)
+  numNodesPerElement = size(resL, 2)
+  numDofPerNode = size(wL, 1)
+
+  @unpack capture temp1L temp2L temp3L work
+  fill!(temp2L, 0)
+
+  # apply N and R^T
+  @simd for d=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
+        temp1L[k, j] =  nrm_face[d, j]*t2L[k, j]
+      end
+    end
+
+    tmp2L = sview(temp2L, :, :, d);
+    boundaryFaceInterpolate_rev!(sbpface, getFaceL(bndry), tmp2L, temp1L)
+  end
+
+  # multiply by D^T Lambda
+  applyDiffusionTensor(diffusion, wL, getElementL(bndry), temp2L, temp3L)
+
+  applyDxTransposed(sbp, temp3L, dxidxL, jacL, work, resL, op)
+
+  return nothing
+end
+
 
 
 #------------------------------------------------------------------------------
@@ -573,11 +771,19 @@ function computeAlpha(capture::SBPParabolicSC, mesh::AbstractMesh,
 
   # I think the alpha_gk parameter should be 0 for faces on the Neumann boundary
   # Count the number of faces each element has in the mesh to compute alpha_gk
-  # such that is sums to 1.
+  # such that it sums to 1.
   if size(capture.alpha, 2) < shockmesh.numInterfaces
     capture.alpha = zeros(2, shockmesh.numInterfaces)
   else
     fill!(capture.alpha, 0)
+  end
+
+  if !shockmesh.isNeumann
+    if length(capture.alpha_b) < shockmesh.numBoundaryFaces
+      capture.alpha_b = zeros(shockmesh.numBoundaryFaces)
+    else
+      fill!(capture.alpha_b, 0)
+    end
   end
 
   oldsize = length(capture.alpha_parallel)
@@ -600,6 +806,13 @@ function computeAlpha(capture::SBPParabolicSC, mesh::AbstractMesh,
     el_counts[iface_i.elementR] += 1
   end
 
+  if !shockmesh.isNeumann
+    for i=1:shockmesh.numBoundaryFaces
+      bndry_i = shockmesh.bndryfaces[i].bndry
+      el_counts[bndry_i.element] += 1
+    end
+  end
+
   for peer=1:shockmesh.npeers
     for i=1:shockmesh.numSharedInterfaces[peer]
       iface_i = shockmesh.shared_interfaces[peer][i].iface
@@ -619,6 +832,13 @@ function computeAlpha(capture::SBPParabolicSC, mesh::AbstractMesh,
     iface_i = shockmesh.ifaces[i].iface
     capture.alpha[1, i] = 1/el_counts[iface_i.elementL]
     capture.alpha[2, i] = 1/el_counts[iface_i.elementR]
+  end
+
+  if !shockmesh.isNeumann
+    for i=1:shockmesh.numBoundaryFaces
+      bndry_i = shockmesh.bndryfaces[i].bndry
+      capture.alpha_b[i] = 1/el_counts[bndry_i.element]
+    end
   end
 
   for peer=1:shockmesh.npeers
@@ -664,6 +884,7 @@ function sendAlphas(comm::AlphaComm, shockmesh::ShockedElements,
 
   # send
   for peer=1:shockmesh.npeers
+    println("Sending alphas to process ", comm.peer_parts_red[peer]); flush(STDOUT)
     # pack the buffer
     for j=1:shockmesh.numSharedInterfaces[peer]
       iface_i = shockmesh.shared_interfaces[peer][j].iface
@@ -697,8 +918,10 @@ end
 """
 function receiveAlpha(capture::SBPParabolicSC, shockmesh::ShockedElements)
 
+  println("receiving alphas"); flush(STDOUT)
   peer = Waitany!(capture.alpha_comm)
   comm = capture.alpha_comm
+  println("received alphas from process ", capture.alpha_comm.peer_parts_red[peer]); flush(STDOUT)
 
   # unpack buffer and calculate alpha
   for j=1:shockmesh.numSharedInterfaces[peer]

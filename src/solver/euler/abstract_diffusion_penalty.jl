@@ -21,6 +21,13 @@
                ) where {Tsol, Tres}
 
 
+  function applyDirichletPenalty(penalty::AbstractDiffusionPenalty, 
+                      sbp, sbpface,diffusion::AbstractDiffusion,
+                      bndry::Boundary, delta_w::AbstractMatrix
+                      wL::AbstractMatrix, nrm_face::AbstractMatrix,
+                      alpha::Number, jacL::AbstractVector,
+                      res1L::AbstractMatrix)
+
   ```
   specializing the `penalty` argument.  See the docstrings for these
   functions for details.
@@ -149,6 +156,44 @@ function applyPenalty_diff(penalty::AbstractDiffusion, sbp, sbpface,
 
 
   error("generic fallback for applyPenalty_diff() reached: did you forget to extend it with a new method for your AbstractDiffusionPenalty?")
+end
+
+"""
+  Applies the Dirichlet penalty matrix T_gammaD.
+
+  **Inputs**
+
+   * penalty: [`AbstractDiffusionPenalty`](@ref)
+   * sbp
+   * sbpface
+   * diffusion: [`AbstractDiffusion`](@ref)
+   * bndry: `Boundary` object
+   * delta_w: values to multiply the penalty against, `numDofPerNode` x
+              `numNodesPerFace`
+   * wL: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
+   * nrm_face: (scaled) normal vector at each face node, `dim` x
+               `numNodesPerFace`
+   * alpha: the alpha_gk parameter (Number)
+   * jacL: mapping jacobian determinant, `numNodesPerElement`
+
+  **Inputs/Outputs**
+
+   * res1L: `numDofPerNode` x `numNodesPerFace` array to overwrite with
+            the result
+
+"""
+function applyDirichletPenalty(penalty::AbstractDiffusionPenalty, sbp, sbpface,
+                      diffusion::AbstractDiffusion, bndry::Boundary,
+                      delta_w::AbstractMatrix,
+                      wL::AbstractMatrix,
+                      nrm_face::AbstractMatrix,
+                      alpha::Number,
+                      jacL::AbstractVector,
+                      res1L::AbstractMatrix)
+
+
+  error("generic fallback for applDirichletPenalty() reached: did you forget to extend it with a new method for your AbstractDiffusionPenalty?")
+
 end
 
 

@@ -504,7 +504,10 @@ end
 @makeIC SedovExplosion """
   Initial for Sedov Explosion
 """
- 
+
+@makeIC LaplaceSolution """
+  IC for testing shock capturing diffusion terms
+"""
 
 # declare a const dictionary here that maps strings to function (used for input arguments)
 """
@@ -555,6 +558,7 @@ global const ICDict = Dict{Any, Function}(
 "ICSquare1D" => ICSquare1D,
 "ICSquare2D" => ICSquare2D,
 "ICSedovExplosion" => ICSedovExplosion,
+"ICLaplace" => ICLaplaceSolution,
 )
 
 

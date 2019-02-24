@@ -8,15 +8,11 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   # shockmesh should be updated before this function is called
   #TODO: need to get entropy variables conversion function from somewhere
 
-  convert_func = capture.convert_entropy
+  entropy_vars = capture.entropy_vars
   flux = capture.flux
   diffusion = capture.diffusion
-  #=
-  convert_func = convertToIR_
-  flux = LDG_ESFlux()
-  diffusion = ShockDiffusion(shockmesh.ee)
-  =#
-  computeEntropyVariables(mesh, eqn, capture, shockmesh, convert_func)
+
+  computeEntropyVariables(mesh, eqn, capture, shockmesh, entropy_vars)
 
   computeThetaVolumeContribution(mesh, sbp, eqn, opts, capture, shockmesh)
   #TODO: need to get flux_func from somewhere
@@ -50,14 +46,15 @@ end
 """
 function computeEntropyVariables(mesh, eqn, capture::LDGShockCapturing{Tsol, Tres},
                                  shockmesh::ShockedElements,
-                                 convert_func) where {Tsol, Tres}
+                                 entropy_vars::AbstractVariables
+                                ) where {Tsol, Tres}
 
   @simd for i=1:shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
       q_i = sview(eqn.q, :, j, i_full)
       w_i = sview(capture.w_el, :, j, i)
-      convert_func(eqn.params, q_i, w_i)
+      convertToEntropy(entropy_vars, eqn.params, q_i, w_i)
     end
   end
 

@@ -27,12 +27,13 @@
    * is_const: true if the derivative of ee wrt q is zero.  This is useful
                for skipping terms in the jacobian calculation
 """
-function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
+function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorPP,
                       q::AbstractMatrix{Tsol},
                       jac::AbstractVector{Tmsh},
                       Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres}
+                      ee_jac::AbstractMatrix{Tres}
+                     ) where {Tsol, Tmsh, Tres, Tdim}
 # computes the Jacobian of Se and ee wrt q. Does not take in q_dot because
 # that would be way more expensive
 # Se_jac and ee_jac are overwritten
@@ -40,7 +41,7 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
 # case).
 
   numDofPerNode, numNodesPerElement = size(q)
-  @unpack sensor up up_tilde up1_tilde s0 kappa e0 num_dot den_dot
+  @unpack sensor up up_tilde up1_tilde s0 kappa e0 num_dot den_dot ee_dot lambda_max_dot
   fill!(num_dot, 0); fill!(den_dot, 0)
 
   @simd for i=1:numNodesPerElement
@@ -90,24 +91,50 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
 
   se = log10(Se)
   eejac_zero = true
+  ee_dot = zeros(Tres, numNodesPerElement)
   
   if se < s0 - kappa
     ee = zero(Tres)
-    fill!(ee_jac, 0)
+    fill!(ee_dot, 0)
   elseif se > s0 - kappa && se < s0 + kappa
     ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
 
     # derivative of ee wrt Se (not se)
     fac3 = 0.5*e0*cospi( (se - s0)/(2*kappa) ) * (Float64(pi)/(2*kappa*log(10)*Se))
-    fill!(ee_jac, 0)
+    fill!(ee_dot, 0)
     @simd for i=1:numNodesPerElement
-      ee_jac[1, i] = fac3*Se_jac[1, i]
+      ee_dot[i] = fac3*Se_jac[1, i]
     end
     eejac_zero = false
   else
     ee = Tres(e0)
-    fill!(ee_jac, 0)
+    fill!(ee_dot, 0)
+    eejac_zero = false
   end
+
+  # multiply by lambda_max * h/p to get subcell resolution
+  lambda_max = zero(Tsol)
+  lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max_dot_i = sview(lambda_max_dot, :, i)
+    lambda_max += getLambdaMax_diff(params, q_i, lambda_max_dot_i)
+    h_avg += jac[i]*sbp.w[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  scale!(lambda_max_dot, 1/numNodesPerElement)
+  h_avg = h_avg^(1/Tdim)
+
+  fill!(ee_jac, 0)
+  for i=1:numNodesPerElement
+    ee_jac[1, i] = lambda_max*h_avg*ee_dot[i]/sbp.degree
+    for j=1:numDofPerNode
+      ee_jac[j, i] += lambda_max_dot[j, i]*ee*h_avg/sbp.degree
+    end
+  end
+  ee *= lambda_max*h_avg/sbp.degree
 
   return Se, ee, eejac_zero
 end

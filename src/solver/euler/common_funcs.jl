@@ -1149,4 +1149,19 @@ function calcInvChannelFreeStream(params::ParamType2,
   return nothing
 end
 
+"""
+  Used for testing shock capturing scheme
+"""
+function calcLaplaceSolution(params::ParamType,
+                         coords::AbstractArray{Tmsh,1},
+                         q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
+  x = coords[1]; y = coords[2]
+  val = x*x*x + y*y*y
+  val = sin(x)*sin(2*y)
+  for i=1:length(q)
+    q[i] = val + i
+  end
+
+  return nothing
+end

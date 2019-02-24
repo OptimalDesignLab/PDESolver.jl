@@ -1,5 +1,6 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
 
+include("conversion_interface.jl")
 include("flux_types.jl")
 include("abstract_diffusion.jl")
 include("abstract_diffusion_penalty.jl")

@@ -108,11 +108,13 @@ mutable struct ShockedElements{Tres}
                              # processes
 
   numEl::Int  # total number of elements
+  isNeumann::Bool  # if true, boundary is Neumann, else Dirichlet
 
   # useful ranges for iterating
   local_els::UnitRange{Int}
   neighbor_els::UnitRange{Int}
   shared_els::Vector{UnitRange{Int}}
+  bndry_offsets::Vector{Int}
 
 
   # internal state used for push operations
@@ -148,9 +150,11 @@ mutable struct ShockedElements{Tres}
     npeers = 0
     peer_indices = Vector{Int}(0)
     numEl = 0
+    isNeumann = true
     local_els = 0:0
     neighbor_els = 0:0
     shared_els = Vector{UnitRange{Int}}(0)
+    bndry_offsets = Vector{Int}(length(mesh.bndry_offsets))
 
     idx_all = 1
     sz_all = size_guess
@@ -165,8 +169,8 @@ mutable struct ShockedElements{Tres}
                ifaces, bndryfaces, shared_interfaces, numShock,
                numNeighbor, numShared,
                numInterfaces, numSharedInterfaces, numBoundaryFaces, npeers,
-               peer_indices, numEl,
-               local_els, neighbor_els, shared_els,
+               peer_indices, numEl, isNeumann,
+               local_els, neighbor_els, shared_els, bndry_offsets,
                idx_all, sz_all, idx_if, sz_if, idx_sf, sz_sf, idx_b, sz_b)
   end
 end
