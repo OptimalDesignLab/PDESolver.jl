@@ -273,7 +273,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     
     # extract real component to res_0
     for j=1:m
-      res_0[i] = real(rhs_vec[i])         # not ok to remove call to real(). This is the reason for the CSR method
+      res_0[j] = real(rhs_vec[j])         # not ok to remove call to real(). This is the reason for the CSR method
     end
 
     writeFiles(newton_data, mesh, sbp, eqn, opts)
