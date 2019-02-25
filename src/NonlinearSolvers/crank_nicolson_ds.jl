@@ -252,7 +252,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   for i = istart:(t_steps + 1)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if opts["perturb_Ma"]
+    if opts["perturb_Ma_CN"]
       quad_weight = calcQuadWeight(i, dt, finaliter)
 
       for j = 1:length(eqn.q_vec)                 # store imaginary part of q_vec
@@ -260,7 +260,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Shouldn't need to remove the imaginary component here - PETSc call only takes in the real part
       end
 
-    end   # end if opts["perturb_Ma"]
+    end   # end if opts["perturb_Ma_CN"]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     t = (i-2)*h
@@ -625,7 +625,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # Start direct sensitivity calc's after time step loop    3333
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      if opts["perturb_Ma"]
+      if opts["perturb_Ma_CN"]
 
         @mpi_master if opts["stabilize_v"]
           close(f_stabilize_v)
@@ -633,11 +633,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         @mpi_master close(f_drag)
 
+        #=
         @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
-        @mpi_master println(" Ma_pert: ", Ma_pert)
-        eqn.params.Ma -= Ma_pert      # need to remove perturbation now
+        @mpi_master println(" Ma_pert: ", Ma_pert_mag)
+        eqn.params.Ma -= Ma_pert_mag      # need to remove perturbation now
         @mpi_master println(" pert removed from Ma")
         @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
+        =#
 
         finaliter = calcFinalIter(t_steps, itermax)
         Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter)   # will use eqn.params.Ma
@@ -660,7 +662,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(" total dCd/dM: ", total_dCddM)
         end
 
-      end   # end if opts["perturb_Ma"]
+      end   # end if opts["perturb_Ma_CN"]
 
       @mpi_master begin
         f_Ma = open("Ma.dat", "w")
@@ -672,11 +674,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         println(" ")
         println(" run parameters that were used:")
-        if opts["perturb_Ma"]
-          println("    Ma: ", eqn.params.Ma + Ma_pert)
-        else
+        # if opts["perturb_Ma_CN"]
+          # println("    Ma: ", eqn.params.Ma + Ma_pert_mag)
+        # else
           println("    Ma: ", eqn.params.Ma)
-        end
+        # end
         println("    aoa: ", eqn.params.aoa)
         println("    dt: ", dt)
         println("    a_inf: ", eqn.params.a_free)
