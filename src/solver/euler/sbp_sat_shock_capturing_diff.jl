@@ -60,6 +60,7 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
   # if dim was the last dimension of t1_dot, we could re-use it, but instead
   # we have to use a 3rd array
   res_jac = eqn.params.calc_volume_integrals_data.res_jac
+  #op = SummationByParts.Subtract()
 
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
@@ -91,6 +92,7 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
     applyDiffusionTensor_diff(diffusion, w_i, i, gradq_i, t1_dot, t2_dot)
 
     # apply Qx and sum
+    
     if eqn.params.use_Minv != 1
       @simd for d=1:mesh.dim
         @simd for j=1:mesh.numNodesPerElement
@@ -100,6 +102,7 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
         end
       end
     end
+    
     applyOperatorJac(Dx, t2_dot, res_jac)
 
     assembleElement(assembler, mesh, i_full, res_jac)

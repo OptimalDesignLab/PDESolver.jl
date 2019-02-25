@@ -49,10 +49,12 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   end
 
   # for getFiltered solution, the matrix itself is the Jacobian
-  getFilteredSolution(params, sensor.Vp, up, up_tilde)
-  getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
+  getFilteredSolutions(params, sensor.Vp, up, up_tilde, up1_tilde)
+#  getFilteredSolution(params, sensor.Vp, up, up_tilde)
+#  getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
   up_tilde_dotT = sensor.Vp.filtT  # use transposed because of memory order
-  up1_tilde_dotT = sensor.Vp1.filtT
+  #up1_tilde_dotT = sensor.Vp1.filtT
+  up1_tilde_dotT = sensor.Vp1.filt1T
 
   # compute the inner product
   num = zero(Tres)

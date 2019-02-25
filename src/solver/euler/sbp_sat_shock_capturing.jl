@@ -9,20 +9,25 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              capture::SBPParabolicSC{Tsol, Tres},
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
+  println("initially, residual norm = ", calcNorm(eqn, eqn.res))
+
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.entropy_vars, capture.diffusion)
 
   computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
+  println("after volume term, residual norm = ", calcNorm(eqn, eqn.res))
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
+  println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
   if shockmesh.isNeumann
     computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   else
     computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   end
 
+  println("after boundary term, residual norm = ", calcNorm(eqn, eqn.res))
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
 
@@ -166,6 +171,7 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
   # not replaced by -Qx^T + Ex.  The entire discretization should be
   # entropy-stable however.
   work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  #op = SummationByParts.Subtract()
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
 

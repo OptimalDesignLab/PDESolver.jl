@@ -52,6 +52,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   # elements with the shock in it.
   shockmesh = eqn.params.shockmesh
   reset(shockmesh)
+  numEl_shock = 0
   for i=1:mesh.numEl
     q_i = ro_sview(eqn.q, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
@@ -59,11 +60,15 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
     if ee > 0
       # push to shockmesh
+      println("element ", i, " viscoscity = ", ee)
+      numEl_shock += 1
       push!(shockmesh, i, ee)
     end
   end
 
+  println("counted ", numEl_shock, " elements with nonzero viscoscity")
   completeShockElements(mesh, shockmesh)
+  @assert shockmesh.numShock == numEl_shock
 
   # compute the shock viscoscity for shared elements
   for peer=1:shockmesh.npeers
@@ -193,6 +198,7 @@ function writeShockSensorField(mesh, sbp, eqn, opts, sensor::AbstractShockSensor
   end
 
   vals = zeros(Float64, 2)
+  numEl_shock = 0
   for i=1:mesh.numEl
     q_i = sview(eqn.q, :, :, i)
     jac_i = sview(mesh.jac, :, i)
@@ -201,7 +207,12 @@ function writeShockSensorField(mesh, sbp, eqn, opts, sensor::AbstractShockSensor
     vals[1] = Se
     vals[2] = ee
     apf.setComponents(f_ptr, mesh.elements[i], 0, vals)
+    if ee > 0
+      numEl_shock += 1
+    end
   end
+
+  println("wrote shock field with ", numEl_shock, " elements with non-zero viscoscity")
 
   return nothing
 end

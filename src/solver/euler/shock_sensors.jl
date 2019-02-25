@@ -40,8 +40,9 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
     up[i] = q[1, i]
   end
 
-  getFilteredSolution(params, sensor.Vp, up, up_tilde)
-  getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
+  getFilteredSolutions(params, sensor.Vp, up, up_tilde, up1_tilde)
+  #getFilteredSolution(params, sensor.Vp, up, up_tilde)
+  #getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
 
   # compute the inner product
   num = zero(Tres)
@@ -117,6 +118,34 @@ function getFilteredSolution(params::ParamType, vand::VandermondeData,
   return nothing
 end
 
+"""
+  Computed the two filtered solutions required by the shock sensor (well, only
+  one of them is required, the other one may or may not be useful)
+
+  **Inputs**
+
+   * params
+   * vand: `VandermondeData`
+   * u_nodal: `numDofPerNode` x `numNodesPerElement` nodal solution
+
+  **Inputs/Outputs**
+
+   * u_filt1: The result of `u = Vp*pinv(Vp)*u_nodal`  This projects the
+              solution onto the orthogonal basis and then projects it back.
+              This may or may not be useful
+   * u_filt2: The result of projecting `u` onto the orthgonal basis and then
+              projecting all but the highest mode(s) back to a nodal back to
+              the nodal basis
+"""
+function getFilteredSolutions(params::ParamType, vand::VandermondeData,
+                              u_nodal, u_filt1, u_filt2)
+
+
+  smallmatvec!(vand.filt, u_nodal, u_filt1)
+  smallmatvec!(vand.filt1, u_nodal, u_filt2)
+
+  return nothing
+end
 
 #------------------------------------------------------------------------------
 # ShockSensorNone

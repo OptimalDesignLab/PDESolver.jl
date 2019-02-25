@@ -9,21 +9,38 @@
 """
 struct VandermondeData
   degree::Int
+  nmodes::Int # number of modes
+  nmodes1::Int  # number of modes in degree - 1 basis
   Vp::Matrix{Float64}  # Vandermonde matrix for degree p
   Vpinv::Matrix{Float64}  # pseudo-inverse of Vp
-  filt::Matrix{Float64}  # V*Vp (u_modal = Vp*u, u_filtered = V*u_modal)
+  filt::Matrix{Float64}  # Vp*Vpinv (u_modal = Vpinv*u, u_filtered = Vp*u_modal)
   filtT::Matrix{Float64} # transpose of above
-end
+  filt1::Matrix{Float64} # filter operator that only projects the modes from a
+                         # degree-1 operator back to the nodal basis
+  filt1T::Matrix{Float64} # transpose of above
 
-function VandermondeData(sbp::AbstractOperator, degree::Int)
+  function VandermondeData(sbp::AbstractOperator, degree::Integer)
 
-  coords = calcnodes(sbp)
-  Vp = SummationByParts.calcvandermondproriol(coords.', degree)
-  Vpinv = pinv(Vp)
-  filt = Vp*Vpinv
-  filtT = filt.'
+    coords = calcnodes(sbp)
+    Vp = SummationByParts.calcvandermondproriol(coords.', degree)
+    nmodes = size(Vp, 2)
+    Vpinv = pinv(Vp)
+    filt = Vp*Vpinv
+    filtT = filt.'
 
-  return VandermondeData(degree, Vp, Vpinv, filt, filtT)
+    # this is a rather inefficient way to compute the number of modes
+    Vp1 = SummationByParts.calcvandermondproriol(coords.', degree - 1)
+    nmodes1 = size(Vp1, 2)
+    nmodes_diff = nmodes - nmodes1
+
+    filt1 = Vp[:, 1:(end-nmodes_diff)]*Vpinv[1:(end-nmodes_diff), :]
+    filt1T = filt1.'
+
+    return new(degree, nmodes, nmodes1, Vp, Vpinv, filt, filtT,
+                           filt1, filt1T)
+  end
+
+
 end
 
 """
@@ -52,7 +69,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   function ShockSensorPP{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
 
     Vp = VandermondeData(sbp, sbp.degree)
-    Vp1 = VandermondeData(sbp, sbp.degree-1)
+    Vp1 = VandermondeData(sbp, sbp.degree-1)  #TODO: unneded?
 
     # constants from Barter's thesis
     s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
@@ -527,7 +544,8 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
-    entropy_vars = IRVariables()
+#    entropy_vars = IRVariables()
+    entropy_vars = ConservativeVariables()
     diffusion = ShockDiffusion{Tres}()
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
