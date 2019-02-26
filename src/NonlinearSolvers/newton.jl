@@ -456,21 +456,24 @@ function checkConvergence(newton_data::NewtonData)
 
   # step tolerance
   if step_norm <= newton_data.step_tol && itr > 0
-    println("step tolerance satisfied")
+    is_converged = true
     #=
     # DEBUG_CNTHES
-    is_converged = true
+    println("step tolerance satisfied")
     @mpi_master println(BSTDOUT, "Newton iteration converged with step_norm = ", step_norm, " < ", newton_data.step_tol)
     @mpi_master println(BSTDOUT, "Final residual = ", res_norm)
     =#
   end
 
   if is_converged
+    #=
+    # DEBUG_CNTHES
     @mpi_master if itr == 0
       println(BSTDOUT, "Not entering Newton iteration loop")
     else
       println(BSTDOUT, "Iteration count: ", itr)
     end
+    =#
 
     clearEulerConstants()
   end
