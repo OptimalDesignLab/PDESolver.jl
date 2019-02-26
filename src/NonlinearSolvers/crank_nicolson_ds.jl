@@ -390,7 +390,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
-        eqn.params.Ma += pert
+        # eqn.params.Ma += pert
+        eqn_nextstep.params.Ma += pert
+        println("-------------- term23 debugging 0 -------------")
+        println(" i: ", i)
+        println(" eqn.params.Ma: ", eqn.params.Ma)
+        println(" eqn_nextstep.params.Ma: ", eqn.params.Ma)
+        println(" f: ", f)
+        println("-----------------------------------------------")
 
         # now evalResidual to store into F(q^(n+1))
         f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
@@ -405,10 +412,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # obtain dR/dM using the complex step method
         for ix_dof = 1:mesh.numDof
-          dRdM_vec[ix_dof] = imag(dRdM_vec[ix_dof])/Ma_pert_mag
+          # dRdM_vec[ix_dof] = imag(dRdM_vec[ix_dof])/Ma_pert_mag     # TODO TODO, what am I doing here
+          dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
         end
 
-        eqn.params.Ma -= pert
+        # eqn.params.Ma -= pert
+        eqn_nextstep.params.Ma -= pert
         #------------------------------------------------------------------------------
 
         #------------------------------------------------------------------------------
@@ -422,6 +431,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
           eqn_nextstep.q_vec[ix_dof] += Ma_pert_mag*im*v_vec[ix_dof]
         end
+        println("-------------- term23 debugging 1 -------------")
+        println(" i: ", i)
+        println(" eqn.params.Ma: ", eqn.params.Ma)
+        println(" vecnorm(real(eqn.q_vec)): ", vecnorm(real(eqn.q_vec)))
+        println(" vecnorm(imag(eqn.q_vec)): ", vecnorm(imag(eqn.q_vec)))
+        println(" vecnorm(real(eqn_nextstep.q_vec)): ", vecnorm(real(eqn_nextstep.q_vec)))
+        println(" vecnorm(imag(eqn_nextstep.q_vec)): ", vecnorm(imag(eqn_nextstep.q_vec)))
+        println("-----------------------------------------------")
 
 
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
@@ -455,6 +472,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Recalculate dRdq
         calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
+        # HERE is where we stabilize?
+        # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
+        # filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A)
+
         # linearSolve: solves Ax=b for x
         #   ls::StandardLinearSolver
         #   b::AbstractVector     -> RHS
@@ -483,10 +504,25 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         fill!(dDdu_vec, 0.0)     # not sure this is necessary
         array3DTo1D(mesh, sbp, eqn, opts, dDdu, dDdu_vec)      # dDdu -> dDdu_vec
 
+        old_term23 = term23
         for v_ix = 1:length(v_vec)
           # this accumulation occurs across all dofs and all time steps.
           term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
         end
+        println("-------------- term23 debugging 2 -------------")
+        println(" i: ", i)
+        println(" vecnorm(b_vec): ", vecnorm(b_vec))
+        println(" vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
+        println(" vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
+        println(" vecnorm(real(res_hat_vec)): ", vecnorm(real(res_hat_vec)))
+        println(" vecnorm(imag(res_hat_vec)): ", vecnorm(imag(res_hat_vec)))
+        println(" ")
+        println(" quad_weight: ", quad_weight)
+        println(" vecnorm(dDdu_vec): ", vecnorm(dDdu_vec))
+        println(" vecnorm(v_vec): ", vecnorm(v_vec))
+        println(" term23: ", term23)
+        # println("  term23 change: ", (term23 - old_term23)*1.0/dt)
+        println("-----------------------------------------------")
 
         #------------------------------------------------------------------------------
         # here is where we should be calculating the 'energy' to show that it is increasing over time

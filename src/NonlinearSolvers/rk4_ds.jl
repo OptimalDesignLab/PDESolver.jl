@@ -510,10 +510,19 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       fill!(term2_vec, 0.0)     # not sure this is necessary
       array3DTo1D(mesh, sbp, eqn, opts, term2, term2_vec)      # term2 -> term2_vec
 
+      old_term23 = term23
       for v_ix = 1:length(v_vec)
         # this accumulation occurs across all dofs and all time steps.
         term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
       end
+      println("-------------- term23 debugging ---------------")
+      println(" i: ", i)
+      println(" quad_weight: ", quad_weight)
+      println(" vecnorm(term2_vec) (term2 is dDdu in CN): ", vecnorm(term2_vec))
+      println(" vecnorm(v_vec): ", vecnorm(v_vec))
+      println(" term23: ", term23)
+      # println("  term23 change: ", (term23 - old_term23)*1.0/dt)
+      println("-----------------------------------------------")
 
       #------------------------------------------------------------------------------
       # here is where we should be calculating the 'energy' to show that it is increasing over time
