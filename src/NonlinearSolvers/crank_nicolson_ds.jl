@@ -392,12 +392,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         pert = complex(0, Ma_pert_mag)
         # eqn.params.Ma += pert
         eqn_nextstep.params.Ma += pert
+        #=
+        # DEBUG_CNTHES
         println("-------------- term23 debugging 0 -------------")
         println(" i: ", i)
         println(" eqn.params.Ma: ", eqn.params.Ma)
         println(" eqn_nextstep.params.Ma: ", eqn.params.Ma)
         println(" f: ", f)
         println("-----------------------------------------------")
+        =#
 
         # now evalResidual to store into F(q^(n+1))
         f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
@@ -431,6 +434,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
           eqn_nextstep.q_vec[ix_dof] += Ma_pert_mag*im*v_vec[ix_dof]
         end
+        #=
+        # DEBUG_CNTHES
         println("-------------- term23 debugging 1 -------------")
         println(" i: ", i)
         println(" eqn.params.Ma: ", eqn.params.Ma)
@@ -439,6 +444,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(" vecnorm(real(eqn_nextstep.q_vec)): ", vecnorm(real(eqn_nextstep.q_vec)))
         println(" vecnorm(imag(eqn_nextstep.q_vec)): ", vecnorm(imag(eqn_nextstep.q_vec)))
         println("-----------------------------------------------")
+        =#
 
 
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
@@ -509,6 +515,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # this accumulation occurs across all dofs and all time steps.
           term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
         end
+        #=  
+        # DEBUG_CNTHES
         println("-------------- term23 debugging 2 -------------")
         println(" i: ", i)
         println(" vecnorm(b_vec): ", vecnorm(b_vec))
@@ -523,6 +531,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(" term23: ", term23)
         # println("  term23 change: ", (term23 - old_term23)*1.0/dt)
         println("-----------------------------------------------")
+        =#
 
         #------------------------------------------------------------------------------
         # here is where we should be calculating the 'energy' to show that it is increasing over time

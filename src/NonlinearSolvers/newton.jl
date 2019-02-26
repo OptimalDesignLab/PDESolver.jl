@@ -278,7 +278,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     writeFiles(newton_data, mesh, sbp, eqn, opts)
     is_converged = checkConvergence(newton_data)
-    println(" newton_data.itr: ", newton_data.itr,"  newton_data.step_norm_i: ", newton_data.step_norm_i)
+    # @mpi_master println(BSTDOUT, " newton_data.itr: ", newton_data.itr,"  newton_data.step_norm_i: ", newton_data.step_norm_i)
+    # DEBUG_CNTHES
 
     if is_converged
       # remove the imaginary part of rhs_vec before exiting
