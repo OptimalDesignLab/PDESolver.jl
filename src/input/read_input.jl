@@ -518,7 +518,7 @@ get!(arg_dict, "force_mesh_complex", false)
 petsc_opts = Dict{AbstractString, AbstractString}(
   "-malloc" => "",
   "-malloc_debug" => "",
-  "-ksp_monitor" => "",
+  # "-ksp_monitor" => "",       # DEBUG_CNTHES - uncomment to get the "1 KSP Residual norm 1.079949822957e-08" output
   "-pc_type" => "bjacobi",
   "-sub_pc_type" => "ilu",
   "-sub_pc_factor_levels" => "4",

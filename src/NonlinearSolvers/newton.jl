@@ -345,10 +345,13 @@ function writeFiles(newton_data::NewtonData, mesh, sbp, eqn, opts)
   res_norm_rel = newton_data.res_norm_rel
   step_norm = newton_data.step_norm_i
 
+  #=
+  # DEBUG_CNTHES
   @verbose4 @mpi_master begin
     println(BSTDOUT, "residual norm = ", res_norm)
     println(BSTDOUT, "relative residual ", res_norm/res_norm_rel)
   end
+  =#
 
   # decide which files to write
   write_q = opts["writeq"]::Bool
@@ -427,30 +430,39 @@ function checkConvergence(newton_data::NewtonData)
   # absolute tolerance
   if res_norm < newton_data.res_abstol
     is_converged = true
+    #=
+    # DEBUG_CNTHES
     @mpi_master if itr == 0
       println(BSTDOUT, "Initial condition satisfies res_tol with residual norm ", res_norm, " < ", newton_data.res_abstol)
     else
       println(BSTDOUT, "Newton iteration converged with residual norm ", res_norm, " < ", newton_data.res_abstol)
     end
+    =#
   end
 
   # relative tolerance
   rel_norm = res_norm/res_norm_rel
   if rel_norm < newton_data.res_reltol
     is_converged = true
+    #=
+    # DEBUG_CNTHES
     if itr == 0
       println(BSTDOUT, "Initial condition satisfied res_reltol with relative residual ", rel_norm, " < ", newton_data.res_reltol)
     else
       println(BSTDOUT, "Newton iteration converged with relative residual norm ", rel_norm, " < ", newton_data.res_reltol)
     end
+    =#
   end
 
   # step tolerance
   if step_norm <= newton_data.step_tol && itr > 0
     println("step tolerance satisfied")
+    #=
+    # DEBUG_CNTHES
     is_converged = true
     @mpi_master println(BSTDOUT, "Newton iteration converged with step_norm = ", step_norm, " < ", newton_data.step_tol)
     @mpi_master println(BSTDOUT, "Final residual = ", res_norm)
+    =#
   end
 
   if is_converged
