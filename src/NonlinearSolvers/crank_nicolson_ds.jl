@@ -701,10 +701,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(f_total_dCddM, " total dCd/dM: ", total_dCddM)
           flush(f_total_dCddM)
           close(f_total_dCddM)
-          println(" Cd: ", Cd)
-          println(" dCd/dM: ", dCddM)
-          println(" global_term23: ", global_term23)
-          println(" total dCd/dM: ", total_dCddM)
+          println(BSTDOUT, " Cd: ", Cd)
+          println(BSTDOUT, " dCd/dM: ", dCddM)
+          println(BSTDOUT, " global_term23: ", global_term23)
+          println(BSTDOUT, " total dCd/dM: ", total_dCddM)
         end
 
       end   # end if opts["perturb_Ma_CN"]
@@ -717,28 +717,28 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(f_dt, dt)
         close(f_dt)
 
-        println(" ")
-        println(" run parameters that were used:")
+        println(BSTDOUT, " ")
+        println(BSTDOUT, " run parameters that were used:")
         # if opts["perturb_Ma_CN"]
           # println("    Ma: ", eqn.params.Ma + Ma_pert_mag)
         # else
-          println("    Ma: ", eqn.params.Ma)
+          println(BSTDOUT, "    Ma: ", eqn.params.Ma)
         # end
-        println("    aoa: ", eqn.params.aoa)
-        println("    dt: ", dt)
-        println("    a_inf: ", eqn.params.a_free)
-        println("    rho_inf: ", eqn.params.rho_free)
-        println("    c: ", 1.0)
-        println("    mesh.coord_order: ", mesh.coord_order)
-        println(" ")
-        println("    opts[stabilization_method]: ", opts["stabilization_method"])
-        println("    opts[output_freq]: ", opts["output_freq"])
-        println("    opts[use_itermax]: ", opts["use_itermax"])
-        println("    opts[itermax]: ", opts["itermax"])
-        println("    opts[use_checkpointing]: ", opts["use_checkpointing"])
-        println("    opts[checkpoint_freq]: ", opts["checkpoint_freq"])
-        println("    opts[ncheckpoints]: ", opts["ncheckpoints"])
-        println(" ")
+        println(BSTDOUT, "    aoa: ", eqn.params.aoa)
+        println(BSTDOUT, "    dt: ", dt)
+        println(BSTDOUT, "    a_inf: ", eqn.params.a_free)
+        println(BSTDOUT, "    rho_inf: ", eqn.params.rho_free)
+        println(BSTDOUT, "    c: ", 1.0)
+        println(BSTDOUT, "    mesh.coord_order: ", mesh.coord_order)
+        println(BSTDOUT, " ")
+        println(BSTDOUT, "    opts[stabilization_method]: ", opts["stabilization_method"])
+        println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
+        println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])
+        println(BSTDOUT, "    opts[itermax]: ", opts["itermax"])
+        println(BSTDOUT, "    opts[use_checkpointing]: ", opts["use_checkpointing"])
+        println(BSTDOUT, "    opts[checkpoint_freq]: ", opts["checkpoint_freq"])
+        println(BSTDOUT, "    opts[ncheckpoints]: ", opts["ncheckpoints"])
+        println(BSTDOUT, " ")
       end
 
       if opts["write_L2vnorm"]
@@ -758,7 +758,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #TODO: return the NewtonData?
   free(newton_data)
 
-  @debug1 println("============= end of CN: t = $t ===============")
+  @mpi_master println("============= end of CN: t = $t ===============")
   return t        # EXIT condition
 
   flush(BSTDOUT)

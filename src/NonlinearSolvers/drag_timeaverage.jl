@@ -20,6 +20,7 @@
 function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver)
 
   # println(BSTDOUT, "------------------------------- in calcDragTimeAverage")
+  myrank = mesh.myrank
 
   dt = delta_t
 
@@ -55,11 +56,11 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
 
   # Cd calculations
   Cd = drag_timeavg/(0.5*Ma^2)
-  println(" Cd = <D>/(0.5*M^2) = ", Cd)
+  @mpi_master println(" Cd = <D>/(0.5*M^2) = ", Cd)
 
   dCddM = (-4.0*drag_timeavg)/(Ma^3)
   # comes from dCd/dM = (-2<D>)/(0.5*M^3)
-  println(" dCddM = (-4<D>)/(M^3) = ", dCddM)
+  @mpi_master println(" dCddM = (-4<D>)/(M^3) = ", dCddM)
 
   return Cd, dCddM
 
