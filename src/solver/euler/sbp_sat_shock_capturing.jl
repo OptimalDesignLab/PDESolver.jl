@@ -17,10 +17,11 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   println("after volume term, residual norm = ", calcNorm(eqn, eqn.res))
+
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
+  #println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
   if shockmesh.isNeumann
     computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   else
@@ -171,7 +172,7 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
   # not replaced by -Qx^T + Ex.  The entire discretization should be
   # entropy-stable however.
   work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
-  #op = SummationByParts.Subtract()
+  op = SummationByParts.Subtract()
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
 

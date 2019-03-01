@@ -26,7 +26,8 @@
 """
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                           sensor::ShockSensorPP,
-                          q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh},
+                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                          ) where {Tsol, Tmsh, Tdim}
 
   Tres = promote_type(Tsol, Tmsh)
@@ -56,10 +57,10 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
     # finite element methods, where the original solution has a basis, and the
     # norm in any basis should be the same.  Here we use the filtered u rather
     # than the original because it is probably smoother.
-    #den += up_tilde[i]*fac*up_tilde[i]
+    den += up_tilde[i]*fac*up_tilde[i]
 
     # see if this makes the sensor less sensitive
-    den += up[i]*fac*up[i]
+    #den += up[i]*fac*up[i]
   end
 
   Se = num/den
@@ -80,7 +81,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   for i=1:numNodesPerElement
     q_i = sview(q, :, i)
     lambda_max += getLambdaMax(params, q_i)
-    h_avg += jac[i]*sbp.w[i]
+    h_avg += sbp.w[i]/jac[i]
   end
 
   lambda_max /= numNodesPerElement
@@ -152,7 +153,8 @@ end
 
 function getShockSensor(params::ParamType, sbp::AbstractOperator,
                           sensor::ShockSensorNone,
-                          q::AbstractMatrix{Tsol}, jac::AbstractVector{Tmsh},
+                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                          ) where {Tsol, Tmsh}
 
   error("getShockSensor called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
@@ -163,11 +165,92 @@ end
 
 function getShockSensor(params::ParamType, sbp::AbstractOperator,
                         sensor::ShockSensorEverywhere{Tsol, Tres},
-                        q::AbstractMatrix, jac::AbstractVector,
-                        ) where {Tsol, Tres}
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ) where {Tsol, Tres, Tmsh}
 
   return Tsol(1.0), Tres(1.0)
 end
 
+#------------------------------------------------------------------------------
+# ShockSensorHIso
 
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHIso{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tres, Tmsh, Tdim}
+
+  # compute | div(F) |
+  # Do this in Cartesian coordinates because it makes the differentiation easier
+  numDofPerNode, numNodesPerElement = size(q)
+
+  @unpack sensor flux nrm aux_vars work res
+  fill!(res, 0); fill!(nrm, 0)
+
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    for d=1:Tdim
+      nrm[d] = 1
+      flux_d = sview(flux, :, i, d)
+
+      calcEulerFlux(params, q_i, aux_vars, nrm, flux_d)
+
+      nrm[d] = 0
+    end
+  end
+
+  applyDx(sbp, flux, dxidx, jac, work, res)
+
+  # compute norm and mesh size h
+  val = zero(Tres)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    fac = sbp.w[i]/jac[i]  # not sure about this factor of 1/|J|, because
+                           # this is the strong form residual
+    for j=1:numDofPerNode
+      val += res[j, i]*fac*res[j, i]
+    end
+    h_avg += fac
+  end
+
+  h_fac = h_avg^((2 - sensor.beta)/Tdim)
+
+  ee = Tres(sensor.C_eps*h_fac*val)
+#=
+  if ee < 1e-12  # make this zero so the shockmesh machinery knows to exclude
+                 # this element, saving cost
+    ee = Tres(0)
+  end
+=#
+
+
+  # calling | div(f) | as the shock sensor, which is somewhat arbitrary
+  return val, ee
+end
+
+#------------------------------------------------------------------------------
+# ShockSensorBO
+
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorBO{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  lambda_max = zero(Tsol)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max += getLambdaMax(params, q_i)
+    h_avg += sbp.w[i]/jac[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  h_avg = h_avg^(1/Tdim)
+
+  return lambda_max, sensor.alpha*lambda_max*h_avg/sbp.degree
+end
 

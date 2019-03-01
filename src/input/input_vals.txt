@@ -358,6 +358,9 @@ Note that any values associated with these options are shared with the regular
 "homotopy_globalize_euler": use the method described by "newton_globalize_euler"
                             on the final step of homotopy (when lambda == 0),
                             (Bool), default false
+"homotopy_function": specify which homotopy function to use, (String),
+                     not all physics modules support this option
+
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (String),
                            default "RecalculateNever"
@@ -457,3 +460,4 @@ Note that any values associated with these options are shared with the regular
 # Input duplicate checking option
 "no_input_duplicates_check" : Bool. If set, do not check the input dictionary for duplicates. 
                               Default: false
+

@@ -30,6 +30,7 @@
 function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorPP,
                       q::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::AbstractMatrix{Tres},
                       ee_jac::AbstractMatrix{Tres}
@@ -75,13 +76,13 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     # finite element methods, where the original solution has a basis, and the
     # norm in any basis should be the same.  Here we use the filtered u rather
     # than the original because it is probably smoother.
-    #den += up_tilde[i]*fac*up_tilde[i]
-    #@simd for j=1:numNodesPerElement
-    #  den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
-    #end
+    den += up_tilde[i]*fac*up_tilde[i]
+    @simd for j=1:numNodesPerElement
+      den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
+    end
 
-    den += up[i]*fac*up[i]
-    den_dot[i] += 2*fac*up[i]
+    #den += up[i]*fac*up[i]
+    #den_dot[i] += 2*fac*up[i]
   end
 
   Se = num/den
@@ -116,13 +117,13 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   # multiply by lambda_max * h/p to get subcell resolution
   lambda_max = zero(Tsol)
-  lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+  lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)  #TODO: use preallocated version
   h_avg = zero(Tmsh)
   for i=1:numNodesPerElement
     q_i = sview(q, :, i)
     lambda_max_dot_i = sview(lambda_max_dot, :, i)
     lambda_max += getLambdaMax_diff(params, q_i, lambda_max_dot_i)
-    h_avg += jac[i]*sbp.w[i]
+    h_avg += sbp.w[i]/jac[i]
   end
 
   lambda_max /= numNodesPerElement
@@ -148,6 +149,7 @@ end
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       sensor::ShockSensorNone,
                       q::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::AbstractMatrix{Tres},
                       ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres}
@@ -161,6 +163,7 @@ end
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       sensor::ShockSensorEverywhere,
                       q::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::AbstractMatrix{Tres},
                       ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres}
@@ -169,4 +172,125 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
   fill!(ee_jac, 0)
 
   return Tres(1.0), Tres(1.0), true
+end
+
+
+#------------------------------------------------------------------------------
+# ShockSensorHIso
+
+function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
+                      sensor::ShockSensorHIso,
+                      q::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
+                      jac::AbstractVector{Tmsh},
+                      Se_jac::AbstractMatrix{Tres},
+                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+
+  # compute | div(F) |
+  # Do this in Cartesian coordinates because it makes the differentiation easier
+  numDofPerNode, numNodesPerElement = size(q)
+
+  @unpack sensor flux nrm aux_vars work res
+  fill!(res, 0); fill!(nrm, 0)
+
+  # this only needs to be 4D, but applyOperatorJac doesn't have a method
+  # for that
+  flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, Tdim,
+                   numNodesPerElement, numNodesPerElement)
+
+  Dx = zeros(numNodesPerElement, numNodesPerElement, Tdim)
+  res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                        numNodesPerElement)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    for d=1:Tdim
+      nrm[d] = 1
+      flux_d = sview(flux, :, i, d)
+      fluxjac_d = sview(flux_jac, :, :, d, i, i)
+
+      calcEulerFlux(params, q_i, aux_vars, nrm, flux_d)
+      calcEulerFlux_diff(params, q_i, aux_vars, nrm, fluxjac_d)
+
+      nrm[d] = 0
+    end
+  end
+
+  applyDx(sbp, flux, dxidx, jac, work, res)
+
+  calcDx(sbp, dxidx, jac, Dx)
+  applyOperatorJac(Dx, flux_jac, res_jac)
+
+  # compute norm and mesh size h
+  val = zero(Tres)
+  fill!(Se_jac, 0)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    fac = sbp.w[i]/jac[i]  # not sure about this factor of 1/|J|, because
+                           # this is the strong form residual
+    for j=1:numDofPerNode
+      val += res[j, i]*fac*res[j, i]
+    end
+    h_avg += fac
+  end
+
+  # jacobian of val
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      fac = sbp.w[p]/jac[p]
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          Se_jac[j, q] += 2*res[i, p]*fac*res_jac[i, j, p, q]
+        end
+      end
+    end
+  end
+
+  h_fac = h_avg^((2 - sensor.beta)/Tdim)
+
+  ee = Tres(sensor.C_eps*h_fac*val)
+  for q=1:numNodesPerElement
+    for j=1:numDofPerNode
+      ee_jac[j, q] = sensor.C_eps*h_fac*Se_jac[j, q]
+    end
+  end
+
+
+  # calling | div(f) | as the shock sensor, which is somewhat arbitrary
+  return val, ee, false
+end
+
+#------------------------------------------------------------------------------
+# ShockSensorBO
+
+function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
+                      sensor::ShockSensorBO,
+                      q::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
+                      jac::AbstractVector{Tmsh},
+                      Se_jac::AbstractMatrix{Tres},
+                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  lambda_max = zero(Tsol)
+  #lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max_dot_i = sview(Se_jac, :, i)
+    lambda_max += getLambdaMax_diff(params, q_i, lambda_max_dot_i)
+    h_avg += sbp.w[i]/jac[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  scale!(Se_jac, 1/numNodesPerElement)
+  h_avg = h_avg^(1/Tdim)
+
+  for i=1:numNodesPerElement
+    for j=1:numDofPerNode
+      ee_jac[j, i] = sensor.alpha*h_avg*Se_jac[j, i]/sbp.degree
+    end
+  end
+
+  return lambda_max, sensor.alpha*h_avg*lambda_max/sbp.degree, false
 end

@@ -2908,7 +2908,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
 #  println("\nres_dot = ", real(res_dot))
 #  println("diff1 = \n", real(b[dofs1] - res_dot[dofs1]))
 #  println("diff5 = \n", real(b[dofs5] - res_dot[dofs5]))
-  @test maximum(abs.(b - res_dot)) < 1e-12
+  @test maximum(abs.(b - res_dot)) < 1e-11
 
   #println("b = \n", real(b))
   #println("res_dot = \n", real(res_dot))

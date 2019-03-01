@@ -73,8 +73,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
 
     # constants from Barter's thesis
     s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
-    kappa = 0.5
-    e0 = 1  # this is a bit weird, because PP says it should be O(h/p)
+    kappa = 1.0  # was 0.5
+    e0 = 1
     
     up = zeros(Tsol, sbp.numnodes)
     up_tilde = zeros(Tsol, sbp.numnodes)
@@ -117,6 +117,64 @@ mutable struct ShockSensorEverywhere{Tsol, Tres} <: AbstractShockSensor
   end
 end
 
+
+#------------------------------------------------------------------------------
+# Hartmanns Isotropic sensor
+
+"""
+  Sensor from Hartmann's "Adaptive Discontinuous Galerkin Finite Element
+  Methods for the Compressible Euler Equations".  This sensor is suitable for
+  isotropic meshes only.  See the paper "for the Compressible Navier-Stokes
+  Equations" for the anisotropic one.
+"""
+struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
+  C_eps::Float64
+  beta::Float64
+  
+  flux::Array{Tres, 3}
+  nrm::Vector{Tres}
+  aux_vars::Vector{Tres}
+  work::Array{Tres, 3}
+  res::Array{Tres, 2}
+
+  function ShockSensorHIso{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+    C_eps = 1/25
+    beta = 1/10
+
+    numDofPerNode = mesh.numDofPerNode
+    numNodesPerElement = mesh.numNodesPerElement
+    dim = mesh.dim
+
+    flux = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    nrm = zeros(Tres, dim)
+    aux_vars = Tres[]
+    work = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    res = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+
+    return new(C_eps, beta,
+               flux, nrm, aux_vars, work, res)
+  end
+end
+
+#------------------------------------------------------------------------------
+# Odens gradient based sensor
+
+"""
+  Shock sensor from Baumann and Oden's "An Adaptive-Order Discontinuous
+  Galerkin Method for the Solution of the Euler Equations of Gas Dynamics".
+
+  Basically a gradient sensor.
+"""
+mutable struct ShockSensorBO{Tsol, Tres} <: AbstractShockSensor
+  alpha::Float64  # arbitrary coeffcieint
+  function ShockSensorBO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+    alpha = 1.0
+    return new(alpha)
+  end
+end
 
 #------------------------------------------------------------------------------
 # Projection-based shock capturing
@@ -544,8 +602,8 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
-#    entropy_vars = IRVariables()
-    entropy_vars = ConservativeVariables()
+    entropy_vars = IRVariables()
+#    entropy_vars = ConservativeVariables()
     diffusion = ShockDiffusion{Tres}()
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
@@ -683,6 +741,8 @@ global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSens
 "SensorNone" => ShockSensorNone,
 "SensorEverywhere" => ShockSensorEverywhere,
 "SensorPP" => ShockSensorPP,
+"SensorHIso" => ShockSensorHIso,
+"SensorBO" => ShockSensorBO,
 )
 
 function getShockSensor(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}

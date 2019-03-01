@@ -26,11 +26,13 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   fill!(res_jac, 0)
 
   for i=1:mesh.numEl
-    q_i = sview(eqn.q, :, :, i)
-    jac_i = sview(mesh.jac, :, i)
+    q_i = ro_sview(eqn.q, :, :, i)
+    coords_i = ro_sview(mesh.coords, :, :, i)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
+    jac_i = ro_sview(mesh.jac, :, i)
 
     nonzero_jac = calcShockCapturing_diff(eqn.params, sbp, sensor, capture,
-                                            q_i, jac_i, res_jac)
+                                       q_i, coords_i, dxidx_i, jac_i, res_jac)
   
     # assembling into a sparse matrix is non-trivially expensive, don't do
     # it unless this element has shock capturing active
@@ -75,9 +77,12 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   reset(shockmesh)
   for i=1:mesh.numEl
     q_i = ro_sview(eqn.q, :, :, i)
+    coords_i = ro_sview(mesh.coords, :, :, i)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
 
-    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,
+                            jac_i)
     if ee > 0
       # push to shockmesh
       push!(shockmesh, i, ee)
@@ -95,9 +100,12 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     for i in shockmesh.shared_els[peer]
       i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
       q_i = ro_sview(data.q_recv, :, :, i_full)
+      coords_i = ro_sview(metrics.coords, :, :, i_full)
+      dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
       jac_i = ro_sview(metrics.jac, :, i_full)
 
-      Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+      Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,
+                              jac_i)
       setViscoscity(shockmesh, i, ee)
     end
   end
@@ -111,10 +119,13 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   for i=1:shockmesh.numEl
     i_full = shockmesh.elnums_all[i]
     q_i = ro_sview(eqn.q, :, :, i_full)
+    coords_i = ro_sview(mesh.coords, :, :, i_full)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     jac_i = ro_sview(mesh.jac, :, i_full)
     ee_dot_i = sview(ee_dot, :, :, i)
 
     Se, ee, is_constant = getShockSensor_diff(eqn.params, sbp, sensor, q_i,
+                                              coords_i, dxidx_i,
                                               jac_i, Se_dot_i, ee_dot_i)
     is_nonlinear[i] = !is_constant
   end
@@ -140,20 +151,23 @@ end
 function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
                                   sensor::AbstractShockSensor,
                                   capture::ProjectionShockCapturing,
-                                  u::AbstractMatrix, jac::AbstractVector{Tmsh},
+                                  u::AbstractMatrix, 
+                                  coords::AbstractMatrix,
+                                  dxidx::Abstract3DArray,
+                                  jac::AbstractVector{Tmsh},
                                   res_jac::AbstractArray{Tres, 4}) where {Tmsh, Tres}
 
   numDofPerNode, numNodesPerElement = size(u)
   @unpack capture t1 t2 w Se_jac ee_jac A0inv
 
   #TODO: make shock capturing and shock sensing independent choices
-  Se, ee = getShockSensor(params, sbp, sensor, u, jac)
+  Se, ee = getShockSensor(params, sbp, sensor, u, coords, dxidx, jac)
 
   if ee > 0
     fill!(Se_jac, 0); fill!(ee_jac, 0)
     # only compute the derivative if there is a shock
-    Se, ee, ee_constant = getShockSensor_diff(params, sbp, sensor, u, jac,
-                                              Se_jac, ee_jac)
+    Se, ee, ee_constant = getShockSensor_diff(params, sbp, sensor, u, coords,
+                                              dxidx, jac, Se_jac, ee_jac)
 
     # the operator (for a scalar equation) is A = P^T * M * P * v, so
     # dR[p]/v[q] = (P^T * M * P)[p, q].  It then needs to be converted back

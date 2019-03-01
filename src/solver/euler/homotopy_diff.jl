@@ -2,10 +2,19 @@
 import PDESolver.evalHomotopyJacobian
 
 function evalHomotopyJacobian(mesh::AbstractMesh, sbp::AbstractOperator,
-                              eqn::EulerData, opts::Dict, 
-                              assembler::AssembleElementData, lambda::Number)
+                              eqn::EulerData{Tsol, Tres}, opts::Dict, 
+                              assembler::AssembleElementData, lambda::Number
+                             ) where {Tsol, Tres}
 
-  calcHomotopyDiss_jac(mesh, sbp, eqn, opts, assembler, lambda)
+  if opts["homotopy_function"] == "ViscousBO"
+    sensor = ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
+    sensor.alpha = lambda
+    capture = eqn.shock_capturing
+    applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
+
+  elseif opts["homotopy_function"] == "FirstOrderDissipation"
+    calcHomotopyDiss_jac(mesh, sbp, eqn, opts, assembler, lambda)
+  end
 end
 
 function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp, 

@@ -60,6 +60,8 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
     get!(opts, "preallocate_jacobian_coloring", true)
   end
 
+  get!(opts, "homotopy_function", "FirstOrderDissipation")
+
   return nothing
 end
 
