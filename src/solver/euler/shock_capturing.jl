@@ -86,7 +86,7 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
       i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
       q_i = ro_sview(data.q_recv, :, :, i_full)
       coords_i = ro_sview(metrics.coords, :, :, i_full)
-      dxidx_i = ro_sview(metrics.dxidx, :, :, i_full)
+      dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
       jac_i = ro_sview(metrics.jac, :, i_full)
 
       Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,

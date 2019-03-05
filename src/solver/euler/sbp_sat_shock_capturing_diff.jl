@@ -92,7 +92,6 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
     applyDiffusionTensor_diff(diffusion, w_i, i, gradq_i, t1_dot, t2_dot)
 
     # apply Qx and sum
-
     if eqn.params.use_Minv != 1
       @simd for d=1:mesh.dim
         @simd for j=1:mesh.numNodesPerElement

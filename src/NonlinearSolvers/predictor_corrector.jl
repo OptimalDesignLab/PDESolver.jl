@@ -183,7 +183,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
   @mpi_master println(fconv, 0, " ", res_norm, " ", 0.0)
   @mpi_master flush(fconv)
 
-  #eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, BSTDOUT)
+  eqn.majorIterationCallback(0, mesh, sbp, eqn, opts, BSTDOUT)
 
   #----------------------------------------------------------------------------
   # main loop
@@ -321,7 +321,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
     @mpi_master println(fconv, iter, " ", res_norm, " ", h )
     @mpi_master flush(fconv)
 
-    #eqn.majorIterationCallback(iter, mesh, sbp, eqn, opts, BSTDOUT)
+    eqn.majorIterationCallback(iter, mesh, sbp, eqn, opts, BSTDOUT)
 
     iter += 1
   end  # end while loop

@@ -97,7 +97,8 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   ee_dot = zeros(Tres, numNodesPerElement)
   
   if se < s0 - kappa
-    ee = zero(Tres)
+    #ee = zero(Tres)
+    ee = Tres(0.0)
     fill!(ee_dot, 0)
   elseif se > s0 - kappa && se < s0 + kappa
     ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))

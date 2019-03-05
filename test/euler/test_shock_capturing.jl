@@ -120,8 +120,8 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q,
                                        coords, dxidx, jac, Se_jac2, ee_jac2)
 
-  @test maximum(abs.(Se_jac - Se_jac2)) < 1e-12
-  @test maximum(abs.(ee_jac - ee_jac2)) < 1e-12
+  @test maximum(abs.(Se_jac - Se_jac2)) < 1e-11
+  @test maximum(abs.(ee_jac - ee_jac2)) < 1e-11
 
   # test vector mode
   q_dot = rand_realpart(size(q))
@@ -139,8 +139,8 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   Se_dot2 = sum(Se_jac2 .* q_dot)
   ee_dot2 = sum(ee_jac2 .* q_dot)
 
-  @test abs(Se_dot - Se_dot2) < 1e-12
-  @test abs(ee_dot - ee_dot2) < 1e-12
+  @test abs(Se_dot - Se_dot2) < 1e-11
+  @test abs(ee_dot - ee_dot2) < 1e-11
 
   
   return nothing

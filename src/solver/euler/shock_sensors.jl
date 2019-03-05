@@ -68,7 +68,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   
   # should this be a separate function from computing Se?
   if se < s0 - kappa
-    ee = zero(Tres)
+    ee = Tres(0.0)
   elseif se > s0 - kappa && se < s0 + kappa
     ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
   else
