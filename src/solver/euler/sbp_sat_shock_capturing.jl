@@ -15,7 +15,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                capture.entropy_vars, capture.diffusion)
 
   computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
-
+#=
   println("after volume term, residual norm = ", calcNorm(eqn, eqn.res))
 
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
@@ -31,7 +31,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   println("after boundary term, residual norm = ", calcNorm(eqn, eqn.res))
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
-
+=#
 
 
   return nothing
@@ -179,9 +179,9 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
     gradq_i = ro_sview(capture.grad_w, :, :, :, i)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     res_i = sview(eqn.res, :, :, i_full)
-    applyQx(sbp, gradq_i, dxidx_i, work, res_i)
+    #applyQx(sbp, gradq_i, dxidx_i, work, res_i)
 
-    #applyQxTransposed(sbp, gradq_i, dxidx_i, work, res_i, op)
+    applyQxTransposed(sbp, gradq_i, dxidx_i, work, res_i, op)
   end
 
   return nothing
@@ -375,16 +375,19 @@ end
    * capture: an [`SBPParabolic`](@ref) object
    * shockmesh
 """
-function computeNeumannBoundaryTerm(mesh, sbp, eqn, opts,
+function computeNeumannBoundaryTerm(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements,
-                      ) where {Tsol, Tres}
+                      ) where {Tsol, Tres, Tmsh}
 
   # for shock capturing, apply the Neumann boundary condition
   # Lambda * grad_w = 0.  The resulting term is -R^T * B * Dgk * u
 
+  @assert mesh.coord_order == 1
+
   temp_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   temp2_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  nrm_i = zeros(Tmsh, mesh.dim, mesh.numNodesPerFace)
   op = SummationByParts.Subtract()
   for i=1:shockmesh.numBoundaryFaces
     bndry_i = shockmesh.bndryfaces[i].bndry
@@ -392,7 +395,23 @@ function computeNeumannBoundaryTerm(mesh, sbp, eqn, opts,
     elnum_orig = shockmesh.elnums_all[bndry_i.element]
 
 
-    nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+    if i < shockmesh.bndry_offsets[end]
+      #nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+      for j=1:mesh.numNodesPerFace
+        for d=1:mesh.dim
+          nrm_i[d, j] = mesh.nrm_bndry[d, j, idx_orig]
+        end
+      end
+    else
+      #nrm_i = ro_sview(mesh.nrm_face, :, :, idx_orig)
+      #TODO: nbrperm
+      fac = shockmesh.bndryfaces[i].fac
+      for j=1:mesh.numNodesPerFace
+        for d=1:mesh.dim
+          nrm_i[d, j] = fac*mesh.nrm_face[d, j, idx_orig]
+        end
+      end
+    end
     res_i = sview(eqn.res, :, :, elnum_orig)
 
     # grad_w already has Lambda * [Dx; Dy]*u, now apply R and N
@@ -809,6 +828,8 @@ function computeAlpha(capture::SBPParabolicSC, mesh::AbstractMesh,
   el_counts = zeros(UInt8, shockmesh.numEl)
   for i=1:shockmesh.numInterfaces
     iface_i = shockmesh.ifaces[i].iface
+    elnumL = shockmesh.elnums_all[iface_i.elementL]
+    elnumR = shockmesh.elnums_all[iface_i.elementR]
     el_counts[iface_i.elementL] += 1
     el_counts[iface_i.elementR] += 1
   end

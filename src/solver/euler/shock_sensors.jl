@@ -214,7 +214,8 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
     h_avg += fac
   end
 
-  h_fac = h_avg^((2 - sensor.beta)/Tdim)
+  # was 2 - beta
+  h_fac = h_avg^((1 - sensor.beta)/Tdim)
 
   ee = Tres(sensor.C_eps*h_fac*val)
 #=

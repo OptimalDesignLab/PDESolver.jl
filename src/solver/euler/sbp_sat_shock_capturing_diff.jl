@@ -13,7 +13,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeVolumeTerm_diff(mesh, sbp, eqn, opts, capture,
                                capture.diffusion, capture.entropy_vars,
                                shockmesh, assem)
-
+#=
   computeFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
@@ -30,7 +30,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
   #@time computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
   #                                 capture.diffusion, capture.penalty)
-
+=#
 
 
   return nothing
@@ -90,7 +90,7 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
 
     # apply the diffusion tensor to all nodes of the element
     applyDiffusionTensor_diff(diffusion, w_i, i, gradq_i, t1_dot, t2_dot)
-
+#=
     # apply Qx and sum
     if eqn.params.use_Minv != 1
       @simd for d=1:mesh.dim
@@ -102,9 +102,9 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
       end
     end
     applyOperatorJac(Dx, t2_dot, res_jac)
-
-    #calcQxTransposed(sbp, dxidx_i, Dx)
-    #applyOperatorJac(Dx, t2_dot, res_jac, true, op)
+=#
+    calcQxTransposed(sbp, dxidx_i, Dx)
+    applyOperatorJac(Dx, t2_dot, res_jac, true, op)
 
     assembleElement(assembler, mesh, i_full, res_jac)
   end
@@ -242,15 +242,17 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
 end
 
 
-function computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts,
+function computeNeumannBoundaryTerm_diff(mesh::AbstractMesh{Tmsh}, sbp, eqn,
+                      opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements,
                       diffusion::AbstractDiffusion,
                       entropy_vars::AbstractVariables,
                       assem::AssembleElementData
-                      ) where {Tsol, Tres}
+                      ) where {Tsol, Tres, Tmsh}
 
   @assert eqn.params.use_Minv != 1
+  @assert mesh.coord_order == 1  # because of the normal vector
 
   # for shock capturing, apply the Neumann boundary condition
   # Lambda * grad_w = 0.  The resulting term is -R^T * B * Dgk * u
@@ -260,6 +262,7 @@ function computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts,
   @unpack capture w_dot Dx t1 t1_dot t2_dot t3_dot t4_dot
 
   res_jac = eqn.params.calc_face_integrals_data.res_jacLL
+  nrm_i = zeros(Tmsh, mesh.dim, mesh.numNodesPerFace)
 
   for i=1:shockmesh.numBoundaryFaces
     bndry_i = shockmesh.bndryfaces[i].bndry
@@ -269,7 +272,24 @@ function computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts,
     w_i = ro_sview(capture.w_el, :, :, bndry_i.element)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, elnum_orig)
     jac_i = ro_sview(mesh.jac, :, elnum_orig)
-    nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+    if i < shockmesh.bndry_offsets[end]
+      #nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+      for j=1:mesh.numNodesPerFace
+        for d=1:mesh.dim
+          nrm_i[d, j] = mesh.nrm_bndry[d, j, idx_orig]
+        end
+      end
+
+    else
+      #nrm_i = ro_sview(mesh.nrm_face, :, :, idx_orig)
+      fac = shockmesh.bndryfaces[i].fac
+      for j=1:mesh.numNodesPerFace
+        for d=1:mesh.dim
+          nrm_i[d, j] = fac*mesh.nrm_face[d, j, idx_orig]
+        end
+      end
+    end
+
     #res_i = sview(eqn.res, :, :, elnum_orig)
     # compute dw/dq
     for j=1:mesh.numNodesPerElement

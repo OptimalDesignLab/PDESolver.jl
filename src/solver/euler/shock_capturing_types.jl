@@ -73,7 +73,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
 
     # constants from Barter's thesis
     s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
-    kappa = 1.0  # was 0.5
+    kappa = 0.5  # was 0.5
     e0 = 1
     
     up = zeros(Tsol, sbp.numnodes)
@@ -139,7 +139,7 @@ struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
 
   function ShockSensorHIso{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
-    C_eps = 1/25
+    C_eps = 1/5  # was 1/25
     beta = 1/10
 
     numDofPerNode = mesh.numDofPerNode
@@ -602,8 +602,8 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
-    entropy_vars = IRVariables()
-#    entropy_vars = ConservativeVariables()
+#    entropy_vars = IRVariables()
+    entropy_vars = ConservativeVariables()
     diffusion = ShockDiffusion{Tres}()
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)

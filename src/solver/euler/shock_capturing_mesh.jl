@@ -324,7 +324,7 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     iface_i = mesh.interfaces[i]
     elementL = data.elnums_mesh[iface_i.elementL]
     elementR = data.elnums_mesh[iface_i.elementR]
-
+#=
     # if an element has not been seen before and its neighbor has a shock in
     # it, add to the list of neighbor elements
     if (elementL > 0 && elementL <= data.numShock) || (elementR > 0 && elementR <= data.numShock)
@@ -342,7 +342,10 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
 
         push_neighbor(data, elnum_full)
       end
+=#
 
+    if (elementL > 0 && elementL <= data.numShock) &&
+       (elementR > 0 && elementR <= data.numShock)
       # record the new interface
       iface_new = RelativeInterface(replace_interface(iface_i, elementL, elementR), i)
       push_iface(data, iface_new)
@@ -384,6 +387,37 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     end  # end j
     data.bndry_offsets[i+1] = data.bndry_offsets[i] + nfaces
   end  # end i
+
+  # add all boundaries that are not on the boundary of the original domain.
+  # Don't include them in data.bndry_offsets
+  @assert mesh.coord_order == 1
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    elementL = data.elnums_mesh[iface_i.elementL]
+    elementR = data.elnums_mesh[iface_i.elementR]
+
+    # if an element has not been seen before and its neighbor has a shock in
+    # it, add to the list of neighbor elements
+    elL_nonzero = elementL > 0 && elementL <= data.numShock
+    elR_nonzero = elementR > 0 && elementR <= data.numShock
+
+    # only one element non zero
+    if elL_nonzero || elR_nonzero && !(elL_nonzero && elR_nonzero)
+
+      if elementL == 0
+        # add face of elementR as boundary
+        bndry_new = RelativeBoundary(Boundary(elementR, iface_i.faceR), i, -1)
+        push_bndry(data, bndry_new)
+        
+      elseif elementR == 0
+        # add face of elementL as boundary
+        #TODO: record orientation info needed for normal vector
+        bndry_new = RelativeBoundary(Boundary(elementL, iface_i.faceL), i)
+        push_bndry(data, bndry_new)
+      end
+    end
+  end
+
   data.numBoundaryFaces = data.idx_b - 1
 
 

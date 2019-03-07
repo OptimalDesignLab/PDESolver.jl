@@ -22,6 +22,11 @@ end
 struct RelativeBoundary
   bndry::Boundary
   idx_orig::Int
+  fac::Int8  # factor to multiply normal vector by, 1 or -1
+end
+
+function RelativeBoundary(bndry::Boundary, idx_orig::Integer)
+  return RelativeBoundary(bndry, idx_orig, 1)
 end
 
 

@@ -252,13 +252,16 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     for j=1:m
       eqn.q_vec[j] += newton_data.step_fac*delta_q_vec[j]
     end
-  
+ 
+    flush(BSTDOUT)
     saveSolutionToMesh(mesh, real(eqn.q_vec))
     fname = string("newton_", i)
     writeVisFiles(mesh, fname)
+    flush(BSTDOUT)
 
 
 
+    println("calculating next residual")
     # calculate residual at updated location, used for next iteration rhs
     res_0_norm = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
     recordResNorm(newton_data, res_0_norm)

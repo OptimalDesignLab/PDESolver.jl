@@ -25,6 +25,8 @@ function test_shocksensorPP()
     # initial condition is constant, check the sensor reports no shock
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
                                              dxidx, jac)
+
+    test_vandermonde(eqn.params, sbp, coords)
     test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
                              dxidx, jac)
 
@@ -146,6 +148,38 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   return nothing
 end
 
+function test_vandermonde(params, sbp, coords)
+
+  q = zeros(sbp.numnodes)
+  q1 = zeros(sbp.numnodes)
+  q2 = zeros(sbp.numnodes)
+  q3 = zeros(sbp.numnodes)
+  q4 = zeros(sbp.numnodes)
+
+  # test constants (which should be represented exactly on both p=0 and p=1
+  # solutions
+  vand = EulerEquationMod.VandermondeData(sbp, 1)
+  fill!(q, 1)
+
+  EulerEquationMod.getFilteredSolutions(params, vand, q, q1, q2)
+
+  @test maximum(abs.(q - q1)) < 1e-12
+  @test maximum(abs.(q - q2)) < 1e-12
+
+  # test linear polynomials are split correctly
+  for i=1:sbp.numnodes
+    q[i] = 1 + coords[1, i] + coords[2, i]
+    q3[i] = 1
+    q4[i] = coords[1, i] + coords[2, i]
+  end
+  EulerEquationMod.getFilteredSolutions(params, vand, q, q1, q2)
+
+  @test maximum(abs.(q1 - q)) < 1e-12
+  @test maximum(abs.( q - (q2 + q4))) < 1e-12
+
+  return nothing
+end
+
 """
   Tests Jacobian of shock capturing scheme
 """
@@ -242,8 +276,9 @@ function test_ldg()
 
     testQx(mesh, sbp, eqn, opts)
 
-    test_shockmesh(mesh, sbp, eqn, opts)
-    
+    #test_shockmesh(mesh, sbp, eqn, opts)
+    test_shockmesh2(mesh, sbp, eqn, opts)
+#=
     test_thetaface(mesh, sbp, eqn, opts)
     test_qj(mesh, sbp, eqn, opts)
     test_qface(mesh, sbp, eqn, opts)
@@ -251,7 +286,7 @@ function test_ldg()
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_ldg_ESS(mesh, sbp, eqn, opts)
-
+=#
     test_br2_gradw(mesh, sbp, eqn, opts)
     test_br2_volume(mesh, sbp, eqn, opts)
     test_br2_face(mesh, sbp, eqn, opts)
@@ -277,7 +312,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """
@@ -840,6 +875,11 @@ function testQx2(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts)  where {Tsol, Tres
 end
 
 
+"""
+  Tests the shockmesh was constructed correctly.  This works for the case
+  where the shockmesh boundary elements are only those that lie on the
+  original mesh boundary
+"""
 function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
    
   # construct the shock mesh with all elements in it that are fully interior
@@ -913,6 +953,56 @@ function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
 
 
 end
+
+
+function test_shockmesh2(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+   
+  # construct the shock mesh with all elements in it that are fully interior
+  iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+
+  # all elements that are fully interior should be listed as shocked, all
+  # other elements should be on the boundary
+
+  @test shockmesh.numShock == shockmesh.numEl  # no neighbor elements
+  elnums_shock = sview(shockmesh.elnums_all, 1:shockmesh.numShock)
+
+  # get list of all elements on the boundary of the original domain
+  elnums_boundary = Array{Int}(0)
+  for i=1:mesh.numBoundaryFaces
+    push!(elnums_boundary, mesh.bndryfaces[i].element)
+  end
+  elnums_boundary = sort!(unique(elnums_boundary))
+
+  # get list of all elements on the boundary of the shock domain
+  for i=1:shockmesh.numBoundaryFaces
+    idx_orig = shockmesh.bndryfaces[i].idx_orig
+    iface_i = mesh.interfaces[idx_orig]
+    @test (iface_i.elementL in elnums_boundary) || (iface_i.elementR in elnums_boundary)
+  end
+
+  # test that all non-boundary elements are in the shockmesh
+  for i=1:mesh.numEl
+    if !(i in elnums_boundary)
+      @test i in elnums_shock
+    end
+  end
+
+  # check interfaces
+  for i=1:shockmesh.numInterfaces
+    iface_red = shockmesh.ifaces[i]
+    idx_orig = iface_red.idx_orig
+    elnum_fullL = shockmesh.elnums_all[iface_red.iface.elementL]
+    elnum_fullR = shockmesh.elnums_all[iface_red.iface.elementR]
+    @test elnum_fullL == Int(mesh.interfaces[idx_orig].elementL)
+    @test elnum_fullR == Int(mesh.interfaces[idx_orig].elementR)
+  end
+
+  # check bndry_offsets
+  @test shockmesh.bndry_offsets[end] == 1
+
+  return nothing
+end
+
 
 
 function test_thetaface(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
@@ -1215,14 +1305,26 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
 
   # test alpha sums to 1
   alpha_sum = zeros(shockmesh.numEl)
+  els_interior = Array{Int}(0)
   for i=1:shockmesh.numInterfaces
     iface_i = shockmesh.ifaces[i].iface
     alpha_sum[iface_i.elementL] += capture.alpha[1, i]
     alpha_sum[iface_i.elementR] += capture.alpha[2, i]
+    push!(els_interior, iface_i.elementL)
+    push!(els_interior, iface_i.elementR)
+  end
+
+  els_interior = unique(els_interior)
+
+  for i=1:shockmesh.numShock
+    el_orig = shockmesh.elnums_all[i]
+    println("element ", el_orig, " has alpha sum = ", alpha_sum[i])
   end
 
   for i=1:shockmesh.numShock
-    @test abs(alpha_sum[i] - 1) < 1e-15
+    if i in els_interior  # isolated elements (no interfaces) have alpha of 0
+      @test abs(alpha_sum[i] - 1) < 1e-15
+    end
   end
 
   if !shockmesh.isNeumann
@@ -1348,10 +1450,12 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
 
   w_face = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   for i=1:shockmesh.numInterfaces
+    println("interface ", i)
     iface = shockmesh.ifaces[i].iface
     idx_orig = shockmesh.ifaces[i].idx_orig
     elnumL = shockmesh.elnums_all[iface.elementL]
     elnumR = shockmesh.elnums_all[iface.elementR]
+    println("elnumL = ", elnumL, ", elnumR = ", elnumR)
 
     wL = ro_sview(capture.w_el, :, :, iface.elementL)
     wR = ro_sview(capture.w_el, :, :, iface.elementR)
@@ -1379,6 +1483,10 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
   end
 
   # now use applyE for every element, then apply Dx^T and Dy^T
+  boundary_els = Array{Int}(0)
+  for i=1:shockmesh.numBoundaryFaces
+    push!(boundary_els, shockmesh.bndryfaces[i].bndry.element)
+  end
 
   work = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   work2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace, mesh.dim)
@@ -1386,7 +1494,13 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
   E_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   res2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
   for i=1:shockmesh.numShock
+    # this doesn't work because not all the faces of boundary elements do
+    # apply Dgk^T
+    if i in boundary_els
+      continue
+    end
     i_full = shockmesh.elnums_all[i]
+    println("element ", i_full)
     w_i = ro_sview(capture.w_el, :, :, i)
 
     applyE(mesh, i_full, sview(iface_idx, :, i_full), w_i, work, work2, E_term)
@@ -1440,6 +1554,9 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
+
+  dofs3 = vec(mesh.dofs[:, :, 16])
+  println("element 3 contribution = ", dot(w_vec[dofs3], eqn.res_vec[dofs3]))
 
   return nothing
 end
