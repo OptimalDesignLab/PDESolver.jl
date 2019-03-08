@@ -85,10 +85,11 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     #den_dot[i] += 2*fac*up[i]
   end
 
-  Se = num/den
+  Se = sqrt(num/den)
   fac2 = 1/(den*den)
+  fac3 = 1/(2*Se)
   @simd for i=1:numNodesPerElement
-    Se_jac[1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2
+    Se_jac[1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2*fac3
   end
 
 
@@ -234,20 +235,22 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     h_avg += fac
   end
 
-  # jacobian of val
+  val = sqrt(val)
+
+  # jacobian of val (including the sqrt)
+  fac_val = 1/(2*val)
   for q=1:numNodesPerElement
     for p=1:numNodesPerElement
       fac = sbp.w[p]/jac[p]
       for j=1:numDofPerNode
         for i=1:numDofPerNode
-          Se_jac[j, q] += 2*res[i, p]*fac*res_jac[i, j, p, q]
+          Se_jac[j, q] += fac_val*2*res[i, p]*fac*res_jac[i, j, p, q]
         end
       end
     end
   end
 
-  # was 2 - beta
-  h_fac = h_avg^((1 - sensor.beta)/Tdim)
+  h_fac = h_avg^((2 - sensor.beta)/Tdim)
 
   ee = Tres(sensor.C_eps*h_fac*val)
   for q=1:numNodesPerElement

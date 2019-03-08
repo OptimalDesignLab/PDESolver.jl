@@ -215,6 +215,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
                                # does not reset the tolerance
       # enable globalization if required
       opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
+      newton_data.itermax = opts["itermax"]
 
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)

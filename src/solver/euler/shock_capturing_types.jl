@@ -139,7 +139,7 @@ struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
 
   function ShockSensorHIso{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
-    C_eps = 1/5  # was 1/25
+    C_eps = 1/25  # was 1/25
     beta = 1/10
 
     numDofPerNode = mesh.numDofPerNode
