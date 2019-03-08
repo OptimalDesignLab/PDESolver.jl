@@ -185,38 +185,6 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   # Do this in Cartesian coordinates because it makes the differentiation easier
   numDofPerNode, numNodesPerElement = size(q)
 
-  #=
-  @unpack sensor flux nrm aux_vars work res
-  fill!(res, 0); fill!(nrm, 0)
-
-  for i=1:numNodesPerElement
-    q_i = sview(q, :, i)
-    for d=1:Tdim
-      nrm[d] = 1
-      flux_d = sview(flux, :, i, d)
-
-      calcEulerFlux(params, q_i, aux_vars, nrm, flux_d)
-
-      nrm[d] = 0
-    end
-  end
-
-  applyDx(sbp, flux, dxidx, jac, work, res)
-
-  # compute norm and mesh size h
-  val = zero(Tres)
-  h_avg = zero(Tmsh)
-  for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]  # not sure about this factor of 1/|J|, because
-                           # this is the strong form residual
-    for j=1:numDofPerNode
-      val += res[j, i]*fac*res[j, i]
-    end
-    h_avg += fac
-  end
-
-  val = sqrt(val)
-  =#
   val = computeStrongFormNorm(params, sbp, sensor.strongdata, q, dxidx, jac)
   h_avg = computeElementVolume(params, sbp, jac)
 
