@@ -85,11 +85,11 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     #den_dot[i] += 2*fac*up[i]
   end
 
-  Se = sqrt(num/den)
+  Se = num/den
   fac2 = 1/(den*den)
-  fac3 = 1/(2*Se)
+#  fac3 = 1/(2*Se)
   @simd for i=1:numNodesPerElement
-    Se_jac[1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2*fac3
+    Se_jac[1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2#*fac3
   end
 
 
@@ -192,7 +192,56 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   # Do this in Cartesian coordinates because it makes the differentiation easier
   numDofPerNode, numNodesPerElement = size(q)
 
-  @unpack sensor flux nrm aux_vars work res
+  val = computeStrongFormNorm_diff(params, sbp, sensor.strongdata,
+                                   q, coords, dxidx, jac, Se_jac)
+
+  h_avg = computeElementVolume(params, sbp, jac)
+  h_fac = h_avg^((2 - sensor.beta)/Tdim)
+
+  ee = Tres(sensor.C_eps*h_fac*val)
+  for q=1:numNodesPerElement
+    for j=1:numDofPerNode
+      ee_jac[j, q] = sensor.C_eps*h_fac*Se_jac[j, q]
+    end
+  end
+
+
+  # calling | div(f) | as the shock sensor, which is somewhat arbitrary
+  return val, ee, false
+end
+
+"""
+  Differentiated version
+
+  **Inputs**
+
+   * params
+   * sbp
+   * data: `StrongFormData` to hold temporary arrays
+   * q: solution on the entire element, `numDofPerNode` x `numNodesPerElement`
+   * dxidx: scaled mapping jacobian for entire element, `dim` x `dim` x
+            `numNodesPerElement`
+   * jac: mapping jacobian determinant for entire element, `numNodesPerElement`
+
+  **Inputs/Outputs**
+
+   * val_jac: jacobian of `val` wrt `q`, same size as `q`
+
+  **Outputs**
+
+   * val
+"""
+function computeStrongFormNorm_diff(params::ParamType{Tdim},
+                      sbp::AbstractOperator,
+                      data::StrongFormData{Tsol, Tres},
+                      q::AbstractMatrix,
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
+                      jac::AbstractVector{Tmsh},
+                      val_jac::AbstractMatrix) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  numDofPerNode, numNodesPerElement = size(q)
+  @unpack data flux nrm aux_vars work res
   fill!(res, 0); fill!(nrm, 0)
 
   # this only needs to be 4D, but applyOperatorJac doesn't have a method
@@ -224,15 +273,13 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   # compute norm and mesh size h
   val = zero(Tres)
-  fill!(Se_jac, 0)
-  h_avg = zero(Tmsh)
+  fill!(val_jac, 0)
   for i=1:numNodesPerElement
     fac = sbp.w[i]/jac[i]  # not sure about this factor of 1/|J|, because
                            # this is the strong form residual
     for j=1:numDofPerNode
       val += res[j, i]*fac*res[j, i]
     end
-    h_avg += fac
   end
 
   val = sqrt(val)
@@ -244,25 +291,17 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
       fac = sbp.w[p]/jac[p]
       for j=1:numDofPerNode
         for i=1:numDofPerNode
-          Se_jac[j, q] += fac_val*2*res[i, p]*fac*res_jac[i, j, p, q]
+          val_jac[j, q] += fac_val*2*res[i, p]*fac*res_jac[i, j, p, q]
         end
       end
     end
   end
 
-  h_fac = h_avg^((2 - sensor.beta)/Tdim)
-
-  ee = Tres(sensor.C_eps*h_fac*val)
-  for q=1:numNodesPerElement
-    for j=1:numDofPerNode
-      ee_jac[j, q] = sensor.C_eps*h_fac*Se_jac[j, q]
-    end
-  end
-
-
-  # calling | div(f) | as the shock sensor, which is somewhat arbitrary
-  return val, ee, false
+  return val
 end
+
+
+
 
 #------------------------------------------------------------------------------
 # ShockSensorBO

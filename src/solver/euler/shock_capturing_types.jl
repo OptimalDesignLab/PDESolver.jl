@@ -122,25 +122,17 @@ end
 # Hartmanns Isotropic sensor
 
 """
-  Sensor from Hartmann's "Adaptive Discontinuous Galerkin Finite Element
-  Methods for the Compressible Euler Equations".  This sensor is suitable for
-  isotropic meshes only.  See the paper "for the Compressible Navier-Stokes
-  Equations" for the anisotropic one.
+  Struct for computing the norm of the strong form residual
 """
-struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
-  C_eps::Float64
-  beta::Float64
-  
+struct StrongFormData{Tsol, Tres}
+
   flux::Array{Tres, 3}
   nrm::Vector{Tres}
   aux_vars::Vector{Tres}
   work::Array{Tres, 3}
   res::Array{Tres, 2}
 
-  function ShockSensorHIso{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                       opts) where {Tsol, Tres}
-    C_eps = 1/25  # was 1/25
-    beta = 1/10
+  function StrongFormData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
 
     numDofPerNode = mesh.numDofPerNode
     numNodesPerElement = mesh.numNodesPerElement
@@ -152,9 +144,33 @@ struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
     work = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
     res = zeros(Tres, numDofPerNode, numNodesPerElement)
 
+    return new(flux, nrm, aux_vars, work, res)
+  end
+end
 
-    return new(C_eps, beta,
-               flux, nrm, aux_vars, work, res)
+
+
+
+
+"""
+  Sensor from Hartmann's "Adaptive Discontinuous Galerkin Finite Element
+  Methods for the Compressible Euler Equations".  This sensor is suitable for
+  isotropic meshes only.  See the paper "for the Compressible Navier-Stokes
+  Equations" for the anisotropic one.
+"""
+struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
+  C_eps::Float64
+  beta::Float64
+
+  strongdata::StrongFormData{Tsol, Tres}
+  
+  function ShockSensorHIso{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+    C_eps = 1/25  # was 1/25
+    beta = 1/10
+    strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
+
+    return new(C_eps, beta, strongdata)
   end
 end
 

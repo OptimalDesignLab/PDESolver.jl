@@ -125,7 +125,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
-  lambda_cutoff = 0.001
+  lambda_cutoff = 0.005
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
@@ -298,6 +298,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
 #      lambda_final_step = 0.05  # maximum size of final step in lambda
       lambda = max(lambda_min, lambda - h)
       if lambda < lambda_cutoff
+        println(BSTDOUT, "Reached lambda cutoff, forcing lambda to 0")
 
         # if this is the final step to lambda = 0, and the step is too large,
         # force an intermediate step

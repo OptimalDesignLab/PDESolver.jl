@@ -63,7 +63,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
     #den += up[i]*fac*up[i]
   end
 
-  Se = sqrt(num/den)
+  Se = num/den
   se = log10(Se)
   
   # should this be a separate function from computing Se?
@@ -185,6 +185,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   # Do this in Cartesian coordinates because it makes the differentiation easier
   numDofPerNode, numNodesPerElement = size(q)
 
+  #=
   @unpack sensor flux nrm aux_vars work res
   fill!(res, 0); fill!(nrm, 0)
 
@@ -215,6 +216,10 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   end
 
   val = sqrt(val)
+  =#
+  val = computeStrongFormNorm(params, sbp, sensor.strongdata, q, dxidx, jac)
+  h_avg = computeElementVolume(params, sbp, jac)
+
   h_fac = h_avg^((2 - sensor.beta)/Tdim)
 
   ee = Tres(sensor.C_eps*h_fac*val)
@@ -229,6 +234,77 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   # calling | div(f) | as the shock sensor, which is somewhat arbitrary
   return val, ee
 end
+
+"""
+  Computes || del * F ||_{L2}.  where del is the diverage in the xyz directions,
+  for a single element.
+
+  **Inputs**
+
+   * params
+   * sbp
+   * data: `StrongFormData` to hold temporary arrays
+   * q: solution on the entire element, `numDofPerNode` x `numNodesPerElement`
+   * dxidx: scaled mapping jacobian for entire element, `dim` x `dim` x
+            `numNodesPerElement`
+   * jac: mapping jacobian determinant for entire element, `numNodesPerElement`
+"""
+function computeStrongFormNorm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                               data::StrongFormData{Tsol, Tres},
+                               q::AbstractMatrix,
+                               dxidx::Abstract3DArray,
+                               jac::AbstractVector) where {Tdim, Tsol, Tres}
+
+  @unpack data flux nrm aux_vars work res
+  fill!(res, 0); fill!(nrm, 0)
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    for d=1:Tdim
+      nrm[d] = 1
+      flux_d = sview(flux, :, i, d)
+
+      calcEulerFlux(params, q_i, aux_vars, nrm, flux_d)
+
+      nrm[d] = 0
+    end
+  end
+
+  applyDx(sbp, flux, dxidx, jac, work, res)
+
+  # compute norm
+  val = zero(Tres)
+  for i=1:numNodesPerElement
+    fac = sbp.w[i]/jac[i]
+    for j=1:numDofPerNode
+      val += res[j, i]*fac*res[j, i]
+    end
+  end
+
+  val = sqrt(val)
+
+  return val
+end
+
+"""
+  Computes volume of element by integrating the mapping jacobian determinant
+"""
+function computeElementVolume(params::ParamType{Tdim}, sbp::AbstractOperator,
+                         jac::AbstractVector{Tmsh}) where {Tdim, Tmsh}
+
+  # compute norm and mesh size h
+  vol = zero(Tmsh)
+  for i=1:length(jac)
+    vol += sbp.w[i]/jac[i]
+  end
+
+  return vol
+end
+
+
+
 
 #------------------------------------------------------------------------------
 # ShockSensorBO
@@ -255,3 +331,16 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   return lambda_max, sensor.alpha*lambda_max*h_avg/sbp.degree
 end
 
+#------------------------------------------------------------------------------
+# ShockSensorHHO
+
+
+#=
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHHO{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tres, Tmsh, Tdim}
+
+end
+=#
