@@ -184,8 +184,10 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   # compute | div(F) |
   # Do this in Cartesian coordinates because it makes the differentiation easier
   numDofPerNode, numNodesPerElement = size(q)
+  res = sensor.res
 
-  val = computeStrongFormNorm(params, sbp, sensor.strongdata, q, dxidx, jac)
+  computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
+  val = computeL2Norm(params, sbp, jac, res)
   h_avg = computeElementVolume(params, sbp, jac)
 
   h_fac = h_avg^((2 - sensor.beta)/Tdim)
@@ -204,7 +206,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
 end
 
 """
-  Computes || del * F ||_{L2}.  where del is the diverage in the xyz directions,
+  Computes del * F.  where del is the diverage in the xyz directions,
   for a single element.
 
   **Inputs**
@@ -216,14 +218,19 @@ end
    * dxidx: scaled mapping jacobian for entire element, `dim` x `dim` x
             `numNodesPerElement`
    * jac: mapping jacobian determinant for entire element, `numNodesPerElement`
+
+  **Inputs/Outputs**
+
+   * res: array to overwrite with residual, same size as `q`.
 """
-function computeStrongFormNorm(params::ParamType{Tdim}, sbp::AbstractOperator,
+function computeStrongResidual(params::ParamType{Tdim}, sbp::AbstractOperator,
                                data::StrongFormData{Tsol, Tres},
                                q::AbstractMatrix,
                                dxidx::Abstract3DArray,
-                               jac::AbstractVector) where {Tdim, Tsol, Tres}
+                               jac::AbstractVector,
+                               res::AbstractMatrix) where {Tdim, Tsol, Tres}
 
-  @unpack data flux nrm aux_vars work res
+  @unpack data flux nrm aux_vars work
   fill!(res, 0); fill!(nrm, 0)
 
   numDofPerNode, numNodesPerElement = size(q)
@@ -242,6 +249,26 @@ function computeStrongFormNorm(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   applyDx(sbp, flux, dxidx, jac, work, res)
 
+  return nothing
+end
+
+"""
+  Computes the integral L2 norm for a single element
+
+  **Inputs**
+
+   * params
+   * sbp
+   * jac: mapping jacobian determinant for the element, `numNodesPerElement`
+   * res: `numDofPerNode` x `numNodesPerElement` array to compute the norm
+          of.  
+"""
+function computeL2Norm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                       jac::AbstractVector, res::AbstractMatrix{Tres}
+                      ) where {Tres, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(res)
+
   # compute norm
   val = zero(Tres)
   for i=1:numNodesPerElement
@@ -255,6 +282,7 @@ function computeStrongFormNorm(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   return val
 end
+
 
 """
   Computes volume of element by integrating the mapping jacobian determinant

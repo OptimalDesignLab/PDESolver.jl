@@ -191,9 +191,11 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   # compute | div(F) |
   # Do this in Cartesian coordinates because it makes the differentiation easier
   numDofPerNode, numNodesPerElement = size(q)
+  @unpack sensor res res_jac
 
-  val = computeStrongFormNorm_diff(params, sbp, sensor.strongdata,
-                                   q, coords, dxidx, jac, Se_jac)
+  computeStrongResidual_diff(params, sbp, sensor.strongdata,
+                             q, coords, dxidx, jac, res, res_jac)
+  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, Se_jac)
 
   h_avg = computeElementVolume(params, sbp, jac)
   h_fac = h_avg^((2 - sensor.beta)/Tdim)
@@ -231,27 +233,19 @@ end
 
    * val
 """
-function computeStrongFormNorm_diff(params::ParamType{Tdim},
+function computeStrongResidual_diff(params::ParamType{Tdim},
                       sbp::AbstractOperator,
                       data::StrongFormData{Tsol, Tres},
                       q::AbstractMatrix,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      val_jac::AbstractMatrix) where {Tsol, Tres, Tmsh, Tdim}
+                      res::AbstractMatrix, res_jac::Abstract4DArray) where {Tsol, Tres, Tmsh, Tdim}
 
 
   numDofPerNode, numNodesPerElement = size(q)
-  @unpack data flux nrm aux_vars work res
-  fill!(res, 0); fill!(nrm, 0)
+  @unpack data flux nrm aux_vars work flux_jac Dx
+  fill!(res, 0); fill!(nrm, 0); fill!(flux_jac, 0); fill!(res_jac, 0)
 
-  # this only needs to be 4D, but applyOperatorJac doesn't have a method
-  # for that
-  flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, Tdim,
-                   numNodesPerElement, numNodesPerElement)
-
-  Dx = zeros(numNodesPerElement, numNodesPerElement, Tdim)
-  res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
-                        numNodesPerElement)
   for i=1:numNodesPerElement
     q_i = sview(q, :, i)
     for d=1:Tdim
@@ -271,12 +265,39 @@ function computeStrongFormNorm_diff(params::ParamType{Tdim},
   calcDx(sbp, dxidx, jac, Dx)
   applyOperatorJac(Dx, flux_jac, res_jac)
 
-  # compute norm and mesh size h
+  return nothing
+end
+
+"""
+  **Inputs**
+
+   * params
+   * sbp
+   * jac: mapping jacobian determinant for the element, `numNodesPerElement`
+   * res: `numDofPerNode` x `numNodesPerElement` array to compute the norm
+          of.
+   * res_jac: 4D jacobian of `res` wrt `q`
+
+  **Inputs/Outputs**
+
+   * val_jac: array to be overwritten with jacobian of `val` wrt `q`
+
+  **Outputs**
+
+   * val: L2 norm
+"""
+function computeL2Norm_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
+                            jac::AbstractVector,
+                            res::AbstractMatrix{Tres}, res_jac::Abstract4DArray,
+                            val_jac::AbstractMatrix) where {Tres, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(res)
+
+  # compute norm
   val = zero(Tres)
   fill!(val_jac, 0)
   for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]  # not sure about this factor of 1/|J|, because
-                           # this is the strong form residual
+    fac = sbp.w[i]/jac[i]
     for j=1:numDofPerNode
       val += res[j, i]*fac*res[j, i]
     end
@@ -299,7 +320,6 @@ function computeStrongFormNorm_diff(params::ParamType{Tdim},
 
   return val
 end
-
 
 
 

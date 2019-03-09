@@ -130,7 +130,9 @@ struct StrongFormData{Tsol, Tres}
   nrm::Vector{Tres}
   aux_vars::Vector{Tres}
   work::Array{Tres, 3}
-  res::Array{Tres, 2}
+
+  flux_jac::Array{Tres, 5}
+  Dx::Array{Float64, 3}
 
   function StrongFormData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
 
@@ -142,9 +144,15 @@ struct StrongFormData{Tsol, Tres}
     nrm = zeros(Tres, dim)
     aux_vars = Tres[]
     work = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
-    res = zeros(Tres, numDofPerNode, numNodesPerElement)
 
-    return new(flux, nrm, aux_vars, work, res)
+    # this only needs to be 4D, but applyOperatorJac doesn't have a method
+    # for that
+    flux_jac = zeros(Tres, numDofPerNode, numDofPerNode, dim,
+                   numNodesPerElement, numNodesPerElement)
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+
+    return new(flux, nrm, aux_vars, work,
+               flux_jac, Dx)
   end
 end
 
@@ -163,14 +171,23 @@ struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
   beta::Float64
 
   strongdata::StrongFormData{Tsol, Tres}
-  
+  res::Matrix{Tres}
+
+  res_jac::Array{Tres, 4}
+
   function ShockSensorHIso{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
+    numDofPerNode = mesh.numDofPerNode
+    numNodesPerElement = mesh.numNodesPerElement
+
     C_eps = 1/25  # was 1/25
     beta = 1/10
     strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
+    res = zeros(Tres, numDofPerNode, numNodesPerElement)
+    res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                        numNodesPerElement)
 
-    return new(C_eps, beta, strongdata)
+    return new(C_eps, beta, strongdata, res, res_jac)
   end
 end
 
