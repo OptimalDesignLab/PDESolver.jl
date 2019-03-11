@@ -209,6 +209,66 @@ mutable struct ShockSensorBO{Tsol, Tres} <: AbstractShockSensor
   end
 end
 
+
+#------------------------------------------------------------------------------
+# Hartmann's high order sensor
+
+"""
+  This is an approximate version of the sensor from Hartmann's paper:
+  "Higher-order and adaptive discontinuous Galerkin methods with
+   shock-capturing applied to transonic turbulent delta wing flow"
+
+  The reason is it approximate is the paper uses a spatially varying
+  diffusion coefficient, here we take the L2 norm over the element and make
+  the diffusion coefficient constant in each element.
+"""
+struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
+  C_eps::Float64
+
+  strongdata::StrongFormData{Tsol, Tres}
+
+  p_dot::Vector{Tsol}
+  press_el::Matrix{Tsol}
+  press_dx::Array{Tres, 3}
+  work::Array{Tres, 3}
+  res::Array{Tres, 2}
+
+  p_jac::Array{Tsol, 3}
+  res_jac::Array{Tres, 4}
+  p_hess::Matrix{Tsol}
+  Dx::Array{Tres, 3}
+  px_jac::Array{Tres, 5}
+  val_dot::Matrix{Tres}
+
+  function ShockSensorHHO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerElement dim
+
+    C_eps = 20  # was 1/5
+    strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
+
+    p_dot = zeros(Tsol, numDofPerNode)
+    press_el = zeros(Tsol, 1, numNodesPerElement)
+    press_dx = zeros(Tres, 1, numNodesPerElement, dim)
+    work = zeros(Tres, 1, numNodesPerElement, dim)
+    res = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+    p_jac = zeros(Tsol, 1, numDofPerNode, numNodesPerElement)
+    res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                          numNodesPerElement)
+    p_hess = zeros(Tsol, numDofPerNode, numDofPerNode)
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+    px_jac = zeros(Tres, 1, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    val_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+    return new(C_eps, strongdata,
+               p_dot, press_el, press_dx, work, res,
+               p_jac, res_jac, p_hess, Dx, px_jac, val_dot)
+  end
+end
+
 #------------------------------------------------------------------------------
 # Projection-based shock capturing
 
@@ -776,6 +836,7 @@ global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSens
 "SensorPP" => ShockSensorPP,
 "SensorHIso" => ShockSensorHIso,
 "SensorBO" => ShockSensorBO,
+"SensorHHO" => ShockSensorHHO,
 )
 
 function getShockSensor(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}

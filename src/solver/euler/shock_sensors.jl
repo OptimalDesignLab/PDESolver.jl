@@ -331,12 +331,64 @@ end
 # ShockSensorHHO
 
 
-#=
+
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHHO{Tsol, Tres},
                         q::AbstractMatrix, coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                          ) where {Tsol, Tres, Tmsh, Tdim}
+#NOTE: the real sensor produces spatially varying viscoscity.  Here we take
+#      the norm so it fits into the elementwise-constant viscoscity model
 
+  numDofPerNode, numNodesPerElement = size(q)
+
+  @unpack sensor p_dot press_el press_dx work res
+#  p_dot = zeros(Tsol, numDofPerNode)
+#  press_el = zeros(Tsol, 1, numNodesPerElement)
+#  press_dx = zeros(Tres, 1, numNodesPerElement, Tdim)
+#  work = zeros(Tres, 1, numNodesPerElement, Tdim)
+#  res = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+  fill!(press_dx, 0); fill!(res, 0)
+
+  #TODO: in the real sensor, this should include an anisotropy factor
+  h_avg = computeElementVolume(params, sbp, jac)
+  h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
+
+  # compute Rm
+  computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
+
+  # compute Rp
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    press = calcPressure_diff(params, q_i, p_dot)
+    press_el[1, i] = press
+
+    for j=1:numDofPerNode
+      res[j, i] *= p_dot[j]/press
+    end
+  end
+
+  # compute pressure switch fp
+  applyDx(sbp, press_el, dxidx, jac, work, press_dx)
+  for i=1:numNodesPerElement
+    val = zero(Tres)
+    for d=1:Tdim
+      val += press_dx[1, i, d]*press_dx[1, i, d]
+    end
+    val = sqrt(val)*h_fac/(press_el[1, i] + 1e-12)
+
+    # lump fp in with |Rm| for now
+    for j=1:numDofPerNode
+      res[j, i] *= val
+    end
+  end
+
+  # compute norm to make this elementwise constant
+  val = computeL2Norm(params, sbp, jac, res)
+
+  ee = val*h_fac*h_fac*sensor.C_eps
+  #ee = val*h_fac*sensor.C_eps
+
+  return val, ee
 end
-=#

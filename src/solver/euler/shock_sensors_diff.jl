@@ -358,3 +358,163 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   return lambda_max, sensor.alpha*h_avg*lambda_max/sbp.degree, false
 end
+
+
+#------------------------------------------------------------------------------
+# ShockSensorHHO
+
+
+function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
+                      sensor::ShockSensorHHO,
+                      q_el::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
+                      jac::AbstractVector{Tmsh},
+                      Se_jac::AbstractMatrix{Tres},
+                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+
+
+  numDofPerNode, numNodesPerElement = size(q_el)
+
+  @unpack sensor p_jac press_el press_dx work res res_jac p_hess Dx px_jac val_dot
+  #=
+  p_jac = zeros(Tsol, 1, numDofPerNode, numNodesPerElement)
+  press_el = zeros(Tsol, 1, numNodesPerElement)
+  press_dx = zeros(Tres, 1, numNodesPerElement, Tdim)
+  work = zeros(Tres, 1, numNodesPerElement, Tdim)
+  res = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+  res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                        numNodesPerElement)
+  p_hess = zeros(Tsol, numDofPerNode, numDofPerNode)
+  Dx = zeros(numNodesPerElement, numNodesPerElement, Tdim)
+  px_jac = zeros(Tres, 1, numDofPerNode, Tdim, numNodesPerElement,
+                       numNodesPerElement)
+  val_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+  =#
+  fill!(press_dx, 0); fill!(res, 0); fill!(px_jac, 0)
+
+  #TODO: in the real sensor, this should include an anisotropy factor
+  h_avg = computeElementVolume(params, sbp, jac)
+  h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
+
+
+  computeStrongResidual_diff(params, sbp, sensor.strongdata,
+                             q_el, coords, dxidx, jac, res, res_jac)
+
+  # compute pressure and pressure_jac for entire element
+  for p=1:numNodesPerElement
+    q_p = ro_sview(q_el, :, p)
+    p_dot = sview(p_jac, 1, :, p)
+    press_el[1, p] = calcPressure_diff(params, q_p, p_dot)
+  end
+
+  # compute Rp
+
+  # jacobian first: p_dot/p * dR/dq + R*d/dq (p_dot/p)
+  # first term
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      press = press_el[1, p]
+      p_dot = sview(p_jac, 1, :, p)
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          res_jac[i, j, p, q] *= p_dot[i]/press
+        end
+      end
+    end
+  end
+
+
+  # second term
+  for p=1:numNodesPerElement
+    q_p = sview(q_el, :, p)
+    press = press_el[1, p]
+    p_dot = sview(p_jac, 1, :, p)
+    calcPressure_hess(params, q_p, p_hess)
+    for j=1:numDofPerNode
+      for i=1:numDofPerNode
+        res_jac[i, j, p, p] += res[i, p]*(-p_dot[i]*p_dot[j]/(press*press) + p_hess[i, j]/press)
+      end
+    end
+  end
+
+  # residual itself
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q_el, :, i)
+    press = press_el[1, i]
+    p_dot = sview(p_jac, 1, :, i)
+
+    for j=1:numDofPerNode
+      res[j, i] *= p_dot[j]/press
+    end
+  end
+
+  # compute pressure switch fp
+  calcDx(sbp, dxidx, jac, Dx)
+  applyOperatorJac(Dx, p_jac, px_jac)
+
+
+  applyDx(sbp, press_el, dxidx, jac, work, press_dx)
+  for p=1:numNodesPerElement
+    val = zero(Tres)
+    fill!(val_dot, 0)
+    for d=1:Tdim
+      val += press_dx[1, p, d]*press_dx[1, p, d]
+      for q=1:numNodesPerElement
+        for j=1:numDofPerNode
+          val_dot[j, q] += 2*press_dx[1, p, d]*px_jac[1, j, d, p, q]
+        end
+      end
+    end  # end d
+    press = press_el[1, p]
+
+    val2 = sqrt(val)
+    scale!(val_dot, 1/(2*val2))
+  
+    t1 = (press + 1e-12)
+    val3 = val2*h_fac/t1
+
+    # contribution of derivative of val2
+    for q=1:numNodesPerElement
+      for j=1:numDofPerNode
+        val_dot[j, q] = h_fac*(val_dot[j, q]/t1)
+      end
+    end
+
+    # contribution of derivative of p
+    for j=1:numDofPerNode
+      val_dot[j, p] += h_fac*val2*(-p_jac[1, j, p]/(t1*t1))
+    end
+
+
+    # lump fp in with |Rm| for now
+
+    # jacobian first
+    for q=1:numNodesPerElement
+      for j=1:numDofPerNode
+        for i=1:numDofPerNode
+          res_jac[i, j, p, q] = val3*res_jac[i, j, p, q] + res[i, p]*val_dot[j, q]
+        end
+      end
+    end
+
+    # residual
+    for i=1:numDofPerNode
+      res[i, p] *= val3
+    end
+  end
+
+  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, Se_jac)
+
+  #TODO: was h^2
+  ee = val*h_fac*h_fac*sensor.C_eps
+  #ee = val*h_fac*sensor.C_eps
+  for q=1:numNodesPerElement
+    for j=1:numDofPerNode
+      ee_jac[j, q] = Se_jac[j, q]*h_fac*h_fac*sensor.C_eps
+      #ee_jac[j, q] = Se_jac[j, q]h_fac*sensor.C_eps
+    end
+  end
+
+  return val, ee, false
+end

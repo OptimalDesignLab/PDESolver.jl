@@ -969,6 +969,93 @@ function calcPressure_diff(params::ParamType{3, :conservative},
   return (params.gamma_1)*(q[5] - 0.5*(t2 + t3 + t4)/q[1])
 end
 
+function calcPressure_hess(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractMatrix{Tsol} ) where Tsol
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  t1 = 1/(q[1]*q[1]); t1_dot1 = -2*t1/q[1]
+  t2 = q[2]*q[2]; t2_dot2 = 2*q[2]
+  t3 = q[3]*q[3]; t3_dot3 = 2*q[3]
+
+  #p_dot[1] = (params.gamma_1)*( 0.5*(t2*t1 + t3*t1))
+  #p_dot[2] = -(params.gamma_1)*(q[2]/q[1])
+  #p_dot[3] = -(params.gamma_1)*(q[3]/q[1])
+  #p_dot[4] = params.gamma_1
+
+  p_dot[1, 1] = params.gamma_1*0.5*t1_dot1*(t2 + t3)
+  p_dot[2, 1] = params.gamma_1*0.5*(t2_dot2*t1)
+  p_dot[3, 1] = params.gamma_1*0.5*(t3_dot3*t1)
+  p_dot[4, 1] = 0
+
+  p_dot[1, 2] = params.gamma_1*q[2]/(q[1]*q[1])
+  p_dot[2, 2] = -params.gamma_1/q[1]
+  p_dot[3, 2] = 0
+  p_dot[4, 2] = 0
+
+  p_dot[1, 3] = p_dot[3, 1]
+  p_dot[2, 3] = 0
+  p_dot[3, 3] = -params.gamma_1/q[1]
+  p_dot[4, 3] = 0
+
+  p_dot[1, 4] = 0
+  p_dot[2, 4] = 0
+  p_dot[3, 4] = 0
+  p_dot[4, 4] = 0
+
+  return  (params.gamma_1)*(q[4] - 0.5*(t2 + t3)/q[1])
+end
+
+
+function calcPressure_hess(params::ParamType{3, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractMatrix{Tsol} ) where Tsol
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  t1 = 1/(q[1]*q[1]); t1_dot1 = -2*t1/q[1]
+  t2 = q[2]*q[2]; t2_dot2 = 2*q[2]
+  t3 = q[3]*q[3]; t3_dot3 = 2*q[3]
+  t4 = q[4]*q[4]; t4_dot4 = 2*q[4]
+
+  #p_dot[1] =  params.gamma_1*( 0.5*(t2 + t3 + t4)*t1)
+  #p_dot[2] = -params.gamma_1*(q[2]/q[1])
+  #p_dot[3] = -params.gamma_1*(q[3]/q[1])
+  #p_dot[4] = -params.gamma_1*(q[4]/q[1])
+  #p_dot[5] =  params.gamma_1
+
+
+  p_dot[1, 1] = params.gamma_1*0.5*t1_dot1*(t2 + t3 + t4)
+  p_dot[2, 1] = params.gamma_1*0.5*(t2_dot2*t1)
+  p_dot[3, 1] = params.gamma_1*0.5*(t3_dot3*t1)
+  p_dot[4, 1] = params.gamma_1*0.5*(t4_dot4*t1)
+  p_dot[5, 1] = 0
+
+  p_dot[1, 2] = params.gamma_1*q[2]/(q[1]*q[1])
+  p_dot[2, 2] = -params.gamma_1/q[1]
+  p_dot[3, 2] = 0
+  p_dot[4, 2] = 0
+  p_dot[5, 2] = 0
+
+  p_dot[1, 3] = p_dot[3, 1]
+  p_dot[2, 3] = 0
+  p_dot[3, 3] = -params.gamma_1/q[1]
+  p_dot[4, 3] = 0
+  p_dot[5, 3] = 0
+
+  p_dot[1, 4] = p_dot[4, 1]
+  p_dot[2, 4] = 0
+  p_dot[3, 4] = 0
+  p_dot[4, 4] = -params.gamma_1/q[1]
+  p_dot[5, 4] = 0
+
+  p_dot[1, 5] = 0
+  p_dot[2, 5] = 0
+  p_dot[3, 5] = 0
+  p_dot[5, 5] = 0
+
+  return  (params.gamma_1)*(q[4] - 0.5*(t2 + t3)/q[1])
+end
+
 
 """
   Reverse mode of the pressure calculation

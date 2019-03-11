@@ -173,7 +173,7 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
 
   numNodesPerElement = size(Dx, 1)
   dim = size(Dx, 3)
-  numDofPerNode = size(t1, 1)
+  s1 = size(t1, 1); s2 = size(t1, 2)
 #=
   @assert size(t2, 1) == numDofPerNode
   @assert size(t2, 2) == numDofPerNode
@@ -190,16 +190,16 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
       # final values
       if zero_output
         @simd for d=1:dim
-          @simd for i=1:numDofPerNode
-            @simd for j=1:numDofPerNode
+          @simd for j=1:s2
+            @simd for i=1:s1
               t2[i, j, d, p, q] = 0
             end
           end
         end
       end
       @simd for d=1:dim
-        @simd for i=1:numDofPerNode
-          @simd for j=1:numDofPerNode
+        @simd for j=1:s2
+          @simd for i=1:s1
             t2[i, j, d, p, q] += op(Dx[p, q, d]*t1[i, j, q])
           end
         end
@@ -223,7 +223,7 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
 
   numNodesPerElement = size(Dx, 1)
   dim = size(Dx, 3)
-  numDofPerNode = size(t1, 1)
+  s1 = size(t1, 1); s2 = size(t1, 2)
 #=
   @assert size(t2, 1) == numDofPerNode
   @assert size(t2, 2) == numDofPerNode
@@ -240,8 +240,8 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
       # final values
       if zero_output
         @simd for d=1:dim
-          @simd for i=1:numDofPerNode
-            @simd for j=1:numDofPerNode
+          @simd for j=1:s2
+            @simd for i=1:s1
               t2[i, j, d, p, q] = 0
             end
           end
@@ -249,8 +249,8 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
       end
       @simd for k=1:numNodesPerElement  # summed index
         @simd for d=1:dim
-          @simd for i=1:numDofPerNode
-            @simd for j=1:numDofPerNode
+          @simd for j=1:s2
+            @simd for i=1:s1
               t2[i, j, d, p, q] += op(Dx[p, k, d]*t1[i, j, k, q])
             end
           end
@@ -274,7 +274,7 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
 
   numNodesPerElement = size(Dx, 1)
   dim = size(Dx, 3)
-  numDofPerNode = size(t1, 1)
+  s1 = size(t1, 1); s2 = size(t1, 2)
 #=
   @assert size(t2, 1) == numDofPerNode
   @assert size(t2, 2) == numDofPerNode
@@ -286,8 +286,8 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
 
       # zero out next tile
       if zero_output
-        @simd for i=1:numDofPerNode
-          @simd for j=1:numDofPerNode
+        @simd for j=1:s2
+          @simd for i=1:s1
             t2[i, j, p, q] = 0
           end
         end
@@ -295,8 +295,8 @@ function applyOperatorJac(Dx::Abstract3DArray, nodes::AbstractVector,
 
       @simd for k=1:numNodesPerElement  # summed index
         @simd for d=1:dim
-          @simd for i=1:numDofPerNode
-            @simd for j=1:numDofPerNode
+          @simd for j=1:s2
+            @simd for i=1:s1
               t2[i, j, p, q] += op(Dx[p, k, d]*t1[i, j, d, k, q])
             end
           end

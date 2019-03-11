@@ -125,7 +125,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
-  lambda_cutoff = 0.005
+  lambda_cutoff = 0.000  # was 0.005
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
@@ -136,7 +136,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
   # counters/loop variables
   #TODO: make a type to store these
   iter = 1
-  homotopy_tol = 1e-4
+  homotopy_tol = 1e-2
   delta_max = 1.0  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
   psi = 0.0  # angle between tangent vectors

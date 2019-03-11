@@ -22,6 +22,7 @@ function test_shocksensorPP()
     capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts)
     sensor2 = EulerEquationMod.ShockSensorHIso{Tsol, Tres}(mesh, sbp, opts)
     sensor3 = EulerEquationMod.ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
+    sensor4 = EulerEquationMod.ShockSensorHHO{Tsol, Tres}(mesh, sbp, opts)
     # initial condition is constant, check the sensor reports no shock
     Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
                                              dxidx, jac)
@@ -74,6 +75,7 @@ function test_shocksensorPP()
     # sensor2
     test_shocksensor_diff(eqn.params, sbp, sensor2, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor3, q, coords, dxidx, jac)
+    test_shocksensor_diff(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
 
     # case 2: ee on sin wave
     q[1, 3] = 1.0105

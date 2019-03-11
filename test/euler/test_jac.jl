@@ -622,8 +622,30 @@ function test_pressure(params::AbstractParamType{Tdim}) where Tdim
   @test maximum(abs.(q_bar - p_dot)) < 1e-13
 
 
+  # test hessian
+  p_dot = zeros(Complex128, numDofPerNode)
+  p_hess = zeros(Complex128, numDofPerNode, numDofPerNode)
+  p_hessc = zeros(Complex128, numDofPerNode, numDofPerNode)
+
+  h = 1e-20 
+  pert = Complex128(0, h)
+
+  for i=1:numDofPerNode
+    q[i] += pert
+    EulerEquationMod.calcPressure_diff(params, q, p_dot)
+    p_hessc[:, i] = imag(p_dot)./h
+    q[i] -= pert
+  end
+
+  EulerEquationMod.calcPressure_hess(params, q, p_hess)
+
+  @test maximum(abs.(p_hess - p_hessc)) < 1e-13
+
+
   return nothing
 end
+
+
 
 """
   Tests the differentiated version of a single point flux
