@@ -2,10 +2,12 @@
 
 include("conversion_interface.jl")
 include("flux_types.jl")
+include("abstract_shock_sensor.jl")
 include("abstract_diffusion.jl")
 include("abstract_diffusion_penalty.jl")
 include("shock_mesh_types.jl")
 include("shock_capturing_types.jl")
+include("shock_sensor_types.jl")
 
 @doc """
 ### EulerEquationMod.ParamType

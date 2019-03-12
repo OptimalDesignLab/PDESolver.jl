@@ -10,19 +10,6 @@
 """
   Computes the shock sensor and the numerical viscoscity for the Persson
   and Perairi paper
-
-  **Inputs**
-
-   * params
-   * sbp
-   * q: solution on a particular element, `numDofPerNode` x `numNodesPerElement`
-   * jac: mapping jacobian determinant for each node of the element, length
-          `numNodesPerElement`
-
-  **Outputs**
-
-   * Se: the shock sensor value
-   * ee: the viscoscity coefficient (constant for the entire element)
 """
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                           sensor::ShockSensorPP,
@@ -343,12 +330,6 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   numDofPerNode, numNodesPerElement = size(q)
 
   @unpack sensor p_dot press_el press_dx work res
-#  p_dot = zeros(Tsol, numDofPerNode)
-#  press_el = zeros(Tsol, 1, numNodesPerElement)
-#  press_dx = zeros(Tres, 1, numNodesPerElement, Tdim)
-#  work = zeros(Tres, 1, numNodesPerElement, Tdim)
-#  res = zeros(Tres, numDofPerNode, numNodesPerElement)
-
   fill!(press_dx, 0); fill!(res, 0)
 
   #TODO: in the real sensor, this should include an anisotropy factor

@@ -5,27 +5,6 @@
 
 """
   Differentiated versionn of `getShockSensor` for [`ShockSensorPP`](@ref)
-
-  **Inputs**
-
-   * params
-   * sbp
-   * q
-   * jac
-
-  **Inputs/Outputs**
-
-   * Se_jac: `numDofPerNode` x `numNodesPerElement` array to be overwritten
-            with jacobian of `Se` wrt `q`
-   * ee_jac: `numDofPerNode` x `numNodesPerElement` array to be overwritten
-             with jacobian of `ee` wrt `q`
-
-  **Outputs**
-  
-   * Se
-   * ee
-   * is_const: true if the derivative of ee wrt q is zero.  This is useful
-               for skipping terms in the jacobian calculation
 """
 function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorPP,

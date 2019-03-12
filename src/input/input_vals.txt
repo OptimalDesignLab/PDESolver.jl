@@ -360,6 +360,8 @@ Note that any values associated with these options are shared with the regular
                             (Bool), default false
 "homotopy_function": specify which homotopy function to use, (String),
                      not all physics modules support this option
+"homotopy_tighten_early": tighten the Newton solve tolerance when
+                          lambda < 0.005, (Bool), default false
 
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (String),

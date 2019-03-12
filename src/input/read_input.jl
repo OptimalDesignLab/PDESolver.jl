@@ -433,6 +433,7 @@ get!(arg_dict, "krylov_gamma", 2)
 get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
 get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
 get!(arg_dict, "homotopy_globalize_euler", false)
+get!(arg_dict, "homotopy_tighten_early", false)
 
 # Crank-Nicolson options
 get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")

@@ -4,9 +4,124 @@
 # with applications to Computational Fluid Dynamics"
 # Journal of Computational Physics 321, (2016), 55-75
 # specifically, Algorithm 2
+#=
+mutable struct HomotopyData{Tsol, Tjac}
 
-#global evalPhysicsResidual  # evalResidual
-#global evalHomotopyResidual # evalHomotopy
+  time::Float64
+  lambda::Float64 # homotopy parameter
+  myrank::Int
+
+  # parameters
+  lambda_min::Float64
+  lambda_cutoff::Float64
+  itermax::Int
+  res_reltol::Float64
+  res_abstol::Float64
+  krylov_reltol0::Float64
+  orig_newton_globalize_euler::Bool  # value to reset opts afterwards
+  use_pc::Bool  # true if PC is not PCNone
+
+  # working variables
+  iter::Int  # current major iteration
+  homotopy_tol::Float64
+  delta_max::Float64  # step size limit
+  psi_max::Float64  # max angle between tangent vectors (radians)
+  psi::Float64  # current angle between tangent vectors (radians)
+  tan_norm::Float64  # current tangent vector norm
+  tan_norm_1::Float64  # previous tangent vector norm
+  res_norm::Float64   # current norm of physics (not homotopy) residual
+  res_norm_0::Float64  # norm of physics residual of initial guess
+  h::Float64  # step size
+
+  # arrays
+  q_vec0::Array{Tsol, 1}
+  delta_q::Array{Tsol, 1}
+  tan_vec::Array{Tjac, 1}
+  tan_vec_1::Array{Tjac, 1}
+  dHdLambda_real::Array{Tjac, 1}
+
+  # composite objects
+  recalc_polocy::AbstractRecalculation
+  ls::LinearSolver
+  newton_data::NewtonData
+  fconv  #TODO: type
+
+
+  function HomotopyData{T}(mesh, sbp, eqn, opts) where {T}
+    time = eqn.params.time
+    lambda = 1.0  # homotopy parameter
+    myrank = mesh.myrank
+
+    # some parameters
+    lambda_min = 0.0
+    lambda_cutoff = 0.000  # was 0.005
+    itermax = opts["itermax"]::Int
+    res_reltol=opts["res_reltol"]::Float64
+    res_abstol=opts["res_abstol"]::Float64
+    krylov_reltol0 = opts["krylov_reltol"]::Float64
+    orig_newton_globalize_euler = opts["newton_globalize_euler"]  # reset value
+
+
+    # counters/loop variables
+    #TODO: make a type to store these
+    iter = 1
+    homotopy_tol = 1e-2
+    delta_max = 1.0  # step size limit, set to 1 initially,
+    psi_max = 10*pi/180  # angle between tangent limiter
+    psi = 0.0  # angle between tangent vectors
+    tan_norm = 0.0  # current tangent vector norm
+    tan_norm_1 = 0.0  # previous tangent vector norm
+    res_norm = 0.0  # norm of residual (not homotopy)
+    res_norm_0 = 0.0  # residual norm of initial guess
+    h = 0.05  # step size
+    lambda -= h  # the jacobian is ill-conditioned at lambda=1, so skip it
+    recalc_policy = getRecalculationPolicy(opts, "homotopy")
+    # log file
+    @mpi_master fconv = BufferedIO("convergence.dat", "a+")
+
+    # needed arrays
+    q_vec0 = zeros(eqn.q_vec)
+    delta_q = zeros(eqn.q_vec)
+    tan_vec = zeros(Tjac, length(eqn.q_vec))  # tangent vector
+    tan_vec_1 = zeros(tan_vec)  # previous tangent vector
+    dHdLambda_real = zeros(Tjac, length(eqn.q_vec))  
+
+    # stuff for newtonInner
+    # because the homotopy function is a pseudo-physics, we can reuse the
+    # Newton PC and LO stuff, supplying homotopyPhysics in ctx_residual
+    rhs_func = physicsRhs
+    pc, lo = getHomotopyPCandLO(mesh, sbp, eqn, opts)
+    use_pc = !(typeof(pc) <: PCNone)
+    if use_pc
+      pc.lambda = lambda
+    end
+    lo.lambda = lambda
+    ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+
+
+    # configure NewtonData
+    newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
+    newton_data.itermax = 30
+
+    obj = new()
+    setLambda(obj, lambda)
+   
+    return obj
+  end
+end
+
+function setLambda(data::HomotopyData, lambda::Number)
+
+  if !(typeof(pc) <: PCNone)
+    pc.lambda = lambda
+  end
+  lo.lambda = lambda
+  data.lambda = lambda
+
+  return nothing
+end
+=#
+
 """
   This function solves steady problems using a dissipation-based
   predictor-correcor homotopy globalization for Newtons method.
@@ -45,6 +160,12 @@
    * res_reltol
    * res_abstol
    * krylov_reltol
+   * homotopy_globalize_euler: activate implicit euler globalization when
+                               lambda = 0
+   * homotopy_tighten_early: tighten the newton solve tolerance and active
+                             implicit Euler globalization when 
+                             `lambda < lambda_cutoff`, typically 0.005.
+                             This may slow down the Newton solve significantly
 
   This function supports jacobian/preconditioner freezing using the
   prefix "newton".  Note that this recalcuation policy only affects
@@ -125,12 +246,13 @@ function predictorCorrectorHomotopy(physics_func::Function,
 
   # some parameters
   lambda_min = 0.0
-  lambda_cutoff = 0.000  # was 0.005
+  lambda_cutoff = 0.005  # was 0.005
   itermax = opts["itermax"]::Int
   res_reltol=opts["res_reltol"]::Float64
   res_abstol=opts["res_abstol"]::Float64
   krylov_reltol0 = opts["krylov_reltol"]::Float64
   orig_newton_globalize_euler = opts["newton_globalize_euler"]  # reset value
+  tighten_early = opts["homotopy_tighten_early"]::Bool
 
 
   # counters/loop variables
@@ -205,8 +327,10 @@ function predictorCorrectorHomotopy(physics_func::Function,
     # if we have finished traversing the homotopy path, solve the 
     # homotopy problem (= the physics problem because lambda is zero)
     # tightly
+    changed_tols = false
     if abs(lambda - lambda_min) <= eps()
-      @mpi_master println(BSTDOUT, "tightening homotopy tolerance")
+      @mpi_master println(BSTDOUT, "tightening homotopy tolerance at lambda = 0")
+      changed_tols = true
       homotopy_tol = res_reltol
       reltol = res_reltol*1e-3  # smaller than newton tolerance
       abstol = res_abstol*1e-3  # smaller than newton tolerance
@@ -216,7 +340,27 @@ function predictorCorrectorHomotopy(physics_func::Function,
       # enable globalization if required
       opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
       newton_data.itermax = opts["itermax"]
+    elseif lambda < lambda_cutoff && tighten_early
 
+      # turn on implicit euler and tighten tolerances
+      # Thjs helps for shock problems when the algorithm takes very small steps
+      # in lambda near the end, because lambda may become too small to prevent
+      # Newton from diverging
+      @mpi_master println(BSTDOUT, "tightening homotopy tolerance at lambda cutoff")
+      changed_tols = true
+      homotopy_tol = 1e-4
+
+      reltol = res_reltol*1e-3  # smaller than newton tolerance
+      abstol = res_abstol*1e-3  # smaller than newton tolerance
+      setTolerances(newton_data.ls, reltol, abstol, -1, -1)
+      krylov_reltol0 = reltol  # do this so the call to setTolerances below
+                               # does not reset the tolerance
+      # enable globalization if required
+      opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
+      newton_data.itermax = opts["itermax"]
+    end
+
+    if changed_tols
       @mpi_master begin
         println(BSTDOUT, "setting homotopy tolerance to ", homotopy_tol)
         println(BSTDOUT, "ksp reltol = ", reltol)
@@ -297,8 +441,8 @@ function predictorCorrectorHomotopy(physics_func::Function,
 #      prev_lambda = lambda
 #      lambda_final_step = 0.05  # maximum size of final step in lambda
       lambda = max(lambda_min, lambda - h)
-      if lambda < lambda_cutoff
-        println(BSTDOUT, "Reached lambda cutoff, forcing lambda to 0")
+#      if lambda < lambda_cutoff
+#        println(BSTDOUT, "Reached lambda cutoff, forcing lambda to 0")
 
         # if this is the final step to lambda = 0, and the step is too large,
         # force an intermediate step
@@ -307,9 +451,9 @@ function predictorCorrectorHomotopy(physics_func::Function,
  #         println(BSTDOUT, "limiting size of final step")
  #         lambda = lambda_min + lambda_final_step
  #       else  # otherwise set lambda to zero
-          lambda = 0.0
+#          lambda = 0.0
 #        end
-      end
+#      end
       if !(typeof(pc) <: PCNone)
         pc.lambda = lambda
       end
