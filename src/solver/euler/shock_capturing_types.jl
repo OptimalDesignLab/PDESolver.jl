@@ -132,33 +132,6 @@ struct LDG_ESFlux  <: AbstractLDGFlux
 end
 
 #------------------------------------------------------------------------------
-# Shock Viscoscity Model
-"""
-  Diagonal viscoscity (constant for each element), used for shock capturing
-"""
-mutable struct ShockDiffusion{Tres, T <: AbstractShockSensor} <: AbstractDiffusion
-  sensor::T
-  Se::Matrix{Tres}
-  ee::Matrix{Tres}
-  Se_dot::Array{Tres, 4}
-  ee_dot::Array{Tres, 4}
-end
-
-function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
-                             ) where {Tres, T <: AbstractShockSensor}
-
-  Se = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
-  ee = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
-  Se_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
-                       mesh.numNodesPerElement)
-  ee_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
-                       mesh.numNodesPerElement)
-
-
-  return ShockDiffusion{Tres, T}(sensor, Se, ee, Se_dot, ee_dot)
-end
-
-#------------------------------------------------------------------------------
 
 """
   Shock capturing type that errors out.  Used when shock capturing is not

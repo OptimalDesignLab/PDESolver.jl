@@ -124,24 +124,20 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
         convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
       end
 
-      # compute diffusion tensor
-      ee = getViscoscity(shockmesh, i)
       lambda_gradq_i = sview(capture.grad_w, :, :, :, i)
 
-      if ee > 0
-        q_i = ro_sview(data.q_recv, :, :, i_full)
-        w_i = ro_sview(capture.w_el, :, :, i)
-        coords_i = ro_sview(metricx.coords, :, :, i_full)
-        dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
-        jac_i = ro_sview(metrics.jac, :, i_full)
-        fill!(grad_w, 0)
+      # some of these have ee = 0, but we don't have the sensor so we can't
+      # check
+      q_i = ro_sview(data.q_recv, :, :, i_full)
+      w_i = ro_sview(capture.w_el, :, :, i)
+      coords_i = ro_sview(metrics.coords, :, :, i_full)
+      dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
+      jac_i = ro_sview(metrics.jac, :, i_full)
+      fill!(grad_w, 0)
 
-        applyDx(sbp, w_i, dxidx_i, jac_i, wxi, grad_w)
-        applyDiffusionTensor(diffusion, sbp, eqn.params, q_i,  w_i, coords_i,
-                             dxidx_i, jac_i, i, grad_w, lambda_gradq_i)
-      else
-        fill!(lambda_gradq_i, 0)
-      end
+      applyDx(sbp, w_i, dxidx_i, jac_i, wxi, grad_w)
+      applyDiffusionTensor(diffusion, sbp, eqn.params, q_i,  w_i, coords_i,
+                           dxidx_i, jac_i, i, grad_w, lambda_gradq_i)
 
     end  # end i
   end  # end peer
@@ -317,7 +313,7 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
 
     peer_full = shockmesh.peer_indices[peer]
     metrics = mesh.remote_metrics[peer_full]
-    #data = eqn.shared_data[peer_full]  # unneeded?
+    data = eqn.shared_data[peer_full]
 
     for i=1:shockmesh.numSharedInterfaces[peer]
       iface_red = shockmesh.shared_interfaces[peer][i].iface
@@ -327,15 +323,19 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
 
       # get data needed for next steps
       qL = ro_sview(eqn.q, :, :, elnumL)
+      qR = ro_sview(data.q_recv, :, :, elnumR)
       wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
       wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
       gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
       gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
 
-      coordsL = ro_sview(mesh.coords, :, :, elnumL)
+      coordsL = ro_sview(mesh.coords   , :, :, elnumL)
+      coordsR = ro_sview(metrics.coords, :, :, elnumR)
       nrm_face = ro_sview(mesh.nrm_sharedface[peer_full], :, :, iface_idx)
-      dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
-      jacL = ro_sview(mesh.jac, :, elnumL)
+      dxidxL = ro_sview(mesh.dxidx,    :, :, :, elnumL)
+      dxidxR = ro_sview(metrics.dxidx, :, :, :, elnumR)
+      jacL = ro_sview(mesh.jac,    :, elnumL)
+      jacR = ro_sview(metrics.jac, :, elnumR)
       alphas = ro_sview(capture.alpha_parallel[peer], :, i)
       resL = sview(eqn.res, :, :, elnumL)
 
@@ -346,9 +346,8 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
       # apply the penalty coefficient matrix
       applyPenalty(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
                    iface_red, delta_w,
-                   theta, qL, qR,  wL, wR, nrm_face, alphas, dxidxL, dxidxR,
-                   jacL, jacR, t1L, t1R, t2L,
-                   t2R)
+                   theta, qL, qR,  wL, wR, coordsL, coordsR, nrm_face, alphas,
+                   dxidxL, dxidxR, jacL, jacR, t1L, t1R, t2L, t2R)
 
       # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
       # need to apply R^T * t1, not R^T * B * t1, so

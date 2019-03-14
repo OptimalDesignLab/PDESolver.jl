@@ -52,7 +52,7 @@ function getEntireMesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   shockmesh = EulerEquationMod.ShockedElements{Tres}(mesh)
 
   for i=1:mesh.numEl
-    push!(shockmesh, i, 1.0)
+    push!(shockmesh, i)
   end
 
   EulerEquationMod.completeShockElements(mesh, shockmesh)
@@ -86,7 +86,7 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) whe
 
   opts = copy(_opts)
   sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
 
   # solve the PDE to get a solution with non-zero jump between elements
   # that can be reproduced in parallel

@@ -88,7 +88,8 @@ end
 using PumiInterface
 using apf
 
-function writeShockSensorField(mesh, sbp, eqn, opts, sensor::AbstractShockSensor)
+function writeShockSensorField(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                               sensor::AbstractShockSensor) where {Tsol, Tres}
 
   fname = "shock_sensor"
 
@@ -100,18 +101,25 @@ function writeShockSensorField(mesh, sbp, eqn, opts, sensor::AbstractShockSensor
 
   vals = zeros(Float64, 2)
   numEl_shock = 0
+
+  Se = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
+  ee = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
   for i=1:mesh.numEl
     q_i = sview(eqn.q, :, :, i)
     coords_i = ro_sview(mesh.coords, :, :, i)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
     jac_i = sview(mesh.jac, :, i)
 
-    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i, 
-                            jac_i)
-    vals[1] = Se
-    vals[2] = ee
+    is_nonzero = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i, 
+                            jac_i, Se, ee)
+
+
+    val1 = computeL2Norm(eqn.params, sbp, jac_i, Se)
+    val2 = computeL2Norm(eqn.params, sbp, jac_i, ee)
+    vals[1] = val1
+    vals[2] = val2
     apf.setComponents(f_ptr, mesh.elements[i], 0, vals)
-    if ee > 0
+    if is_nonzero
       numEl_shock += 1
     end
   end

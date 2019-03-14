@@ -286,10 +286,11 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     iface_i = mesh.interfaces[i]
     elementL = data.elnums_mesh[iface_i.elementL]
     elementR = data.elnums_mesh[iface_i.elementR]
-#=
+
     # if an element has not been seen before and its neighbor has a shock in
     # it, add to the list of neighbor elements
-    if (elementL > 0 && elementL <= data.numShock) || (elementR > 0 && elementR <= data.numShock)
+    if (elementL > 0 && elementL <= data.numShock) ||
+       (elementR > 0 && elementR <= data.numShock)
 
       if elementL == 0
         elnum_full = iface_i.elementL  # element numbering in the full numbering
@@ -304,10 +305,10 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
 
         push_neighbor(data, elnum_full)
       end
-=#
 
-    if (elementL > 0 && elementL <= data.numShock) &&
-       (elementR > 0 && elementR <= data.numShock)
+
+    #if (elementL > 0 && elementL <= data.numShock) &&
+    #   (elementR > 0 && elementR <= data.numShock)
       # record the new interface
       iface_new = RelativeInterface(replace_interface(iface_i, elementL, elementR), i)
       push_iface(data, iface_new)
@@ -349,7 +350,7 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     end  # end j
     data.bndry_offsets[i+1] = data.bndry_offsets[i] + nfaces
   end  # end i
-
+#=
   # add all boundaries that are not on the boundary of the original domain.
   # Don't include them in data.bndry_offsets
   @assert mesh.coord_order == 1
@@ -379,12 +380,15 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
       end
     end
   end
-
+=#
   data.numBoundaryFaces = data.idx_b - 1
 
 
   # compute final counts that will be useful for the user
   numEl = data.numShock + data.numNeighbor
+  println("data.npeers = ", data.npeers)
+  println("length(data.numShared) = ", length(data.numShared))
+  println("data.numShared = ", data.numShared)
   for i=1:data.npeers
     numEl += data.numShared[i]
   end
@@ -415,6 +419,7 @@ function setupShockmeshParallel(mesh::AbstractMesh, data::ShockedElements)
   data.numShared = Array{Int}(0)
   data.idx_sf = Array{Int}(0)
   data.sz_sf = Array{Int}(0)
+  data.npeers = 0
   const INITIAL_SIZE = 8
   found_peer = false
   for peer=1:mesh.npeers
