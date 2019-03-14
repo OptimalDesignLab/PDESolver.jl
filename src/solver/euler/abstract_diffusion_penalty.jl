@@ -53,17 +53,28 @@ abstract type AbstractDiffusionPenalty end
 
    * penalty: the [`AbstractDiffusionPenalty`](@ref) object
    * sbp
+   * params
    * sbpface
    * diffusion: the [`AbstractDiffusion`](@ref) object
    * iface: `Interface` object
    * delta_w: difference of entropy variables at the face, as compuated by
               [`getFaceVariables`](@ref)
    * theta: Dgk * wL + Dgn * wR, as compuated by `getFaceVariables`
+   * qL: conservative variables for left element, `numDofPerNode` x
+         `numNodesPerElement`
+   * qR: conservative variables for right element`, same size as `qL`
    * wL: entropy variables for the left element, `numDofPerNode` x
          `numNodesPerElement`
    * wR: entropy variables for the right element, same size as `wR`
+   * coordsL: xyz coordinates of volume nodes of left element, `dim` x
+              `numNodesPerElement`
+   * coordsR: xyz coordinates of volumke nodes of right element, same size
+              as `coordsL`
    * nrm_face: (scaled) normal vectors at the face, `dim` x `numNodesPerFace`
    * alphas: vector of length 2 containing alpha_gk and alpha_gn
+   * dxidxL: (scaled) mapping jacobian for left element, `dim` x `dim` x
+             `numNodesPerElement`
+   * dxidxR: (scaled) mapping jacobian for right element, same size as `dxidxL`
    * jacL: mapping jacobian determinant for the left element,
            `numNodesPerElement`
    * jacR: mapping jacobian determinant for the right element, same size as
@@ -78,15 +89,20 @@ abstract type AbstractDiffusionPenalty end
 
   All output arrays are overwritten
 """
-function applyPenalty(penalty::AbstractDiffusionPenalty, sbp, sbpface,
+function applyPenalty(penalty::AbstractDiffusionPenalty, sbp,
+                      params::AbstractParamType, sbpface,
                       diffusion::AbstractDiffusion, iface::Interface,
                       delta_w::AbstractMatrix, theta::AbstractMatrix,
+                      qL_el::AbstractMatrix, qR_el::AbstractMatrix,
                       wL::AbstractMatrix, wR::AbstractMatrix,
+                      coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                       nrm_face::AbstractMatrix,
                       alphas::AbstractVector,
+                      dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                       jacL::AbstractVector, jacR::AbstractVector,
                       res1L::AbstractMatrix, res1R::AbstractMatrix,
-                      res2L::AbstractMatrix, res2R::AbstractMatrix)
+                      res2L::AbstractMatrix, res2R::AbstractMatrix
+                     )
 
   error("generic fallback for applyPenalty() reached: did you forget to extend it with a new method for your AbstractDiffusionPenalty?")
 end
@@ -108,11 +124,22 @@ end
    * theta: Dgk * wL + Dgn * wR, as compuated by `getFaceVariables`
    * theta_dotL derivative of `theta` wrt `qL`, same shape as `delta_w_dotL`
    * theta_dotR derivative of `theta` wrt `qR`, same shape as `delta_w_dotL`
+   * qL: conservative variables for the left element, `numDofPerNode` x
+         `numNodesPerElement`
+   * qR: conservative variables for the right element, same size as `qL`
    * wL: entropy variables for the left element, `numDofPerNode` x
          `numNodesPerElement`
-   * wR: entropy variables for the right element, same size as `wR`
+   * wR: entropy variables for the right element, same size as `wL`
+   * coordsL: xyz coordinates of volume nodes of left element, `dim` x 
+              `numNodesPerElement`
+   * coordsR: xyz coordinates of the volume nodes of the right element,
+              same size as `coordsL`
    * nrm_face: (scaled) normal vectors at the face, `dim` x `numNodesPerFace`
    * alphas: vector of length 2 containing alpha_gk and alpha_gn
+   * dxidxL: (scaled) mapping jacobian for left element, `dim` x `dim`,
+             x `numNodesPerElement
+   * dxidxR: (scaled) mapping jacobian for right element, same size as
+             `dxidxL`
    * jacL: mapping jacobian determinant for the left element,
            `numNodesPerElement`
    * jacR: mapping jacobian determinant for the right element, same size as
@@ -138,15 +165,19 @@ end
    * T4_nonzero: true if the T4 penalty is zero, false otherwise. This is
                  used to determine the sparsity pattern of the Jacobian.
 """
-function applyPenalty_diff(penalty::AbstractDiffusion, sbp, sbpface,
+function applyPenalty_diff(penalty::AbstractDiffusion, sbp,
+                      params::AbstractParamType, sbpface,
                       diffusion::AbstractDiffusion, iface::Interface,
                       delta_w::AbstractMatrix,
                       delta_w_dotL::Abstract4DArray, delta_w_dotR::Abstract4DArray,
                       theta::AbstractMatrix,
                       theta_dotL::Abstract4DArray, theta_dotR::Abstract4DArray,
+                      qL::AbstractMatrix, qR::AbstractMatrix,
                       wL::AbstractMatrix, wR::AbstractMatrix,
+                      coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                       nrm_face::AbstractMatrix,
                       alphas::AbstractVector,
+                      dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                       jacL::AbstractVector, jacR::AbstractVector,
                       res1L_dotL::Abstract4DArray, res1L_dotR::Abstract4DArray,
                       res1R_dotL::Abstract4DArray, res1R_dotR::Abstract4DArray,
@@ -165,15 +196,21 @@ end
 
    * penalty: [`AbstractDiffusionPenalty`](@ref)
    * sbp
+   * params
    * sbpface
    * diffusion: [`AbstractDiffusion`](@ref)
    * bndry: `Boundary` object
    * delta_w: values to multiply the penalty against, `numDofPerNode` x
               `numNodesPerFace`
+   * qL: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
    * wL: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
+   * coordsL: xyz coordinates of volume nodes of the element, `dim` x 
+              `numNodesPerElement`
    * nrm_face: (scaled) normal vector at each face node, `dim` x
                `numNodesPerFace`
    * alpha: the alpha_gk parameter (Number)
+   * dxidxL: (scaled) mapping jacobian for the element, `dim` x `dim` x
+             `numNodesPerElement`
    * jacL: mapping jacobian determinant, `numNodesPerElement`
 
   **Inputs/Outputs**
@@ -182,12 +219,16 @@ end
             the result
 
 """
-function applyDirichletPenalty(penalty::AbstractDiffusionPenalty, sbp, sbpface,
+function applyDirichletPenalty(penalty::AbstractDiffusionPenalty, sbp,
+                      params::AbstractParamType, sbpface,
                       diffusion::AbstractDiffusion, bndry::Boundary,
                       delta_w::AbstractMatrix,
+                      qL::AbstractMatrix,
                       wL::AbstractMatrix,
+                      coordsL::AbstractMatrix,
                       nrm_face::AbstractMatrix,
                       alpha::Number,
+                      dxidxL::Abstract3DArray,
                       jacL::AbstractVector,
                       res1L::AbstractMatrix)
 

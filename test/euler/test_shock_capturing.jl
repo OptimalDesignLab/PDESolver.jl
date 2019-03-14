@@ -17,29 +17,28 @@ function test_shocksensorPP()
     dxidx = mesh.dxidx[:, :, :, 1]
     jac = ones(Float64, mesh.numNodesPerElement)
     res = zeros(eltype(eqn.res), mesh.numDofPerNode, mesh.numNodesPerElement)
+    Se = zeros(eltype(eqn.res), mesh.dim, mesh.numNodesPerElement)
+    ee = zeros(eltype(eqn.res), mesh.dim, mesh.numNodesPerElement)
 
     sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
-    capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts)
+    capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
     sensor2 = EulerEquationMod.ShockSensorHIso{Tsol, Tres}(mesh, sbp, opts)
     sensor3 = EulerEquationMod.ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
     sensor4 = EulerEquationMod.ShockSensorHHO{Tsol, Tres}(mesh, sbp, opts)
     # initial condition is constant, check the sensor reports no shock
-    Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
-                                             dxidx, jac)
+    EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
+                                             dxidx, jac, Se, ee)
 
     test_vandermonde(eqn.params, sbp, coords)
     test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
                              dxidx, jac)
 
-    @test abs(Se) < 1e-12
-    @test ee == 0
+    @test maximum(abs.((Se))) < 1e-12
+    @test maximum(ee) == 0
 
     # sensor 2
     test_shockcapturing_diff(eqn.params, sbp, sensor2, capture, q, coords,
                              dxidx, jac)
-
-    @test abs(Se) < 1e-12
-    @test ee < 1e-12
 
 
     fill!(res, 0)
@@ -49,11 +48,11 @@ function test_shocksensorPP()
 
     # test when a shock is present
     q[1, 3] += 5
-    Se, ee = EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
-                                             dxidx, jac)
+    EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
+                                             dxidx, jac, Se, ee)
 
-    @test abs(Se) > 1e-12
-    @test ee > 0.01
+    @test maximum(abs.(Se)) > 1e-12
+    @test maximum(ee) > 0.01
 
     fill!(res, 0)
     w = copy(q)
@@ -103,20 +102,29 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
                                coords, dxidx, jac)
 
   numDofPerNode, numNodesPerElement = size(_q)
+  dim = size(dxidx, 1)
+
   q = zeros(Complex128, numDofPerNode, numNodesPerElement)
   copy!(q, _q)
-  Se_jac = zeros(q); Se_jac2 = zeros(q)
-  ee_jac = zeros(q); ee_jac2 = zeros(q)
+  Se_jac = zeros(Complex128, dim, numDofPerNode, numNodesPerElement,
+                             numNodesPerElement)
+  Se_jac2 = copy(Se_jac)
+  ee_jac = zeros(Complex128, dim, numDofPerNode, numNodesPerElement,
+                             numNodesPerElement)
+  ee_jac2 = copy(ee_jac)
 
+
+  Se = zeros(Complex128, dim, numNodesPerElement)
+  ee = zeros(Complex128, dim, numNodesPerElement)
   h = 1e-20
   pert = Complex128(0, h)
   for i=1:numNodesPerElement
     for j=1:numDofPerNode
       q[j, i] += pert
-      Se, ee = EulerEquationMod.getShockSensor(params, sbp, sensor, q, coords,
-                                               dxidx, jac)
-      Se_jac[j, i] = imag(Se)/h
-      ee_jac[j, i] = imag(ee)/h
+      EulerEquationMod.getShockSensor(params, sbp, sensor, q, coords,
+                                               dxidx, jac, Se, ee)
+      Se_jac[:, j, :, i] = imag(Se)./h
+      ee_jac[:, j, :, i] = imag(ee)./h
       q[j, i] -= pert
     end
   end
@@ -130,21 +138,27 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   # test vector mode
   q_dot = rand_realpart(size(q))
   q .+= pert*q_dot
-  Se, ee = EulerEquationMod.getShockSensor(params, sbp, sensor, q, coords,
-                                           dxidx, jac)
-  Se_dot = imag(Se)/h
-  ee_dot = imag(ee)/h
+  EulerEquationMod.getShockSensor(params, sbp, sensor, q, coords,
+                                           dxidx, jac, Se, ee)
+  Se_dot = imag(Se)./h
+  ee_dot = imag(ee)./h
   q .-= pert*q_dot
 
   # run again to make sure intermediate arrays are zeroed out
   EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q,
                                        coords, dxidx, jac, Se_jac2, ee_jac2)
 
-  Se_dot2 = sum(Se_jac2 .* q_dot)
-  ee_dot2 = sum(ee_jac2 .* q_dot)
+  Se_dot2 = zeros(Complex128, dim, numNodesPerElement)
+  ee_dot2 = zeros(Complex128, dim, numNodesPerElement)
+  for i=1:numNodesPerElement
+    for j=1:dim
+      Se_dot2[j, i] = sum(Se_jac2[j, :, i, :] .* q_dot)
+      ee_dot2[j, i] = sum(ee_jac2[j, :, i, :] .* q_dot)
+    end
+  end
 
-  @test abs(Se_dot - Se_dot2) < 1e-11
-  @test abs(ee_dot - ee_dot2) < 1e-11
+  @test maximum(abs.(Se_dot - Se_dot2)) < 1e-11
+  @test maximum(abs.(ee_dot - ee_dot2)) < 1e-11
 
   
   return nothing
@@ -225,7 +239,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
 
 
 #------------------------------------------------------------------------------
@@ -314,7 +328,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """
@@ -572,7 +586,7 @@ function getInteriorMesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tso
 
   for i=1:mesh.numEl
     if iface_idx[end, i] != 0
-      push!(shockmesh, i, 1.0)
+      push!(shockmesh, i)
     end
   end
 
@@ -593,7 +607,7 @@ function getEntireMesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   shockmesh = EulerEquationMod.ShockedElements{Tres}(mesh)
 
   for i=1:mesh.numEl
-    push!(shockmesh, i, 1.0)
+    push!(shockmesh, i)
   end
 
   EulerEquationMod.completeShockElements(mesh, shockmesh)
@@ -935,7 +949,7 @@ function test_shockmesh(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   shockmesh2 = EulerEquationMod.ShockedElements{Tres}(mesh)
 
   for i in boundary_els
-    push!(shockmesh2, i, 1.0)
+    push!(shockmesh2, i)
   end
   EulerEquationMod.completeShockElements(mesh, shockmesh2)
 
@@ -1240,7 +1254,8 @@ function test_br2_gradw(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
     end
   end
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
   EulerEquationMod.computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
@@ -1262,7 +1277,8 @@ function test_br2_volume(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tso
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
 
@@ -1302,7 +1318,8 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
   # test alpha sums to 1
@@ -1379,19 +1396,26 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     elnumL = shockmesh.elnums_all[iface_red.elementL]
     elnumR = shockmesh.elnums_all[iface_red.elementL]
 
+    qL = ro_sview(eqn.q, :, :, elnumL)  # the value of these are irrelevent
+    qR = ro_sview(eqn.q, :, :, elnumR)
     wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
     wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+    coordsL = ro_sview(mesh.coords, :, :, elnumL)
+    coordsR = ro_sview(mesh.coords, :, :, elnumR)
     nrm_face = ro_sview(mesh.nrm_face, :, :, idx_orig)
     alphas = ro_sview(capture.alpha, :, i)
+    dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
+    dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
     jacL = ro_sview(mesh.jac, :, elnumL)
     jacR = ro_sview(mesh.jac, :, elnumR)
 
     # test T3 by checking consistency with boundaryIntegrate
     rand_realpart!(delta_w); fill!(res_wL, 0); fill!(res_wR, 0)
     fill!(theta, 0); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
-    EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
+    EulerEquationMod.applyPenalty(capture.penalty, sbp, eqn.params, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, alphas,
+                                  theta, qL, qR, wL, wR, coordsL, coordsR, 
+                                  nrm_face, alphas, dxidxL, dxidxR,
                                   jacL, jacR, res_wL, res_wR,
                                   res_thetaL, res_thetaR)
     fill!(tmp_el, 0)
@@ -1405,9 +1429,10 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     fill!(delta_w, 0); fill!(res_wL, 0); fill!(res_wR, 0)
     rand_realpart!(theta); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
 
-    EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
+    EulerEquationMod.applyPenalty(capture.penalty, sbp, eqn.params, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, alphas, 
+                                  theta, qL, qR, wL, wR, coordsL, coordsR,
+                                  nrm_face, alphas, dxidxL, dxidxR,
                                   jacL, jacR, res_wL, res_wR,
                                   res_thetaL, res_thetaR)
     fill!(tmp_el, 0)
@@ -1421,9 +1446,10 @@ function test_br2_face(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol,
     rand_realpart!(delta_w); fill!(res_wL, 0); fill!(res_wR, 0)
     fill!(theta, 0); fill!(res_thetaL, 0); fill!(res_thetaR, 0)
 
-    EulerEquationMod.applyPenalty(capture.penalty, sbp, mesh.sbpface,
+    EulerEquationMod.applyPenalty(capture.penalty, sbp, eqn.params, mesh.sbpface,
                                   capture.diffusion, iface_red, delta_w,
-                                  theta, wL, wR, nrm_face, alphas,
+                                  theta, qL, qR, wL, wR, coordsL, coordsR,
+                                  nrm_face, alphas, dxidxL, dxidxR,
                                   jacL, jacR, res_wL, res_wR,
                                   res_thetaL, res_thetaR)
     for k=1:mesh.numDofPerNode
@@ -1442,7 +1468,8 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
   fill!(eqn.res, 0)
@@ -1459,8 +1486,12 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
     elnumR = shockmesh.elnums_all[iface.elementR]
     println("elnumL = ", elnumL, ", elnumR = ", elnumR)
 
+    qL = ro_sview(eqn.q, :, :, elnumL)
+    qR = ro_sview(eqn.q, :, :, elnumR)
     wL = ro_sview(capture.w_el, :, :, iface.elementL)
     wR = ro_sview(capture.w_el, :, :, iface.elementR)
+    coordsL = ro_sview(mesh.coords, :, :, elnumL)
+    coordsR = ro_sview(mesh.coords, :, :, elnumR)
     nrm_face = ro_sview(mesh.nrm_face, :, :, idx_orig)
     dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
     dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
@@ -1478,8 +1509,9 @@ function test_br2_Dgk(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
       end
     end
 
-    EulerEquationMod.applyDgkTranspose(capture, sbp, mesh.sbpface, iface,
-                  capture.diffusion, w_face, w_face, wL, wR, nrm_face, dxidxL, dxidxR,
+    EulerEquationMod.applyDgkTranspose(capture, sbp, eqn.params, mesh.sbpface,
+                  iface, capture.diffusion, w_face, w_face,
+                  qL, qR, wL, wR,  coordsL, coordsR, nrm_face, dxidxL, dxidxR,
                   jacL, jacR, resL, resR)
 
   end
@@ -1535,7 +1567,8 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
     iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
   end
 
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
   # add random component to q
@@ -1569,7 +1602,7 @@ function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where
 
   opts = copy(_opts)
   sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
-  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts)
+  capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
 
   # solve the PDE to get a solution with non-zero jump between elements
   # that can be reproduced in parallel

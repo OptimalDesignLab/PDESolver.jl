@@ -65,7 +65,9 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
   for i=1:shockmesh.numShock
     i_full = shockmesh.elnums_all[i]
 
+    q_i = ro_sview(eqn.q, :, :, i_full)
     w_i = ro_sview(capture.w_el, :, :, i)
+    coords_i = ro_sview(mesh.coords, :, :, i_full)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     jac_i = ro_sview(mesh.jac, :, i_full)
 
@@ -89,7 +91,8 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
     end
 
     # apply the diffusion tensor to all nodes of the element
-    applyDiffusionTensor_diff(diffusion, w_i, i, gradq_i, t1_dot, t2_dot)
+    applyDiffusionTensor_diff(diffusion, sbp, eqn.params, q_i, w_i, coords_i,
+                              dxidx_i, jac_i, i, gradq_i, t1_dot, t2_dot)
 #=
     # apply Qx and sum
     if eqn.params.use_Minv != 1
@@ -179,6 +182,8 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
     gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
     gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
 
+    coordsL = ro_sview(mesh.coords, :, :, elnumL)
+    coordsR = ro_sview(mesh.coords, :, :, elnumR)
     nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
     dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
     dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
@@ -195,6 +200,7 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
     getFaceVariables_diff(eqn.params, capture, diffusion, entropy_vars,
                           sbp, mesh.sbpface,
                           iface_red, wL, wR, qL, qR, gradwL, gradwR,
+                          coordsL, coordsR,
                           nrm_face, dxidxL, dxidxR, jacL, jacR,
                           delta_w, delta_w_dotL, delta_w_dotR,
                           theta, theta_dotL, theta_dotR)
@@ -218,10 +224,12 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                                res_jacLR, res_jacRR, subtract, subtract, false)
 
     # apply Dgk^T and Dgn^T
-    applyDgkTranspose_diff(capture, sbp, mesh.sbpface, iface_red, diffusion,
+    applyDgkTranspose_diff(capture, sbp, eqn.params, mesh.sbpface, iface_red,
+                      diffusion,
                       t2L, res2L_dotL, res2L_dotR,
                       t2R, res2R_dotL, res2R_dotR,
-                      wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR,
+                      qL, qR, wL, wR, coordsL, coordsR,
+                      nrm_face, dxidxL, dxidxR, jacL, jacR,
                       res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                       subtract)
 
@@ -269,7 +277,9 @@ function computeNeumannBoundaryTerm_diff(mesh::AbstractMesh{Tmsh}, sbp, eqn,
     idx_orig = shockmesh.bndryfaces[i].idx_orig
     elnum_orig = shockmesh.elnums_all[bndry_i.element]
 
+    q_i = ro_sview(eqn.q, :, :, elnum_orig)
     w_i = ro_sview(capture.w_el, :, :, bndry_i.element)
+    coords_i = ro_sview(mesh.coords, :, :, elnum_orig)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, elnum_orig)
     jac_i = ro_sview(mesh.jac, :, elnum_orig)
     if i < shockmesh.bndry_offsets[end]
@@ -309,7 +319,8 @@ function computeNeumannBoundaryTerm_diff(mesh::AbstractMesh{Tmsh}, sbp, eqn,
       smallmatmatT!(w_i, Dx_d, t1_d)
     end
 
-    applyDiffusionTensor_diff(diffusion, w_i, bndry_i.element, mesh.sbpface,
+    applyDiffusionTensor_diff(diffusion, sbp, eqn.params, q_i, w_i, coords_i,
+                              dxidx_i, jac_i, bndry_i.element, mesh.sbpface,
                               bndry_i.face, t1, t1_dot, t2_dot)
 
     # apply N * B * R and do the sum over dimensions
@@ -436,9 +447,10 @@ function calcBoundaryFlux_diff(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
     end
 
     # the dotR variables aren't needed for boundary terms
-    applyDgkTranspose_diff(capture, sbp, mesh.sbpface, bndry_i, diffusion,
-                      delta_w, delta_w_dot, delta_w_dotR, w_i, nrm_i, dxidxL,
-                      jacL, res_dot, res_dotR, op)
+    applyDgkTranspose_diff(capture, sbp, eqn.params, mesh.sbpface, bndry_i,
+                      diffusion,
+                      delta_w, delta_w_dot, delta_w_dotR, q_i, w_i, coords_i,
+                      nrm_i, dxidxL, jacL, res_dot, res_dotR, op)
 
     assembleElement(assem, mesh, elnum_orig, res_dot)
   end
@@ -460,6 +472,7 @@ function getFaceVariables_diff(params::ParamType,
                           wL::AbstractMatrix, wR::AbstractMatrix,
                           qL::AbstractMatrix, qR::AbstractMatrix,
                           gradwL::Abstract3DArray, gradwR::Abstract3DArray,
+                          coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                           nrm_face::AbstractMatrix,
                           dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                           jacL::AbstractVector, jacR::AbstractVector,
@@ -505,7 +518,8 @@ function getFaceVariables_diff(params::ParamType,
     t1_d = sview(t1, :, :, d)
     smallmatmatT!(wL, Dx_d, t1_d)
   end
-  applyDiffusionTensor_diff(diffusion, wL, iface_red.elementL, sbpface,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qL, wL, coordsL, dxidxL,
+                            jacL, iface_red.elementL, sbpface,
                             iface_red.faceL, t1, t1_dot, t2L_dot)
 
   # do volume operations for wR (derivative of wgradR)
@@ -516,7 +530,8 @@ function getFaceVariables_diff(params::ParamType,
     t1_d = sview(t1, :, :, d)
     smallmatmatT!(wR, Dx_d, t1_d)
   end
-  applyDiffusionTensor_diff(diffusion, wR, iface_red.elementR, sbpface,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qR, wR, coordsR, dxidxR,
+                            jacR, iface_red.elementR, sbpface,
                             iface_red.faceR, t1, t1_dot, t2R_dot)
 
   # interpolate to face and multiply by normal vector
@@ -652,13 +667,14 @@ end
 
 
 function applyDgkTranspose_diff(capture::SBPParabolicSC{Tsol, Tres}, sbp,
-                       sbpface, iface::Interface,
+                       params::ParamType, sbpface, iface::Interface,
                        diffusion::AbstractDiffusion,
                        t2L::AbstractMatrix, t2L_dotL::Abstract4DArray,
                        t2L_dotR::Abstract4DArray,
                        t2R::AbstractMatrix, t2R_dotL::Abstract4DArray,
                        t2R_dotR::Abstract4DArray,
                        wL::AbstractMatrix, wR::AbstractMatrix,
+                       coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                        nrm_face::AbstractMatrix,
                        dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                        jacL::AbstractVector, jacR::AbstractVector,
@@ -719,10 +735,12 @@ function applyDgkTranspose_diff(capture::SBPParabolicSC{Tsol, Tres}, sbp,
                              t4L_dotR, t4R_dotR, add, subtract, false)
 
   # multiply by D^T Lambda
-  applyDiffusionTensor_diff(diffusion, wL, iface.elementL, temp2L,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qL, wL, coordsL, dxidxL,
+                            jacL, iface.elementL, temp2L,
                             t4L_dotL, t4L_dotR, t5L_dotL, t5L_dotR)
   # reverse L and R here so the d/dq term will be added to t5R_dotR
-  applyDiffusionTensor_diff(diffusion, wR, iface.elementR, temp2R,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qR,  wR, coordsR, dxidxR,
+                            jacR,iface.elementR, temp2R,
                             t4R_dotR, t4R_dotL, t5R_dotR, t5R_dotL)
 
   calcDxTransposed(sbp, dxidxL, jacL, Dx)
@@ -740,11 +758,14 @@ end
   Jacobian of Dgk * t2L only
 """
 function applyDgkTranspose_diff(capture::SBPParabolicSC{Tsol, Tres}, sbp,
+                       params::ParamType,
                        sbpface, iface::Union{Interface, Boundary},
                        diffusion::AbstractDiffusion,
                        t2L::AbstractMatrix, t2L_dotL::Abstract4DArray,
                        t2L_dotR::Abstract4DArray,
+                       qL::AbstractMatrix,
                        wL::AbstractMatrix,
+                       coordsL::AbstractMatrix,
                        nrm_face::AbstractMatrix,
                        dxidxL::Abstract3DArray,
                        jacL::AbstractVector,
@@ -800,7 +821,8 @@ function applyDgkTranspose_diff(capture::SBPParabolicSC{Tsol, Tres}, sbp,
 
 
   # multiply by D^T Lambda
-  applyDiffusionTensor_diff(diffusion, wL, getElementL(iface), temp2L,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qL, wL, coordsL, dxidxL,
+                            jacL, getElementL(iface), temp2L,
                             t4L_dotL, t4L_dotR, t5L_dotL, t5L_dotR)
 
   calcDxTransposed(sbp, dxidxL, jacL, Dx)

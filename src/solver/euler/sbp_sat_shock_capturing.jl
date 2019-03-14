@@ -79,7 +79,9 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
     end
 
     # apply D operator
+    q_i = ro_sview(eqn.q, :, :, i_full)
     w_i = ro_sview(capture.w_el, :, :, i)
+    coords = ro_sview(mesh.coords, :, :, i_full)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     jac_i = ro_sview(mesh.jac, :, i_full)
     fill!(grad_w, 0)
@@ -87,7 +89,9 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
 
     # apply diffusion tensor
     lambda_gradq_i = sview(capture.grad_w, :, :, :, i)
-    applyDiffusionTensor(diffusion, w_i,  i, grad_w, lambda_gradq_i)
+
+    applyDiffusionTensor(diffusion, sbp, eqn.params, q_i, w_i, coords, dxidx_i,
+                         jac_i, i, grad_w, lambda_gradq_i)
   end
 
   # the diffusion is zero in the neighboring elements, so convert to entropy
@@ -125,13 +129,16 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
       lambda_gradq_i = sview(capture.grad_w, :, :, :, i)
 
       if ee > 0
+        q_i = ro_sview(data.q_recv, :, :, i_full)
         w_i = ro_sview(capture.w_el, :, :, i)
+        coords_i = ro_sview(metricx.coords, :, :, i_full)
         dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
         jac_i = ro_sview(metrics.jac, :, i_full)
         fill!(grad_w, 0)
 
         applyDx(sbp, w_i, dxidx_i, jac_i, wxi, grad_w)
-        applyDiffusionTensor(diffusion, w_i, i, grad_w, lambda_gradq_i)
+        applyDiffusionTensor(diffusion, sbp, eqn.params, q_i,  w_i, coords_i,
+                             dxidx_i, jac_i, i, grad_w, lambda_gradq_i)
       else
         fill!(lambda_gradq_i, 0)
       end
@@ -225,11 +232,15 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     elnumR = shockmesh.elnums_all[iface_red.elementR]
 
     # get data needed for next steps
+    qL = ro_sview(eqn.q, :, :, elnumL)
+    qR = ro_sview(eqn.q, :, :, elnumR)
     wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
     wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
     gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
     gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
 
+    coordsL = ro_sview(mesh.coords, :, :, elnumL)
+    coordsR = ro_sview(mesh.coords, :, :, elnumR)
     nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
     dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
     dxidxR = ro_sview(mesh.dxidx, :, :, :, elnumR)
@@ -244,8 +255,10 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
                      nrm_face, delta_w, theta)
 
     # apply the penalty coefficient matrix
-    applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w, theta,
-                 wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L, t2R)
+    applyPenalty(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
+                 iface_red, delta_w, theta,
+                 qL, qR, wL, wR, coordsL, coordsR, nrm_face, alphas, dxidxL,
+                 dxidxR, jacL, jacR, t1L, t1R, t2L, t2R)
 
     # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
     # need to apply R^T * t1, not R^T * B * t1, so
@@ -266,9 +279,10 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
     #       into a tuple (and similarly for the corresponding R arguments),
     #       however the allocation does not appear to cause a significant
     #       performance problem.
-    applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion, t2L, t2R,
-                      wL, wR, nrm_face, dxidxL, dxidxR, jacL, jacR, resL, resR,
-                      op)
+    applyDgkTranspose(capture, sbp, eqn.params, mesh.sbpface, iface_red,
+                      diffusion, t2L, t2R,
+                      qL, qR, wL, wR, coordsL, coordsR, nrm_face, dxidxL,
+                      dxidxR, jacL, jacR, resL, resR, op)
 
   end  # end loop i
 
@@ -312,16 +326,16 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
       elnumR = getSharedElementIndex(shockmesh, mesh, peer, iface_red.elementR)
 
       # get data needed for next steps
+      qL = ro_sview(eqn.q, :, :, elnumL)
       wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
       wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
       gradwL = ro_sview(capture.grad_w, :, :, :, iface_red.elementL)
       gradwR = ro_sview(capture.grad_w, :, :, :, iface_red.elementR)
 
+      coordsL = ro_sview(mesh.coords, :, :, elnumL)
       nrm_face = ro_sview(mesh.nrm_sharedface[peer_full], :, :, iface_idx)
       dxidxL = ro_sview(mesh.dxidx, :, :, :, elnumL)
-      dxidxR = ro_sview(metrics.dxidx, :, :, :, elnumR)
       jacL = ro_sview(mesh.jac, :, elnumL)
-      jacR = ro_sview(metrics.jac, :, elnumR)
       alphas = ro_sview(capture.alpha_parallel[peer], :, i)
       resL = sview(eqn.res, :, :, elnumL)
 
@@ -330,8 +344,10 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
                        nrm_face, delta_w, theta)
 
       # apply the penalty coefficient matrix
-      applyPenalty(penalty, sbp, mesh.sbpface, diffusion, iface_red, delta_w,
-                   theta, wL, wR, nrm_face, alphas, jacL, jacR, t1L, t1R, t2L,
+      applyPenalty(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
+                   iface_red, delta_w,
+                   theta, qL, qR,  wL, wR, nrm_face, alphas, dxidxL, dxidxR,
+                   jacL, jacR, t1L, t1R, t2L,
                    t2R)
 
       # apply Rgk^T, Rgn^T, Dgk^T, Dgn^T
@@ -348,8 +364,9 @@ function computeSharedFaceTerm(mesh, sbp, eqn, opts,
                                    t1L, t1R)
 
       # apply Dgk^T and Dgn^T
-      applyDgkTranspose(capture, sbp, mesh.sbpface, iface_red, diffusion,
-                        t2L, wL, nrm_face, dxidxL, jacL, resL, op)
+      applyDgkTranspose(capture, sbp, eqn.params, mesh.sbpface, iface_red,
+                        diffusion,
+                        t2L, qL, wL, coordsL, nrm_face, dxidxL, jacL, resL, op)
     end  # end i
   end  # end peer
 
@@ -487,9 +504,9 @@ function calcBoundaryFlux(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
                           bc_func, entropy_vars, w_i, q_i, coords_i,
                           nrm_i, delta_w)
 
-    applyDirichletPenalty(penalty, sbp, mesh.sbpface, diffusion,
-                          bndry_i, delta_w, w_i, nrm_i, alpha, jacL,
-                          res1)
+    applyDirichletPenalty(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
+                          bndry_i, delta_w, q_i, w_i, coords_i, nrm_i, alpha,
+                          dxidxL, jacL, res1)
 
     # apply R^T to T_D * delta_w
     scale!(res1, -1)  # SAT has a - sign in front of it
@@ -503,8 +520,9 @@ function calcBoundaryFlux(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
       end
     end
 
-    applyDgkTranspose(capture, sbp, mesh.sbpface, bndry_i, diffusion,
-                      delta_w, w_i, nrm_i, dxidxL, jacL, res_i, op)
+    applyDgkTranspose(capture, sbp, eqn.params, mesh.sbpface, bndry_i,
+                      diffusion, delta_w, q_i, w_i, coords_i, nrm_i, dxidxL,
+                      jacL, res_i, op)
 
   end
 
@@ -694,10 +712,13 @@ end
 
 """
 function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
+                           params::ParamType,
                            sbpface, iface::Interface,
                            diffusion::AbstractDiffusion,
                            t2L::AbstractMatrix, t2R::AbstractMatrix,
+                           qL::AbstractMatrix, qR::AbstractMatrix,
                            wL::AbstractMatrix, wR::AbstractMatrix,
+                           coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                            nrm_face::AbstractMatrix,
                            dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                            jacL::AbstractVector, jacR::AbstractVector,
@@ -725,8 +746,10 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
   end
 
   # multiply by D^T Lambda
-  applyDiffusionTensor(diffusion, wL, iface.elementL, temp2L, temp3L)
-  applyDiffusionTensor(diffusion, wR, iface.elementR, temp2R, temp3R)
+  applyDiffusionTensor(diffusion, sbp, params, qL, wL, coordsL, dxidxL, jacL,
+                       iface.elementL, temp2L, temp3L)
+  applyDiffusionTensor(diffusion, sbp, params, qR, wR,  coordsR, dxidxR, jacR,
+                       iface.elementR, temp2R, temp3R)
 
   # saving temp3 to a mesh-wide array and then applying Dx^T would save
   # a lot of flops.
@@ -740,10 +763,13 @@ end
   Method to apply Dgk^T * t2L only.
 """
 function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
+                           params::ParamType,
                            sbpface, bndry::Union{Interface, Boundary},
                            diffusion::AbstractDiffusion,
                            t2L::AbstractMatrix,
+                           qL::AbstractMatrix,
                            wL::AbstractMatrix,
+                           coordsL::AbstractMatrix,
                            nrm_face::AbstractMatrix,
                            dxidxL::Abstract3DArray,
                            jacL::AbstractVector,
@@ -770,7 +796,8 @@ function applyDgkTranspose(capture::SBPParabolicSC{Tsol, Tres}, sbp,
   end
 
   # multiply by D^T Lambda
-  applyDiffusionTensor(diffusion, wL, getElementL(bndry), temp2L, temp3L)
+  applyDiffusionTensor(diffusion, sbp, params, qL, wL, coordsL, dxidxL, jacL,
+                       getElementL(bndry), temp2L, temp3L)
 
   applyDxTransposed(sbp, temp3L, dxidxL, jacL, work, resL, op)
 

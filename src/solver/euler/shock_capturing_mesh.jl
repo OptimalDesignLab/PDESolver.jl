@@ -28,10 +28,10 @@ function getShockCapturingMesh(mesh::AbstractMesh, sbp::AbstractOperator,
     q_i = ro_sview(eqn.q, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
 
-    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, jac_i)
+    add_el = isShockElement(eqn.params, sbp, sensor, q_i, jac_i)
 
-    if ee > 0
-      push!(shockmesh, i, ee)
+    if add_el
+      push!(shockmesh, i)
     end
   end
 
@@ -79,59 +79,21 @@ import Base.push!
 
    * data: `ShockedElements`
    * elnum: the element number
-   * ee: the viscoscity value
 """
-@inline function push!(data::ShockedElements, elnum::Int, ee::Number)
+@inline function push!(data::ShockedElements, elnum::Int)
 
   idx = data.idx_all
   sz = data.sz_all
   if idx > sz
     sz = max(sz*2, 8)
     resize!(data.elnums_all, sz)
-    resize!(data.ee, sz)
     data.sz_all = sz
   end
 
   data.elnums_all[idx] = elnum
   data.elnums_mesh[elnum] = idx
-  data.ee[idx] = ee
 
   data.idx_all += 1
-end
-
-
-"""
-  Sets the viscoscity for an element of the shockmesh.  This function
-  should only be called *after* [`completeShockElements`](@ref) has been
-  called.  Unlike `push!`, this function does not add a new element to the
-  shockmesh, it only sets the viscoscity for an existing element.
-
-  **Inputs**
-
-   * data: `ShockedElements`
-   * elnum: element number
-   * ee: viscoscity value
-"""
-function setViscoscity(data::ShockedElements, elnum::Integer, ee::Number)
-
-  data.ee[elnum] = ee
-end
-
-"""
-  Gets the viscsocity for a given element.
-
-  **Inputs**
-
-   * data::`ShockedElements`
-   * elnum: the element number
-
-  **Outputs**
-
-   * val: the viscoscity value
-"""
-function getViscoscity(data::ShockedElements, elnum::Integer)
-
-  return data.ee[elnum]
 end
 
 
@@ -427,14 +389,6 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
     numEl += data.numShared[i]
   end
   data.numEl = numEl
-
-  if length(data.ee) < data.sz_all
-    resize!(data.ee, data.sz_all)  # keep ee same size as elnums_all, because
-                                   # that is what push! assumes
-  end
-  ee_other = sview(data.ee, (data.numShock+1):data.numEl)
-  fill!(ee_other, 0)  # neighbor elements have 0 viscoscity, shared elements
-                      # will be fixed later
 
   # setup ranges
   data.local_els = 1:data.numShock

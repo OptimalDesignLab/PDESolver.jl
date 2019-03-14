@@ -15,6 +15,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                           sensor::ShockSensorPP,
                           q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
                           dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                          Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tmsh, Tdim}
 
   Tres = promote_type(Tsol, Tmsh)
@@ -56,10 +57,13 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   # should this be a separate function from computing Se?
   if se < s0 - kappa
     ee = Tres(0.0)
+    is_nonzero = false
   elseif se > s0 - kappa && se < s0 + kappa
     ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
+    is_nonzero = true
   else
     ee = Tres(e0)
+    is_nonzero = true
   end
 
   # scale by lambda_max * h/p to get subcell resolution
@@ -75,8 +79,13 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   h_avg = h_avg^(1/Tdim)
 
   ee *= lambda_max*h_avg/sbp.degree
+
+
+  # use elementwise constant
+  fill!(Se_mat, Se)
+  fill!(ee_mat, ee)
   
-  return Se, ee
+  return is_nonzero
 end
 
 
@@ -142,10 +151,22 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
                           sensor::ShockSensorNone,
                           q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
                           dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                          Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tmsh}
 
   error("getShockSensor called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
 end
+
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                          sensor::ShockSensorNone,
+                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tmsh}
+
+  error("isShockElement called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
+end
+
 
 #------------------------------------------------------------------------------
 # ShockSensorEverywhere
@@ -154,9 +175,23 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
                         sensor::ShockSensorEverywhere{Tsol, Tres},
                         q::AbstractMatrix, coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                         ) where {Tsol, Tres, Tmsh}
 
-  return Tsol(1.0), Tres(1.0)
+  fill!(Se_mat, 1.0)
+  fill!(ee_mat, 1.0)
+
+  return true
+end
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorEverywhere{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ) where {Tsol, Tres, Tmsh}
+
+
+  return true
 end
 
 #------------------------------------------------------------------------------
@@ -166,6 +201,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHIso{Tsol, Tres},
                         q::AbstractMatrix, coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tres, Tmsh, Tdim}
 
   # compute | div(F) |
@@ -187,9 +223,20 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   end
 =#
 
+  fill!(Se_mat, val)
+  fill!(ee_mat, ee)
 
   # calling | div(f) | as the shock sensor, which is somewhat arbitrary
-  return val, ee
+  return true
+end
+
+function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHIso{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  return true
 end
 
 """
@@ -296,6 +343,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorBO{Tsol, Tres},
                         q::AbstractMatrix, coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tres, Tmsh, Tdim}
 
   numDofPerNode, numNodesPerElement = size(q)
@@ -311,7 +359,19 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   lambda_max /= numNodesPerElement
   h_avg = h_avg^(1/Tdim)
 
-  return lambda_max, sensor.alpha*lambda_max*h_avg/sbp.degree
+  fill!(Se_mat, lambda_max)
+  fill!(ee_mat, sensor.alpha*lambda_max*h_avg/sbp.degree)
+
+  return true
+end
+
+function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorBO{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  return true
 end
 
 #------------------------------------------------------------------------------
@@ -323,6 +383,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHHO{Tsol, Tres},
                         q::AbstractMatrix, coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tres, Tmsh, Tdim}
 #NOTE: the real sensor produces spatially varying viscoscity.  Here we take
 #      the norm so it fits into the elementwise-constant viscoscity model
@@ -371,5 +432,16 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   ee = val*h_fac*h_fac*sensor.C_eps
   #ee = val*h_fac*sensor.C_eps
 
-  return val, ee
+  fill!(Se_mat, val)
+  fill!(ee_mat, ee)
+  return true
+end
+
+
+function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHHO{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+  return true
 end

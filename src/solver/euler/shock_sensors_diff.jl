@@ -11,8 +11,8 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       q::AbstractMatrix{Tsol},
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}
                      ) where {Tsol, Tmsh, Tres, Tdim}
 # computes the Jacobian of Se and ee wrt q. Does not take in q_dot because
 # that would be way more expensive
@@ -21,8 +21,10 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 # case).
 
   numDofPerNode, numNodesPerElement = size(q)
+  dim = size(coords, 1)
+
   @unpack sensor up up_tilde up1_tilde s0 kappa e0 num_dot den_dot ee_dot lambda_max_dot
-  fill!(num_dot, 0); fill!(den_dot, 0)
+  fill!(num_dot, 0); fill!(den_dot, 0); fill!(Se_jac, 0); fill!(ee_jac, 0)
 
   @simd for i=1:numNodesPerElement
     up[i] = q[1, i]
@@ -68,7 +70,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   fac2 = 1/(den*den)
 #  fac3 = 1/(2*Se)
   @simd for i=1:numNodesPerElement
-    Se_jac[1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2#*fac3
+    Se_jac[1, 1, 1, i] = (num_dot[i]*den - den_dot[i]*num)*fac2#*fac3
   end
 
 
@@ -87,7 +89,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     fac3 = 0.5*e0*cospi( (se - s0)/(2*kappa) ) * (Float64(pi)/(2*kappa*log(10)*Se))
     fill!(ee_dot, 0)
     @simd for i=1:numNodesPerElement
-      ee_dot[i] = fac3*Se_jac[1, i]
+      ee_dot[i] = fac3*Se_jac[1, 1, 1, i]
     end
     eejac_zero = false
   else
@@ -113,14 +115,26 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   fill!(ee_jac, 0)
   for i=1:numNodesPerElement
-    ee_jac[1, i] = lambda_max*h_avg*ee_dot[i]/sbp.degree
+    ee_jac[1, 1, 1, i] = lambda_max*h_avg*ee_dot[i]/sbp.degree
     for j=1:numDofPerNode
-      ee_jac[j, i] += lambda_max_dot[j, i]*ee*h_avg/sbp.degree
+      ee_jac[1, j, 1, i] += lambda_max_dot[j, i]*ee*h_avg/sbp.degree
     end
   end
   ee *= lambda_max*h_avg/sbp.degree
 
-  return Se, ee, eejac_zero
+  # fill in the rest of the jac arrays
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      for j=1:numDofPerNode
+        for i=1:dim
+          Se_jac[i, j, p, q] = Se_jac[1, j, 1, q]
+          ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
+        end
+      end
+    end
+  end
+
+  return eejac_zero
 end
 
 
@@ -132,10 +146,10 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       q::AbstractMatrix{Tsol},
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres}
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres}
 
-  error("getShockSensori_diff called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
+  error("getShockSensor_diff called for ShockSensorNone: did you forget to specify the shock capturing scheme?")
 end
 
 #------------------------------------------------------------------------------
@@ -146,13 +160,13 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       q::AbstractMatrix{Tsol},
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres}
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres}
 
   fill!(Se_jac, 0)
   fill!(ee_jac, 0)
 
-  return Tres(1.0), Tres(1.0), true
+  return true
 end
 
 
@@ -164,17 +178,19 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       q::AbstractMatrix{Tsol},
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres, Tdim}
 
   # compute | div(F) |
   # Do this in Cartesian coordinates because it makes the differentiation easier
   numDofPerNode, numNodesPerElement = size(q)
+  dim = size(coords, 1)
   @unpack sensor res res_jac
 
+  _Se_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
   computeStrongResidual_diff(params, sbp, sensor.strongdata,
                              q, coords, dxidx, jac, res, res_jac)
-  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, Se_jac)
+  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, _Se_jac)
 
   h_avg = computeElementVolume(params, sbp, jac)
   h_fac = h_avg^((2 - sensor.beta)/Tdim)
@@ -182,13 +198,24 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   ee = Tres(sensor.C_eps*h_fac*val)
   for q=1:numNodesPerElement
     for j=1:numDofPerNode
-      ee_jac[j, q] = sensor.C_eps*h_fac*Se_jac[j, q]
+      ee_jac[1, j, 1, q] = sensor.C_eps*h_fac*_Se_jac[j, q]
     end
   end
 
+  # fill in the rest of the jac arrays
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      for j=1:numDofPerNode
+        for i=1:dim
+          Se_jac[i, j, p, q] = _Se_jac[j, q]
+          ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
+        end
+      end
+    end
+  end
 
   # calling | div(f) | as the shock sensor, which is somewhat arbitrary
-  return val, ee, false
+  return false
 end
 
 """
@@ -310,32 +337,46 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       q::AbstractMatrix{Tsol},
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres, Tdim}
 
   numDofPerNode, numNodesPerElement = size(q)
+  dim = size(coords, 1)
 
   lambda_max = zero(Tsol)
+  _Se_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
   #lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
   h_avg = zero(Tmsh)
   for i=1:numNodesPerElement
     q_i = sview(q, :, i)
-    lambda_max_dot_i = sview(Se_jac, :, i)
+    lambda_max_dot_i = sview(_Se_jac, :, i)
     lambda_max += getLambdaMax_diff(params, q_i, lambda_max_dot_i)
     h_avg += sbp.w[i]/jac[i]
   end
 
   lambda_max /= numNodesPerElement
-  scale!(Se_jac, 1/numNodesPerElement)
+  scale!(_Se_jac, 1/numNodesPerElement)
   h_avg = h_avg^(1/Tdim)
 
   for i=1:numNodesPerElement
     for j=1:numDofPerNode
-      ee_jac[j, i] = sensor.alpha*h_avg*Se_jac[j, i]/sbp.degree
+      ee_jac[1, j, 1, i] = sensor.alpha*h_avg*_Se_jac[j, i]/sbp.degree
     end
   end
 
-  return lambda_max, sensor.alpha*h_avg*lambda_max/sbp.degree, false
+  # fill in the rest of the jac arrays
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      for j=1:numDofPerNode
+        for i=1:dim
+          Se_jac[i, j, p, q] = _Se_jac[j, q]
+          ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
+        end
+      end
+    end
+  end
+
+  return false
 end
 
 
@@ -348,11 +389,12 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       q_el::AbstractMatrix{Tsol},
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
-                      Se_jac::AbstractMatrix{Tres},
-                      ee_jac::AbstractMatrix{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres, Tdim}
 
 
   numDofPerNode, numNodesPerElement = size(q_el)
+  dim = size(coords, 1)
 
   @unpack sensor p_jac press_el press_dx work res res_jac p_hess Dx px_jac val_dot
   #=
@@ -483,17 +525,30 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     end
   end
 
-  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, Se_jac)
+  _Se_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
+  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, _Se_jac)
 
   #TODO: was h^2
   ee = val*h_fac*h_fac*sensor.C_eps
   #ee = val*h_fac*sensor.C_eps
   for q=1:numNodesPerElement
     for j=1:numDofPerNode
-      ee_jac[j, q] = Se_jac[j, q]*h_fac*h_fac*sensor.C_eps
+      ee_jac[1, j, 1, q] = _Se_jac[j, q]*h_fac*h_fac*sensor.C_eps
       #ee_jac[j, q] = Se_jac[j, q]h_fac*sensor.C_eps
     end
   end
 
-  return val, ee, false
+  # fill in the rest of the jac arrays
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      for j=1:numDofPerNode
+        for i=1:dim
+          Se_jac[i, j, p, q] = _Se_jac[j, q]
+          ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
+        end
+      end
+    end
+  end
+
+  return false
 end

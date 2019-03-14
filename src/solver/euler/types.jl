@@ -696,7 +696,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
    end
 
    getShockSensor(mesh, sbp, eqn, opts)
-   getShockCapturing(mesh, sbp, eqn, opts)
+   getShockCapturing(mesh, sbp, eqn, opts, eqn.shock_sensor)
    eqn.assembler = NullAssembleElementData
 
    if open_files

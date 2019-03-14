@@ -90,12 +90,16 @@ end
   Applies the penalty for the SBP-SAT generalization of the modified scheme
   of Bassi and Rebay (BR2).
 """
-function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
+function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, params::AbstractParamType,
+                      sbpface,
                       diffusion::AbstractDiffusion, iface::Interface,
                       delta_w::AbstractMatrix{Tsol}, theta::AbstractMatrix{Tres},
+                      qL_el::AbstractMatrix, qR_el::AbstractMatrix,
                       wL::AbstractMatrix, wR::AbstractMatrix,
+                      coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                       nrm_face::AbstractMatrix,
                       alphas::AbstractVector,
+                      dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                       jacL::AbstractVector, jacR::AbstractVector,
                       res1L::AbstractMatrix, res1R::AbstractMatrix,
                       res2L::AbstractMatrix, res2R::AbstractMatrix
@@ -133,9 +137,10 @@ function applyPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   end
 
   # apply Lambda matrix
-  applyDiffusionTensor(diffusion, wL, iface.elementL, sbpface, iface.faceL,
+  applyDiffusionTensor(diffusion, sbp, params, qL_el, wL, coordsL, dxidxL, jacL, iface.elementL, sbpface, iface.faceL,
                        qL, t1L)
-  applyDiffusionTensor(diffusion, wR, iface.elementR, sbpface, iface.faceR,
+  applyDiffusionTensor(diffusion, sbp, params, qR_el, wR, coordsR, dxidxR, jacR, 
+                       iface.elementR, sbpface, iface.faceR,
                        qR, t1R)
 
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
@@ -275,15 +280,19 @@ end
 """
   Differentiated version of BR2 penalty
 """
-function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
+function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp,
+                      params::AbstractParamType, sbpface,
                       diffusion::AbstractDiffusion, iface::Interface,
                       delta_w::AbstractMatrix{Tsol},
                       delta_w_dotL::Abstract4DArray, delta_w_dotR::Abstract4DArray,
                       theta::AbstractMatrix{Tres},
                       theta_dotL::Abstract4DArray, theta_dotR::Abstract4DArray,
+                      qL_el::AbstractMatrix, qR_el::AbstractMatrix,
                       wL::AbstractMatrix, wR::AbstractMatrix,
+                      coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                       nrm_face::AbstractMatrix,
                       alphas::AbstractVector,
+                      dxidxL::Abstract3DArray, dxidxR::Abstract3DArray,
                       jacL::AbstractVector, jacR::AbstractVector,
                       res1L_dotL::Abstract4DArray, res1L_dotR::Abstract4DArray,
                       res1R_dotL::Abstract4DArray, res1R_dotR::Abstract4DArray,
@@ -357,10 +366,12 @@ function applyPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
                              add, false)
 
   # apply diffusion tensor
-  applyDiffusionTensor_diff(diffusion, wL, iface.elementL, sbpface,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qL_el, wL, coordsL, dxidxL,
+                            jacL, iface.elementL, sbpface,
                             iface.faceL, qL, t2LL, t2LR, t3LL, t3LR)
   # reverse RR and RL here because Lambda is a function of qR, not qL
-  applyDiffusionTensor_diff(diffusion, wR, iface.elementR, sbpface,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qR_el, wR, coordsR, dxidxR,
+                            jacR, iface.elementR, sbpface,
                             iface.faceR, qR, t2RR, t2RL, t3RR, t3RL)
 
   # apply inverse mass matrix (only nodes needed for interpolation later)
@@ -483,8 +494,13 @@ function applyDirichletPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp,
                       sbpface, diffusion::AbstractDiffusion, bndry::Boundary,
                       delta_w::AbstractMatrix{Tsol},
                       delta_w_dot::Abstract4DArray,
-                      wL::AbstractMatrix, nrm_face::AbstractMatrix,
-                      alpha::Number, jacL::AbstractVector,
+                      qL_el::AbstractMatrix,
+                      wL::AbstractMatrix,
+                      coordsL::AbstractMatrix,
+                      nrm_face::AbstractMatrix,
+                      alpha::Number,
+                      dxidxL::Abstract3DArray,
+                      jacL::AbstractVector,
                       res_dot::Abstract4DArray,
                      ) where {Tsol, Tres}
 
@@ -537,7 +553,8 @@ function applyDirichletPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp,
   boundaryFaceIntegrate_jac!(sbpface, bndry.face, t1_dotL, t2LL, include_quadrature=false)
 
   # apply diffusion tensor
-  applyDiffusionTensor_diff(diffusion, wL, bndry.element, sbpface,
+  applyDiffusionTensor_diff(diffusion, sbp, params, qL_el, wL, coordsL, dxidxL,
+                            jacL, bndry.element, sbpface,
                             bndry.face, qL, t2LL, t3LL)
 
   # apply inverse mass matrix (only nodes needed for interpolation later)

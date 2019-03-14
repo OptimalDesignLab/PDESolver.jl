@@ -81,58 +81,18 @@ function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
 
-    Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,
+    val = isShockElement(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,
                             jac_i)
-    if ee > 0
+    if val
       # push to shockmesh
-      push!(shockmesh, i, ee)
+      push!(shockmesh, i)
     end
   end
 
   completeShockElements(mesh, shockmesh)
 
-  # compute the shock viscoscity for shared elements
-  for peer=1:shockmesh.npeers
-    peer_full = shockmesh.peer_indices[peer]
-    data = eqn.shared_data[peer_full]
-    metrics = mesh.remote_metrics[peer_full]
-
-    for i in shockmesh.shared_els[peer]
-      i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
-      q_i = ro_sview(data.q_recv, :, :, i_full)
-      coords_i = ro_sview(metrics.coords, :, :, i_full)
-      dxidx_i = ro_sview(metrics.dxidx, :, :, :, i_full)
-      jac_i = ro_sview(metrics.jac, :, i_full)
-
-      Se, ee = getShockSensor(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,
-                              jac_i)
-      setViscoscity(shockmesh, i, ee)
-    end
-  end
-
   allocateArrays(capture, mesh, shockmesh)
   
-  # compute the derivative of the shock sensor for the shocked elements
-  ee_dot = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, shockmesh.numEl)
-  Se_dot_i = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
-  is_nonlinear = BitArray(shockmesh.numEl)
-  for i=1:shockmesh.numEl
-    i_full = shockmesh.elnums_all[i]
-    q_i = ro_sview(eqn.q, :, :, i_full)
-    coords_i = ro_sview(mesh.coords, :, :, i_full)
-    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
-    jac_i = ro_sview(mesh.jac, :, i_full)
-    ee_dot_i = sview(ee_dot, :, :, i)
-
-    Se, ee, is_constant = getShockSensor_diff(eqn.params, sbp, sensor, q_i,
-                                              coords_i, dxidx_i,
-                                              jac_i, Se_dot_i, ee_dot_i)
-    is_nonlinear[i] = !is_constant
-  end
-
-  #TODO: perhaps remove ee from shockmesh?
-  setDiffusionArray_diff(capture.diffusion, shockmesh.ee, ee_dot, is_nonlinear)
-
   # call shock capturing scheme
   calcShockCapturing_diff(mesh, sbp, eqn, opts, capture, shockmesh, assem)
 
@@ -158,15 +118,20 @@ function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
                                   res_jac::AbstractArray{Tres, 4}) where {Tmsh, Tres}
 
   numDofPerNode, numNodesPerElement = size(u)
+  dim = size(coords, 1)
   @unpack capture t1 t2 w Se_jac ee_jac A0inv
 
+  #TODO: stash these somewhere
+  Se = zeros(Tres, dim, numNodesPerElement)
+  ee = zeros(Tres, dim, numNodesPerElement)
   #TODO: make shock capturing and shock sensing independent choices
-  Se, ee = getShockSensor(params, sbp, sensor, u, coords, dxidx, jac)
+  is_shock = isShockElement(params, sbp, sensor, u, coords, dxidx, jac)
 
-  if ee > 0
+  if is_shock
     fill!(Se_jac, 0); fill!(ee_jac, 0)
     # only compute the derivative if there is a shock
-    Se, ee, ee_constant = getShockSensor_diff(params, sbp, sensor, u, coords,
+    getShockSensor(params, sbp, sensor, u, coords, dxidx, jac, Se, ee)
+    ee_constant = getShockSensor_diff(params, sbp, sensor, u, coords,
                                               dxidx, jac, Se_jac, ee_jac)
 
     # the operator (for a scalar equation) is A = P^T * M * P * v, so
@@ -184,7 +149,8 @@ function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
         end
         @simd for j=1:numDofPerNode
           @simd for i=1:numDofPerNode
-            res_jac[i, j, p, q] = -ee*Apq*A0inv[i, j]
+            # this uses only the x direction viscoscity
+            res_jac[i, j, p, q] = -ee[1, i]*Apq*A0inv[i, j]
           end
         end
       end
@@ -218,7 +184,7 @@ function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
         @simd for q=1:numNodesPerElement
           @simd for j=1:numDofPerNode
             @simd for i=1:numDofPerNode
-              res_jac[i, j, p, q] -= ee_jac[j, q]*t2[i, p]
+              res_jac[i, j, p, q] -= ee_jac[1, j, p, q]*t2[i, p]
             end
           end
         end
@@ -229,7 +195,7 @@ function calcShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
 
   end  # end if
 
-  return ee > 0
+  return is_shock
 end
 
 

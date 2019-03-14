@@ -88,8 +88,6 @@ mutable struct ShockedElements{Tres}
                             # in elnums_all
                             # contains the indices of elements in elnums_all
                             # TODO: can this be a BitArray?
-  ee::Vector{Tres}  # the numerical viscoscity of each element in
-                    # neighbor_elnums
   ifaces::Vector{RelativeInterface}
   bndryfaces::Vector{RelativeBoundary}
 
@@ -141,7 +139,6 @@ mutable struct ShockedElements{Tres}
     size_guess = max(div(mesh.numEl, 10), 1)
     elnums_all = Array{Int}(size_guess)  # do this later
     elnums_mesh = zeros(mesh.numGlobalEl)
-    ee = Array{Tres}(size_guess)
     ifaces = Array{RelativeInterface}(0)
     bndryfaces = Array{RelativeBoundary}(0)
     shared_interfaces = Vector{Vector{RelativeInterface}}(0)
@@ -170,7 +167,7 @@ mutable struct ShockedElements{Tres}
     idx_b = 1
     sz_b = 0
 
-    return new(elnums_all, elnums_mesh, ee,
+    return new(elnums_all, elnums_mesh,
                ifaces, bndryfaces, shared_interfaces, numShock,
                numNeighbor, numShared,
                numInterfaces, numSharedInterfaces, numBoundaryFaces, npeers,

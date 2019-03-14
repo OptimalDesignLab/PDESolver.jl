@@ -11,11 +11,11 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractVolumeShockCaptur
   w::Matrix{Tsol}
   t1::Matrix{Tres}
   t2::Matrix{Tres}
-  Se_jac::Matrix{Tres}
-  ee_jac::Matrix{Tres}
+  Se_jac::Array{Tres, 4}
+  ee_jac::Array{Tres, 4}
   A0inv::Matrix{Tsol}
 
-  function ProjectionShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
+  function ProjectionShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
 
     numDofPerNode = mesh.numDofPerNode
     filt = zeros(Float64, sbp.numnodes, sbp.numnodes)
@@ -26,8 +26,11 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractVolumeShockCaptur
     t1 = zeros(Tres, numDofPerNode, sbp.numnodes)
     t2 = zeros(Tres, numDofPerNode, sbp.numnodes)
 
-    Se_jac = zeros(Tres, numDofPerNode, sbp.numnodes)
-    ee_jac = zeros(Tres, numDofPerNode, sbp.numnodes)
+    Se_jac = zeros(Tres, mesh.dim, numDofPerNode, mesh.numNodesPerElement,
+                          mesh.numNodesPerElement)
+    ee_jac = zeros(Tres, mesh.dim, numDofPerNode, mesh.numNodesPerElement,
+                          mesh.numNodesPerElement)
+
     A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
 
     return new(filt, w, t1, t2, Se_jac, ee_jac, A0inv)
@@ -66,7 +69,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
   entropy_vars::AbstractVariables  # convert to entropy variables
   flux::AbstractLDGFlux
   diffusion::AbstractDiffusion
-  function LDGShockCapturing{Tsol, Tres}() where {Tsol, Tres}
+  function LDGShockCapturing{Tsol, Tres}(sensor::AbstractShockSensor) where {Tsol, Tres}
     # we don't know the right sizes yet, so just make them zero size
     w_el = Array{Tsol}(0, 0, 0)
     q_j = Array{Tsol}(0, 0, 0, 0)
@@ -74,13 +77,15 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     # default values
     entropy_vars = IRVariables()
     flux = LDG_ESFlux()
-    diffusion = ShockDiffusion{Tres}()
+    diffusion = ShockDiffusion(sensor)
 
     return new(w_el, q_j, entropy_vars, flux, diffusion)
   end
 
-  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
-    return LDGShockCapturing{Tsol, Tres}()
+  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh,
+             sbp::AbstractOperator, eqn, opts, sensor::AbstractShockSensor
+            ) where {Tsol, Tres}
+    return LDGShockCapturing{Tsol, Tres}(sensor)
   end
 
 end
@@ -113,8 +118,6 @@ function allocateArrays(capture::LDGShockCapturing{Tsol, Tres}, mesh::AbstractMe
                                shockmesh.numEl)
   end
 
-  setDiffusionArray(capture.diffusion, shockmesh.ee)
-
   return nothing
 end
 
@@ -139,47 +142,14 @@ end
 """
   Diagonal viscoscity (constant for each element), used for shock capturing
 """
-mutable struct ShockDiffusion{T} <: AbstractDiffusion
-  ee::Vector{T}
-  ee_dot::Array{T, 3}  # derivative of ee wrt solution
-  is_nonlinear::BitArray{1}  # true if ee depends on the solution for each
-                             # element
-  function ShockDiffusion{T}() where {T}
-    ee = Vector{T}(0)
-    ee_dot = Array{T}(0, 0, 0)
-    is_nonlinear = BitArray(0)
-    return new(ee, ee_dot, is_nonlinear)
-  end
-
-  function ShockDiffusion{T}(ee::AbstractVector{T}) where {T}
-    return new(ee)
-  end
+mutable struct ShockDiffusion{T <: AbstractShockSensor} <: AbstractDiffusion
+  sensor::T
 end
 
-function ShockDiffusion(ee::AbstractVector{T}) where {T}
-  return ShockDiffusion{T}(ee)
-end
-
-"""
-  Function to set the elementwise diffusion coefficient
-"""
-function setDiffusionArray(obj::ShockDiffusion, vals::AbstractArray)
-  obj.ee = vals
-end
-
-"""
-  Function to set the elementwise diffusion coefficient and its derivative
-"""
-function setDiffusionArray_diff(obj::ShockDiffusion, vals::AbstractArray,
-                                vals_dot::AbstractArray{T, 3},
-                                is_nonlinear::BitArray{1}) where {T}
-
-  obj.ee =vals
-  obj.ee_dot = vals_dot
-  obj.is_nonlinear = is_nonlinear
-end
-
-
+# julia auto-generates this constructor
+#function ShockDiffusion(sensor::T) where {T <: AbstractShockSensor}
+#  return ShockDiffusion{T}(sensor)
+#end
 
 #------------------------------------------------------------------------------
 
@@ -190,7 +160,8 @@ end
 struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
   function ErrorShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
-                                           eqn, opts) where {Tsol, Tres}
+                                           eqn, opts,
+                                           sensor::AbstractShockSensor) where {Tsol, Tres}
     return new()
   end
 end
@@ -421,7 +392,8 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
 
   alpha_comm::AlphaComm # MPI communications for alpha
 
-  function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts) where {Tsol, Tres}
+  function SBPParabolicSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator,
+                                      eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
 
     @unpack mesh numDofPerNode numNodesPerFace dim numNodesPerElement
 
@@ -432,7 +404,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     # default values
     entropy_vars = IRVariables()
 #    entropy_vars = ConservativeVariables()
-    diffusion = ShockDiffusion{Tres}()
+    diffusion = ShockDiffusion(sensor)
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
     alpha_b = zeros(Float64, 0)
@@ -553,7 +525,6 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
                                shockmesh.numEl)
   end
 
-  setDiffusionArray(capture.diffusion, shockmesh.ee)
   allocateArrays(capture.alpha_comm, shockmesh)
   computeAlpha(capture, mesh, shockmesh)
 
@@ -561,6 +532,23 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
 end
 
 
+#------------------------------------------------------------------------------
+# VolumeShockCapturing
+
+
+mutable struct VolumeShockCapturing{Tsol, Tres} <: AbstractVolumeShockCapturing
+  entropy_vars::AbstractVariables
+  diffusion::AbstractDiffusion
+
+  function VolumeShockCapturing{Tsol, Tres}(mesh::AbstractMesh, 
+                                sbp::AbstractOperator, eqn,  opts,
+                                sensor::AbstractShockSensor) where {Tsol, Tres}
+    entropy_vars = IRVariables()
+#    entropy_vars = ConservativeVariables()
+    diffusion = ShockDiffusion(sensor)
+    return new(entropy_vars, diffusion)
+  end
+end
 
 
 #------------------------------------------------------------------------------
@@ -571,6 +559,7 @@ global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockC
 "ElementProjection" => ProjectionShockCapturing,
 "LDG" => LDGShockCapturing,
 "SBPParabolic" => SBPParabolicSC,
+"Volume" => VolumeShockCapturing,
 )
 
 
@@ -579,10 +568,11 @@ global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockC
   shock capturing object for the scheme.  The shock capturing scheme is
   determined by opts["shock_capturing_name"]
 """
-function getShockCapturing(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function getShockCapturing(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                           sensor::AbstractShockSensor) where {Tsol, Tres}
 
   name = opts["shock_capturing_name"]
-  obj = ShockCapturingDict[name]{Tsol, Tres}(mesh, sbp, eqn, opts)
+  obj = ShockCapturingDict[name]{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   assertArraysUnique(obj)
   eqn.shock_capturing = obj
 

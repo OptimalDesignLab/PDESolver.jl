@@ -7,7 +7,7 @@
   for more detail:
 
   ```
-    applyDiffusionTensor(obj::ShockDiffusion, w::AbstractMatrix,
+    applyDiffusionTensor(obj::AbstractDiffusion, w::AbstractMatrix,
                     i::Integer, nodes::AbstractVector,
                     dx::Abstract3DArray, flux::Abstract3DArray)
   ```
@@ -39,8 +39,17 @@ abstract type AbstractDiffusion end
   **Inputs**
 
    * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
    * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
         for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: the element number.  This is useful for diffusions where the coeffients
         are precomputed and stored in an array
    * nodes: a vector of integers describing which nodes of `flux` need to be
@@ -53,9 +62,14 @@ abstract type AbstractDiffusion end
    * flux: array to overwrite with the result, same size as `dx`
 
 """
-function applyDiffusionTensor(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor(obj::AbstractDiffusion, sbp::AbstractOperator,
+                    params::AbstractParamType, q::AbstractMatrix,
+                    w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer, nodes::AbstractVector,
-                    dx::Abstract3DArray, flux::Abstract3DArray)
+                    dx::Abstract3DArray, flux::Abstract3DArray{Tres}
+                   ) where {Tres}
 
   error("abstract fallback for applyDiffusionTensor() reached.  Did you forget to extend applyDiffusionTensor with a new method?")
 end
@@ -67,8 +81,17 @@ end
   **Inputs**
 
    * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
    * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
         for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: the element number.  This is useful for diffusions where the coeffients
         are precomputed and stored in an array
    * nodes: vector of integers identifying  nodes at which to compute the
@@ -85,7 +108,12 @@ end
 
 
 """
-function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor_diff(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType, 
+                    q_el::AbstractMatrix, w_el::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer, nodes::AbstractVector, t1::Abstract3DArray,
                     t1_dot::Abstract5DArray, t2_dot::Abstract5DArray)
 
@@ -107,8 +135,18 @@ end
 
   **Inputs**
 
-   * obj: [`ShockDiffusion`](@ref)
-   * w: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
+   * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
+   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
+        for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: element number
    * nodes: vector of integers identifying  nodes at which to compute the
             output (4th dimension of `t1_dot` and `t2_dot`)
@@ -122,13 +160,16 @@ end
    * t2_dotL: 5D Jacobian overwritten with result for elementL
    * t2_dotR: 5D Jacobian overwritten with result for elementR
 """
-function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor_diff(obj::AbstractDiffusion, sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q_el::AbstractMatrix, w_el::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer, nodes::AbstractVector, t1::Abstract3DArray,
-                    t1_dotL::Abstract5DArray,
-                    t1_dotR::Abstract5DArray, t2_dotL::Abstract5DArray,
-                    t2_dotR::Abstract5DArray)
+                    t1_dotL::Abstract5DArray, t1_dotR::Abstract5DArray,
+                    t2_dotL::Abstract5DArray, t2_dotR::Abstract5DArray)
 
-
+  
   error("abstract fallback for applyDiffusionTensor_diff() reached.  Did you forget to extend applyDiffusionTensor_diff() with a new method?")
 end
 
@@ -146,8 +187,17 @@ end
   **Inputs**
 
    * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
    * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
         for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: the element number.  This is useful for diffusions where the coeffients
         are precomputed and stored in an array
    * sbpface: an `AbstractFace` object that describes the stencil of R
@@ -161,12 +211,17 @@ end
 
 
 """
-function applyDiffusionTensor(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor(obj::AbstractDiffusion, sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer, sbpface::AbstractFace, face::Integer,
                     dx::Abstract3DArray, flux::Abstract3DArray)
 
   nodes = sview(sbpface.perm, :, face)
-  applyDiffusionTensor(obj, w, i, nodes, dx, flux)
+  applyDiffusionTensor(obj, sbp, params, q, w, coords, dxidx, jac, i, nodes,
+                       dx, flux)
 
   return nothing
 end
@@ -177,8 +232,17 @@ end
   **Inputs**
 
    * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
    * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
         for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: the element number.  This is useful for diffusions where the coeffients
         are precomputed and stored in an array
    * dx: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
@@ -188,13 +252,18 @@ end
 
    * flux: array to overwrite with the result, same size as `dx`
 """
-function applyDiffusionTensor(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor(obj::AbstractDiffusion, sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer,
                     dx::Abstract3DArray, flux::Abstract3DArray)
 
   numNodesPerElement = size(dx, 2)
   nodes = 1:numNodesPerElement
-  applyDiffusionTensor(obj, w, i, nodes, dx, flux)
+  applyDiffusionTensor(obj, sbp, params, q, w, coords, dxidx, jac, i, nodes,
+                       dx, flux)
 
   return nothing
 end
@@ -206,8 +275,17 @@ end
   **Inputs**
 
    * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
    * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
         for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: the element number.  This is useful for diffusions where the coeffients
         are precomputed and stored in an array
    * sbpface: the `AbstractFace` that identifies the stencil of R
@@ -222,13 +300,18 @@ end
    * t2_dot: the derivative of t1, `numDofPerNode` x `numDofPerNode` x `dim`
             x `numNodesPerElement` x `numNodesPerElement`, overwritten
 """
-function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor_diff(obj::AbstractDiffusion,
+                    sbp::AbstractOperator, params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer, sbpface::AbstractFace, face::Integer,
                     t1::Abstract3DArray,
                     t1_dot::Abstract5DArray, t2_dot::Abstract5DArray)
 
   nodes = sview(sbpface.perm, :, face)
-  applyDiffusionTensor_diff(obj, w, i, nodes, t1, t1_dot, t2_dot)
+  applyDiffusionTensor_diff(obj, sbp, params, q, w, coords, dxidx, jac, i,
+                            nodes, t1, t1_dot, t2_dot)
 
   return nothing
 end
@@ -241,8 +324,17 @@ end
   **Inputs**
 
    * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
    * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
         for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: the element number.  This is useful for diffusions where the coeffients
         are precomputed and stored in an array
    * t1: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
@@ -258,13 +350,18 @@ end
 
 
 """
-function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor_diff(obj::AbstractDiffusion,
+                    sbp::AbstractOperator, params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer,
                     t1::Abstract3DArray,
                     t1_dot::Abstract5DArray, t2_dot::Abstract5DArray)
 
   nodes = 1:size(t1, 2)
-  applyDiffusionTensor_diff(obj, w, i, nodes, t1, t1_dot, t2_dot)
+  applyDiffusionTensor_diff(obj, sbp, params, q,  w, coords, dxidx, jac, i,
+                            nodes, t1, t1_dot, t2_dot)
 
   return nothing
 end
@@ -276,8 +373,18 @@ end
 
   **Inputs**
 
-   * obj: [`ShockDiffusion`](@ref)
-   * w: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
+   * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
+   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
+        for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: element number
    * sbpface: the `AbstractFace` that describes the stencil of R
    * face: the local face number
@@ -291,7 +398,11 @@ end
    * t2_dotL: 5D Jacobian overwritten with result for elementL
    * t2_dotR: 5D Jacobian overwritten with result for elementR
 """
-function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor_diff(obj::AbstractDiffusion,
+                    sbp::AbstractOperator, params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer, sbpface::AbstractFace, face::Integer,
                     t1::Abstract3DArray,
                     t1_dotL::Abstract5DArray, t1_dotR::Abstract5DArray,
@@ -299,8 +410,8 @@ function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
 
   nodes = 1:size(t1_dotL, 4)
   #nodes = sview(sbpface.perm, :, face)
-  applyDiffusionTensor_diff(obj, w, i, nodes, t1, t1_dotL, t1_dotR,
-                            t2_dotL, t2_dotR)
+  applyDiffusionTensor_diff(obj, sbp, params, q, w, coords, dxidx, jac, i,
+                            nodes, t1, t1_dotL, t1_dotR, t2_dotL, t2_dotR)
 
   return nothing
 end
@@ -312,8 +423,18 @@ end
 
   **Inputs**
 
-   * obj: [`ShockDiffusion`](@ref)
-   * w: entropy variables for the element, `numDofPerNode` x `numNodesPerElement`
+   * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
+   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
+        for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
    * i: element number
    * t1: the values Lambda is multiplied against for the primal operation,
          `numDofPerNode` x `numNodesPerElement` x `dim`
@@ -326,15 +447,19 @@ end
    * t2_dotR: 5D Jacobian overwritten with result for elementR
 
 """
-function applyDiffusionTensor_diff(obj::AbstractDiffusion, w::AbstractMatrix,
+function applyDiffusionTensor_diff(obj::AbstractDiffusion,
+                    sbp::AbstractOperator, params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
                     i::Integer,
                     t1::Abstract3DArray,
                     t1_dotL::Abstract5DArray, t1_dotR::Abstract5DArray,
                     t2_dotL::Abstract5DArray, t2_dotR::Abstract5DArray)
 
   nodes = 1:size(t1_dotL, 4)
-  applyDiffusionTensor_diff(obj, w, i, nodes, t1, t1_dotL, t1_dotR,
-                            t2_dotL, t2_dotR)
+  applyDiffusionTensor_diff(obj, sbp, params, q, w, coords, dxidx, jac, i, nodes,
+                            t1, t1_dotL, t1_dotR, t2_dotL, t2_dotR)
 
   return nothing
 end
