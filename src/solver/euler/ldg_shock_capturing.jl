@@ -144,6 +144,7 @@ function computeThetaFaceContribution(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
       resR = sview(capture.q_j, :, :, d, iface_red.elementR)
       interiorFaceIntegrate!(mesh.sbpface, iface_red, flux_d, resL, resR)
     end
+
   end  # end i
 
   return nothing
@@ -299,7 +300,7 @@ end
 """
   Flux function for w, used to compute theta for LDG
 
-  Note that this si different from a regular 2 point flux function becaues
+  Note that this is different from a regular 2 point flux function becaues
   it operates on the entropy variables.
 """
 function applyFlux(params::ParamType, obj::LDG_ESFlux, wL::AbstractVector,

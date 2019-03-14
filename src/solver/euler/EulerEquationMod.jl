@@ -352,6 +352,51 @@ abstract type AbstractShockCapturing end
   Abstract type for shock capturing methods that only have volume terms.
   These scheme are substantially simpler and do not require constructing
   a reduced mesh.  The interface for this type has not been finalized
+
+  This type must implement two functions:
+
+  ```
+  function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+                               eqn::EulerData, opts,
+                               sensor::AbstractShockSensor,
+                               capture::AbstractFaceShockCapturing)
+  ```
+
+  This function should update the residual with the shock capturing term
+
+  **Inputs**
+
+   * mesh: mesh object
+   * sbp: SBP operator
+   * eqn: EulerData
+   * opts: options dictonary
+   * sensor: [`AbstractShockSensor`](@ref)
+   * capture: the shock capturing scheme
+
+
+  ```
+  function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
+                                   eqn::EulerData, opts,
+                                   sensor::AbstractShockSensor,
+                                   capture::AbstractFaceShockCapturing
+                                   assem::AssembleElementData)
+  ```
+
+  This function should compute the Jacobian of the shock capturing term
+
+  **Inputs**
+
+   * mesh: mesh object
+   * sbp: SBP operator
+   * eqn: EulerData
+   * opts: options dictionary
+   * sensor: an [`AbstractShockSensor`](@ref)
+   * capture: the shock capturing object
+   * assem: an [`AssembleElementData`](@ref)
+
+  Note that many `capture` types require the same sensor to be passed into
+  their constructor as to `calcShockCapturing`.
+
 """
 abstract type AbstractVolumeShockCapturing <: AbstractShockCapturing end
 
@@ -454,6 +499,7 @@ include("shock_diffusion.jl")
 include("shock_capturing.jl")
 include("shock_sensors.jl")
 include("projection_shock_capturing.jl")
+include("volume_shock_capturing.jl")
 include("ldg_shock_capturing.jl")
 include("sbp_sat_shock_capturing.jl")
 include("sbp_cartesian.jl")

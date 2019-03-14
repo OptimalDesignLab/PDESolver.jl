@@ -474,6 +474,25 @@ function test_jac_terms_long()
 
     end
 
+    # only need to do a single element type because all element volume matrices
+    # have the same structure
+    println("\nTesting volume shock capturing schemes")
+
+    shock_capturing_schemes_volume = ["ElementProjection", "Volume"]
+    for sc in shock_capturing_schemes_volume
+      println("sc = ", sc)
+
+      Tsol = eltype(eqn4.q); Tres = eltype(eqn4.res)
+
+      println("case4")
+      sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh4, sbp4, opts4)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh4,
+                                                    sbp4, eqn4, opts4, sensor)
+      test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
+      test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+    end
+
+
 
 
 
@@ -564,7 +583,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------
@@ -2846,7 +2865,7 @@ end
    * use_sensor: if true use `ShockSensorPP`, otherwise use `ShockSensorEverywher`
 """
 function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
-      capture::EulerEquationMod.AbstractFaceShockCapturing) where {Tsol, Tres}
+      capture::EulerEquationMod.AbstractShockCapturing) where {Tsol, Tres}
 
   opts = copy(_opts)  # don't modify the original
   opts["addVolumeIntegrals"] = false

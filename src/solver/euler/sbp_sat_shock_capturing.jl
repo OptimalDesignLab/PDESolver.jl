@@ -15,7 +15,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                capture.entropy_vars, capture.diffusion)
 
   computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
-#=
+
   println("after volume term, residual norm = ", calcNorm(eqn, eqn.res))
 
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
@@ -31,7 +31,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   println("after boundary term, residual norm = ", calcNorm(eqn, eqn.res))
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
-=#
+
 
 
   return nothing
@@ -186,9 +186,9 @@ function computeVolumeTerm(mesh, sbp, eqn, opts,
     gradq_i = ro_sview(capture.grad_w, :, :, :, i)
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
     res_i = sview(eqn.res, :, :, i_full)
-    #applyQx(sbp, gradq_i, dxidx_i, work, res_i)
+    applyQx(sbp, gradq_i, dxidx_i, work, res_i)
 
-    applyQxTransposed(sbp, gradq_i, dxidx_i, work, res_i, op)
+    #applyQxTransposed(sbp, gradq_i, dxidx_i, work, res_i, op)
   end
 
   return nothing

@@ -21,9 +21,8 @@ function applyDiffusionTensor(obj::ShockDiffusion, sbp::AbstractOperator,
 
   numDofPerNode, numNodesPerElement, dim = size(flux)
 
-  #TODO: don't allocate these
-  Se = zeros(Tres, dim, numNodesPerElement)
-  ee = zeros(Tres, dim, numNodesPerElement)
+  Se = obj.Se
+  ee = obj.ee
   getShockSensor(params, sbp, obj.sensor, q, coords, dxidx, jac, Se, ee)
 
   @simd for d=1:dim
@@ -80,9 +79,8 @@ function applyLambda_diff(obj::ShockDiffusion, sbp::AbstractOperator,
   dim = size(t1_dot, 3)
   numNodesPerElement = size(t1_dot, 4)
 
-  #TODO: don't allocate these
-  Se = zeros(Tres, dim, numNodesPerElement)
-  ee = zeros(Tres, dim, numNodesPerElement)
+  Se = obj.Se
+  ee = obj.ee
   getShockSensor(params, sbp, obj.sensor, q, coords, dxidx, jac, Se, ee)
 
   @simd for q=1:numNodesPerElement
@@ -138,11 +136,8 @@ function applyLambdaDot_diff(obj::ShockDiffusion, sbp::AbstractOperator,
   dim = size(t2_dot, 3)
   numNodesPerElement = size(t1, 2)
 
-  #TODO: don't allocate these
-  Se_dot = zeros(Tres, dim, numDofPerNode, numNodesPerElement,
-                       numNodesPerElement)
-  ee_dot = zeros(Tres, dim, numDofPerNode, numNodesPerElement,
-                       numNodesPerElement)
+  Se_dot = obj.Se_dot
+  ee_dot = obj.ee_dot
   is_constant = getShockSensor_diff(params, sbp, obj.sensor, q_el,
                                     coords, dxidx, jac, Se_dot, ee_dot)
 

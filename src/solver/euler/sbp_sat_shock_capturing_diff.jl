@@ -13,7 +13,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeVolumeTerm_diff(mesh, sbp, eqn, opts, capture,
                                capture.diffusion, capture.entropy_vars,
                                shockmesh, assem)
-#=
+
   computeFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
@@ -30,7 +30,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
   #@time computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
   #                                 capture.diffusion, capture.penalty)
-=#
+
 
 
   return nothing
@@ -93,7 +93,7 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
     # apply the diffusion tensor to all nodes of the element
     applyDiffusionTensor_diff(diffusion, sbp, eqn.params, q_i, w_i, coords_i,
                               dxidx_i, jac_i, i, gradq_i, t1_dot, t2_dot)
-#=
+
     # apply Qx and sum
     if eqn.params.use_Minv != 1
       @simd for d=1:mesh.dim
@@ -105,9 +105,9 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
       end
     end
     applyOperatorJac(Dx, t2_dot, res_jac)
-=#
-    calcQxTransposed(sbp, dxidx_i, Dx)
-    applyOperatorJac(Dx, t2_dot, res_jac, true, op)
+
+#    calcQxTransposed(sbp, dxidx_i, Dx)
+#    applyOperatorJac(Dx, t2_dot, res_jac, true, op)
 
     assembleElement(assembler, mesh, i_full, res_jac)
   end
@@ -206,10 +206,12 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                           theta, theta_dotL, theta_dotR)
 
     # apply the penalty coefficient matrix
-    has_T4 = applyPenalty_diff(penalty, sbp, mesh.sbpface, diffusion,
+    has_T4 = applyPenalty_diff(penalty, sbp, eqn.params,  mesh.sbpface,
+                      diffusion,
                       iface_red, delta_w, delta_w_dotL, delta_w_dotR,
                       theta, theta_dotL, theta_dotR,
-                      wL, wR, nrm_face, alphas, jacL, jacR,
+                      qL, qR, wL, wR, coordsL, coordsR,  nrm_face, alphas,
+                      dxidxL, dxidxR, jacL, jacR,
                       res1L_dotL, res1L_dotR, res1R_dotL, res1R_dotR,
                       t2L, t2R,
                       res2L_dotL, res2L_dotR, res2R_dotL, res2R_dotR)
@@ -673,6 +675,7 @@ function applyDgkTranspose_diff(capture::SBPParabolicSC{Tsol, Tres}, sbp,
                        t2L_dotR::Abstract4DArray,
                        t2R::AbstractMatrix, t2R_dotL::Abstract4DArray,
                        t2R_dotR::Abstract4DArray,
+                       qL::AbstractMatrix, qR::AbstractMatrix,
                        wL::AbstractMatrix, wR::AbstractMatrix,
                        coordsL::AbstractMatrix, coordsR::AbstractMatrix,
                        nrm_face::AbstractMatrix,

@@ -30,19 +30,19 @@ function test_shocksensorPP()
                                              dxidx, jac, Se, ee)
 
     test_vandermonde(eqn.params, sbp, coords)
-    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
-                             dxidx, jac)
+#    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
+#                             dxidx, jac)
 
     @test maximum(abs.((Se))) < 1e-12
     @test maximum(ee) == 0
 
     # sensor 2
-    test_shockcapturing_diff(eqn.params, sbp, sensor2, capture, q, coords,
-                             dxidx, jac)
+#    test_shockcapturing_diff(eqn.params, sbp, sensor2, capture, q, coords,
+#                             dxidx, jac)
 
 
     fill!(res, 0)
-    EulerEquationMod.calcShockCapturing(eqn.params, sbp, sensor, capture, q,
+    EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture, q,
                                         coords, dxidx, jac, res)
     @test maximum(abs.(res)) < 1e-13
 
@@ -61,15 +61,15 @@ function test_shocksensorPP()
       q_i = sview(q, :, i)
       EulerEquationMod.convertToIR(eqn.params, q_i, w_i)
     end
-    EulerEquationMod.calcShockCapturing(eqn.params, sbp, sensor, capture, q,
+    EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture, q,
                                         coords, dxidx, jac, res)
 
     @test sum(res .* w) < 0  # the term is negative definite
 
     # case 3: ee = 1
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
-    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
-                             dxidx, jac)
+#    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
+#                             dxidx, jac)
 
     # sensor2
     test_shocksensor_diff(eqn.params, sbp, sensor2, q, coords, dxidx, jac)
@@ -85,8 +85,8 @@ function test_shocksensorPP()
     end
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
-    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
-                             dxidx, jac)
+#    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
+#                             dxidx, jac)
 
   end  # end testset
 
@@ -239,7 +239,7 @@ function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -294,6 +294,8 @@ function test_ldg()
 
     #test_shockmesh(mesh, sbp, eqn, opts)
     test_shockmesh2(mesh, sbp, eqn, opts)
+
+    # these tests don't work since the changes to shockmesh.interfaces
 #=
     test_thetaface(mesh, sbp, eqn, opts)
     test_qj(mesh, sbp, eqn, opts)
@@ -328,7 +330,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
 
 
 """
@@ -1026,7 +1028,9 @@ function test_thetaface(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}()
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts,
+                                                           sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
   flux = EulerEquationMod.LDG_ESFlux()
 
@@ -1064,7 +1068,8 @@ function test_qj(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
   degree = sbp.degree
 
-  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}()
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
   flux = EulerEquationMod.LDG_ESFlux()
   diffusion = EulerEquationMod.ShockDiffusion(shockmesh.ee)
@@ -1102,7 +1107,8 @@ function test_qface(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tr
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}()
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
   flux = EulerEquationMod.LDG_ESFlux()
 
@@ -1152,7 +1158,8 @@ function test_q(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
   degree = sbp.degree
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}()
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
   flux = EulerEquationMod.LDG_ESFlux()
 
@@ -1201,7 +1208,8 @@ function test_ldg_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, 
   # construct the shock mesh with all elements in it that are fully interior
   iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
 
-  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}()
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.LDGShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
   flux = EulerEquationMod.LDG_ESFlux()
 
@@ -1589,9 +1597,6 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
-
-  dofs3 = vec(mesh.dofs[:, :, 16])
-  println("element 3 contribution = ", dot(w_vec[dofs3], eqn.res_vec[dofs3]))
 
   return nothing
 end

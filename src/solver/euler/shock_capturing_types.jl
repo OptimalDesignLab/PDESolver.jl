@@ -69,7 +69,8 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
   entropy_vars::AbstractVariables  # convert to entropy variables
   flux::AbstractLDGFlux
   diffusion::AbstractDiffusion
-  function LDGShockCapturing{Tsol, Tres}(sensor::AbstractShockSensor) where {Tsol, Tres}
+  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp,
+                      eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
     # we don't know the right sizes yet, so just make them zero size
     w_el = Array{Tsol}(0, 0, 0)
     q_j = Array{Tsol}(0, 0, 0, 0)
@@ -77,17 +78,10 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     # default values
     entropy_vars = IRVariables()
     flux = LDG_ESFlux()
-    diffusion = ShockDiffusion(sensor)
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
 
     return new(w_el, q_j, entropy_vars, flux, diffusion)
   end
-
-  function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh,
-             sbp::AbstractOperator, eqn, opts, sensor::AbstractShockSensor
-            ) where {Tsol, Tres}
-    return LDGShockCapturing{Tsol, Tres}(sensor)
-  end
-
 end
 
 
@@ -142,14 +136,27 @@ end
 """
   Diagonal viscoscity (constant for each element), used for shock capturing
 """
-mutable struct ShockDiffusion{T <: AbstractShockSensor} <: AbstractDiffusion
+mutable struct ShockDiffusion{Tres, T <: AbstractShockSensor} <: AbstractDiffusion
   sensor::T
+  Se::Matrix{Tres}
+  ee::Matrix{Tres}
+  Se_dot::Array{Tres, 4}
+  ee_dot::Array{Tres, 4}
 end
 
-# julia auto-generates this constructor
-#function ShockDiffusion(sensor::T) where {T <: AbstractShockSensor}
-#  return ShockDiffusion{T}(sensor)
-#end
+function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
+                             ) where {Tres, T <: AbstractShockSensor}
+
+  Se = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
+  ee = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
+  Se_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
+                       mesh.numNodesPerElement)
+  ee_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
+                       mesh.numNodesPerElement)
+
+
+  return ShockDiffusion{Tres, T}(sensor, Se, ee, Se_dot, ee_dot)
+end
 
 #------------------------------------------------------------------------------
 
@@ -404,7 +411,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     # default values
     entropy_vars = IRVariables()
 #    entropy_vars = ConservativeVariables()
-    diffusion = ShockDiffusion(sensor)
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
     alpha_b = zeros(Float64, 0)
@@ -545,7 +552,7 @@ mutable struct VolumeShockCapturing{Tsol, Tres} <: AbstractVolumeShockCapturing
                                 sensor::AbstractShockSensor) where {Tsol, Tres}
     entropy_vars = IRVariables()
 #    entropy_vars = ConservativeVariables()
-    diffusion = ShockDiffusion(sensor)
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
     return new(entropy_vars, diffusion)
   end
 end
