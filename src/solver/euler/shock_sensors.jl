@@ -243,6 +243,9 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   res = sensor.res
 
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
+  # Note: Hartmann's paper referrs to Jaffre's paper which says to use the
+  #       maximum value of res over the element, but that is not differentiable,
+  #       so take the L2 norm instead
   val = computeL2Norm(params, sbp, jac, res)
   h_avg = computeElementVolume(params, sbp, jac)
 
@@ -418,13 +421,11 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tres, Tmsh, Tdim}
-#NOTE: the real sensor produces spatially varying viscoscity.  Here we take
-#      the norm so it fits into the elementwise-constant viscoscity model
 
   numDofPerNode, numNodesPerElement = size(q)
 
-  @unpack sensor p_dot press_el press_dx work res
-  fill!(press_dx, 0); fill!(res, 0)
+  @unpack sensor p_dot press_el press_dx work res Rp fp
+  fill!(press_dx, 0); fill!(res, 0); fill!(Rp, 0)
 
   #TODO: in the real sensor, this should include an anisotropy factor
   h_avg = computeElementVolume(params, sbp, jac)
@@ -440,33 +441,29 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
     press_el[1, i] = press
 
     for j=1:numDofPerNode
-      res[j, i] *= p_dot[j]/press
+      Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
 
-  # compute pressure switch fp
+  # compute pressure switch fp (excluding the h_k factor)
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
   for i=1:numNodesPerElement
     val = zero(Tres)
     for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
-    val = sqrt(val)*h_fac/(press_el[1, i] + 1e-12)
-
-    # lump fp in with |Rm| for now
-    for j=1:numDofPerNode
-      res[j, i] *= val
+    for d=1:Tdim
+      fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
     end
   end
 
-  # compute norm to make this elementwise constant
-  val = computeL2Norm(params, sbp, jac, res)
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      Se_mat[d, i] = h_fac*fp[i]*absvalue(Rp[i])
+      ee_mat[d, i] = Se_mat[d, i]*h_fac*h_fac*sensor.C_eps
+    end
+  end
 
-  ee = val*h_fac*h_fac*sensor.C_eps
-  #ee = val*h_fac*sensor.C_eps
-
-  fill!(Se_mat, val)
-  fill!(ee_mat, ee)
   return true
 end
 

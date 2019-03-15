@@ -151,7 +151,7 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   @test maximum(abs.(Se_dot - Se_dot2)) < 1e-11
   @test maximum(abs.(ee_dot - ee_dot2)) < 1e-11
 
-  
+
   return nothing
 end
 
@@ -278,7 +278,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """

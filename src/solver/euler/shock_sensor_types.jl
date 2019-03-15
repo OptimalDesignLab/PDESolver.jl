@@ -234,9 +234,7 @@ end
   "Higher-order and adaptive discontinuous Galerkin methods with
    shock-capturing applied to transonic turbulent delta wing flow"
 
-  The reason is it approximate is the paper uses a spatially varying
-  diffusion coefficient, here we take the L2 norm over the element and make
-  the diffusion coefficient constant in each element.
+   Currently does not include the anisotropy factor.
 """
 struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   C_eps::Float64
@@ -248,6 +246,9 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   press_dx::Array{Tres, 3}
   work::Array{Tres, 3}
   res::Array{Tres, 2}
+  Rp::Vector{Tres}
+  fp::Vector{Tres}
+
 
   p_jac::Array{Tsol, 3}
   res_jac::Array{Tres, 4}
@@ -255,6 +256,10 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   Dx::Array{Tres, 3}
   px_jac::Array{Tres, 5}
   val_dot::Matrix{Tres}
+  Rp_jac::Array{Tres, 3}
+  fp_jac::Array{Tres, 3}
+
+
 
   function ShockSensorHHO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
@@ -269,6 +274,9 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
     press_dx = zeros(Tres, 1, numNodesPerElement, dim)
     work = zeros(Tres, 1, numNodesPerElement, dim)
     res = zeros(Tres, numDofPerNode, numNodesPerElement)
+    Rp = zeros(Tres, numNodesPerElement)
+    fp = zeros(Tres, numNodesPerElement)
+
 
     p_jac = zeros(Tsol, 1, numDofPerNode, numNodesPerElement)
     res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
@@ -279,9 +287,12 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
                          numNodesPerElement)
     val_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
 
+    Rp_jac = zeros(Tres, numNodesPerElement, numDofPerNode, numNodesPerElement)
+    fp_jac = zeros(Tres, numDofPerNode, numNodesPerElement, numNodesPerElement)
+
     return new(C_eps, strongdata,
-               p_dot, press_el, press_dx, work, res,
-               p_jac, res_jac, p_hess, Dx, px_jac, val_dot)
+               p_dot, press_el, press_dx, work, res, Rp, fp,
+               p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac)
   end
 end
 

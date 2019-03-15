@@ -425,7 +425,10 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   numDofPerNode, numNodesPerElement = size(q_el)
   dim = size(coords, 1)
 
-  @unpack sensor p_jac press_el press_dx work res res_jac p_hess Dx px_jac val_dot
+  @unpack sensor p_jac press_el press_dx work res res_jac p_hess Dx px_jac val_dot Rp fp Rp_jac fp_jac
+
+  fill!(Rp, 0)
+  fill!(Rp_jac, 0); fill!(fp_jac, 0)
   #=
   p_jac = zeros(Tsol, 1, numDofPerNode, numNodesPerElement)
   press_el = zeros(Tsol, 1, numNodesPerElement)
@@ -459,16 +462,17 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   end
 
   # compute Rp
-
   # jacobian first: p_dot/p * dR/dq + R*d/dq (p_dot/p)
   # first term
+  
   for q=1:numNodesPerElement
     for p=1:numNodesPerElement
       press = press_el[1, p]
       p_dot = sview(p_jac, 1, :, p)
       for j=1:numDofPerNode
         for i=1:numDofPerNode
-          res_jac[i, j, p, q] *= p_dot[i]/press
+          #res_jac[i, j, p, q] *= p_dot[i]/press
+          Rp_jac[p, j, q] += res_jac[i, j, p, q]*p_dot[i]/press
         end
       end
     end
@@ -483,7 +487,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     calcPressure_hess(params, q_p, p_hess)
     for j=1:numDofPerNode
       for i=1:numDofPerNode
-        res_jac[i, j, p, p] += res[i, p]*(-p_dot[i]*p_dot[j]/(press*press) + p_hess[i, j]/press)
+        Rp_jac[p, j, p] += res[i, p]*(-p_dot[i]*p_dot[j]/(press*press) + p_hess[i, j]/press)
       end
     end
   end
@@ -495,7 +499,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     p_dot = sview(p_jac, 1, :, i)
 
     for j=1:numDofPerNode
-      res[j, i] *= p_dot[j]/press
+      Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
 
@@ -522,58 +526,36 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     scale!(val_dot, 1/(2*val2))
   
     t1 = (press + 1e-12)
-    val3 = val2*h_fac/t1
+    val3 = val2/t1
 
     # contribution of derivative of val2
     for q=1:numNodesPerElement
       for j=1:numDofPerNode
-        val_dot[j, q] = h_fac*(val_dot[j, q]/t1)
+        val_dot[j, q] = val_dot[j, q]/t1
       end
     end
 
     # contribution of derivative of p
     for j=1:numDofPerNode
-      val_dot[j, p] += h_fac*val2*(-p_jac[1, j, p]/(t1*t1))
+      val_dot[j, p] += val2*(-p_jac[1, j, p]/(t1*t1))
     end
 
-
-    # lump fp in with |Rm| for now
-
-    # jacobian first
+    fp[p] = val3
     for q=1:numNodesPerElement
       for j=1:numDofPerNode
-        for i=1:numDofPerNode
-          res_jac[i, j, p, q] = val3*res_jac[i, j, p, q] + res[i, p]*val_dot[j, q]
-        end
+        fp_jac[j, p, q] = val_dot[j, q]
       end
     end
-
-    # residual
-    for i=1:numDofPerNode
-      res[i, p] *= val3
-    end
   end
 
-  _Se_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
-  val = computeL2Norm_diff(params, sbp, jac, res, res_jac, _Se_jac)
-
-  #TODO: was h^2
-  ee = val*h_fac*h_fac*sensor.C_eps
-  #ee = val*h_fac*sensor.C_eps
-  for q=1:numNodesPerElement
-    for j=1:numDofPerNode
-      ee_jac[1, j, 1, q] = _Se_jac[j, q]*h_fac*h_fac*sensor.C_eps
-      #ee_jac[j, q] = Se_jac[j, q]h_fac*sensor.C_eps
-    end
-  end
-
-  # fill in the rest of the jac arrays
   for q=1:numNodesPerElement
     for p=1:numNodesPerElement
       for j=1:numDofPerNode
-        for i=1:dim
-          Se_jac[i, j, p, q] = _Se_jac[j, q]
-          ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
+        for d=1:Tdim
+          #TODO: add something to complexify.jl for this sign()
+          Se_jac[d, j, p, q] = h_fac*(fp[p]*sign_c(Rp[p])*Rp_jac[p, j, q] + 
+                                      fp_jac[j, p, q]*absvalue(Rp[p]))
+          ee_jac[d, j, p, q] = Se_jac[d, j, p, q]*h_fac*h_fac*sensor.C_eps
         end
       end
     end

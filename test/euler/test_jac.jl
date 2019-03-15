@@ -386,7 +386,7 @@ function test_jac_terms_long()
     mesh12, sbp12, eqn12, opts12 = run_solver(fname4)
 
 
-#=
+
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -427,7 +427,7 @@ function test_jac_terms_long()
  
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
-=#
+
 
     # test shock capturing schemes
     println("\ntesting shock capturing")
@@ -498,7 +498,7 @@ function test_jac_terms_long()
 
 
     # test revm products
-#=
+
     # regular Roe scheme
     println("\n\nTesting Roe scheme")
     fname4 = "input_vals_jac_tmp.jl"
@@ -577,13 +577,13 @@ function test_jac_terms_long()
 
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
-=#
+
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------

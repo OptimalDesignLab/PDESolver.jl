@@ -74,7 +74,7 @@ end
 @doc """
 ###Utils.absvalue_deriv
 
-Computes the derivative of the absolute value of a variable w.r.t itself
+Computes the derivative of the absolute value of a variable w.r.t itself.
 
 **Inputs**
 
@@ -84,6 +84,8 @@ Computes the derivative of the absolute value of a variable w.r.t itself
 
 function absvalue_deriv(val::Tval) where Tval
 
+  Tval(sign_c(val))
+  #=
   if val > zero(Tval)
     return one(Tval)
   elseif val < zero(Tval)
@@ -91,6 +93,7 @@ function absvalue_deriv(val::Tval) where Tval
   else
     return zero(Tval)
   end
+  =#
 
 end # End function absvalue_deriv
 
@@ -109,6 +112,13 @@ function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
 end # End function max_rev
 
 
+"""
+  Complex-step safe version of the sign function
+"""
+function sign_c(a::Number)
+
+  return sign(real(a))
+end
 
 
 import Base.isless
