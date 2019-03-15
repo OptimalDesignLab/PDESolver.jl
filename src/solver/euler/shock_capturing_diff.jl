@@ -10,25 +10,34 @@
    * sbp
    * eqn
    * opts
-   * sensor: an [`AbstractShockSensor`](@ref)
    * capture: an [`AbstractShockCapturing`](@ref)
    * assem: an [`AssembleElementData`](@ref)
 """
 function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
-                             sensor::AbstractShockSensor,
                              capture::AbstractVolumeShockCapturing,
                              assem::AssembleElementData)
 
   # nothing to do here, call the implementation
+  sensor = getShockSensor(capture)
   calcShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assem)
 
   return nothing
 end
 
 
-
 function applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData{Tsol, Tres}, opts,
+                             capture::AbstractFaceShockCapturing,
+                             assem::AssembleElementData) where {Tsol, Tres}
+
+  sensor = getShockSensor(capture)
+  _applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assem)
+
+  return nothing
+end
+
+function _applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData{Tsol, Tres}, opts,
                              sensor::AbstractShockSensor,
                              capture::AbstractFaceShockCapturing,

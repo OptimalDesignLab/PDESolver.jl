@@ -159,8 +159,6 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
   data = eqn.params.calc_face_integrals_data
   @unpack data res_jacLL res_jacLR res_jacRL res_jacRR
 
-
-
   #t1L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   #t1R = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
   t2L = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)

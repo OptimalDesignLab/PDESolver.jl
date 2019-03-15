@@ -169,6 +169,35 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
   return true
 end
 
+#------------------------------------------------------------------------------
+# ShockSensorVelocity
+
+function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
+                      sensor::ShockSensorVelocity,
+                      q::AbstractMatrix{Tsol},
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
+                      jac::AbstractVector{Tmsh},
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres}
+
+  numNodesPerElement = size(q, 2)
+  dim = size(coords, 1)
+
+  fill!(Se_jac, 0)
+  fill!(ee_jac, 0)
+
+  # derivative with momentum in direction d = d, all others zero
+  for p=1:numNodesPerElement
+    for d=1:dim
+      Se_jac[d, d+1, p, p] = d
+      ee_jac[d, d+1, p, p] = d
+    end
+  end
+
+  return false
+end
+
+
 
 #------------------------------------------------------------------------------
 # ShockSensorHIso

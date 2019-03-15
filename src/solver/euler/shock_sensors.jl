@@ -195,6 +195,39 @@ function isShockElement(params::ParamType, sbp::AbstractOperator,
 end
 
 #------------------------------------------------------------------------------
+# ShockSensorVelocity
+
+function getShockSensor(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorVelocity{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh}
+
+
+  numNodesPerElement = size(q, 2)
+  dim = size(coords, 1)
+
+  for i=1:numNodesPerElement
+    for d=1:dim
+      Se_mat[d, i] = d*q[d+1, i]
+      ee_mat[d, i] = d*q[d+1, i]
+    end
+  end
+
+  return true
+end
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorVelocity{Tsol, Tres},
+                        q::AbstractMatrix, coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ) where {Tsol, Tres, Tmsh}
+
+  return true
+end
+
+#------------------------------------------------------------------------------
 # ShockSensorHIso
 
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,

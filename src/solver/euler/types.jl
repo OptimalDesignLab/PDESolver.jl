@@ -488,7 +488,6 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
-  shock_sensor::AbstractShockSensor
   shock_capturing::AbstractShockCapturing
 
   assembler::AssembleElementData  # temporary place to stash the assembler
@@ -696,8 +695,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
-   getShockSensor(mesh, sbp, eqn, opts)
-   getShockCapturing(mesh, sbp, eqn, opts, eqn.shock_sensor)
+   sensor = getShockSensor(mesh, sbp, eqn, opts)
+   getShockCapturing(mesh, sbp, eqn, opts, sensor)
    eqn.assembler = NullAssembleElementData
 
    if open_files

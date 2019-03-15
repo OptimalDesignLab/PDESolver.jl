@@ -63,7 +63,6 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
                       diffusion::AbstractDiffusion,
                      ) where {Tsol, Tres}
 
-
   wxi = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
@@ -567,6 +566,7 @@ function getFaceVariables(capture::SBPParabolicSC{Tsol, Tres},
   @unpack capture w_faceL w_faceR grad_faceL grad_faceR
 
   interiorFaceInterpolate!(sbpface, iface_red, wL, wR, w_faceL, w_faceR)
+
 
   @simd for j=1:numNodesPerFace
     @simd for k=1:numDofPerNode

@@ -7,9 +7,38 @@
   New shock capturing scheme should generally not subtype this type directly,
   instead they should subtype either [`AbstractVolumeShockCapturing`](@ref)
   or [`AbstractFaceShockCapturing`](@ref).
+
+  Optional methods:
+
+  ```
+    getShockSensor
+  ```
+
+  This method only needs to be extended if the `AbstractShockCapturing` does
+  not store the sensor in the `.sensor` field.
 """
 abstract type AbstractShockCapturing end
 
+
+"""
+  Returns the shock sensor.  This function is not required to be type-stable
+
+  **Inputs**
+
+   * obj: an `AbstractShockCapturing`
+
+  **Outputs**
+
+   * sensor: an `AbstractShockSensor`
+"""
+function getShockSensor(obj::AbstractShockCapturing)
+
+  return obj.sensor
+end
+
+
+#------------------------------------------------------------------------------
+# Volume shock capturing
 
 """
   Abstract type for shock capturing methods that only have volume terms.

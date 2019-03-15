@@ -15,6 +15,8 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractVolumeShockCaptur
   ee_jac::Array{Tres, 4}
   A0inv::Matrix{Tsol}
 
+  sensor::AbstractShockSensor
+
   function ProjectionShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
 
     numDofPerNode = mesh.numDofPerNode
@@ -33,7 +35,7 @@ mutable struct ProjectionShockCapturing{Tsol, Tres} <: AbstractVolumeShockCaptur
 
     A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
 
-    return new(filt, w, t1, t2, Se_jac, ee_jac, A0inv)
+    return new(filt, w, t1, t2, Se_jac, ee_jac, A0inv, sensor)
   end
 end
 
@@ -69,6 +71,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
   entropy_vars::AbstractVariables  # convert to entropy variables
   flux::AbstractLDGFlux
   diffusion::AbstractDiffusion
+  sensor::AbstractShockSensor
   function LDGShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp,
                       eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
     # we don't know the right sizes yet, so just make them zero size
@@ -80,7 +83,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     flux = LDG_ESFlux()
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
 
-    return new(w_el, q_j, entropy_vars, flux, diffusion)
+    return new(w_el, q_j, entropy_vars, flux, diffusion, sensor)
   end
 end
 
@@ -315,6 +318,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
   entropy_vars::AbstractVariables
   diffusion::AbstractDiffusion
   penalty::AbstractDiffusionPenalty
+  sensor::AbstractShockSensor
   alpha::Array{Float64, 2}  # 2 x numInterfaces
   alpha_b::Array{Float64, 1}  # numBoundaryFaces
   alpha_parallel::Array{Array{Float64, 2}, 1}  # one array for each peer
@@ -472,7 +476,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
 
     alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
 
-    return new(w_el, grad_w, entropy_vars, diffusion, penalty, alpha,
+    return new(w_el, grad_w, entropy_vars, diffusion, penalty, sensor, alpha,
                alpha_b, alpha_parallel, w_faceL, w_faceR, grad_faceL,
                grad_faceR,
                wL_dot, wR_dot, Dx, t1, t1_dot, t2L_dot, t2R_dot, t3L_dot,
@@ -519,6 +523,7 @@ end
 mutable struct VolumeShockCapturing{Tsol, Tres} <: AbstractVolumeShockCapturing
   entropy_vars::AbstractVariables
   diffusion::AbstractDiffusion
+  sensor::AbstractShockSensor
 
   function VolumeShockCapturing{Tsol, Tres}(mesh::AbstractMesh, 
                                 sbp::AbstractOperator, eqn,  opts,
@@ -526,7 +531,7 @@ mutable struct VolumeShockCapturing{Tsol, Tres} <: AbstractVolumeShockCapturing
     entropy_vars = IRVariables()
 #    entropy_vars = ConservativeVariables()
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
-    return new(entropy_vars, diffusion)
+    return new(entropy_vars, diffusion, sensor)
   end
 end
 

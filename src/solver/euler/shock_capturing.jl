@@ -14,23 +14,31 @@
    * sbp
    * eqn
    * opts
-   * sensor: an [`AbstractShockSensor`](@ref) object
    * data: an [`AbstractShockCaputring`](@ref) object
 """
 function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
-                             sensor::AbstractShockSensor,
                              capture::AbstractVolumeShockCapturing)
 
   # unlike AbstractFaceShockCapturing, nothing to do here
 
+  sensor = getShockSensor(capture)
   calcShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
 
   return nothing
 end
 
-
 function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::AbstractFaceShockCapturing)
+
+  sensor = getShockSensor(capture)
+  _applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+
+  return nothing
+end
+
+@noinline function _applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
                              sensor::AbstractShockSensor,
                              capture::AbstractFaceShockCapturing)

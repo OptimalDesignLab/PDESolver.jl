@@ -117,6 +117,22 @@ mutable struct ShockSensorEverywhere{Tsol, Tres} <: AbstractShockSensor
   end
 end
 
+#------------------------------------------------------------------------------
+# ShockSensoryVelocity
+
+"""
+  Shock sensor where ee[d, i] = q[d+1, i] (ie. the viscoscity in direction
+  `d` is the momentum in direction `d`.  This is useful for testing a non
+  constant viscoscity with non-zero derivative wrt q.
+"""
+mutable struct ShockSensorVelocity{Tsol, Tres} <: AbstractShockSensor
+
+  function ShockSensorVelocity{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres}
+    return new()
+  end
+end
+
+
 
 #------------------------------------------------------------------------------
 # Hartmanns Isotropic sensor
@@ -275,19 +291,22 @@ end
 global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSensor}(
 "SensorNone" => ShockSensorNone,
 "SensorEverywhere" => ShockSensorEverywhere,
+"SensorVelocity" => ShockSensorVelocity,
 "SensorPP" => ShockSensorPP,
 "SensorHIso" => ShockSensorHIso,
 "SensorBO" => ShockSensorBO,
 "SensorHHO" => ShockSensorHHO,
 )
 
+"""
+  Constructs and returns the shock sensor specified in the options dictionary.
+"""
 function getShockSensor(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
   name = opts["shock_sensor_name"]
   obj = ShockSensorDict[name]{Tsol, Tres}(mesh, sbp, opts)
-  eqn.shock_sensor = obj
 
-  return nothing
+  return obj
 end
 
 

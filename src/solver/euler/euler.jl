@@ -284,7 +284,7 @@ function majorIterationCallback(itr::Integer,
 
     #TODO: testing
     if opts["addShockCapturing"]
-      writeShockSensorField(mesh, sbp, eqn, opts, eqn.shock_sensor)
+      writeShockSensorField(mesh, sbp, eqn, opts, getShockSensor(eqn.shock_capturing))
     end
 
     saveSolutionToMesh(mesh, vals)
@@ -916,9 +916,8 @@ function evalShockCapturing(mesh::AbstractMesh{Tmsh},
   # If there are more, need something more sophisiticated to choose.
   # Perhaps add an abstract typed field to eqn containing the structs
 
-  sensor = eqn.shock_sensor
   capture = eqn.shock_capturing
-  applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+  applyShockCapturing(mesh, sbp, eqn, opts, capture)
 
   return nothing
 end

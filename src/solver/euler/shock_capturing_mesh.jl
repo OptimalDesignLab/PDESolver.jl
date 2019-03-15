@@ -386,9 +386,6 @@ function completeShockElements(mesh::AbstractMesh, data::ShockedElements)
 
   # compute final counts that will be useful for the user
   numEl = data.numShock + data.numNeighbor
-  println("data.npeers = ", data.npeers)
-  println("length(data.numShared) = ", length(data.numShared))
-  println("data.numShared = ", data.numShared)
   for i=1:data.npeers
     numEl += data.numShared[i]
   end

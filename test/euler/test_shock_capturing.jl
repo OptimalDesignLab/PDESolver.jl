@@ -25,21 +25,15 @@ function test_shocksensorPP()
     sensor2 = EulerEquationMod.ShockSensorHIso{Tsol, Tres}(mesh, sbp, opts)
     sensor3 = EulerEquationMod.ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
     sensor4 = EulerEquationMod.ShockSensorHHO{Tsol, Tres}(mesh, sbp, opts)
+    sensor5 = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh, sbp, opts)
     # initial condition is constant, check the sensor reports no shock
     EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
                                              dxidx, jac, Se, ee)
 
     test_vandermonde(eqn.params, sbp, coords)
-#    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
-#                             dxidx, jac)
 
     @test maximum(abs.((Se))) < 1e-12
     @test maximum(ee) == 0
-
-    # sensor 2
-#    test_shockcapturing_diff(eqn.params, sbp, sensor2, capture, q, coords,
-#                             dxidx, jac)
-
 
     fill!(res, 0)
     EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture, q,
@@ -68,8 +62,6 @@ function test_shocksensorPP()
 
     # case 3: ee = 1
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
-#    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
-#                             dxidx, jac)
 
     # sensor2
     test_shocksensor_diff(eqn.params, sbp, sensor2, q, coords, dxidx, jac)
@@ -85,8 +77,7 @@ function test_shocksensorPP()
     end
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
-#    test_shockcapturing_diff(eqn.params, sbp, sensor, capture, q, coords,
-#                             dxidx, jac)
+    test_shocksensor_diff(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
 
   end  # end testset
 
@@ -192,49 +183,6 @@ function test_vandermonde(params, sbp, coords)
 
   @test maximum(abs.(q1 - q)) < 1e-12
   @test maximum(abs.( q - (q2 + q4))) < 1e-12
-
-  return nothing
-end
-
-"""
-  Tests Jacobian of shock capturing scheme
-"""
-function test_shockcapturing_diff(params, sbp, sensor::AbstractShockSensor,
-                                  capture::AbstractShockCapturing,
-                                   _q, coords, dxidx, jac)
-
-  numDofPerNode, numNodesPerElement = size(_q)
-  q = zeros(Complex128, size(_q))
-  copy!(q, _q)
-  q_dot = rand_realpart(size(q))
-  #q_dot = zeros(numDofPerNode, numNodesPerElement)
-  #q_dot[:, 5] = 2
-  res = zeros(Complex128, size(q))
-  
-  h = 1e-20
-  pert = Complex128(0, h)
-
-  # complex step
-  q .+= pert*q_dot
-  EulerEquationMod.calcShockCapturing(params, sbp, sensor, capture, q, coords,
-                                      dxidx, jac, res)
-  res_dot = imag(res)./h
-  q .-= pert*q_dot
-
-
-  # AD
-  res_jac = zeros(numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
-  EulerEquationMod.calcShockCapturing_diff(params, sbp, sensor, capture, q,
-                                            coords, dxidx, jac, res_jac)
-
-  res_dot2 = zeros(Complex128, numDofPerNode, numNodesPerElement)
-  for i=1:numNodesPerElement
-    for j=1:numDofPerNode
-      res_dot2 .+= res_jac[:, j, :, i] * q_dot[j, i]
-    end
-  end
-
-  @test maximum(abs.(res_dot - res_dot2)) < 1e-12
 
   return nothing
 end
@@ -1629,7 +1577,7 @@ function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where
   EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)
 
   fill!(eqn.res, 0)
-  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture)
 
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
