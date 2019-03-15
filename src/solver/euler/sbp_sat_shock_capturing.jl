@@ -972,10 +972,8 @@ end
 """
 function receiveAlpha(capture::SBPParabolicSC, shockmesh::ShockedElements)
 
-  println("receiving alphas"); flush(STDOUT)
   peer = Waitany!(capture.alpha_comm)
   comm = capture.alpha_comm
-  println("received alphas from process ", capture.alpha_comm.peer_parts_red[peer]); flush(STDOUT)
 
   # unpack buffer and calculate alpha
   for j=1:shockmesh.numSharedInterfaces[peer]

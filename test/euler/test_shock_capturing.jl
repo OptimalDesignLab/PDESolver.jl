@@ -292,8 +292,8 @@ function test_ldg()
 
     testQx(mesh, sbp, eqn, opts)
 
-    #test_shockmesh(mesh, sbp, eqn, opts)
-    test_shockmesh2(mesh, sbp, eqn, opts)
+    test_shockmesh(mesh, sbp, eqn, opts)
+    #test_shockmesh2(mesh, sbp, eqn, opts)
 
     # these tests don't work since the changes to shockmesh.interfaces
 #=
