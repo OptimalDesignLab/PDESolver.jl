@@ -261,7 +261,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -583,7 +583,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
