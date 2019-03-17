@@ -211,6 +211,9 @@ function computeFaceTerm(mesh, sbp, eqn, opts,
                       shockmesh::ShockedElements, diffusion::AbstractDiffusion,
                       penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
 
+  #TODO: avoid recalculating the diffusion tensor 6 time: add an API for
+  #      caching it (called in getFaceData) and then apply it.  Add a clear
+  #      cache function at end so future calls to applyDiffusionTensor work
   delta_w = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
   theta = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
 
