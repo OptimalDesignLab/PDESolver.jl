@@ -519,6 +519,9 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
                        eqn::AbstractSolutionData, opts::Dict,
                        pmesh::AbstractMesh=mesh)
   flag = opts["run_type"]::Int
+
+  myrank = mesh.myrank
+
   t = 0.0  # for steady methods, t = 0.0 always, for unsteady, the time
   # stepper returns a new t value
   if opts["solve"]
@@ -708,7 +711,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
 
     end       # end of if/elseif blocks checking flag
 
-    println("total solution time printed above")
+    @mpi_master println("total solution time printed above")
     params = eqn.params
     params.time.t_nlsolve += t_nlsolve
     myrank = mesh.myrank
@@ -734,7 +737,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractSBP,
     end
 
     if opts["write_finalsolution"]
-      println("writing final solution")
+      @mpi_master println("writing final solution")
       writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
     end
 
