@@ -107,7 +107,7 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) whe
   EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)
 
   fill!(eqn.res, 0)
-  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture)
 
   val = dot(w_vec, eqn.res_vec)
   val = MPI.Allreduce(val, MPI.SUM, eqn.comm)
