@@ -43,7 +43,7 @@ function calcStabilizedQUpdate!(mesh, sbp, eqn, opts,
 
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)     # calcs Qx*Ax + Qy*Ay     # TODO: is stab_assembler.A complex or real
 
-  filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A)        # stab_A is now B in the derivation
+  filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="neg")        # stab_A is now B in the derivation
 
   # Putting the imaginary component back
   for j = 1:length(eqn.q_vec)

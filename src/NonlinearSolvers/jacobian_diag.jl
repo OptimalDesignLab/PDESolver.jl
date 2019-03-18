@@ -351,7 +351,7 @@ end
         have the unstable modes removed.
 """
 function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2}, 
-                       clipJacData, A::DiagJac{T}) where {T, T2}
+                       clipJacData, A::DiagJac{T}, eigs_to_remove) where {T, T2}
 
   blocksize, blocksize, nblock = size(A.A)
   T3 = promote_type(T, T2)
@@ -389,11 +389,11 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     # findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
 
     if opts["stabilization_method"] == "quadprog"
-      findStablePerturbation!(Ablock, ublock, workvec)
+      findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
     elseif opts["stabilization_method"] == "clipJac"
-      clipJac!(Ablock)
+      clipJac!(Ablock, eigs_to_remove)
     elseif opts["stabilization_method"] == "clipJacFast"
-      clipJacFast!(Ablock, clipJacData)    # fast eigenvalue clipping stabilization
+      clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
     end
 #    removeUnstableModes!(Ablock, u_k)
 
@@ -487,7 +487,8 @@ end
 """
 function findStablePerturbation!(Jac::AbstractMatrix,
                                  u::AbstractVector,
-                                 A::AbstractVector{T}) where T
+                                 A::AbstractVector{T},
+                                 eigs_to_remove::String) where T
 
 # function findStablePerturbation!(Jac::AbstractMatrix,
                                  # u::AbstractVector,
@@ -524,6 +525,7 @@ function findStablePerturbation!(Jac::AbstractMatrix,
     end
   end
 
+  #TODO TODO: prod < 0 for eigs_to_remove == "neg"???
   if prod > 0
     # nothing to do
     # println("prod > 0 check hit, not stabilizing")

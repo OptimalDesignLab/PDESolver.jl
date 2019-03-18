@@ -1,3 +1,6 @@
+
+export createPetscMat       # 20190311: put this in so I can access it in a script
+
 # helper functions
 
 """

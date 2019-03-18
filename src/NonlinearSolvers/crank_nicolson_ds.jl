@@ -189,7 +189,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # end
       fill!(v_vec, 0.0)       # v at IC is all 0's  ++++ new CS'ing R method (CSR) <- CSR comment on all lines new to CS'ing R method
 
-      q_vec_save_imag = Array{Float64}(length(eqn.q_vec))     # set up array for saving imag component of q (CSR)
+      # q_vec_save_imag = Array{Float64}(length(eqn.q_vec))     # set up array for saving imag component of q (CSR)
 
       dDdu = zeros(eqn.q)      # First allocation of dDdu. fill! used below, during timestep loop
       # evalFunctional calls disassembleSolution, which puts q_vec into q
@@ -255,10 +255,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if opts["perturb_Ma_CN"]
       quad_weight = calcQuadWeight(i, dt, finaliter)
 
-      for j = 1:length(eqn.q_vec)                 # store imaginary part of q_vec
-        q_vec_save_imag[j] = imag(eqn.q_vec[i])
+      # for j = 1:length(eqn.q_vec)                 # store imaginary part of q_vec
+        # q_vec_save_imag[i] = imag(eqn.q_vec[i])
         # Shouldn't need to remove the imaginary component here - PETSc call only takes in the real part
-      end
+      # end
 
     end   # end if opts["perturb_Ma_CN"]
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -477,10 +477,16 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # Recalculate dRdq
         calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="neg")      # arg #3?
 
+        
         # HERE is where we stabilize?
         # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
-        # filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A)
+        # Need to modify strong jacobian like we modify the CN Jac:
+        # Modify
+
+        # Choice: calc the stab, then modify it according to modifyJacCN, then add to the ls_ds LO?
+        #     or  modify the ls_ ???
 
         # linearSolve: solves Ax=b for x
         #   ls::StandardLinearSolver

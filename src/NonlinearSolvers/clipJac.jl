@@ -34,7 +34,7 @@ function ClipJacData(m::Integer)
 end
 
 
-function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData)
+function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::String)
 
   # compute the symmetric part of Jac
   m = size(Jac, 1)  # jac is square
@@ -52,16 +52,39 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData)
   lambda = data.lambda
   work = data.work
   info = data.info
+  # dsyev_fast args:
+  #   jobz, uplo, N, A, LDA, W, work, LWORK, info
   dsyev_fast('V', 'L', jac_sym, lambda, work, info)
   @assert info[1] == 0
   # now jac_sym contains the eigenvectors
 
   # perform clipping
-  for i=1:m
     # if lambda[i] > 0      # default, origin was JEH's code - must be flipped for Ticon!
-    if lambda[i] < 0
-      lambda[i] = 0
+    # logic: We are subtracting this Jac from the original. We want to remove positive eigenvalues.
+    # So, setting this matrix to only contain zero and positive eigenvalue entries, then subtracting it
+    # from the original will leave a Jac with only negative and zero eigenvalue entries.
+    # Ex:
+    #   [4 -2 -1]   [4  0  0]   [0 -2 -1]
+    #   [3 -1  1] - [3  0  1] = [0 -1  0]
+    #   [0 -3  3]   [0  0  3]   [0 -3  0]
+  if eigs_to_remove == "neg"              # putting eigs_to_remove outside of the for loop to maybe save comp time
+
+    for i=1:m
+      if lambda[i] < 0      
+        lambda[i] = 0
+      end
     end
+
+  elseif eigs_to_remove == "pos"
+
+    for i=1:m
+      if lambda[i] > 0      
+        lambda[i] = 0
+      end
+    end
+
+  else
+    error("eigs_to_remove set improperly. Must be string(pos) or string(neg)")
   end
 
   # reconstitute Jac = E*diagm(lambda)*D.'
