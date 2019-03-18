@@ -13,7 +13,8 @@
 """
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                           sensor::ShockSensorPP,
-                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          q::AbstractMatrix{Tsol}, elnum::Integer,
+                          coords::AbstractMatrix,
                           dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                           Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tmsh, Tdim}
@@ -149,7 +150,8 @@ end
 
 function getShockSensor(params::ParamType, sbp::AbstractOperator,
                           sensor::ShockSensorNone,
-                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          q::AbstractMatrix{Tsol}, elnum::Integer,
+                          coords::AbstractMatrix,
                           dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                           Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tmsh}
@@ -160,7 +162,8 @@ end
 
 function isShockElement(params::ParamType, sbp::AbstractOperator,
                           sensor::ShockSensorNone,
-                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          q::AbstractMatrix{Tsol}, elnum::Integer,
+                          coords::AbstractMatrix,
                           dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                          ) where {Tsol, Tmsh}
 
@@ -173,7 +176,8 @@ end
 
 function getShockSensor(params::ParamType, sbp::AbstractOperator,
                         sensor::ShockSensorEverywhere{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                         ) where {Tsol, Tres, Tmsh}
@@ -186,7 +190,8 @@ end
 
 function isShockElement(params::ParamType, sbp::AbstractOperator,
                         sensor::ShockSensorEverywhere{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         ) where {Tsol, Tres, Tmsh}
 
@@ -199,7 +204,8 @@ end
 
 function getShockSensor(params::ParamType, sbp::AbstractOperator,
                         sensor::ShockSensorVelocity{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                         ) where {Tsol, Tres, Tmsh}
@@ -220,7 +226,8 @@ end
 
 function isShockElement(params::ParamType, sbp::AbstractOperator,
                         sensor::ShockSensorVelocity{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         ) where {Tsol, Tres, Tmsh}
 
@@ -232,7 +239,8 @@ end
 
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHIso{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tres, Tmsh, Tdim}
@@ -268,7 +276,8 @@ end
 
 function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHIso{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                        ) where {Tsol, Tres, Tmsh, Tdim}
 
@@ -377,7 +386,8 @@ end
 
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorBO{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                          ) where {Tsol, Tres, Tmsh, Tdim}
@@ -403,7 +413,8 @@ end
 
 function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorBO{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                        ) where {Tsol, Tres, Tmsh, Tdim}
 
@@ -417,10 +428,11 @@ end
 
 function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHHO{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
-                         ) where {Tsol, Tres, Tmsh, Tdim}
+                       ) where {Tsol, Tres, Tmsh, Tdim}
 
   numDofPerNode, numNodesPerElement = size(q)
 
@@ -428,8 +440,8 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   fill!(press_dx, 0); fill!(res, 0); fill!(Rp, 0)
 
   #TODO: in the real sensor, this should include an anisotropy factor
-  h_avg = computeElementVolume(params, sbp, jac)
-  h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
+  #h_avg = computeElementVolume(params, sbp, jac)
+  #h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
 
   # compute Rm
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
@@ -459,6 +471,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   for i=1:numNodesPerElement
     for d=1:Tdim
+      h_fac = sensor.h_k_tilde[d, elnum]
       Se_mat[d, i] = h_fac*fp[i]*absvalue(Rp[i])
       ee_mat[d, i] = Se_mat[d, i]*h_fac*h_fac*sensor.C_eps
     end
@@ -470,8 +483,98 @@ end
 
 function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
                         sensor::ShockSensorHHO{Tsol, Tres},
-                        q::AbstractMatrix, coords::AbstractMatrix,
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                        ) where {Tsol, Tres, Tmsh, Tdim}
   return true
 end
+
+
+"""
+  Compute the h_k tilde factors from the paper
+"""
+function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
+                          hk_all::AbstractMatrix{T}) where {T}
+
+  # compute h_k tilde = h_k/(p + 1), where h_k takes into account the
+  # anisotropy of the element in directory k
+  # compute the p_k first, then compute h_k, where p_k is the integral of the
+  # face normal
+
+  @assert size(hk_all) == (mesh.dim, mesh.numEl)
+
+  fill!(hk_all, 0)
+
+  # do all faces (interior, boundary, shared)
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    nrm_i = ro_sview(mesh.nrm_face, :, :, i)
+
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.dim
+        fac = mesh.sbpface.wface[j]*abs(nrm_i[k])
+        hk_all[k, iface_i.elementL] += fac
+        hk_all[k, iface_i.elementR] += fac
+      end
+    end
+  end
+
+  for i=1:mesh.numBoundaryFaces
+    bndry_i = mesh.bndryfaces[i]
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, i)
+
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.dim
+        fac = mesh.sbpface.wface[j]*abs(nrm_i[k])
+        hk_all[k, bndry_i.element] += fac
+      end
+    end
+  end
+
+  for peer=1:mesh.npeers
+    for i=1:length(mesh.shared_interfaces[peer])
+      iface_i = mesh.shared_interfaces[peer]
+      nrm_i = ro_sview(mesh.nrm_sharedface[peer], :, :, i)
+
+      for j=1:mesh.numNodesPerFace
+        for k=1:mesh.dim
+          fac = mesh.sbpface.wface[j]*abs(nrm_i[k])
+          hk_all[k, iface_i.elementL] += fac
+        end
+      end
+    end
+  end
+
+
+
+  #TODO: parallel and boundaries
+  # hk_all now contains the p_i in each direction
+  # Now compute h_k tilde from p_i
+  for i=1:mesh.numEl
+
+    jac_i = ro_sview(mesh.jac, :, i)
+    vol = zero(T)
+    for j=1:mesh.numNodesPerElement
+      vol += sbp.w[j]/jac_i[j]
+    end
+
+    h_k = vol^(1/mesh.dim)
+    pk_prod = zero(T)
+    for d=1:mesh.dim
+      pk_prod += hk_all[d, i]
+    end
+
+    for d=1:mesh.dim
+      hk_all[d, i] = h_k*pk_prod/(hk_all[d, i]*(sbp.degree + 1))
+    end
+  end
+
+  return nothing
+end
+
+
+
+
+
+

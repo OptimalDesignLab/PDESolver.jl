@@ -41,7 +41,7 @@ function applyDiffusionTensor(obj::ShockDiffusion, sbp::AbstractOperator,
                     w::AbstractMatrix,
                     coords::AbstractMatrix, dxidx::Abstract3DArray,
                     jac::AbstractVector,
-                    i::Integer, nodes::AbstractVector,
+                    elnum::Integer, nodes::AbstractVector,
                     dx::Abstract3DArray, flux::Abstract3DArray{Tres}
                    ) where {Tres}
 
@@ -52,7 +52,7 @@ function applyDiffusionTensor(obj::ShockDiffusion, sbp::AbstractOperator,
 
   Se = obj.Se
   ee = obj.ee
-  getShockSensor(params, sbp, obj.sensor, q, coords, dxidx, jac, Se, ee)
+  getShockSensor(params, sbp, obj.sensor, q, elnum, coords, dxidx, jac, Se, ee)
 
   @simd for d=1:dim
     @simd for j in nodes
@@ -110,7 +110,7 @@ function applyLambda_diff(obj::ShockDiffusion, sbp::AbstractOperator,
 
   Se = obj.Se
   ee = obj.ee
-  getShockSensor(params, sbp, obj.sensor, q, coords, dxidx, jac, Se, ee)
+  getShockSensor(params, sbp, obj.sensor, q, elnum, coords, dxidx, jac, Se, ee)
 
   @simd for q=1:numNodesPerElement
     @simd for p in nodes
@@ -167,7 +167,7 @@ function applyLambdaDot_diff(obj::ShockDiffusion, sbp::AbstractOperator,
 
   Se_dot = obj.Se_dot
   ee_dot = obj.ee_dot
-  is_constant = getShockSensor_diff(params, sbp, obj.sensor, q_el,
+  is_constant = getShockSensor_diff(params, sbp, obj.sensor, q_el, elnum,
                                     coords, dxidx, jac, Se_dot, ee_dot)
 
   if !is_constant

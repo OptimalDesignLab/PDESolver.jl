@@ -65,7 +65,7 @@ function _applyShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
 
-    val = isShockElement(eqn.params, sbp, sensor, q_i, coords_i, dxidx_i,
+    val = isShockElement(eqn.params, sbp, sensor, q_i, i, coords_i, dxidx_i,
                             jac_i)
     if val
       # push to shockmesh

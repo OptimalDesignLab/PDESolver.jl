@@ -240,6 +240,7 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   C_eps::Float64
 
   strongdata::StrongFormData{Tsol, Tres}
+  h_k_tilde::Matrix{Tres}
 
   p_dot::Vector{Tsol}
   press_el::Matrix{Tsol}
@@ -268,6 +269,8 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
 
     C_eps = 1/5  # was 1/5
     strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
+    h_k_tilde = Array{Tres}(mesh.dim, mesh.numEl)
+    calcAnisoFactors(mesh, sbp, opts, h_k_tilde)
 
     p_dot = zeros(Tsol, numDofPerNode)
     press_el = zeros(Tsol, 1, numNodesPerElement)
@@ -290,10 +293,17 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
     Rp_jac = zeros(Tres, numNodesPerElement, numDofPerNode, numNodesPerElement)
     fp_jac = zeros(Tres, numDofPerNode, numNodesPerElement, numNodesPerElement)
 
-    return new(C_eps, strongdata,
+    return new(C_eps, strongdata, h_k_tilde,
                p_dot, press_el, press_dx, work, res, Rp, fp,
                p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac)
   end
+end
+
+function updateMetrics(mesh, sbp, opts, sensor::ShockSensorHHO)
+
+  calcAnisoFactor(mesh, sbp, opts, sensor,h_k_tilde)
+
+  return nothing
 end
 
 #------------------------------------------------------------------------------

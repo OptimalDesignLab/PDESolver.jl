@@ -12,7 +12,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     jac_i = ro_sview(mesh.jac, :, i)
     res_i = sview(eqn.res, :, :, i)
 
-    projectionShockCapturing(eqn.params, sbp, sensor, capture, q_i, coords_i,
+    projectionShockCapturing(eqn.params, sbp, sensor, capture, q_i, i, coords_i,
                              dxidx_i, jac_i, res_i)
   end
 
@@ -53,7 +53,8 @@ end
 function projectionShockCapturing(params::ParamType, sbp::AbstractOperator,
                              sensor::AbstractShockSensor,
                              capture::ProjectionShockCapturing,
-                             q::AbstractMatrix, coords::AbstractMatrix,
+                             q::AbstractMatrix, elnum::Integer,
+                             coords::AbstractMatrix,
                              dxidx::Abstract3DArray, jac::AbstractVector,
                              res::AbstractMatrix{Tres}) where {Tres}
 
@@ -64,8 +65,8 @@ function projectionShockCapturing(params::ParamType, sbp::AbstractOperator,
   #TODO: stash these somewhere
   Se = zeros(Tres, dim, numNodesPerElement)
   ee = zeros(Tres, dim, numNodesPerElement)
-  is_nonconst = getShockSensor(params, sbp, sensor, q, coords, dxidx, jac, Se,
-                               ee)
+  is_nonconst = getShockSensor(params, sbp, sensor, q, elnum, coords, dxidx,
+                               jac, Se, ee)
   if is_nonconst # if there is a shock
     # For scalar equations, the operator is applied -epsilon * P^T M P * u
     # For vector equations, P needs to be applied to all equations as once:
@@ -128,7 +129,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     jac_i = ro_sview(mesh.jac, :, i)
 
     nonzero_jac = projectionShockCapturing_diff(eqn.params, sbp, sensor,
-                              capture, q_i, coords_i, dxidx_i, jac_i, res_jac)
+                              capture, q_i, i, coords_i, dxidx_i, jac_i, res_jac)
   
     # assembling into a sparse matrix is non-trivially expensive, don't do
     # it unless this element has shock capturing active
@@ -154,7 +155,7 @@ end
 function projectionShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
                                   sensor::AbstractShockSensor,
                                   capture::ProjectionShockCapturing,
-                                  u::AbstractMatrix, 
+                                  u::AbstractMatrix, elnum::Integer,
                                   coords::AbstractMatrix,
                                   dxidx::Abstract3DArray,
                                   jac::AbstractVector{Tmsh},
@@ -168,13 +169,13 @@ function projectionShockCapturing_diff(params::ParamType, sbp::AbstractOperator,
   Se = zeros(Tres, dim, numNodesPerElement)
   ee = zeros(Tres, dim, numNodesPerElement)
   #TODO: make shock capturing and shock sensing independent choices
-  is_shock = isShockElement(params, sbp, sensor, u, coords, dxidx, jac)
+  is_shock = isShockElement(params, sbp, sensor, u, elnum, coords, dxidx, jac)
 
   if is_shock
     fill!(Se_jac, 0); fill!(ee_jac, 0)
     # only compute the derivative if there is a shock
-    getShockSensor(params, sbp, sensor, u, coords, dxidx, jac, Se, ee)
-    ee_constant = getShockSensor_diff(params, sbp, sensor, u, coords,
+    getShockSensor(params, sbp, sensor, u, elnum, coords, dxidx, jac, Se, ee)
+    ee_constant = getShockSensor_diff(params, sbp, sensor, u, elnum, coords,
                                               dxidx, jac, Se_jac, ee_jac)
 
     # the operator (for a scalar equation) is A = P^T * M * P * v, so

@@ -27,7 +27,7 @@ function test_shocksensorPP()
     sensor4 = EulerEquationMod.ShockSensorHHO{Tsol, Tres}(mesh, sbp, opts)
     sensor5 = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh, sbp, opts)
     # initial condition is constant, check the sensor reports no shock
-    EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
+    EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, 1, coords,
                                              dxidx, jac, Se, ee)
 
     test_vandermonde(eqn.params, sbp, coords)
@@ -36,13 +36,13 @@ function test_shocksensorPP()
     @test maximum(ee) == 0
 
     fill!(res, 0)
-    EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture, q,
-                                        coords, dxidx, jac, res)
+    EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture,
+                                      q, 1, coords, dxidx, jac, res)
     @test maximum(abs.(res)) < 1e-13
 
     # test when a shock is present
     q[1, 3] += 5
-    EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, coords,
+    EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, 1, coords,
                                              dxidx, jac, Se, ee)
 
     @test maximum(abs.(Se)) > 1e-12
@@ -55,8 +55,8 @@ function test_shocksensorPP()
       q_i = sview(q, :, i)
       EulerEquationMod.convertToIR(eqn.params, q_i, w_i)
     end
-    EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture, q,
-                                        coords, dxidx, jac, res)
+    EulerEquationMod.projectionShockCapturing(eqn.params, sbp, sensor, capture,
+                                              q, 1, coords, dxidx, jac, res)
 
     @test sum(res .* w) < 0  # the term is negative definite
 
@@ -78,6 +78,18 @@ function test_shocksensorPP()
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
+
+    # for isotropic grids, the HHO anisotropy factors should be ~h/(p+1)
+    for i=1:mesh.numEl
+       jac_i = ro_sview(mesh.jac, :, i)
+       h_avg = EulerEquationMod.computeElementVolume(eqn.params, sbp, jac_i)^(1/mesh.dim)
+       h_avg /= (sbp.degree + 1)
+
+       for d=1:mesh.dim
+         @test sensor4.h_k_tilde[d, i] > h_avg/3
+         @test sensor4.h_k_tilde[d, i] < h_avg*3
+       end
+     end
 
   end  # end testset
 
@@ -112,7 +124,7 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   for i=1:numNodesPerElement
     for j=1:numDofPerNode
       q[j, i] += pert
-      EulerEquationMod.getShockSensor(params, sbp, sensor, q, coords,
+      EulerEquationMod.getShockSensor(params, sbp, sensor, q, 1, coords,
                                                dxidx, jac, Se, ee)
       Se_jac[:, j, :, i] = imag(Se)./h
       ee_jac[:, j, :, i] = imag(ee)./h
@@ -120,7 +132,7 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
     end
   end
 
-  EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q,
+  EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q, 1,
                                        coords, dxidx, jac, Se_jac2, ee_jac2)
 
   @test maximum(abs.(Se_jac - Se_jac2)) < 1e-11
@@ -129,14 +141,14 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   # test vector mode
   q_dot = rand_realpart(size(q))
   q .+= pert*q_dot
-  EulerEquationMod.getShockSensor(params, sbp, sensor, q, coords,
+  EulerEquationMod.getShockSensor(params, sbp, sensor, q, 1, coords,
                                            dxidx, jac, Se, ee)
   Se_dot = imag(Se)./h
   ee_dot = imag(ee)./h
   q .-= pert*q_dot
 
   # run again to make sure intermediate arrays are zeroed out
-  EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q,
+  EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q, 1,
                                        coords, dxidx, jac, Se_jac2, ee_jac2)
 
   Se_dot2 = zeros(Complex128, dim, numNodesPerElement)
@@ -278,7 +290,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
 
 
 """

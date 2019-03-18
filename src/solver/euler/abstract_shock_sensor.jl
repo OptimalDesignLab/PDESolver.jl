@@ -16,6 +16,7 @@
 
   ```
   isShockElement
+  updateMetrics
   ```
 """
 abstract type AbstractShockSensor end
@@ -33,6 +34,7 @@ abstract type AbstractShockSensor end
    * sbp: SBP operator
    * sensor: the `AbstractShockSensor` object
    * q: solution on a particular element, `numDofPerNode` x `numNodesPerElement`
+   * elnum: element number
    * coords: `dim` x `numNodesPerElement` array containing the coordinates
              of each node of the element
    * dxidx: `dim` x `dim` x `numNodesPerElement` array containing the (scaled)
@@ -46,7 +48,8 @@ abstract type AbstractShockSensor end
 """
 function isShockElement(params::AbstractParamType{Tdim}, sbp::AbstractOperator,
                         sensor::AbstractShockSensor,
-                        q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                        q::AbstractMatrix{Tsol}, elnum::Integer,
+                        coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                         ) where {Tsol, Tmsh, Tdim}
 
@@ -56,7 +59,8 @@ function isShockElement(params::AbstractParamType{Tdim}, sbp::AbstractOperator,
   Se = EmptyArray{Tres}(dim, numNodesPerElement)
   ee = EmptyArray{Tres}(dim, numNodesPerElement)
 
-  return getShockSensor(params, sbp, sensor, q, coords, dxidx, jac, Se, ee)
+  return getShockSensor(params, sbp, sensor, q, elnum, coords, dxidx, jac, Se,
+                        ee)
 end
 
 """
@@ -70,6 +74,7 @@ end
    * sbp: SBP operator
    * sensor: the `AbstractShockSensor` object
    * q: solution on a particular element, `numDofPerNode` x `numNodesPerElement`
+   * elnum: element number
    * coords: `dim` x `numNodesPerElement` array containing the coordinates
              of each node of the element
    * dxidx: `dim` x `dim` x `numNodesPerElement` array containing the (scaled)
@@ -90,7 +95,8 @@ end
 """
 function getShockSensor(params::AbstractParamType{Tdim}, sbp::AbstractOperator,
                           sensor::AbstractShockSensor,
-                          q::AbstractMatrix{Tsol}, coords::AbstractMatrix,
+                          q::AbstractMatrix{Tsol}, elnum::Integer,
+                          coords::AbstractMatrix,
                           dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
                           Se::AbstractMatrix, ee::AbstractMatrix
                          ) where {Tsol, Tmsh, Tdim}
@@ -109,6 +115,7 @@ end
    * params
    * sbp
    * q
+   * elnum
    * coords
    * dxidx
    * jac
@@ -129,7 +136,7 @@ end
 """
 function getShockSensor_diff(params::AbstractParamType{Tdim}, sbp::AbstractOperator,
                       sensor::AbstractShockSensor,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -137,5 +144,21 @@ function getShockSensor_diff(params::AbstractParamType{Tdim}, sbp::AbstractOpera
                      ) where {Tsol, Tmsh, Tres, Tdim}
 
   error("abstract method for getShockSensor_diff() called: did you forget to extend it with a new method for shock sensor $(typeof(sensor))")
+
+end
+
+
+"""
+  Function to be called after the mesh metrics are updated.  This gives the
+ eshock sensor the opportunity to recalculate mesh-wide quantities.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * opts
+   * sensor: an [`AbstractShockSensor`](@ref)
+"""
+function updateMetrics(mesh, sbp, opts, sensor::AbstractShockSensor)
 
 end

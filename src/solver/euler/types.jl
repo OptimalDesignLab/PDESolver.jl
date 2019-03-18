@@ -873,5 +873,8 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
     calcEdgeStabAlpha(mesh, sbp, eqn)
   end
 
+  sensor = getShockSensor(eqn.shock_capturing)
+  updateMetrics(mesh, sbp, opts, sensor)
+
   return nothing
 end

@@ -8,7 +8,7 @@
 """
 function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorPP,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -143,7 +143,7 @@ end
 
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       sensor::ShockSensorNone,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -157,7 +157,7 @@ end
 
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       sensor::ShockSensorEverywhere,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -174,7 +174,7 @@ end
 
 function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
                       sensor::ShockSensorVelocity,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -204,7 +204,7 @@ end
 
 function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorHIso,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -363,7 +363,7 @@ end
 
 function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorBO,
-                      q::AbstractMatrix{Tsol},
+                      q::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -415,7 +415,7 @@ end
 
 function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
                       sensor::ShockSensorHHO,
-                      q_el::AbstractMatrix{Tsol},
+                      q_el::AbstractMatrix{Tsol}, elnum::Integer,
                       coords::AbstractMatrix, dxidx::Abstract3DArray,
                       jac::AbstractVector{Tmsh},
                       Se_jac::Abstract4DArray{Tres},
@@ -447,8 +447,8 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   fill!(press_dx, 0); fill!(res, 0); fill!(px_jac, 0)
 
   #TODO: in the real sensor, this should include an anisotropy factor
-  h_avg = computeElementVolume(params, sbp, jac)
-  h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
+  #h_avg = computeElementVolume(params, sbp, jac)
+  #h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
 
 
   computeStrongResidual_diff(params, sbp, sensor.strongdata,
@@ -552,7 +552,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     for p=1:numNodesPerElement
       for j=1:numDofPerNode
         for d=1:Tdim
-          #TODO: add something to complexify.jl for this sign()
+          h_fac = sensor.h_k_tilde[d, elnum]
           Se_jac[d, j, p, q] = h_fac*(fp[p]*sign_c(Rp[p])*Rp_jac[p, j, q] + 
                                       fp_jac[j, p, q]*absvalue(Rp[p]))
           ee_jac[d, j, p, q] = Se_jac[d, j, p, q]*h_fac*h_fac*sensor.C_eps
