@@ -439,10 +439,6 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   @unpack sensor p_dot press_el press_dx work res Rp fp
   fill!(press_dx, 0); fill!(res, 0); fill!(Rp, 0)
 
-  #TODO: in the real sensor, this should include an anisotropy factor
-  #h_avg = computeElementVolume(params, sbp, jac)
-  #h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
-
   # compute Rm
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
 
@@ -464,9 +460,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
     for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
-    for d=1:Tdim
-      fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
-    end
+    fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
   end
 
   for i=1:numNodesPerElement

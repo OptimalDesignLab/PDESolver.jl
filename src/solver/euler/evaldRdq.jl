@@ -42,6 +42,11 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator, eqn::Euler
     evalSharedFaceIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
+  time.t_shock += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing_revq(mesh, sbp, eqn, opts)
+  end
+
+
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
     error("use_Minv not supported for revq product")
@@ -259,5 +264,31 @@ function evalSourceTerm_revq(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end  # end function
+
+
+"""
+
+  Reverse mode of `evalShockCapturing`
+
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
+"""
+function evalShockCapturing_revq(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
+
+  # currently there is only one choice for the shock capturing scheme.
+  # If there are more, need something more sophisiticated to choose.
+  # Perhaps add an abstract typed field to eqn containing the structs
+
+  capture = eqn.shock_capturing
+  applyShockCapturing_revq(mesh, sbp, eqn, opts, capture)
+
+  return nothing
+end
 
 

@@ -68,6 +68,8 @@ function test_shocksensorPP()
     test_shocksensor_diff(eqn.params, sbp, sensor3, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
 
+    test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
+
     # case 2: ee on sin wave
     q[1, 3] = 1.0105
     for i=1:mesh.numNodesPerElement
@@ -78,6 +80,7 @@ function test_shocksensorPP()
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
+    test_shocksensor_revq(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
 
     # for isotropic grids, the HHO anisotropy factors should be ~h/(p+1)
     for i=1:mesh.numEl
@@ -163,6 +166,53 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   @test maximum(abs.(Se_dot - Se_dot2)) < 1e-11
   @test maximum(abs.(ee_dot - ee_dot2)) < 1e-11
 
+
+  return nothing
+end
+
+function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
+                               coords, dxidx, jac)
+
+  srand(1234)
+  numDofPerNode, numNodesPerElement = size(_q)
+  dim = size(dxidx, 1)
+
+  Se = zeros(Complex128, dim, numNodesPerElement)
+  ee = zeros(Complex128, dim, numNodesPerElement)
+#  q_dot = rand_realpart(size(_q))
+  q_dot = zeros(Complex128, size(_q)); q_dot[5] = 2
+  q_bar = zeros(Complex128, size(q_dot))
+#  ee_bar = rand_realpart(size(ee))
+  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 3
+  
+  q = zeros(Complex128, numDofPerNode, numNodesPerElement)
+  copy!(q, _q)
+  q .+= 0.1*rand(size(q))
+
+  # complex step
+  h = 1e-20
+  pert = Complex128(0, h)
+  q .+= pert*q_dot
+  EulerEquationMod.getShockSensor(params, sbp, sensor, q, 1, coords,
+                                  dxidx, jac, Se, ee)
+  q .-= pert*q_dot
+  ee_dot = imag(ee)./h
+  val1 = sum(ee_dot .* ee_bar)
+
+  # reverse mode
+  EulerEquationMod.getShockSensor_revq(params, sbp, sensor, q, q_bar, 1, coords,
+                                  dxidx, jac, ee, ee_bar)
+ 
+  val2 = sum(q_bar .* q_dot)
+
+  @test abs(val1 - val2) < 1e-12
+
+  # run twice to check accumulation behavior
+  q_bar_orig = copy(q_bar)
+  EulerEquationMod.getShockSensor_revq(params, sbp, sensor, q, q_bar, 1, coords,
+                                  dxidx, jac, ee, ee_bar)
+
+  @test maximum(abs.(q_bar - 2*q_bar_orig)) < 1e-13
 
   return nothing
 end
@@ -290,7 +340,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """

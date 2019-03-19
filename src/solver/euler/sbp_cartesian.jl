@@ -308,4 +308,68 @@ function applyQx(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
   return nothing
 end
 
+#------------------------------------------------------------------------------
+# Reverse mode wrt q (the input)
+
+const TwoOr3DArray{T} = Union{AbstractMatrix{T}, Abstract3DArray{T}}
+"""
+  Reverse mode of `applyTxTransposed` with respect to the input array
+  `w`.  These methods work `w` as a 2D or 3D array, and similarly for `wx`
+
+  **Inputs**
+
+   * sbp
+   * dxidx
+   * wxi
+   * wx_bar: the seed array for back-propigation
+   * op: UnaryFunctor determining whether to add or subtract from the output
+
+  **Inputs/Outputs**
+
+   * w_bar: the array to be updated with the result of back-propigation
+"""
+function applyQxTransposed_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                                wxi::Abstract3DArray, wx::TwoOr3DArray,
+                                op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyQx(sbp, wx, dxidx, wxi, w, op)
+
+end
+
+
+"""
+  Reverse mode of `applyQx`.  See other function for details
+"""
+function applyQx_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                 wxi::Abstract3DArray, wx::TwoOr3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyQxTransposed(sbp, wx, dxidx, wxi, w, op)
+end
+
+
+"""
+  Reverse mode of of `applyDxTransposed`.  See other function for details
+"""
+function applyDxTransposed_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                                jac::AbstractVector,
+                                wxi::Abstract3DArray, wx::TwoOr3DArray,
+                                op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyDx(sbp, wx, dxidx, jac, wxi, w, op)
+
+end
+
+
+"""
+  Reverse mode of `applyDx`.  See other function for details.
+"""
+function applyDx_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                 jac::AbstractVector,
+                 wxi::Abstract3DArray, wx::TwoOr3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyDxTransposed(sbp, wx, dxidx, jac, wxi, w, op)
+end
+
 

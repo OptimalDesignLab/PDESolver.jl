@@ -169,6 +169,21 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
   return true
 end
 
+function getShockSensor_revq(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorEverywhere{Tsol, Tres},
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ee_mat::AbstractMatrix, ee_bar::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh}
+
+  # ee is constant, so q_bar += 0*ee_bar
+
+  return true
+end
+
+
 #------------------------------------------------------------------------------
 # ShockSensorVelocity
 
@@ -197,6 +212,32 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
   return false
 end
 
+
+function getShockSensor_revq(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorVelocity{Tsol, Tres},
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ee_mat::AbstractMatrix, ee_bar::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh}
+
+  # ee is constant, so q_bar += 0*ee_bar
+  numNodesPerElement = size(q, 2)
+  dim = size(coords, 1)
+
+  numNodesPerElement = size(q, 2)
+  dim = size(coords, 1)
+
+  for i=1:numNodesPerElement
+    for d=1:dim
+      ee_mat[d, i] = d*q[d+1, i]
+      q_bar[d+1, i] += ee_bar[d, i]*d
+    end
+  end
+
+  return true
+end
 
 
 #------------------------------------------------------------------------------
@@ -302,6 +343,56 @@ function computeStrongResidual_diff(params::ParamType{Tdim},
 
   return nothing
 end
+
+
+function computeStrongResidual_revq(params::ParamType{Tdim},
+                               sbp::AbstractOperator,
+                               data::StrongFormData{Tsol, Tres},
+                               q::AbstractMatrix, q_bar::AbstractMatrix,
+                               dxidx::Abstract3DArray,
+                               jac::AbstractVector,
+                               res_bar::AbstractMatrix
+                              ) where {Tdim, Tsol, Tres}
+
+  @unpack data flux nrm aux_vars work flux_bar
+  fill!(nrm, 0); fill!(flux_bar, 0)
+
+  numDofPerNode, numNodesPerElement = size(q)
+#=
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    for d=1:Tdim
+      nrm[d] = 1
+      flux_d = sview(flux, :, i, d)
+
+      calcEulerFlux(params, q_i, aux_vars, nrm, flux_d)
+
+      nrm[d] = 0
+    end
+  end
+
+  applyDx(sbp, flux, dxidx, jac, work, res)
+=#
+  # reverse sweep
+  applyDx_revq(sbp, flux_bar, dxidx, jac, work, res_bar)
+
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    q_bar_i = sview(q_bar, :, i)
+    for d=1:Tdim
+      nrm[d] = 1
+      flux_bar_d = ro_sview(flux_bar, :, i, d)
+
+      calcEulerFlux_revq(params, q_i, q_bar_i, aux_vars, nrm, flux_bar_d)
+
+      nrm[d] = 0
+    end
+  end
+
+  return nothing
+end
+
+
 
 """
   **Inputs**
@@ -429,27 +520,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   fill!(Rp, 0)
   fill!(Rp_jac, 0); fill!(fp_jac, 0)
-  #=
-  p_jac = zeros(Tsol, 1, numDofPerNode, numNodesPerElement)
-  press_el = zeros(Tsol, 1, numNodesPerElement)
-  press_dx = zeros(Tres, 1, numNodesPerElement, Tdim)
-  work = zeros(Tres, 1, numNodesPerElement, Tdim)
-  res = zeros(Tres, numDofPerNode, numNodesPerElement)
-
-  res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
-                        numNodesPerElement)
-  p_hess = zeros(Tsol, numDofPerNode, numDofPerNode)
-  Dx = zeros(numNodesPerElement, numNodesPerElement, Tdim)
-  px_jac = zeros(Tres, 1, numDofPerNode, Tdim, numNodesPerElement,
-                       numNodesPerElement)
-  val_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
-  =#
   fill!(press_dx, 0); fill!(res, 0); fill!(px_jac, 0)
-
-  #TODO: in the real sensor, this should include an anisotropy factor
-  #h_avg = computeElementVolume(params, sbp, jac)
-  #h_fac = (h_avg^(1/Tdim))/(sbp.degree + 1)
-
 
   computeStrongResidual_diff(params, sbp, sensor.strongdata,
                              q_el, coords, dxidx, jac, res, res_jac)
@@ -563,3 +634,111 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   return false
 end
+
+
+function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHHO{Tsol, Tres},
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ee_mat::AbstractMatrix, ee_bar::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  @unpack sensor p_dot press_el press_dx work res Rp fp
+  fill!(press_dx, 0); fill!(res, 0); fill!(Rp, 0)
+
+  # compute Rm
+  computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
+
+  # compute Rp
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    press = calcPressure_diff(params, q_i, p_dot)
+    press_el[1, i] = press
+
+    for j=1:numDofPerNode
+      Rp[i] += p_dot[j]*res[j, i]/press
+    end
+  end
+
+  # compute pressure switch fp (excluding the h_k factor)
+  applyDx(sbp, press_el, dxidx, jac, work, press_dx)
+  for i=1:numNodesPerElement
+    val = zero(Tres)
+    for d=1:Tdim
+      val += press_dx[1, i, d]*press_dx[1, i, d]
+    end
+    fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
+  end
+
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      h_fac = sensor.h_k_tilde[d, elnum]
+      Se = h_fac*fp[i]*absvalue(Rp[i])
+      ee_mat[d, i] = Se*h_fac*h_fac*sensor.C_eps
+    end
+  end
+
+
+  # reverse sweep
+  fp_bar = zeros(Tres, numNodesPerElement)
+  Rp_bar = zeros(Tres, numNodesPerElement)
+  press_el_bar = zeros(Tres, 1, numNodesPerElement)
+  press_dx_bar = zeros(Tres, 1, numNodesPerElement, Tdim)
+  p_dot_bar = zeros(Tres, numDofPerNode)
+  res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      h_fac = sensor.h_k_tilde[d, elnum]
+      Se_bar = h_fac*h_fac*sensor.C_eps*ee_bar[d, i]
+      fp_bar[i] += h_fac*absvalue(Rp[i])*Se_bar
+      Rp_bar[i] += h_fac*fp[i]*sign_c(Rp[i])*Se_bar
+    end
+  end
+
+  # fp_bar
+  for i=1:numNodesPerElement
+    val = zero(Tres)
+    val_bar = zero(Tres)
+    for d=1:Tdim
+      val += press_dx[1, i, d]*press_dx[1, i, d]
+    end
+    val_bar += fp_bar[i]/(2*sqrt(val)*(press_el[1, i] + 1e-12))
+    press_el_bar[1, i] += -sqrt(val)*fp_bar[i]/( 
+                          (press_el[1, i] + 1e-12)*(press_el[1, i] + 1e-12) )
+    for d=1:Tdim
+      press_dx_bar[1, i, d] += 2*press_dx[1, i, d]*val_bar
+    end
+  end
+  applyDx_revq(sbp, press_el_bar, dxidx, jac, work, press_dx_bar)
+
+
+  # Rp_bar
+   for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    q_bar_i = sview(q_bar, :, i)
+    calcPressure_diff(params, q_i, p_dot)
+    press = press_el[1, i]
+    fill!(p_dot_bar, 0)
+
+    for j=1:numDofPerNode
+      #Rp[i] += p_dot[j]*res[j, i]/press
+      p_dot_bar[j]       += res[j, i]*Rp_bar[i]/press
+      res_bar[j, i]      += p_dot[j]*Rp_bar[i]/press
+      press_el_bar[1, i] += -p_dot[j]*res[j, i]*Rp_bar[i]/(press*press)
+    end
+
+    calcPressure_diff_revq(params, q_i, q_bar_i, p_dot_bar, press_el_bar[1, i])
+  end
+
+  computeStrongResidual_revq(params, sbp, sensor.strongdata, q, q_bar, dxidx,
+                             jac, res_bar)
+
+  return true
+end
+
+

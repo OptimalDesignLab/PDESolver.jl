@@ -12,6 +12,7 @@ mutable struct ShockDiffusion{Tres, T <: AbstractShockSensor} <: AbstractDiffusi
   ee::Matrix{Tres}
   Se_dot::Array{Tres, 4}
   ee_dot::Array{Tres, 4}
+  ee_bar::Matrix{Tres}
 end
 
 function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
@@ -23,9 +24,9 @@ function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
                        mesh.numNodesPerElement)
   ee_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
                        mesh.numNodesPerElement)
+  ee_bar = zeros(Tres, dim, numNodesPerElement)
 
-
-  return ShockDiffusion{Tres, T}(sensor, Se, ee, Se_dot, ee_dot)
+  return ShockDiffusion{Tres, T}(sensor, Se, ee, Se_dot, ee_dot, ee_bar)
 end
 
 
@@ -247,3 +248,45 @@ function applyDiffusionTensor_diff(obj::ShockDiffusion, sbp::AbstractOperator,
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# revq functions
+
+function applyDiffusionTensor_revq(obj::ShockDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, q_bar::AbstractMatrix,
+                    w::AbstractMatrix, w_bar::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
+                    i::Integer, nodes::AbstractVector,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
+                   ) where {Tres}
+
+  numDofPerNode, numNodesPerElement, dim = size(flux)
+
+  @unpack obj Se ee ee_bar
+  fill!(ee_bar, 0)
+
+  getShockSensor(params, sbp, obj.sensor, q, i, coords, dxidx, jac, Se, ee)
+
+  @simd for d=1:dim
+    @simd for j in nodes
+      ee_j = ee[d, j]
+      @simd for k=1:numDofPerNode
+        flux[k, j, d] = ee_j*dx[k, j, d]
+        ee_bar[d, j]    += dx[k, j, d]*flux_bar[k, j, d]
+        dx_bar[k, j, d] += ee_j*flux_bar[k, j, d]
+      end
+    end
+  end
+
+  getShockSensor_revq(params, sbp, obj.sensor, q, q_bar, i, coords, dxidx,
+                      jac, ee, ee_bar)
+
+  return nothing
+end
+
+

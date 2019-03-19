@@ -86,6 +86,31 @@ end
 
 
 #------------------------------------------------------------------------------
+# revq
+
+"""
+  Reverse mode of `applyShockCapturing`
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data: an [`AbstractShockCaputring`](@ref) object
+"""
+function applyShockCapturing_revq(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::AbstractVolumeShockCapturing)
+
+  # unlike AbstractFaceShockCapturing, nothing to do here
+
+  sensor = getShockSensor(capture)
+  calcShockCapturing_revq(mesh, sbp, eqn, opts, sensor, capture)
+
+  return nothing
+end
+
 
 
 

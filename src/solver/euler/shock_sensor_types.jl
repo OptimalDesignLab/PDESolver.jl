@@ -150,6 +150,8 @@ struct StrongFormData{Tsol, Tres}
   flux_jac::Array{Tres, 5}
   Dx::Array{Float64, 3}
 
+  flux_bar::Array{Tres, 3}
+
   function StrongFormData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
 
     numDofPerNode = mesh.numDofPerNode
@@ -167,8 +169,11 @@ struct StrongFormData{Tsol, Tres}
                    numNodesPerElement, numNodesPerElement)
     Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
 
+    flux_bar = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+
     return new(flux, nrm, aux_vars, work,
-               flux_jac, Dx)
+               flux_jac, Dx,
+               flux_bar)
   end
 end
 

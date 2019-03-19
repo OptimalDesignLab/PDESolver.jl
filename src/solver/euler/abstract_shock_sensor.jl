@@ -162,3 +162,40 @@ end
 function updateMetrics(mesh, sbp, opts, sensor::AbstractShockSensor)
 
 end
+
+"""
+  Reverse mode with respect to `q` of the shock sensor
+
+  **Inputs**
+
+   * params
+   * sbp
+   * sensor: `AbstractShockSensor`
+   * q
+   * elnum
+   * coords
+   * dxidx
+   * jac
+   * ee_bar: adjoint part of `ee`, same size
+
+  **Inputs/Outputs**
+   
+   * ee
+   * q_bar: to be updated with result, same size as `q`
+
+  **Outputs**
+
+   * is_nonzero: Bool, true if ee is zero at all nodes, false otherwise
+"""
+function getShockSensor_revq(params::AbstractParamType, sbp::AbstractOperator,
+                        sensor::AbstractShockSensor,
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector,
+                        ee_mat::AbstractMatrix, ee_bar::AbstractMatrix
+                        )
+
+  error("abstract method for getShockSensor_revq() called: did you forget to extend it with a new method for shock sensor $(typeof(sensor))")
+
+end

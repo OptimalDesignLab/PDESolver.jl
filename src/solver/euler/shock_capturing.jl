@@ -5,9 +5,6 @@
   Main entry point for shock capturing.  Applies the specified shock capturing
   scheme to every element
 
-  Many shock capturing scheme requires the `sensor` be the same sensor
-  used to construct the `capture` object.
-
   **Inputs**
 
    * mesh

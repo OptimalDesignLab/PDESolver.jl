@@ -75,7 +75,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   return nothing
 end
 
-function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
+@noinline function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
                            capture::VolumeShockCapturing{Tsol, Tres},
                            diffusion::AbstractDiffusion,
                            entropy_vars::AbstractVariables,
@@ -136,6 +136,101 @@ function computeVolumeTerm_diff(mesh, sbp, eqn, opts,
 
     assembleElement(assembler, mesh, i_full, res_jac)
   end
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# revq
+
+function calcShockCapturing_revq(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             sensor::AbstractShockSensor,
+                             capture::VolumeShockCapturing)
+
+  computeVolumeTerm_revq(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+                    capture.diffusion)
+
+  return nothing
+end
+
+
+@noinline function computeVolumeTerm_revq(mesh, sbp, eqn, opts,
+                      capture::VolumeShockCapturing{Tsol, Tres},
+                      entropy_vars::AbstractVariables,
+                      diffusion::AbstractDiffusion,
+                     ) where {Tsol, Tres}
+
+  @assert eqn.params.use_Minv != 1
+
+  work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  lambda_gradw = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                             mesh.dim)
+  w_i = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  op = SummationByParts.Subtract()
+
+  w_bar_i = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  grad_w_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  lambda_gradw_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                             mesh.dim)
+
+  A0inv = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+
+  println("initially, max(q_bar) = ", maximum(abs.(eqn.q_bar)))
+  # do local elements
+  @simd for i=1:mesh.numEl
+    i_full = i
+    @simd for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      w_j = sview(w_i, :, j)
+
+      # convert to entropy variables
+      convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
+    end
+
+    # apply D operator
+    q_i = ro_sview(eqn.q, :, :, i_full)
+    coords = ro_sview(mesh.coords, :, :, i_full)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
+    jac_i = ro_sview(mesh.jac, :, i_full)
+
+    fill!(grad_w, 0)
+    applyDx(sbp, w_i, dxidx_i, jac_i, work, grad_w)
+
+    # apply diffusion tensor
+#    applyDiffusionTensor(diffusion, sbp, eqn.params, q_i, w_i, coords, dxidx_i,
+#                         jac_i, i, grad_w, lambda_gradw)
+
+    # apply Q^T
+#    res_i = sview(eqn.res, :, :, i)
+#    applyQxTransposed(sbp, lambda_gradw, dxidx_i, work, res_i, op)
+
+
+    # reverse sweep
+    res_bar_i = ro_sview(eqn.res_bar, :, :, i_full)
+    q_bar_i = sview(eqn.q_bar, :, :, i_full)
+    fill!(w_bar_i, 0); fill!(lambda_gradw_bar, 0); fill!(grad_w_bar, 0)
+
+    applyQxTransposed_revq(sbp, lambda_gradw_bar, dxidx_i, work, res_bar_i, op)
+
+    applyDiffusionTensor_revq(diffusion, sbp, eqn.params, q_i, q_bar_i, w_i, w_bar_i,
+                         coords, dxidx_i, jac_i, i, grad_w, grad_w_bar,
+                         lambda_gradw, lambda_gradw_bar)
+
+    applyDx_revq(sbp, w_bar_i, dxidx_i, jac_i, work, grad_w_bar)
+
+    # convertToEntropy reverse mode
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i)
+      q_bar_j = sview(eqn.q_bar, :, j, i)
+      w_bar_j = ro_sview(w_bar_i, :, j)
+
+      getA0inv(entropy_vars, eqn.params, q_j, A0inv)
+      smallmatvec_kernel!(A0inv, w_bar_j, q_bar_j, 1, 1)
+    end
+
+  end  # end i
 
   return nothing
 end

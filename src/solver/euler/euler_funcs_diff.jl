@@ -1096,6 +1096,115 @@ function calcPressure_revq(params::ParamType{3, :conservative},
   return nothing
 end
 
+function calcPressure_diff_revq(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1}, q_bar::AbstractVector{Tres},
+                      p_dot_bar::AbstractVector, press_bar::Number ) where {Tsol, Tres}
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  t1 = 1/(q[1]*q[1])
+  t2 = q[2]*q[2]
+  t3 = q[3]*q[3]
+ 
+
+#=
+  press = (params.gamma_1)*(q[4] - 0.5*(t2 + t3)/q[1])
+  p_dot[1] = (params.gamma_1)*( 0.5*(t2*t1 + t3*t1))
+  p_dot[2] = -(params.gamma_1)*(q[2]/q[1])
+  p_dot[3] = -(params.gamma_1)*(q[3]/q[1])
+  p_dot[4] = params.gamma_1
+=#
+  # reverse sweep
+
+  # pressure
+  q_bar[1] += (params.gamma_1)*( 0.5*(t2*t1 + t3*t1))*press_bar
+  q_bar[2] += -(params.gamma_1)*(q[2]/q[1])*press_bar
+  q_bar[3] += -(params.gamma_1)*(q[3]/q[1])*press_bar
+  q_bar[4] += params.gamma_1*press_bar
+
+  # p_dot
+  t1_bar = zero(Tres)
+  t2_bar = zero(Tres)
+  t3_bar = zero(Tres)
+
+  t1_bar += params.gamma_1*(0.5*(t2 + t3))*p_dot_bar[1]
+  t2_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+  t3_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+
+  q_bar[1] += params.gamma_1*q[2]*t1*p_dot_bar[2]
+  q_bar[2] -= params.gamma_1*p_dot_bar[2]/q[1]
+
+  q_bar[1] += params.gamma_1*q[3]*t1*p_dot_bar[3]
+  q_bar[3] -= params.gamma_1*p_dot_bar[3]/q[1]
+
+  # nothing to do for q_bar[4]
+
+  q_bar[3] += 2*q[3]*t3_bar
+  q_bar[2] += 2*q[2]*t2_bar
+  q_bar[1] -= 2*t1_bar/(q[1]^3)
+
+  return nothing
+end
+
+
+function calcPressure_diff_revq(params::ParamType{3, :conservative},
+                      q::AbstractArray{Tsol,1}, q_bar::AbstractVector{Tres},
+                      p_dot_bar::AbstractVector, press_bar::Number ) where {Tsol, Tres}
+
+  # calculate pressure for a node
+
+  t1 = 1/(q[1]*q[1])
+  t2 = q[2]*q[2]
+  t3 = q[3]*q[3]
+  t4 = q[4]*q[4]
+#=
+  (params.gamma_1)*(q[5] - 0.5*(t2 + t3 + t4)/q[1])
+  p_dot[1] =  params.gamma_1*( 0.5*(t2 + t3 + t4)*t1)
+  p_dot[2] = -params.gamma_1*(q[2]/q[1])
+  p_dot[3] = -params.gamma_1*(q[3]/q[1])
+  p_dot[4] = -params.gamma_1*(q[4]/q[1])
+  p_dot[5] =  params.gamma_1
+=#
+
+  # pressure
+  q_bar[1] += (params.gamma_1)*( 0.5*(t2*t1 + t3*t1 + t4*t1))*press_bar
+  q_bar[2] += -(params.gamma_1)*(q[2]/q[1])*press_bar
+  q_bar[3] += -(params.gamma_1)*(q[3]/q[1])*press_bar
+  q_bar[4] += -(params.gamma_1)*(q[4]/q[1])*press_bar
+  q_bar[5] += params.gamma_1*press_bar
+
+  # p_dot
+  t1_bar = zero(Tres)
+  t2_bar = zero(Tres)
+  t3_bar = zero(Tres)
+  t4_bar = zero(Tres)
+
+  t1_bar += params.gamma_1*(0.5*(t2 + t3 + t4))*p_dot_bar[1]
+  t2_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+  t3_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+  t4_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+
+  q_bar[1] += params.gamma_1*q[2]*t1*p_dot_bar[2]
+  q_bar[2] -= params.gamma_1*p_dot_bar[2]/q[1]
+
+  q_bar[1] += params.gamma_1*q[3]*t1*p_dot_bar[3]
+  q_bar[3] -= params.gamma_1*p_dot_bar[3]/q[1]
+
+  q_bar[1] += params.gamma_1*q[4]*t1*p_dot_bar[4]
+  q_bar[4] -= params.gamma_1*p_dot_bar[4]/q[1]
+
+  # nothing to do for q_bar[5]
+
+  q_bar[4] += 2*q[4]*t4_bar
+  q_bar[3] += 2*q[3]*t3_bar
+  q_bar[2] += 2*q[2]*t2_bar
+  q_bar[1] -= 2*t1_bar/(q[1]^3)
+
+  return nothing
+end
+
+
+
 
 """
   Differentiated version of [`getLambdaMax`](@ref)

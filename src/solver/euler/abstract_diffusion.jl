@@ -74,6 +74,72 @@ function applyDiffusionTensor(obj::AbstractDiffusion, sbp::AbstractOperator,
   error("abstract fallback for applyDiffusionTensor() reached.  Did you forget to extend applyDiffusionTensor with a new method?")
 end
 
+"""
+  More specifically,
+
+  ```
+  for i in nodes
+    for d=1:mesh.dim
+      for d2=1:mesh.dim
+        # primal calculation
+        # flux[:, i, d] = C[:, :, d1, d2]*dx[:, i, d2]
+        dx_bar[:, i, d1] += C[:, :, d1, d2].'*flux_bar[:, i, d]
+        C_bar[:, :, d1, d2] += flux_bar[:, i, d1]*dx[:, i, d1].'  # outer product
+      end
+    end
+  end
+
+  **Inputs**
+
+   * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
+   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
+        for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
+   * i: the element number.  This is useful for diffusions where the coeffients
+        are precomputed and stored in an array
+   * nodes: a vector of integers describing which nodes of `flux` need to be
+            populated.
+   * dx: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
+         x `dim`
+   * flux_bar: adjoint part of `flux`, same size
+
+  **Inputs/Outputs**
+
+   * flux: array to overwrite with the result, same size as `dx`
+   * q_bar: array to be updated with the result of back propgiation, same size
+            as `q`
+   * w_bar: array to be updated with the result of back propgiation, same size
+            as `w`
+   * dx_bar: array to be updated with result of back propigation, same size
+             as `dx`
+
+
+ 
+"""
+function applyDiffusionTensor_revq(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, q_bar::AbstractMatrix,
+                    w::AbstractMatrix, w_bar::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
+                    i::Integer, nodes::AbstractVector,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
+                   ) where {Tres}
+
+  error("abstract fallback for applyDiffusionTensor_revq() reached.  Did you forget to extend applyDiffusionTensor with a new method?")
+end
+
+
 
 """
   Differentiated version of [`ApplyDiffusionTensor`](@ref)
@@ -267,6 +333,9 @@ function applyDiffusionTensor(obj::AbstractDiffusion, sbp::AbstractOperator,
 
   return nothing
 end
+
+#------------------------------------------------------------------------------
+# diff
 
 """
   This method computes the Jacobian of applying the diffusion tensor to
@@ -465,4 +534,43 @@ function applyDiffusionTensor_diff(obj::AbstractDiffusion,
 end
 
 
+#------------------------------------------------------------------------------
+# revq
+#
+function applyDiffusionTensor_revq(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, q_bar::AbstractMatrix,
+                    w::AbstractMatrix, w_bar::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
+                    i::Integer,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
+                   ) where {Tres}
 
+  nodes = 1:size(q, 2)
+  applyDiffusionTensor_revq(obj, sbp, params, q, q_bar, w, w_bar, coords,
+                            dxidx, jac, i, nodes, dx, dx_bar, flux, flux_bar)
+end
+
+
+function applyDiffusionTensor_revq(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, q_bar::AbstractMatrix,
+                    w::AbstractMatrix, w_bar::AbstractMatrix,
+                    coords::AbstractMatrix, dxidx::Abstract3DArray,
+                    jac::AbstractVector,
+                    i::Integer, sbpface::AbstractFace,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
+                   ) where {Tres}
+
+
+  nodes = sview(sbpface.perm, :, face)
+  applyDiffusionTensor_revq(obj, sbp, params, q, q_bar, w, w_bar, coords,
+                            dxidx, jac, i, nodes, dx, dx_bar, flux, flux_bar)
+
+  return nothing
+end
