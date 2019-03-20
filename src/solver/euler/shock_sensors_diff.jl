@@ -684,12 +684,9 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   # reverse sweep
-  fp_bar = zeros(Tres, numNodesPerElement)
-  Rp_bar = zeros(Tres, numNodesPerElement)
-  press_el_bar = zeros(Tres, 1, numNodesPerElement)
-  press_dx_bar = zeros(Tres, 1, numNodesPerElement, Tdim)
-  p_dot_bar = zeros(Tres, numDofPerNode)
-  res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+  @unpack sensor fp_bar Rp_bar press_el_bar press_dx_bar p_dot_bar res_bar
+  fill!(fp_bar, 0); fill!(Rp_bar, 0); fill!(press_el_bar, 0)
+  fill!(press_dx_bar, 0); fill!(res_bar, 0)
 
   for i=1:numNodesPerElement
     for d=1:Tdim

@@ -24,7 +24,7 @@ function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
                        mesh.numNodesPerElement)
   ee_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
                        mesh.numNodesPerElement)
-  ee_bar = zeros(Tres, dim, numNodesPerElement)
+  ee_bar = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
 
   return ShockDiffusion{Tres, T}(sensor, Se, ee, Se_dot, ee_dot, ee_bar)
 end

@@ -397,3 +397,373 @@ function applyOperatorJac(Dx::Abstract3DArray, sbpface::AbstractFace,
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# Reverse mode wrt q (the input)
+
+const TwoOr3DArray{T} = Union{AbstractMatrix{T}, Abstract3DArray{T}}
+"""
+  Reverse mode of `applyTxTransposed` with respect to the input array
+  `w`.  These methods work `w` as a 2D or 3D array, and similarly for `wx`
+
+  **Inputs**
+
+   * sbp
+   * dxidx
+   * wxi
+   * wx_bar: the seed array for back-propigation
+   * op: UnaryFunctor determining whether to add or subtract from the output
+
+  **Inputs/Outputs**
+
+   * w_bar: the array to be updated with the result of back-propigation
+"""
+function applyQxTransposed_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                                wxi::Abstract3DArray, wx::TwoOr3DArray,
+                                op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyQx(sbp, wx, dxidx, wxi, w, op)
+
+end
+
+
+"""
+  Reverse mode of `applyQx`.  See other function for details
+"""
+function applyQx_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                 wxi::Abstract3DArray, wx::TwoOr3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyQxTransposed(sbp, wx, dxidx, wxi, w, op)
+end
+
+
+"""
+  Reverse mode of of `applyDxTransposed`.  See other function for details
+"""
+function applyDxTransposed_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                                jac::AbstractVector,
+                                wxi::Abstract3DArray, wx::TwoOr3DArray,
+                                op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyDx(sbp, wx, dxidx, jac, wxi, w, op)
+
+end
+
+
+"""
+  Reverse mode of `applyDx`.  See other function for details.
+"""
+function applyDx_revq(sbp, w::TwoOr3DArray, dxidx::Abstract3DArray,
+                 jac::AbstractVector,
+                 wxi::Abstract3DArray, wx::TwoOr3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  applyDxTransposed(sbp, wx, dxidx, jac, wxi, w, op)
+end
+
+#------------------------------------------------------------------------------
+# revm, first method
+
+"""
+  Computes meverse mode of Qx^T * w with respect to the metrics in all
+  Cartesian directions.
+
+  **Inputs**
+
+   * sbp: the SBP operator
+   * w: `numDofPerNode` x `numNodesPerElement` array of values
+   * dxidx: `dim` x `dim` x `numNodesPerElement` array containing the metrics
+   * wx_bar: seed vector for reverse mode, same size as `wxi`
+   * op: a UnaryFunctor that determines if values are added or subtracted to
+         `wx`
+
+  **Inputs/Outputs**
+
+   * wxi: temporary array, `numDofPerNode` x `numNodesPerElement` x `dim`
+   * dxidx_bar: array updated with result, same size as `dxidx`.
+"""
+function applyQxTransposed_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
+                             dxidx_bar::Abstract3DArray,
+                             wxi::Abstract3DArray, wx_bar::Abstract3DArray,
+                             op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  # The idea is to compute dw/dxi first, and then use dxi/dx to rotate those
+  # arrays to be d/dx
+
+  # compute dw/dxi
+  numDofPerNode, numNodesPerElement, dim = size(wxi)
+  for d=1:dim
+    smallmatmat!(w, sview(sbp.Q, :, :, d), sview(wxi, :, :, d))
+  end
+
+  # dw/dx = dw/dxi * dxi/dx + dw/dy * dy/dxi
+  @simd for d1=1:dim
+    @simd for i=1:numNodesPerElement
+      @simd for d2=1:dim
+        @simd for j=1:numDofPerNode
+          #wx[j, i, d1] += op(wxi[j, i, d2]*dxidx[d2, d1, i])
+          dxidx_bar[d2, d1, i] += op(wxi[j, i, d2]*wx_bar[j, i, d1])
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+"""
+  Reverse mode of `applyDx`with respect to the metrics.  See
+  [`applyQxTransposed_revm`](@ref) for details
+
+  **Inputs**
+
+   * sbp
+   * w
+   * dxidx
+   * jac
+   * wx_bar
+
+  **Inputs/Outputs**
+
+   * jac_bar: updated with result
+   * dxidx_bar: updated with result
+   * wxi: temporary array
+"""
+function applyDx_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
+                 dxidx_bar::Abstract3DArray,
+                 jac::AbstractVector, jac_bar::AbstractVector,
+                 wxi::Abstract3DArray, wx_bar::Abstract3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  numDofPerNode, numNodesPerElement, dim = size(wxi)
+  fill!(wxi, 0)
+  for d=1:dim
+    differentiateElement!(sbp, d, w, sview(wxi, :, :, d))
+  end
+
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerElement
+      @simd for d2=1:dim
+#        fac = jac[j]*dxidx[d2, d1, j]
+        @simd for k=1:numDofPerNode
+          #wx[k, j, d1] += op(wxi[k, j, d2] * fac)
+          jac_bar[j] += op(wxi[k, j, d2]*dxidx[d2, d1, j]*wx_bar[k, j, d1])
+          dxidx_bar[d2, d1, j] += op(wxi[k, j, d2]*jac[j]*wx_bar[k, j, d1])
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+"""
+  Reverse mode of `applyDxTransposed` with respect to the metrics.  See
+  [`applyDx_revm`](@ref) for details.
+"""
+function applyDxTransposed_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
+                 dxidx_bar::Abstract3DArray,
+                 jac::AbstractVector, jac_bar::AbstractVector,
+                 wxi_bar::Abstract3DArray, wx_bar::Abstract3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+
+  numDofPerNode, numNodesPerElement, dim = size(wxi_bar)
+
+  # Dx^T * w = (Dxi^T * |dxi/dx| * u + Deta^T * |deta/dx|* w)
+  # so rotate w using mapping jacobian first, then apply D
+  
+  for d1=1:dim
+    fill!(wxi_bar, 0)
+    for d2=1:dim
+#=
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          # we only need temporary storage in the shape of w, but to be
+          # consistent with the other functions we use the wxi array
+          wxi[k, j, d2] = w[k, j]*(dxidx[d2, d1, j]*jac[j])
+        end
+      end
+
+      differentiateElement!(sbp, d2, ro_sview(wxi, :, :, d2), sview(wx, :, :, d1), op, true)
+=#
+      #--------------------
+      # reverse sweep
+
+      differentiateElement!(sbp, d2, ro_sview(wx_bar, :, :, d1),
+                            sview(wxi_bar, :, :, d2), op, false)
+
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          dxidx_bar[d2, d1, j] += w[k, j]*jac[j]*wxi_bar[k, j, d2]
+          jac_bar[j] += w[k, j]*dxidx[d2, d1, j]*wxi_bar[k, j, d2]
+        end
+      end
+    end  # end d2
+  end  # end d1
+
+  return nothing
+end
+
+"""
+  Reverse mode of `applyQx` with respect to the metrics.  See
+  [`applyQxTransposed_revm`](@ref) for details.
+"""
+function applyQx_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
+                 dxidx_bar::Abstract3DArray,
+                 wxi::Abstract3DArray, wx_bar::Abstract3DArray,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  numDofPerNode, numNodesPerElement, dim = size(wxi)
+  fill!(wxi, 0)
+  for d=1:dim
+    weakDifferentiateElement!(sbp, d, w, sview(wxi, :, :, d))
+  end
+
+  # reverse sweep
+  @simd for d1=1:dim
+    @simd for j=1:numNodesPerElement
+      @simd for d2=1:dim
+        @simd for k=1:numDofPerNode
+          #wx[k, j, d1] += op(wxi[k, j, d2] * dxidx[d2, d1, j])
+          dxidx_bar[d2, d1, j] += op(wxi[k, j, d2]*wx_bar[k, j, d1])
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
+# revm, second method
+
+
+function applyQxTransposed_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
+                             dxidx_bar::Abstract3DArray,
+                             wxi::Abstract3DArray, wx_bar::AbstractMatrix,
+                             op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+
+  numDofPerNode, numNodesPerElement, dim = size(wxi)
+  for d1=1:dim  # compute Q_d * w_d
+    for d2=1:dim
+      smallmatmat!(ro_sview(w, :, :, d1), ro_sview(sbp.Q, :, :, d2), sview(wxi, :, :, d2))
+    end
+
+    @simd for d2=1:dim
+      @simd for j=1:numNodesPerElement
+        @simd for k=1:numDofPerNode
+          #wx[k, j] += op(dxidx[d2, d1, j]*wxi[k, j, d2])
+          dxidx_bar[d2, d1, j] += op(wxi[k, j, d2]*wx_bar[k, j])
+        end
+      end
+    end
+
+  end  # end d1
+
+  return nothing
+end
+
+function applyDx_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
+                 dxidx_bar::Abstract3DArray,
+                 jac::AbstractVector, jac_bar::AbstractVector,
+                 wxi::Abstract3DArray, wx_bar::AbstractMatrix,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  numDofPerNode, numNodesPerElement, dim = size(w)
+
+  @simd for d1=1:dim
+    fill!(wxi, 0)
+    for d2=1:dim
+      differentiateElement!(sbp, d2, sview(w, :, :, d1), sview(wxi, :, :, d2))
+    end
+
+    @simd for j=1:numNodesPerElement
+      @simd for d2=1:dim
+        #fac = jac[j]*dxidx[d2, d1, j]
+        @simd for k=1:numDofPerNode
+          #wx[k, j] += op(wxi[k, j, d2] * fac)
+          dxidx_bar[d2, d1, j] += op(wxi[k, j, d2]*jac[j]*wx_bar[k, j])
+          jac_bar[j] += op(wxi[k, j, d2]*dxidx[d2, d1, j]*wx_bar[k, j])
+        end
+      end
+    end
+
+  end
+
+  return nothing
+end
+
+function applyDxTransposed_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
+                 dxidx_bar::Abstract3DArray,
+                 jac::AbstractVector, jac_bar::AbstractVector,
+                 wxi_bar::Abstract3DArray, wx_bar::AbstractMatrix,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+
+  numDofPerNode, numNodesPerElement, dim = size(w)
+
+  for d1=1:dim
+
+#=
+    for d2=1:dim
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          # we only need temporary storage in the shape of w, but to be
+          # consistent with the other functions we use the wxi array
+          wxi[k, j, d2] = w[k, j, d1]*(dxidx[d2, d1, j]*jac[j])
+        end
+      end
+
+      differentiateElement!(sbp, d2, ro_sview(wxi, :, :, d2), wx, op, true)
+=#
+      # reverse sweep
+    for d2=1:dim
+      fill!(wxi_bar, 0)
+      differentiateElement!(sbp, d2, wx_bar, sview(wxi_bar, :, :, d2), op, false)
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          # we only need temporary storage in the shape of w, but to be
+          # consistent with the other functions we use the wxi array
+          #wxi[k, j, d2] = w[k, j, d1]*(dxidx[d2, d1, j]*jac[j])
+          dxidx_bar[d2, d1, j] += w[k, j, d1]*jac[j]*wxi_bar[k, j, d2]
+          jac_bar[j] += w[k, j, d1]*dxidx[d2, d1, j]*wxi_bar[k, j, d2]
+        end
+      end
+    end  # end d2
+
+  end  # end d1
+
+  return nothing
+end
+
+function applyQx_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
+                 dxidx_bar::Abstract3DArray,
+                 wxi::Abstract3DArray, wx_bar::AbstractMatrix,
+                 op::SummationByParts.UnaryFunctor=SummationByParts.Add())
+
+  numDofPerNode, numNodesPerElement, dim = size(w)
+
+  @simd for d1=1:dim
+    fill!(wxi, 0)
+    for d2=1:dim
+      weakDifferentiateElement!(sbp, d2, sview(w, :, :, d1), sview(wxi, :, :, d2))
+    end
+
+    @simd for d2=1:dim
+      @simd for j=1:numNodesPerElement
+        @simd for k=1:numDofPerNode
+          #wx[k, j] += op(wxi[k, j, d2] * dxidx[d2, d1, j])
+          dxidx_bar[d2, d1, j] += op(wxi[k, j, d2]*wx_bar[k, j])
+        end
+      end
+    end
+  end
+
+  return nothing
+end
+
+

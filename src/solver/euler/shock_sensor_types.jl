@@ -265,7 +265,12 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   Rp_jac::Array{Tres, 3}
   fp_jac::Array{Tres, 3}
 
-
+  fp_bar::Vector{Tres}
+  Rp_bar::Vector{Tres}
+  press_el_bar::Matrix{Tres}
+  press_dx_bar::Array{Tres, 3}
+  p_dot_bar::Vector{Tres}
+  res_bar::Matrix{Tres}
 
   function ShockSensorHHO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
@@ -298,9 +303,18 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
     Rp_jac = zeros(Tres, numNodesPerElement, numDofPerNode, numNodesPerElement)
     fp_jac = zeros(Tres, numDofPerNode, numNodesPerElement, numNodesPerElement)
 
+    fp_bar = zeros(Tres, numNodesPerElement)
+    Rp_bar = zeros(Tres, numNodesPerElement)
+    press_el_bar = zeros(Tres, 1, numNodesPerElement)
+    press_dx_bar = zeros(Tres, 1, numNodesPerElement, dim)
+    p_dot_bar = zeros(Tres, numDofPerNode)
+    res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+
     return new(C_eps, strongdata, h_k_tilde,
                p_dot, press_el, press_dx, work, res, Rp, fp,
-               p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac)
+               p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac,
+               fp_bar, Rp_bar, press_el_bar, press_dx_bar, p_dot_bar, res_bar)
   end
 end
 
