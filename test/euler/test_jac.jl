@@ -494,10 +494,6 @@ function test_jac_terms_long()
     end
 
 
-
-
-
-
     # test revm products
 
     # regular Roe scheme
@@ -608,7 +604,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------

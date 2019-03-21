@@ -71,6 +71,7 @@ function absvalue_rev(x::Number, x_bar::Number)
   return x2, x2_bar
 end
 
+
 @doc """
 ###Utils.absvalue_deriv
 
@@ -96,6 +97,48 @@ function absvalue_deriv(val::Tval) where Tval
   =#
 
 end # End function absvalue_deriv
+
+#------------------------------------------------------------------------------
+# replace abs with a cubic spline fit near 0, to make it differentiable
+
+"""
+  A replacement for absvalue() that is differentiable everywhere (C^1 continuous)
+
+  Unfortunately, it is somewhat more expensive than absvalue()
+"""
+function absvalue2(val::Number)
+
+  delta = 1e-13
+  if absvalue(val) > delta
+    return absvalue(val)
+  elseif real(val) < 0
+    tmp = val + 100e-15
+    println("tmp = ", tmp)
+    return @evalpoly tmp 100e-15 -1.0 -10e12 100e24
+  else  # real(val) > 0
+    tmp = val
+    return @evalpoly tmp 0.0 0.0 20e12 -100e24
+  end
+end
+
+"""
+  Derivative of abs()
+"""
+function absvalue2_deriv(val::T) where {T <: Number}
+
+  delta = 1e-13
+  if absvalue(val) > delta
+    return sign_c(val)
+  elseif real(val) < 0
+    tmp = val + 100e-15
+     return @evalpoly tmp -1.0 -20e12 300e24
+  else  # real(val) > 0
+    tmp = val
+    return @evalpoly tmp 0.0 40e12 -300e24
+  end
+end
+
+
 
 function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
 

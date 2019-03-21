@@ -462,9 +462,9 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   #   a square numnodes x numnodes matrix for every element
   dissipation_mat::Array{Tmsh, 3}
 
-  Minv3D::Array{Float64, 3}       # inverse mass matrix for application to res, not res_vec
-  Minv::Array{Float64, 1}         # inverse mass matrix
-  M::Array{Float64, 1}            # mass matrix
+  Minv3D::Array{Tmsh, 3}       # inverse mass matrix for application to res, not res_vec
+  Minv::Array{Tmsh, 1}         # inverse mass matrix
+  M::Array{Tmsh, 1}            # mass matrix
 
   # TODO: consider overloading getField instead of having function as
   #       fields

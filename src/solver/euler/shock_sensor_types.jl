@@ -246,6 +246,7 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
 
   strongdata::StrongFormData{Tsol, Tres}
   h_k_tilde::Matrix{Tres}
+  h_k_tilde_bar::Matrix{Tres}
 
   p_dot::Vector{Tsol}
   press_el::Matrix{Tsol}
@@ -280,6 +281,7 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
     C_eps = 1/5  # was 1/5
     strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
     h_k_tilde = Array{Tres}(mesh.dim, mesh.numEl)
+    h_k_tilde_bar = Array{Tres}(mesh.dim, mesh.numEl)
     calcAnisoFactors(mesh, sbp, opts, h_k_tilde)
 
     p_dot = zeros(Tsol, numDofPerNode)
@@ -311,7 +313,7 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
     res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
 
 
-    return new(C_eps, strongdata, h_k_tilde,
+    return new(C_eps, strongdata, h_k_tilde, h_k_tilde_bar,
                p_dot, press_el, press_dx, work, res, Rp, fp,
                p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac,
                fp_bar, Rp_bar, press_el_bar, press_dx_bar, p_dot_bar, res_bar)
@@ -320,7 +322,22 @@ end
 
 function updateMetrics(mesh, sbp, opts, sensor::ShockSensorHHO)
 
-  calcAnisoFactor(mesh, sbp, opts, sensor,h_k_tilde)
+  calcAnisoFactors(mesh, sbp, opts, sensor.h_k_tilde)
+
+  return nothing
+end
+
+function initForRevm(sensor::ShockSensorHHO)
+
+  fill!(sensor.h_k_tilde_bar, 0)
+
+  return nothing
+end
+
+function finishRevm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
+                    opts, sensor::ShockSensorHHO)
+
+  calcAnisoFactors_revm(mesh, sbp, opts, sensor.h_k_tilde, sensor.h_k_tilde_bar)
 
   return nothing
 end

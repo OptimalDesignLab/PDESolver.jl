@@ -393,6 +393,40 @@ function computeStrongResidual_revq(params::ParamType{Tdim},
 end
 
 
+function computeStrongResidual_revm(params::ParamType{Tdim},
+                             sbp::AbstractOperator,
+                             data::StrongFormData{Tsol, Tres},
+                             q::AbstractMatrix,
+                             dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                             jac::AbstractVector, jac_bar::AbstractVector,
+                             res_bar::AbstractMatrix
+                            ) where {Tdim, Tsol, Tres}
+
+  @unpack data flux nrm aux_vars work flux_bar
+  fill!(nrm, 0); fill!(flux_bar, 0)
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    for d=1:Tdim
+      nrm[d] = 1
+      flux_d = sview(flux, :, i, d)
+
+      calcEulerFlux(params, q_i, aux_vars, nrm, flux_d)
+
+      nrm[d] = 0
+    end
+  end
+
+  #applyDx(sbp, flux, dxidx, jac, work, res)
+
+  # reverse sweep
+  applyDx_revm(sbp, flux, dxidx, dxidx_bar, jac, jac_bar, work, res_bar)
+
+  return nothing
+end
+
 
 """
   **Inputs**
@@ -737,5 +771,301 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   return true
 end
+
+
+function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHHO{Tsol, Tres},
+                        q::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix, coords_bar::AbstractMatrix,
+                        dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                        jac::AbstractVector{Tmsh}, jac_bar::AbstractVector,
+                        ee_bar::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  @unpack sensor p_dot press_el press_dx work res Rp fp
+  fill!(press_dx, 0); fill!(res, 0); fill!(Rp, 0)
+
+  # compute Rm
+  computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
+
+  # compute Rp
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    press = calcPressure_diff(params, q_i, p_dot)
+    press_el[1, i] = press
+
+    for j=1:numDofPerNode
+      Rp[i] += p_dot[j]*res[j, i]/press
+    end
+  end
+
+  # compute pressure switch fp (excluding the h_k factor)
+  applyDx(sbp, press_el, dxidx, jac, work, press_dx)
+  for i=1:numNodesPerElement
+    val = zero(Tres)
+    for d=1:Tdim
+      val += press_dx[1, i, d]*press_dx[1, i, d]
+    end
+    fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
+  end
+#=
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      h_fac = sensor.h_k_tilde[d, elnum]
+      Se = h_fac*fp[i]*absvalue(Rp[i])
+      ee_mat[d, i] = Se*h_fac*h_fac*sensor.C_eps
+    end
+  end
+=#
+
+  # reverse sweep
+  @unpack sensor fp_bar Rp_bar press_dx_bar p_dot_bar res_bar
+  fill!(fp_bar, 0); fill!(Rp_bar, 0)
+  fill!(press_dx_bar, 0); fill!(res_bar, 0)
+
+  #TODO: add initRevm function for sensor, to zero out h_k_tilde_bar
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      h_fac = sensor.h_k_tilde[d, elnum]
+      Se_bar = h_fac*h_fac*sensor.C_eps*ee_bar[d, i]
+      fp_bar[i] += h_fac*absvalue(Rp[i])*Se_bar
+      Rp_bar[i] += h_fac*fp[i]*sign_c(Rp[i])*Se_bar
+      sensor.h_k_tilde_bar[d, elnum] += 3*fp[i]*absvalue(Rp[i])*Se_bar
+    end
+  end
+
+  # fp_bar
+  for i=1:numNodesPerElement
+    val = zero(Tres)
+    val_bar = zero(Tres)
+    for d=1:Tdim
+      val += press_dx[1, i, d]*press_dx[1, i, d]
+    end
+    val_bar += fp_bar[i]/(2*sqrt(val)*(press_el[1, i] + 1e-12))
+    #press_el_bar[1, i] += -sqrt(val)*fp_bar[i]/( 
+    #                      (press_el[1, i] + 1e-12)*(press_el[1, i] + 1e-12) )
+    for d=1:Tdim
+      press_dx_bar[1, i, d] += 2*press_dx[1, i, d]*val_bar
+    end
+  end
+  #TODO: press_el_bar unneeded?
+  applyDx_revm(sbp, press_el, dxidx, dxidx_bar, jac, jac_bar, work,
+               press_dx_bar)
+
+
+  # Rp_bar
+   for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    calcPressure_diff(params, q_i, p_dot)
+    press = press_el[1, i]
+    fill!(p_dot_bar, 0)
+
+    for j=1:numDofPerNode
+      #Rp[i] += p_dot[j]*res[j, i]/press
+      #p_dot_bar[j]       += res[j, i]*Rp_bar[i]/press
+      res_bar[j, i]      += p_dot[j]*Rp_bar[i]/press
+      #press_el_bar[1, i] += -p_dot[j]*res[j, i]*Rp_bar[i]/(press*press)
+    end
+
+    #calcPressure_diff_revq(params, q_i, q_bar_i, p_dot_bar, press_el_bar[1, i])
+  end
+
+  computeStrongResidual_revm(params, sbp, sensor.strongdata, q, dxidx,
+                             dxidx_bar, jac, jac_bar, res_bar)
+
+  return true
+end
+
+
+function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
+                          hk_all::AbstractMatrix{T}, hk_all_bar) where {T}
+
+  # compute h_k tilde = h_k/(p + 1), where h_k takes into account the
+  # anisotropy of the element in directory k
+  # compute the p_k first, then compute h_k, where p_k is the integral of the
+  # face normal
+  @assert size(hk_all) == (mesh.dim, mesh.numEl)
+
+  fill!(hk_all, 0)
+
+  # do all faces (interior, boundary, shared)
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    nrm_i = ro_sview(mesh.nrm_face, :, :, i)
+
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.dim
+        fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
+        hk_all[k, iface_i.elementL] += fac
+        hk_all[k, iface_i.elementR] += fac
+      end
+    end
+  end
+
+  for i=1:mesh.numBoundaryFaces
+    bndry_i = mesh.bndryfaces[i]
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, i)
+
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.dim
+        fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
+        hk_all[k, bndry_i.element] += fac
+      end
+    end
+  end
+
+  for peer=1:mesh.npeers
+    for i=1:length(mesh.shared_interfaces[peer])
+      iface_i = mesh.shared_interfaces[peer]
+      nrm_i = ro_sview(mesh.nrm_sharedface[peer], :, :, i)
+
+      for j=1:mesh.numNodesPerFace
+        for k=1:mesh.dim
+          fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
+          hk_all[k, iface_i.elementL] += fac
+        end
+      end
+    end
+  end
+
+# don't do this now because the reverse sweep needs hk_all to have the
+# same values as during the same time during the forward calculation
+#=
+  # hk_all now contains the p_i in each direction
+  # Now compute h_k tilde from p_i
+  for i=1:mesh.numEl
+
+    jac_i = ro_sview(mesh.jac, :, i)
+    vol = zero(T)
+    for j=1:mesh.numNodesPerElement
+      vol += sbp.w[j]/jac_i[j]
+    end
+
+    h_k = vol^(1/mesh.dim)
+    pk_prod = one(T)
+    for d=1:mesh.dim
+      pk_prod *= hk_all[d, i]
+    end
+
+    for d=1:mesh.dim
+      hk_all[d, i] = h_k*pk_prod/(hk_all[d, i]*(sbp.degree + 1))
+    end
+  end
+=#
+
+  # reverse sweep
+  for i=1:mesh.numEl
+
+    jac_i = ro_sview(mesh.jac, :, i)
+    vol = zero(T)
+    for j=1:mesh.numNodesPerElement
+      vol += sbp.w[j]/jac_i[j]
+    end
+
+    h_k = vol^(1/mesh.dim)
+    pk_prod = one(T)
+    for d=1:mesh.dim
+      pk_prod *= hk_all[d, i]
+    end
+    pk_prod_d = pk_prod^(1/mesh.dim)
+
+    pk_prod_d_bar = zero(T)
+    h_k_bar = zero(T)
+    for d=1:mesh.dim
+      #hk_all[d, i] = h_k*pk_prod_d/(hk_all[d, i]*(sbp.degree + 1))
+      tmp = hk_all[d, i]*(sbp.degree + 1)
+      h_k_bar += pk_prod_d*hk_all_bar[d, i]/tmp
+      pk_prod_d_bar += h_k*hk_all_bar[d, i]/tmp
+      hk_all_bar[d, i] = -h_k*pk_prod_d*hk_all_bar[d, i]/(hk_all[d, i]*tmp)
+    end
+
+
+    pk_prod_bar = (pk_prod_d_bar/mesh.dim)*(pk_prod)^((1/mesh.dim) - 1)
+    for d=mesh.dim:-1:1
+      pk_prod /= hk_all[d, i]  # reset primal value
+      hk_all_bar[d, i] += pk_prod*pk_prod_bar
+      pk_prod_bar = hk_all[d, i]*pk_prod_bar
+    end
+
+    jac_bar_i = sview(mesh.jac_bar, :, i)
+    vol_bar = (h_k_bar/mesh.dim)*vol^((1/mesh.dim) - 1)
+    for j=1:mesh.numNodesPerElement
+      jac_bar_i[j] += -sbp.w[j]*vol_bar/(jac_i[j]*jac_i[j])
+    end
+
+  end  # end i
+
+  for i=1:mesh.numInterfaces
+    iface_i = mesh.interfaces[i]
+    nrm_i = ro_sview(mesh.nrm_face, :, :, i)
+    nrm_bar_i = sview(mesh.nrm_face_bar, :, :, i)
+
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.dim
+        fac = absvalue2_deriv(nrm_i[k, j])*mesh.sbpface.wface[j]
+        nrm_bar_i[k, j] += fac*hk_all_bar[k, iface_i.elementL]
+        nrm_bar_i[k, j] += fac*hk_all_bar[k, iface_i.elementR]
+      end
+    end
+  end
+
+  for i=1:mesh.numBoundaryFaces
+    bndry_i = mesh.bndryfaces[i]
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, i)
+    nrm_bar_i = sview(mesh.nrm_bndry_bar, :, :, i)
+
+    for j=1:mesh.numNodesPerFace
+      for k=1:mesh.dim
+        fac = mesh.sbpface.wface[j]*absvalue2_deriv(nrm_i[k, j])
+        nrm_bar_i[k, j] += fac*hk_all_bar[k, bndry_i.element]
+      end
+    end
+  end
+
+  for peer=1:mesh.npeers
+    for i=1:length(mesh.shared_interfaces[peer])
+      iface_i = mesh.shared_interfaces[peer]
+      nrm_i = ro_sview(mesh.nrm_sharedface[peer], :, :, i)
+      nrm_bar_i = sview(mesh.nrm_sharedface_bar[peer], :, :, i)
+
+      for j=1:mesh.numNodesPerFace
+        for k=1:mesh.dim
+          fac = mesh.sbpface.wface[j]*absvalue2_deriv(nrm_i[k, j])
+          nrm_bar_i[k, j] += fac*hk_all_bar[k, iface_i.elementL]
+        end
+      end
+    end
+  end
+
+  # finish the forward computation, so hk_all has the right values in it on
+  # exit.
+  # hk_all now contains the p_i in each direction
+  # Now compute h_k tilde from p_i
+  for i=1:mesh.numEl
+
+    jac_i = ro_sview(mesh.jac, :, i)
+    vol = zero(T)
+    for j=1:mesh.numNodesPerElement
+      vol += sbp.w[j]/jac_i[j]
+    end
+
+    h_k = vol^(1/mesh.dim)
+    pk_prod = one(T)
+    for d=1:mesh.dim
+      pk_prod *= hk_all[d, i]
+    end
+    pk_prod = pk_prod^(1/mesh.dim)
+
+    for d=1:mesh.dim
+      hk_all[d, i] = h_k*pk_prod/(hk_all[d, i]*(sbp.degree + 1))
+    end
+  end
+
+  return nothing
+end
+
 
 

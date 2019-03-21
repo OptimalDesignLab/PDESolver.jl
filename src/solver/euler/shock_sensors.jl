@@ -507,12 +507,13 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
 
     for j=1:mesh.numNodesPerFace
       for k=1:mesh.dim
-        fac = mesh.sbpface.wface[j]*abs(nrm_i[k])
+        fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
         hk_all[k, iface_i.elementL] += fac
         hk_all[k, iface_i.elementR] += fac
       end
     end
   end
+
 
   for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
@@ -520,7 +521,7 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
 
     for j=1:mesh.numNodesPerFace
       for k=1:mesh.dim
-        fac = mesh.sbpface.wface[j]*abs(nrm_i[k])
+        fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
         hk_all[k, bndry_i.element] += fac
       end
     end
@@ -533,16 +534,13 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
 
       for j=1:mesh.numNodesPerFace
         for k=1:mesh.dim
-          fac = mesh.sbpface.wface[j]*abs(nrm_i[k])
+          fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
           hk_all[k, iface_i.elementL] += fac
         end
       end
     end
   end
 
-
-
-  #TODO: parallel and boundaries
   # hk_all now contains the p_i in each direction
   # Now compute h_k tilde from p_i
   for i=1:mesh.numEl
@@ -554,10 +552,11 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
     end
 
     h_k = vol^(1/mesh.dim)
-    pk_prod = zero(T)
+    pk_prod = one(T)
     for d=1:mesh.dim
-      pk_prod += hk_all[d, i]
+      pk_prod *= hk_all[d, i]
     end
+    pk_prod = pk_prod^(1/mesh.dim)
 
     for d=1:mesh.dim
       hk_all[d, i] = h_k*pk_prod/(hk_all[d, i]*(sbp.degree + 1))

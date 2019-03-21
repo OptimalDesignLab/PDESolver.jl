@@ -9,6 +9,7 @@ function test_shocksensorPP()
     opts["order"] = 2
     delete!(opts, "calc_jac_explicit")
     opts["force_solution_complex"] = true
+    opts["force_mesh_complex"] = true
     mesh, sbp, eqn, opts = solvePDE(opts)
 
     Tsol = eltype(eqn.q); Tres = eltype(eqn.res)
@@ -69,6 +70,8 @@ function test_shocksensorPP()
     test_shocksensor_diff(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
 
     test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
+    test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
 
     # case 2: ee on sin wave
     q[1, 3] = 1.0105
@@ -81,7 +84,6 @@ function test_shocksensorPP()
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
-
     # for isotropic grids, the HHO anisotropy factors should be ~h/(p+1)
     for i=1:mesh.numEl
        jac_i = ro_sview(mesh.jac, :, i)
@@ -173,17 +175,16 @@ end
 function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
                                coords, dxidx, jac)
 
-  srand(1234)
   numDofPerNode, numNodesPerElement = size(_q)
   dim = size(dxidx, 1)
 
   Se = zeros(Complex128, dim, numNodesPerElement)
   ee = zeros(Complex128, dim, numNodesPerElement)
-#  q_dot = rand_realpart(size(_q))
-  q_dot = zeros(Complex128, size(_q)); q_dot[5] = 2
+  q_dot = rand_realpart(size(_q))
+#  q_dot = zeros(Complex128, size(_q)); q_dot[5] = 2
   q_bar = zeros(Complex128, size(q_dot))
-#  ee_bar = rand_realpart(size(ee))
-  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 3
+  ee_bar = rand_realpart(size(ee))
+#  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 3
   
   q = zeros(Complex128, numDofPerNode, numNodesPerElement)
   copy!(q, _q)
@@ -217,6 +218,128 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
   return nothing
 end
 
+
+function test_shocksensor_revm(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
+
+  # the capturing scheme doesn't matter here, but eqn.shock_capturing must be set
+  capture = EulerEquationMod.VolumeShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+  eqn.shock_capturing = capture
+
+  srand(1234)
+  elnum = 1
+  q = ro_sview(eqn.q, :, :, elnum)
+  q = eqn.q[:, :, elnum] + 0.1*rand_realpart((mesh.numDofPerNode, mesh.numNodesPerElement))
+  coords = sview(mesh.coords, :, :, elnum)
+  #coords_bar = sview(mesh.coords_bar, :, :, elnum)
+  dxidx = sview(mesh.dxidx, :, :, :, elnum)
+  dxidx_bar = sview(mesh.dxidx_bar, :, :, :, elnum)
+  jac = sview(mesh.jac, :, elnum)
+  jac_bar = sview(mesh.jac_bar, :, elnum)
+
+  params = eqn.params
+  @unpack mesh numNodesPerElement numDofPerNode dim
+
+  zeroBarArrays(mesh)
+
+  #coords_dot = rand_realpart((dim, numNodesPerElement))
+  coords_dot = zeros(dim, numNodesPerElement)
+  coords_bar = zeros(Complex128, dim, numNodesPerElement)
+
+  #dxidx_dot = rand_realpart(size(dxidx))
+  dxidx_dot = zeros(size(dxidx))
+  #dxidx_bar = zeros(Complex128, dim, dim, numNodesPerElement)
+
+  #jac_bar = zeros(Complex128, numNodesPerElement)
+  jac_dot = rand_realpart(size(jac))
+  #jac_dot = zeros(size(jac))
+
+  Se = zeros(Complex128, dim, numNodesPerElement)
+  ee = zeros(Complex128, dim, numNodesPerElement)
+  ee_bar = rand_realpart((dim, numNodesPerElement))
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # complex step
+  coords .+= pert*coords_dot
+  dxidx .+= pert*dxidx_dot
+  jac .+= pert*jac_dot
+  updateMetricDependents(mesh, sbp, eqn, opts)
+  EulerEquationMod.getShockSensor(params, sbp, sensor, q, elnum, coords, dxidx, jac,
+                                  Se, ee)
+  coords .-= pert*coords_dot
+  dxidx .-= pert*dxidx_dot
+  jac .-= pert*jac_dot
+  updateMetricDependents(mesh, sbp, eqn, opts)
+  val1 = sum( imag(ee)./h .* ee_bar)
+
+  # reverse mode
+  EulerEquationMod.initForRevm(sensor)
+  EulerEquationMod.getShockSensor_revm(params, sbp, sensor, q, elnum, coords,
+                                       coords_bar, dxidx, dxidx_bar,
+                                       jac, jac_bar, ee_bar)
+  EulerEquationMod.finishRevm(mesh, sbp, eqn, opts, sensor)
+
+  val2 = sum(dxidx_bar .* dxidx_dot) + sum(jac_bar .* jac_dot) + sum(coords_bar .* coords_dot)
+
+  println("val1 = ", real(val1))
+  println("val2 = ", real(val2))
+  @test abs(val1 - val2) < 1e-12
+
+  return nothing
+end
+
+function test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor)
+
+  println("\nEntered test_ansiofactors")
+  # test calcAnsioFactors
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  zeroBarArrays(mesh)
+
+#  jac_dot = rand_realpart(size(mesh.jac))
+  jac_dot = zeros(size(mesh.jac))
+#  dxidx_dot = rand_realpart(size(mesh.dxidx))
+  dxidx_dot = zeros(size(mesh.dxidx))
+  nrm_face_dot = rand_realpart(size(mesh.nrm_face))
+  nrm_face_dot = zeros(size(mesh.nrm_face))
+  #nrm_bndry_dot = rand_realpart(size(mesh.nrm_bndry))
+  nrm_bndry_dot = zeros(size(mesh.nrm_bndry)); nrm_bndry_dot[2, 1, 1] = 1
+  h_k_bar = rand_realpart(size(sensor.h_k_tilde))
+  h_k_tilde_orig = copy(sensor.h_k_tilde)
+
+  # complex step
+  mesh.nrm_face .+= pert*nrm_face_dot
+  mesh.nrm_bndry .+= pert*nrm_bndry_dot
+  mesh.dxidx .+= pert*dxidx_dot
+  mesh.jac .+= pert*jac_dot
+
+  EulerEquationMod.calcAnisoFactors(mesh, sbp, opts, sensor.h_k_tilde)
+  mesh.nrm_face .-= pert*nrm_face_dot
+  mesh.nrm_bndry .-= pert*nrm_bndry_dot
+  mesh.dxidx .-= pert*dxidx_dot
+  mesh.jac .-= pert*jac_dot
+  h_k_dot = imag(sensor.h_k_tilde)./h
+  val1 = sum(h_k_dot .* h_k_bar)
+  EulerEquationMod.calcAnisoFactors(mesh, sbp, opts, sensor.h_k_tilde)
+
+  copy!(sensor.h_k_tilde_bar, h_k_bar)
+  EulerEquationMod.calcAnisoFactors_revm(mesh, sbp, opts, sensor.h_k_tilde, sensor.h_k_tilde_bar)
+  val2 = sum(mesh.nrm_face_bar .* nrm_face_dot) +
+         sum(mesh.nrm_bndry_bar .* nrm_bndry_dot) +
+         sum(mesh.dxidx_bar .* dxidx_dot) +
+         sum(mesh.jac_bar .* jac_dot)
+
+  println("val1 = ", real(val1))
+  println("val2 = ", real(val2))
+  @test abs(val1 - val2) < 1e-12
+  @test maximum(abs.(sensor.h_k_tilde - h_k_tilde_orig)) < 1e-12
+
+  return nothing
+end
+
+
 function test_vandermonde(params, sbp, coords)
 
   q = zeros(sbp.numnodes)
@@ -249,7 +372,7 @@ function test_vandermonde(params, sbp, coords)
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

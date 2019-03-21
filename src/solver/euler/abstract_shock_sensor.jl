@@ -199,3 +199,78 @@ function getShockSensor_revq(params::AbstractParamType, sbp::AbstractOperator,
   error("abstract method for getShockSensor_revq() called: did you forget to extend it with a new method for shock sensor $(typeof(sensor))")
 
 end
+
+
+"""
+  Reverse mode wrt metrics of the shock sensor
+
+  **Inputs**
+
+   * params
+   * sbp
+   * sensor
+   * q
+   * elnum
+   * coords
+   * dxidx
+   * jac
+   * ee_bar: seed matrix for back-propigation
+
+  **Inputs/Outputs**
+
+   * coords_bar
+   * dxidx_bar
+   * jac_bar
+"""
+function getShockSensor_revm(params::AbstractParamType, sbp::AbstractOperator,
+                        sensor::AbstractShockSensor,
+                        q::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix, coords_bar::AbstractMatrix,
+                        dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                        jac::AbstractVector, jac_bar::AbstractVector,
+                        ee_bar::AbstractMatrix
+                       )
+
+  error("abstract method for getShockSensor_revq() called: did you forget to extend it with a new method for shock sensor $(typeof(sensor))")
+
+end
+
+
+"""
+  Performs any initialization required by the shock sensor at the beginning of
+  a reverse mode wrt metrics calculation.  This is mainly used for zeroing out
+  arrays inside the shock sensor that will be += during the computation.
+
+  This function has an (empty) default function, so shock sensors only need to
+  implement this function if they have to do setup work.
+
+  **Inputs**
+
+   * sensor: an `AbstractShockSensor`
+"""
+function initForRevm(sensor::AbstractShockSensor)
+
+  return nothing
+end
+
+"""
+  Finish back propigation with respect to the metrics by back propgating any
+  array in the `sensor` to the `mesh`.
+
+  This function has an (empty) default function, so shock sensors only need to
+  implement this function if they have work to do.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * sensor: `AbstractShockSensor`
+"""
+function finishRevm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
+                    opts, sensor::AbstractShockSensor)
+
+  return nothing
+end

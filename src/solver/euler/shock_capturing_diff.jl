@@ -89,7 +89,7 @@ end
 # revq
 
 """
-  Reverse mode of `applyShockCapturing`
+  Reverse mode of `applyShockCapturing` wrt q
 
   **Inputs**
 
@@ -113,5 +113,33 @@ end
 
 
 
+
+#------------------------------------------------------------------------------
+# revm
+
+"""
+  Reverse mode of `applyShockCapturing` wrt metrics
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * data: an [`AbstractShockCaputring`](@ref) object
+"""
+function applyShockCapturing_revm(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::AbstractVolumeShockCapturing)
+
+  # unlike AbstractFaceShockCapturing, nothing to do here
+
+  sensor = getShockSensor(capture)
+  initForRevm(sensor)
+  calcShockCapturing_revm(mesh, sbp, eqn, opts, sensor, capture)
+  finishRevm(sensor)
+
+  return nothing
+end
 
 
