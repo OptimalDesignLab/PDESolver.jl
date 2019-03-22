@@ -9,14 +9,10 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              capture::SBPParabolicSC{Tsol, Tres},
                              shockmesh::ShockedElements) where {Tsol, Tres}
 
-  println("initially, residual norm = ", calcNorm(eqn, eqn.res))
-
   computeGradW(mesh, sbp, eqn, opts, capture, shockmesh,
                capture.entropy_vars, capture.diffusion)
 
   computeVolumeTerm(mesh, sbp, eqn, opts, capture, shockmesh)
-
-  println("after volume term, residual norm = ", calcNorm(eqn, eqn.res))
 
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
@@ -28,7 +24,6 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
     computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   end
 
-  println("after boundary term, residual norm = ", calcNorm(eqn, eqn.res))
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
 

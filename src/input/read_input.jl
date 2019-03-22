@@ -353,8 +353,8 @@ if !arg_dict["use_DG"]
 end
 
 if arg_dict["addShockCapturing"]
-  get!(arg_dict, "shock_sensor_name", "SensorPP")
-  get!(arg_dict, "shock_capturing_name", "LDG")
+  get!(arg_dict, "shock_sensor_name", "SensorHHO")
+  get!(arg_dict, "shock_capturing_name", "Volume")
 else
   get!(arg_dict, "shock_sensor_name", "SensorNone")
   get!(arg_dict, "shock_capturing_name", "ShockCapturingNone")
