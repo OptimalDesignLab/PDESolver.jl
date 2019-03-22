@@ -51,6 +51,11 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::Euler
     evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
+  time.t_shock += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing_revm(mesh, sbp, eqn, opts)
+  end
+
+
   time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
 
   # apply inverse mass matrix to eqn.res, necessary for CN
@@ -343,6 +348,33 @@ function evalSourceTerm_revm(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end  # end function
+
+"""
+
+  Reverse mode of `evalShockCapturing` wrt metrics
+
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
+"""
+function evalShockCapturing_revm(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
+
+  # currently there is only one choice for the shock capturing scheme.
+  # If there are more, need something more sophisiticated to choose.
+  # Perhaps add an abstract typed field to eqn containing the structs
+
+  capture = eqn.shock_capturing
+  applyShockCapturing_revm(mesh, sbp, eqn, opts, capture)
+
+  return nothing
+end
+
+
 
 #=
 @doc """

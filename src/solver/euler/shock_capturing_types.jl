@@ -142,10 +142,11 @@ end
 """
 struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
+  sensor::AbstractShockSensor
   function ErrorShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                            eqn, opts,
                                            sensor::AbstractShockSensor) where {Tsol, Tres}
-    return new()
+    return new(sensor)
   end
 end
 

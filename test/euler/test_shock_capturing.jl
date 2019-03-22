@@ -372,7 +372,7 @@ function test_vandermonde(params, sbp, coords)
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
 
 
 #------------------------------------------------------------------------------

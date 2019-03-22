@@ -113,7 +113,6 @@ function absvalue2(val::Number)
     return absvalue(val)
   elseif real(val) < 0
     tmp = val + 100e-15
-    println("tmp = ", tmp)
     return @evalpoly tmp 100e-15 -1.0 -10e12 100e24
   else  # real(val) > 0
     tmp = val

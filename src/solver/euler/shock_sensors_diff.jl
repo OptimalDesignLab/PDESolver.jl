@@ -422,7 +422,7 @@ function computeStrongResidual_revm(params::ParamType{Tdim},
   #applyDx(sbp, flux, dxidx, jac, work, res)
 
   # reverse sweep
-  applyDx_revm(sbp, flux, dxidx, dxidx_bar, jac, jac_bar, work, res_bar)
+  applyDx_revm(sbp, flux, flux_bar, dxidx, dxidx_bar, jac, jac_bar, work, res_bar)
 
   return nothing
 end
@@ -822,11 +822,10 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
 =#
 
   # reverse sweep
-  @unpack sensor fp_bar Rp_bar press_dx_bar p_dot_bar res_bar
-  fill!(fp_bar, 0); fill!(Rp_bar, 0)
+  @unpack sensor fp_bar Rp_bar press_dx_bar p_dot_bar press_el_bar res_bar
+  fill!(fp_bar, 0); fill!(Rp_bar, 0); fill!(press_el_bar, 0)
   fill!(press_dx_bar, 0); fill!(res_bar, 0)
 
-  #TODO: add initRevm function for sensor, to zero out h_k_tilde_bar
   for i=1:numNodesPerElement
     for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
@@ -851,9 +850,9 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
       press_dx_bar[1, i, d] += 2*press_dx[1, i, d]*val_bar
     end
   end
-  #TODO: press_el_bar unneeded?
-  applyDx_revm(sbp, press_el, dxidx, dxidx_bar, jac, jac_bar, work,
-               press_dx_bar)
+  # press_el_bar unneeded, but required by applyDx_revm
+  applyDx_revm(sbp, press_el, press_el_bar, dxidx, dxidx_bar, jac, jac_bar,
+               work, press_dx_bar)
 
 
   # Rp_bar

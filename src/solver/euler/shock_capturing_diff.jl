@@ -137,7 +137,7 @@ function applyShockCapturing_revm(mesh::AbstractMesh, sbp::AbstractOperator,
   sensor = getShockSensor(capture)
   initForRevm(sensor)
   calcShockCapturing_revm(mesh, sbp, eqn, opts, sensor, capture)
-  finishRevm(sensor)
+  finishRevm(mesh, sbp, eqn, opts, sensor)
 
   return nothing
 end

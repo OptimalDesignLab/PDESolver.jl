@@ -232,7 +232,7 @@ function getShockSensor_revm(params::AbstractParamType, sbp::AbstractOperator,
                         ee_bar::AbstractMatrix
                        )
 
-  error("abstract method for getShockSensor_revq() called: did you forget to extend it with a new method for shock sensor $(typeof(sensor))")
+  error("abstract method for getShockSensor_revm() called: did you forget to extend it with a new method for shock sensor $(typeof(sensor))")
 
 end
 

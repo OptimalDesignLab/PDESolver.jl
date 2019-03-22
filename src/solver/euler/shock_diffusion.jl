@@ -289,4 +289,45 @@ function applyDiffusionTensor_revq(obj::ShockDiffusion,
   return nothing
 end
 
+#------------------------------------------------------------------------------
+# revm functions
+
+function applyDiffusionTensor_revm(obj::ShockDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, 
+                    dxidx::Abstract3DArray{Tmsh}, dxidx_bar::Abstract3DArray,
+                    jac::AbstractVector, jac_bar::AbstractVector,
+                    i::Integer, nodes::AbstractVector,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
+                   ) where {Tmsh, Tres}
+
+  numDofPerNode, numNodesPerElement, dim = size(flux)
+
+  @unpack obj Se ee ee_bar
+  fill!(ee_bar, 0)
+
+  getShockSensor(params, sbp, obj.sensor, q, i, coords, dxidx, jac, Se, ee)
+
+  @simd for d=1:dim
+    @simd for j in nodes
+      ee_j = ee[d, j]
+      @simd for k=1:numDofPerNode
+        flux[k, j, d] = ee_j*dx[k, j, d]
+        ee_bar[d, j]    += dx[k, j, d]*flux_bar[k, j, d]
+        dx_bar[k, j, d] += ee_j*flux_bar[k, j, d]
+      end
+    end
+  end
+
+  # coords_bar not supported
+  coords_bar = NullArray{Tmsh}(dim, numNodesPerElement)
+  getShockSensor_revm(params, sbp, obj.sensor, q, i, coords, coords_bar, dxidx,
+                      dxidx_bar, jac, jac_bar, ee_bar)
+
+  return nothing
+end
+
 

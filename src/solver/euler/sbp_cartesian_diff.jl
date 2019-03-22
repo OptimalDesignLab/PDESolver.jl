@@ -482,10 +482,11 @@ end
   **Inputs/Outputs**
 
    * wxi: temporary array, `numDofPerNode` x `numNodesPerElement` x `dim`
+   * w_bar: array updated with result, same size as `w`
    * dxidx_bar: array updated with result, same size as `dxidx`.
 """
-function applyQxTransposed_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
-                             dxidx_bar::Abstract3DArray,
+function applyQxTransposed_revm(sbp, w::AbstractMatrix, w_bar::AbstractMatrix,
+                             dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                              wxi::Abstract3DArray, wx_bar::Abstract3DArray,
                              op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
@@ -510,6 +511,8 @@ function applyQxTransposed_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
     end
   end
 
+  applyQxTransposed_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
+
   return nothing
 end
 
@@ -529,10 +532,11 @@ end
 
    * jac_bar: updated with result
    * dxidx_bar: updated with result
+   * w_bar: updated with result
    * wxi: temporary array
 """
-function applyDx_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
-                 dxidx_bar::Abstract3DArray,
+function applyDx_revm(sbp, w::AbstractMatrix, w_bar::AbstractMatrix,
+                 dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                  jac::AbstractVector, jac_bar::AbstractVector,
                  wxi::Abstract3DArray, wx_bar::Abstract3DArray,
                  op::SummationByParts.UnaryFunctor=SummationByParts.Add())
@@ -556,6 +560,8 @@ function applyDx_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
     end
   end
 
+  applyDx_revq(sbp, w_bar, dxidx, jac, wxi, wx_bar, op)
+
   return nothing
 end
 
@@ -563,8 +569,8 @@ end
   Reverse mode of `applyDxTransposed` with respect to the metrics.  See
   [`applyDx_revm`](@ref) for details.
 """
-function applyDxTransposed_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
-                 dxidx_bar::Abstract3DArray,
+function applyDxTransposed_revm(sbp, w::AbstractMatrix, w_bar::AbstractMatrix,
+                  dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                  jac::AbstractVector, jac_bar::AbstractVector,
                  wxi_bar::Abstract3DArray, wx_bar::Abstract3DArray,
                  op::SummationByParts.UnaryFunctor=SummationByParts.Add())
@@ -604,6 +610,9 @@ function applyDxTransposed_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
     end  # end d2
   end  # end d1
 
+  # back propigate to w_bar
+  applyDxTransposed_revq(sbp, w_bar, dxidx, jac, wxi_bar, wx_bar, op)
+
   return nothing
 end
 
@@ -611,8 +620,8 @@ end
   Reverse mode of `applyQx` with respect to the metrics.  See
   [`applyQxTransposed_revm`](@ref) for details.
 """
-function applyQx_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
-                 dxidx_bar::Abstract3DArray,
+function applyQx_revm(sbp, w::AbstractMatrix, w_bar::AbstractMatrix,
+                 dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                  wxi::Abstract3DArray, wx_bar::Abstract3DArray,
                  op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
@@ -634,6 +643,8 @@ function applyQx_revm(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
     end
   end
 
+  applyQx_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
+
   return nothing
 end
 
@@ -641,8 +652,8 @@ end
 # revm, second method
 
 
-function applyQxTransposed_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
-                             dxidx_bar::Abstract3DArray,
+function applyQxTransposed_revm(sbp, w::Abstract3DArray, w_bar::Abstract3DArray,
+                             dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                              wxi::Abstract3DArray, wx_bar::AbstractMatrix,
                              op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
@@ -664,11 +675,13 @@ function applyQxTransposed_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
 
   end  # end d1
 
+  applyQxTransposed_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
+
   return nothing
 end
 
-function applyDx_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
-                 dxidx_bar::Abstract3DArray,
+function applyDx_revm(sbp, w::Abstract3DArray, w_bar::Abstract3DArray,
+                 dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                  jac::AbstractVector, jac_bar::AbstractVector,
                  wxi::Abstract3DArray, wx_bar::AbstractMatrix,
                  op::SummationByParts.UnaryFunctor=SummationByParts.Add())
@@ -694,11 +707,13 @@ function applyDx_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
 
   end
 
+  applyDx_revq(sbp, w_bar, dxidx, jac, wxi, wx_bar, op)
+
   return nothing
 end
 
-function applyDxTransposed_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
-                 dxidx_bar::Abstract3DArray,
+function applyDxTransposed_revm(sbp, w::Abstract3DArray, w_bar::Abstract3DArray,
+                 dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                  jac::AbstractVector, jac_bar::AbstractVector,
                  wxi_bar::Abstract3DArray, wx_bar::AbstractMatrix,
                  op::SummationByParts.UnaryFunctor=SummationByParts.Add())
@@ -737,11 +752,13 @@ function applyDxTransposed_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
 
   end  # end d1
 
+  applyDxTransposed_revq(sbp, w_bar, dxidx, jac, wxi_bar, wx_bar, op)
+
   return nothing
 end
 
-function applyQx_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
-                 dxidx_bar::Abstract3DArray,
+function applyQx_revm(sbp, w::Abstract3DArray, w_bar::Abstract3DArray,
+                 dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
                  wxi::Abstract3DArray, wx_bar::AbstractMatrix,
                  op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
@@ -762,6 +779,8 @@ function applyQx_revm(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
       end
     end
   end
+
+  applyQx_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
 
   return nothing
 end

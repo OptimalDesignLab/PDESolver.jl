@@ -474,6 +474,7 @@ function test_jac_terms_long()
 
     end
 
+
     # only need to do a single element type because all element volume matrices
     # have the same structure
     println("\nTesting volume shock capturing schemes")
@@ -589,7 +590,7 @@ function test_jac_terms_long()
     opts_tmp["need_adjoint"] = true
     opts_tmp["addShockCapturing"] = true
     opts_tmp["shock_capturing_name"] = "Volume"
-    opts_tmp["shock_sensor_name"] = "SensorVelocity"
+    opts_tmp["shock_sensor_name"] = "SensorHHO"
     opts_tmp["addVolumeIntegrals"] = false
     opts_tmp["addFaceIntegrals"] = false
     opts_tmp["addBoundaryIntegrals"] = false
@@ -597,14 +598,15 @@ function test_jac_terms_long()
 
     mesh_r5, sbp_r5, eqn_r5, opts_r5 = run_solver(fname4)
 
-    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
+   test_revm_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
+   test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
 
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -2380,6 +2382,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
   mesh.nrm_bndry    .+= pert*nrm_bndry_dot
   mesh.nrm_face     .+= pert*nrm_face_dot
   mesh.coords_bndry .+= pert*coords_bndry_dot
+  updateMetricDependents(mesh, sbp, eqn, opts)
 
   fill!(eqn.res, 0)
   evalResidual(mesh, sbp, eqn, opts)
@@ -2391,7 +2394,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
   mesh.nrm_bndry    .-= pert*nrm_bndry_dot
   mesh.nrm_face     .-= pert*nrm_face_dot
   mesh.coords_bndry .-= pert*coords_bndry_dot
-
+  updateMetricDependents(mesh, sbp, eqn, opts)
 
   evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
   val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
@@ -2895,6 +2898,7 @@ end
 function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
 
   Tres = Complex128
+  w_dot = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement)
   wx_bar = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   dxidx_dot = rand_realpart(mesh.dim, mesh.dim, mesh.numNodesPerElement)
   jac_dot = rand_realpart(mesh.numNodesPerElement)
@@ -2902,6 +2906,8 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
   wx1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   wx2 = copy(wx1); wx3 = copy(wx1); wx4 = copy(wx1)
 
+  w_bar1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  w_bar2 = copy(w_bar1); w_bar3 = copy(w_bar1); w_bar4 = copy(w_bar1)
 
   dxidx_bar1 = zeros(Tres, mesh.dim, mesh.dim, mesh.numNodesPerElement)
   jac_bar1 = zeros(mesh.numNodesPerElement)
@@ -2921,31 +2927,33 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
     jac = sview(mesh.jac, :, i)
 
     # perturb all the functions at once
+    w_i .+= pert*w_dot
     dxidx .+= pert*dxidx_dot
     jac .+= pert*jac_dot
     EulerEquationMod.applyQxTransposed(sbp, w_i, dxidx, work, wx1, op)
     EulerEquationMod.applyDx(sbp, w_i, dxidx, jac, work, wx2, op)
     EulerEquationMod.applyDxTransposed(sbp, w_i, dxidx, jac, work, wx3, op)
     EulerEquationMod.applyQx(sbp, w_i, dxidx, work, wx4, op)
+    w_i .-= pert*w_dot
     dxidx .-= pert*dxidx_dot
     jac .-= pert*jac_dot
 
     # test applyQxTransposed, first method
-    EulerEquationMod.applyQxTransposed_revm(sbp, w_i, dxidx, dxidx_bar1, work, wx_bar, op)
+    EulerEquationMod.applyQxTransposed_revm(sbp, w_i, w_bar1, dxidx, dxidx_bar1, work, wx_bar, op)
     wx_dot = imag(wx1)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar1 .* dxidx_dot)
+    val2 = sum(dxidx_bar1 .* dxidx_dot) + sum(w_bar1 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
     @test abs(val1 - val2) < 1e-13
 
     # applyDx, first method
-    EulerEquationMod.applyDx_revm(sbp, w_i, dxidx, dxidx_bar2, jac, jac_bar2,
-                                  work, wx_bar, op)
+    EulerEquationMod.applyDx_revm(sbp, w_i, w_bar2, dxidx, dxidx_bar2, jac,
+                                  jac_bar2, work, wx_bar, op)
     wx_dot = imag(wx2)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot)
+    val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot) + sum(w_bar2 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
@@ -2953,21 +2961,22 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
 
  
     # applyDxTransposed, first method
-    EulerEquationMod.applyDxTransposed_revm(sbp, w_i, dxidx, dxidx_bar3, jac,
-                                            jac_bar3, work, wx_bar, op)
+    EulerEquationMod.applyDxTransposed_revm(sbp, w_i, w_bar3, dxidx, dxidx_bar3,
+                                            jac, jac_bar3, work, wx_bar, op)
     wx_dot = imag(wx3)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot)
+    val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot) + sum(w_bar3 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
     @test abs(val1 - val2) < 1e-13
 
     # applyQx, first method
-    EulerEquationMod.applyQx_revm(sbp, w_i, dxidx, dxidx_bar4, work, wx_bar, op)
+    EulerEquationMod.applyQx_revm(sbp, w_i, w_bar4, dxidx, dxidx_bar4, work,
+                                  wx_bar, op)
     wx_dot = imag(wx4)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar4 .* dxidx_dot)
+    val2 = sum(dxidx_bar4 .* dxidx_dot) + sum(w_bar4 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
@@ -2986,6 +2995,7 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
 
   println("\ntesting second methods")
   Tres = Complex128
+  w_dot = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   wx_bar = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement)
   dxidx_dot = rand_realpart(mesh.dim, mesh.dim, mesh.numNodesPerElement)
   jac_dot = rand_realpart(mesh.numNodesPerElement)
@@ -2993,6 +3003,8 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
   wx1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
   wx2 = copy(wx1); wx3 = copy(wx1); wx4 = copy(wx1)
 
+  w_bar1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  w_bar2 = copy(w_bar1); w_bar3 = copy(w_bar1); w_bar4 = copy(w_bar1)
 
   dxidx_bar1 = zeros(Tres, mesh.dim, mesh.dim, mesh.numNodesPerElement)
   jac_bar1 = zeros(mesh.numNodesPerElement)
@@ -3011,53 +3023,55 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
     jac = sview(mesh.jac, :, i)
 
     # perturb all the functions at once
+    w_i .+= pert*w_dot
     dxidx .+= pert*dxidx_dot
     jac .+= pert*jac_dot
     EulerEquationMod.applyQxTransposed(sbp, w_i, dxidx, work, wx1, op)
     EulerEquationMod.applyDx(sbp, w_i, dxidx, jac, work, wx2, op)
     EulerEquationMod.applyDxTransposed(sbp, w_i, dxidx, jac, work, wx3, op)
     EulerEquationMod.applyQx(sbp, w_i, dxidx, work, wx4, op)
+    w_i .-= pert*w_dot
     dxidx .-= pert*dxidx_dot
     jac .-= pert*jac_dot
 
  
     # test applyQxTransposed, second method
-    EulerEquationMod.applyQxTransposed_revm(sbp, w_i, dxidx, dxidx_bar1, work, wx_bar, op)
+    EulerEquationMod.applyQxTransposed_revm(sbp, w_i, w_bar1, dxidx, dxidx_bar1, work, wx_bar, op)
     wx_dot = imag(wx1)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar1 .* dxidx_dot)
+    val2 = sum(dxidx_bar1 .* dxidx_dot) + sum(w_bar1 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
     @test abs(val1 - val2) < 1e-13
 
     # applyDx, second method
-    EulerEquationMod.applyDx_revm(sbp, w_i, dxidx, dxidx_bar2, jac, jac_bar2,
-                                  work, wx_bar, op)
+    EulerEquationMod.applyDx_revm(sbp, w_i, w_bar2, dxidx, dxidx_bar2, jac,
+                                  jac_bar2, work, wx_bar, op)
     wx_dot = imag(wx2)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot)
+    val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot) + sum(w_bar2 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
     @test abs(val1 - val2) < 1e-13
 
     # applyDxTransposed, second method
-    EulerEquationMod.applyDxTransposed_revm(sbp, w_i, dxidx, dxidx_bar3, jac,
-                                            jac_bar3, work, wx_bar, op)
+    EulerEquationMod.applyDxTransposed_revm(sbp, w_i, w_bar3, dxidx, dxidx_bar3,
+                                            jac, jac_bar3, work, wx_bar, op)
     wx_dot = imag(wx3)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot)
+    val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot) + sum(w_bar3 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))
     @test abs(val1 - val2) < 1e-13
 
      # applyQx, second method
-    EulerEquationMod.applyQx_revm(sbp, w_i, dxidx, dxidx_bar4, work, wx_bar, op)
+    EulerEquationMod.applyQx_revm(sbp, w_i, w_bar4, dxidx, dxidx_bar4, work, wx_bar, op)
     wx_dot = imag(wx4)./h
     val1 = sum(wx_dot .* wx_bar)
-    val2 = sum(dxidx_bar4 .* dxidx_dot)
+    val2 = sum(dxidx_bar4 .* dxidx_dot) + sum(w_bar4 .* w_dot)
 
     println("val1 = ", real(val1))
     println("val2 = ", real(val2))

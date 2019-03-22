@@ -120,8 +120,6 @@ end
             as `w`
    * dx_bar: array to be updated with result of back propigation, same size
              as `dx`
-
-
  
 """
 function applyDiffusionTensor_revq(obj::AbstractDiffusion,
@@ -133,12 +131,61 @@ function applyDiffusionTensor_revq(obj::AbstractDiffusion,
                     jac::AbstractVector,
                     i::Integer, nodes::AbstractVector,
                     dx::Abstract3DArray, dx_bar::Abstract3DArray,
-                    flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
-                   ) where {Tres}
+                    flux::Abstract3DArray, flux_bar::Abstract3DArray
+                   )
 
-  error("abstract fallback for applyDiffusionTensor_revq() reached.  Did you forget to extend applyDiffusionTensor with a new method?")
+  error("abstract fallback for applyDiffusionTensor_revq() reached.  Did you forget to extend applyDiffusionTensor_revq with a new method?")
 end
 
+
+"""
+  Similar to [`applyDiffusionTensor_revq`](@ref), but computes the reverse mode
+  with respect to the metrics rather than `q`.
+
+  **Inputs**
+
+   * obj: the [`AbstractDiffusion`](@ref) object
+   * sbp: `AbstractOperator`
+   * params: `AbstractParamType`
+   * q: the `numDofPerNode` x `numNodesPerElement` array of conservative
+        variables for the element
+   * w: the `numDofPerNode` x `numNodesPerElement` array of entropy variables
+        for the element
+   * coords: the `dim` x `numNodesPerElement` array of the xyz coordinates of
+             the element nodes
+   * dxidx: the `dim` x `dim` x `numNodesPerElement` array of the (scaled)
+            mapping jacobian determinant
+   * jac: the `numNodesPerElement` array of the mapping jacobian determinant.
+   * i: the element number.  This is useful for diffusions where the coeffients
+        are precomputed and stored in an array
+   * nodes: a vector of integers describing which nodes of `flux` need to be
+            populated.
+   * dx: the values to multiply against, `numDofPerNode` x `numNodesPerElement`
+         x `dim`
+   * flux_bar: adjoint part of `flux`, same size
+
+  **Inputs/Outputs**
+
+   * flux: array to overwrite with the result, same size as `dx`
+   * dxidx_bar: array to update with result, same size as `dxidx`
+   * jac_bar: array to update with result, same size as `jac`.
+   * dx_bar: array to be updated with result of back propigation, same size
+             as `dx`
+"""
+function applyDiffusionTensor_revm(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, 
+                    dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                    jac::AbstractVector, jac_bar::AbstractVector,
+                    i::Integer, nodes::AbstractVector,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray, flux_bar::Abstract3DArray
+                   )
+
+  error("abstract fallback for applyDiffusionTensor_revm() reached.  Did you forget to extend applyDiffusionTensor_revm with a new method?")
+end
 
 
 """
@@ -536,7 +583,7 @@ end
 
 #------------------------------------------------------------------------------
 # revq
-#
+
 function applyDiffusionTensor_revq(obj::AbstractDiffusion,
                     sbp::AbstractOperator,
                     params::AbstractParamType,
@@ -562,7 +609,7 @@ function applyDiffusionTensor_revq(obj::AbstractDiffusion,
                     w::AbstractMatrix, w_bar::AbstractMatrix,
                     coords::AbstractMatrix, dxidx::Abstract3DArray,
                     jac::AbstractVector,
-                    i::Integer, sbpface::AbstractFace,
+                    i::Integer, sbpface::AbstractFace, face::Integer,
                     dx::Abstract3DArray, dx_bar::Abstract3DArray,
                     flux::Abstract3DArray{Tres}, flux_bar::Abstract3DArray
                    ) where {Tres}
@@ -571,6 +618,48 @@ function applyDiffusionTensor_revq(obj::AbstractDiffusion,
   nodes = sview(sbpface.perm, :, face)
   applyDiffusionTensor_revq(obj, sbp, params, q, q_bar, w, w_bar, coords,
                             dxidx, jac, i, nodes, dx, dx_bar, flux, flux_bar)
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# revm
+
+function applyDiffusionTensor_revm(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, 
+                    dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                    jac::AbstractVector, jac_bar::AbstractVector,
+                    i::Integer,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray, flux_bar::Abstract3DArray
+                   )
+
+  nodes = 1:size(q, 2)
+  applyDiffusionTensor_revm(obj, sbp, params, q, w, coords, dxidx, dxidx_bar,
+                            jac, jac_bar, i, nodes, dx, dx_bar, flux, flux_bar)
+
+  return nothing
+end
+
+function applyDiffusionTensor_revm(obj::AbstractDiffusion,
+                    sbp::AbstractOperator,
+                    params::AbstractParamType,
+                    q::AbstractMatrix, w::AbstractMatrix,
+                    coords::AbstractMatrix, 
+                    dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                    jac::AbstractVector, jac_bar::AbstractVector,
+                    i::Integer, sbpface::AbstractFace, face::Integer,
+                    dx::Abstract3DArray, dx_bar::Abstract3DArray,
+                    flux::Abstract3DArray, flux_bar::Abstract3DArray
+                   )
+
+  nodes = sview(sbpface.perm, :, face)
+  applyDiffusionTensor_revm(obj, sbp, params, q, w, coords, dxidx, dxidx_bar,
+                            jac, jac_bar, i, nodes, dx, dx_bar, flux, flux_bar)
 
   return nothing
 end
