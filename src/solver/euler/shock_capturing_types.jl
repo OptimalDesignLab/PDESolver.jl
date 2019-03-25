@@ -387,8 +387,8 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
-    entropy_vars = IRVariables()
-#    entropy_vars = ConservativeVariables()
+#    entropy_vars = IRVariables()
+    entropy_vars = ConservativeVariables()
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)

@@ -147,7 +147,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   @debug1 flush(eqn.params.f)
 
   myrank = mesh.myrank
-  reinitNewtonData(newton_data)
+  reinitNewtonData(newton_data, mesh, sbp, eqn, opts)
   verbose = newton_data.verbose
 
   # options

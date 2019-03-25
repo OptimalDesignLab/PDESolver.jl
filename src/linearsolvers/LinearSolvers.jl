@@ -584,7 +584,7 @@ end
 
 
 """
-  Like [`getInnerLO`](@ref), but for linear operators
+  Like [`getInnerPC`](@ref), but for linear operators
 """
 function getInnerLO(lo::T1, ::Type{T2}) where {T1 <: AbstractLO, T2}
 # can't have T2 <: AbstractLO because that would precude Unions like 
