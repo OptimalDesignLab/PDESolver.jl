@@ -123,6 +123,16 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # DS linear solver
       pc_ds, lo_ds = getCNDSPCandLO(mesh, sbp, eqn, opts)
       ls_ds = StandardLinearSolver(pc_ds, lo_ds, eqn.comm, opts)
+      println(" typeof(pc_ds): ", typeof(pc_ds))
+      println(" typeof(lo_ds): ", typeof(lo_ds))
+      println(" typeof(ls_ds): ", typeof(ls_ds))
+
+      # these are needed for direct manipulation of the Petsc Jac later
+      lo_ds_innermost = getBaseLO(lo_ds)     # makes sure to return the innermost LO object (basically returning the Jac)
+      # not needed?
+      println(" typeof(lo_ds_innermost): ", typeof(lo_ds_innermost))    # returns LinearSolvers.PetscMatLO
+      println(" typeof(lo_ds_innermost.A): ", typeof(lo_ds_innermost.A))  # returns PETSc2.PetscMat
+
       newton_data_ds, rhs_vec_ds = setupNewton(mesh, mesh, sbp, eqn, opts, ls_ds)
       newton_data_ds.itermax = 30
       recalc_policy_ds = getRecalculationPolicy(opts, "CN")
@@ -166,7 +176,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # allocation of objects for stabilization routine
       if opts["stabilize_v"]
 
-        stab_A = DiagJac(Complex128, mesh.numDofPerNode*mesh.numNodesPerElement, mesh.numEl)
+        blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
+        stab_A = DiagJac(Complex128, blocksize, mesh.numEl)
         stab_assembler = AssembleDiagJacData(mesh, sbp, eqn, opts, stab_A)
         clipJacData = ClipJacData(mesh.numDofPerNode*mesh.numNodesPerElement)
 
@@ -475,26 +486,70 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         fill!(v_vec, 0.0)
 
-        # Recalculate dRdq
+        # update linear operator
         calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
-        filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="neg")      # arg #3?
 
+        if opts["stabilize_v"]
+
+          # Recalculate dRdq
+          filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="neg")
+          # filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="pos")
+
+          # TODO TODO
+          # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
+          # Need to modify strong jacobian like we modify the CN Jac:
+          # Modify
+
+          # loop over blocks
+          # blocksize is set above (during DiagJac init) as mesh.numDofPerNode*mesh.numNodesPerElement
+          nblocks = size(stab_A.A, 3)       # third dimension of our block diag Jac is the block index
+          ix_petsc_row = zeros(PetscInt, blocksize)
+          ix_petsc_col = zeros(PetscInt, blocksize)
+          block_to_add = zeros(PetscScalar, blocksize, blocksize)
+          for block_ix = 1:nblocks
+
+            for row_ix = 1:length(ix_petsc_row)
+              # set the row indicies that we will insert into
+              ix_petsc_row[row_ix] = blocksize*(block_ix-1)+row_ix
+            end
+            for col_ix = 1:length(ix_petsc_col)
+              ix_petsc_col[col_ix] = blocksize*(block_ix-1)+col_ix
+            end
+
+            for row_ix = 1:length(ix_petsc_row)
+              for col_ix = 1:length(ix_petsc_col)
+                block_to_add[row_ix, col_ix] = stab_A.A[row_ix, col_ix, block_ix]
+              end
+            end
+
+            # We should be subtracting, so we should scale block_to_add by -1.0
+            scale!(block_to_add, -1.0)
+
+            # now subtract the filtered DiagJac to the actual Jacobian, which will remove the positive eigenvalues of
+            #   the strong Jacobian from the actual Jacobian
         
-        # HERE is where we stabilize?
-        # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
-        # Need to modify strong jacobian like we modify the CN Jac:
-        # Modify
+            # Add the negated block to the existing Jac inside the ls_ds LO object
+            # set_values1!(lo_ds_innermost, ix_petsc_row, ix_petsc_col, block_to_add, ADD_VALUES)
+            set_values1!(lo_ds_innermost.A, ix_petsc_row, ix_petsc_col, block_to_add, ADD_VALUES)
 
-        # Choice: calc the stab, then modify it according to modifyJacCN, then add to the ls_ds LO?
-        #     or  modify the ls_ ???
+          end
+
+          MatAssemblyBegin(lo_ds_innermost.A, MAT_FINAL_ASSEMBLY)
+          MatAssemblyEnd(lo_ds_innermost.A, MAT_FINAL_ASSEMBLY)
+
+        end   # end if opts["stabilize_v"]
 
         # linearSolve: solves Ax=b for x
         #   ls::StandardLinearSolver
         #   b::AbstractVector     -> RHS
         #   x::AbstractVector     -> what is solved for
         #   verbose=5
-        linearSolve(ls_ds, b_vec, v_vec)      
         #--------
+        linearSolve(ls_ds, b_vec, v_vec)      
+
+        # Choice: calc the stab, then modify it according to modifyJacCN, then add to the ls_ds LO?
+        #     or  modify the ls_ ???
+
 
         #------------------------------------------------------------------------------
         # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
@@ -573,6 +628,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
         # end
         # RK4: the v_vec assignment is commented out because it should be set inside perturb_Ma just above
+
+        #=
         fill!(R_stab, 0.0)
         for j = 1:length(eqn.q_vec)
           # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
@@ -582,10 +639,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         for j = 1:length(eqn.q_vec)
           v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
         end
+        =#
 
         if (i % output_freq) == 0
-          saveSolutionToMesh(mesh, v_energy)
-          fname = string("v_energy_stageall_", i)
+          # saveSolutionToMesh(mesh, v_energy)
+          # fname = string("v_energy_", i)
+          # writeVisFiles(mesh, fname)
+
+          saveSolutionToMesh(mesh, v_vec)
+          fname = string("v_vec_", i)
           writeVisFiles(mesh, fname)
         end
 

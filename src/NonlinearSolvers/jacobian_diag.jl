@@ -351,7 +351,7 @@ end
         have the unstable modes removed.
 """
 function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2}, 
-                       clipJacData, A::DiagJac{T}, eigs_to_remove) where {T, T2}
+                       clipJacData, A::DiagJac{T}; eigs_to_remove="") where {T, T2}
 
   blocksize, blocksize, nblock = size(A.A)
   T3 = promote_type(T, T2)
