@@ -443,28 +443,28 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
 
   # compute Rp
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = ro_sview(q, :, i)
     press = calcPressure_diff(params, q_i, p_dot)
     press_el[1, i] = press
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
 
   # compute pressure switch fp (excluding the h_k factor)
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     val = zero(Tres)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
     fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
   end
 
-  for i=1:numNodesPerElement
-    for d=1:Tdim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
       Se_mat[d, i] = h_fac*fp[i]*absvalue(Rp[i])
       ee_mat[d, i] = Se_mat[d, i]*h_fac*h_fac*sensor.C_eps
@@ -495,35 +495,39 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
 
   # compute Rp
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = ro_sview(q, :, i)
     press = calcPressure_diff(params, q_i, p_dot)
     press_el[1, i] = press
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
 
   # compute pressure switch fp (excluding the h_k factor)
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     val = zero(Tres)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
     fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
   end
 
   # compute L2 norm of fp * Rp
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     epsilon[1, i] = fp[i]*Rp[i]
   end
 
-  val = computeL2Norm(params, sbp, jac, epsilon)
+  #val = computeL2Norm(params, sbp, jac, epsilon)
+  val = zero(Tres)
+  @simd for i=1:numNodesPerElement
+    val += sbp.w[i]*absvalue(epsilon[1, i])
+  end
 
-  for i=1:numNodesPerElement
-    for d=1:Tdim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
       Se_mat[d, i] = h_fac*val
       ee_mat[d, i] = Se_mat[d, i]*h_fac*h_fac*sensor.C_eps
@@ -561,12 +565,12 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
   fill!(hk_all, 0)
 
   # do all faces (interior, boundary, shared)
-  for i=1:mesh.numInterfaces
+  @simd for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
     nrm_i = ro_sview(mesh.nrm_face, :, :, i)
 
-    for j=1:mesh.numNodesPerFace
-      for k=1:mesh.dim
+    @simd for j=1:mesh.numNodesPerFace
+      @simd for k=1:mesh.dim
         fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
         hk_all[k, iface_i.elementL] += fac
         hk_all[k, iface_i.elementR] += fac
@@ -575,25 +579,25 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
   end
 
 
-  for i=1:mesh.numBoundaryFaces
+  @simd for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
     nrm_i = ro_sview(mesh.nrm_bndry, :, :, i)
 
-    for j=1:mesh.numNodesPerFace
-      for k=1:mesh.dim
+    @simd for j=1:mesh.numNodesPerFace
+      @simd for k=1:mesh.dim
         fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
         hk_all[k, bndry_i.element] += fac
       end
     end
   end
 
-  for peer=1:mesh.npeers
-    for i=1:length(mesh.shared_interfaces[peer])
+  @simd for peer=1:mesh.npeers
+    @simd for i=1:length(mesh.shared_interfaces[peer])
       iface_i = mesh.shared_interfaces[peer]
       nrm_i = ro_sview(mesh.nrm_sharedface[peer], :, :, i)
 
-      for j=1:mesh.numNodesPerFace
-        for k=1:mesh.dim
+      @simd for j=1:mesh.numNodesPerFace
+        @simd for k=1:mesh.dim
           fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
           hk_all[k, iface_i.elementL] += fac
         end
@@ -603,22 +607,22 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
 
   # hk_all now contains the p_i in each direction
   # Now compute h_k tilde from p_i
-  for i=1:mesh.numEl
+  @simd for i=1:mesh.numEl
 
     jac_i = ro_sview(mesh.jac, :, i)
     vol = zero(T)
-    for j=1:mesh.numNodesPerElement
+    @simd for j=1:mesh.numNodesPerElement
       vol += sbp.w[j]/jac_i[j]
     end
 
     h_k = vol^(1/mesh.dim)
     pk_prod = one(T)
-    for d=1:mesh.dim
+    @simd for d=1:mesh.dim
       pk_prod *= hk_all[d, i]
     end
     pk_prod = pk_prod^(1/mesh.dim)
 
-    for d=1:mesh.dim
+    @simd for d=1:mesh.dim
       hk_all[d, i] = h_k*pk_prod/(hk_all[d, i]*(sbp.degree + 1))
     end
   end

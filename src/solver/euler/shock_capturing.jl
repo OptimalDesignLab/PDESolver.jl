@@ -119,8 +119,19 @@ function writeShockSensorField(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
                             jac_i, Se, ee)
 
 
-    val1 = computeL2Norm(eqn.params, sbp, jac_i, Se)
-    val2 = computeL2Norm(eqn.params, sbp, jac_i, ee)
+    #val1 = computeL2Norm(eqn.params, sbp, jac_i, Se)
+    #val2 = computeL2Norm(eqn.params, sbp, jac_i, ee)
+    val1 = zero(Tres); val2 = zero(Tres)
+    for j=1:mesh.numNodesPerElement
+      for d=1:mesh.dim
+        val1 += Se[d, j]
+        val2 += ee[d, j]
+      end
+    end
+
+    val1 /= mesh.dim*mesh.numNodesPerElement
+    val2 /= mesh.dim*mesh.numNodesPerElement
+
     vals[1] = val1
     vals[2] = val2
     apf.setComponents(f_ptr, mesh.elements[i], 0, vals)

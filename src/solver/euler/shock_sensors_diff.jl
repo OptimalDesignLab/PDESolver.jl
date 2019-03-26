@@ -1008,7 +1008,15 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     end
   end
 
-  val = computeL2Norm_diff(params, sbp, jac, epsilon, epsilon_dot, val2_dot)
+  #val = computeL2Norm_diff(params, sbp, jac, epsilon, epsilon_dot, val2_dot)
+  fill!(val2_dot, 0)
+  for q=1:numNodesPerElement
+    for p=1:numNodesPerElement
+      for j=1:numDofPerNode
+        val2_dot[j, q] += absvalue_deriv(epsilon[1, p])*sbp.w[p]*epsilon_dot[1, j, p, q]
+      end
+    end
+  end
 
   for q=1:numNodesPerElement
     for p=1:numNodesPerElement
