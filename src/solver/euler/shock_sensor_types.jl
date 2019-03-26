@@ -238,8 +238,6 @@ end
   This is an approximate version of the sensor from Hartmann's paper:
   "Higher-order and adaptive discontinuous Galerkin methods with
    shock-capturing applied to transonic turbulent delta wing flow"
-
-   Currently does not include the anisotropy factor.
 """
 struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   C_eps::Float64
@@ -320,14 +318,107 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
   end
 end
 
-function updateMetrics(mesh, sbp, opts, sensor::ShockSensorHHO)
+#------------------------------------------------------------------------------
+# Harten's High Order sensor, with elementwise constant viscoscity
+
+struct ShockSensorHHOConst{Tsol, Tres} <: AbstractShockSensor
+  C_eps::Float64
+
+  strongdata::StrongFormData{Tsol, Tres}
+  h_k_tilde::Matrix{Tres}
+  h_k_tilde_bar::Matrix{Tres}
+
+  p_dot::Vector{Tsol}
+  press_el::Matrix{Tsol}
+  press_dx::Array{Tres, 3}
+  work::Array{Tres, 3}
+  res::Array{Tres, 2}
+  Rp::Vector{Tres}
+  fp::Vector{Tres}
+  epsilon::Matrix{Tres}
+
+
+  p_jac::Array{Tsol, 3}
+  res_jac::Array{Tres, 4}
+  p_hess::Matrix{Tsol}
+  Dx::Array{Tres, 3}
+  px_jac::Array{Tres, 5}
+  val_dot::Matrix{Tres}
+  Rp_jac::Array{Tres, 3}
+  fp_jac::Array{Tres, 3}
+  epsilon_dot::Array{Tres, 4}
+  val2_dot::Matrix{Tres}
+
+  fp_bar::Vector{Tres}
+  Rp_bar::Vector{Tres}
+  press_el_bar::Matrix{Tres}
+  press_dx_bar::Array{Tres, 3}
+  p_dot_bar::Vector{Tres}
+  res_bar::Matrix{Tres}
+
+  function ShockSensorHHOConst{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerElement dim
+
+    C_eps = 1/5  # was 1/5
+    strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
+    h_k_tilde = Array{Tres}(mesh.dim, mesh.numEl)
+    h_k_tilde_bar = Array{Tres}(mesh.dim, mesh.numEl)
+    calcAnisoFactors(mesh, sbp, opts, h_k_tilde)
+
+    p_dot = zeros(Tsol, numDofPerNode)
+    press_el = zeros(Tsol, 1, numNodesPerElement)
+    press_dx = zeros(Tres, 1, numNodesPerElement, dim)
+    work = zeros(Tres, 1, numNodesPerElement, dim)
+    res = zeros(Tres, numDofPerNode, numNodesPerElement)
+    Rp = zeros(Tres, numNodesPerElement)
+    fp = zeros(Tres, numNodesPerElement)
+    epsilon = zeros(Tres, 1, numNodesPerElement)
+
+
+    p_jac = zeros(Tsol, 1, numDofPerNode, numNodesPerElement)
+    res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
+                          numNodesPerElement)
+    p_hess = zeros(Tsol, numDofPerNode, numDofPerNode)
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+    px_jac = zeros(Tres, 1, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    val_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+    Rp_jac = zeros(Tres, numNodesPerElement, numDofPerNode, numNodesPerElement)
+    fp_jac = zeros(Tres, numDofPerNode, numNodesPerElement, numNodesPerElement)
+    epsilon_dot = zeros(Tres, 1, numDofPerNode, numNodesPerElement,
+                              numNodesPerElement)
+    val2_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+    fp_bar = zeros(Tres, numNodesPerElement)
+    Rp_bar = zeros(Tres, numNodesPerElement)
+    press_el_bar = zeros(Tres, 1, numNodesPerElement)
+    press_dx_bar = zeros(Tres, 1, numNodesPerElement, dim)
+    p_dot_bar = zeros(Tres, numDofPerNode)
+    res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+
+
+    return new(C_eps, strongdata, h_k_tilde, h_k_tilde_bar,
+               p_dot, press_el, press_dx, work, res, Rp, fp, epsilon,
+               p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac,
+               epsilon_dot, val2_dot,
+               fp_bar, Rp_bar, press_el_bar, press_dx_bar, p_dot_bar, res_bar)
+  end
+end
+
+
+const HHOSensors{Tsol, Tres} = Union{ShockSensorHHO{Tsol, Tres}, ShockSensorHHOConst{Tsol, Tres}}
+
+function updateMetrics(mesh, sbp, opts, sensor::HHOSensors)
 
   calcAnisoFactors(mesh, sbp, opts, sensor.h_k_tilde)
 
   return nothing
 end
 
-function initForRevm(sensor::ShockSensorHHO)
+function initForRevm(sensor::HHOSensors)
 
   fill!(sensor.h_k_tilde_bar, 0)
 
@@ -335,12 +426,13 @@ function initForRevm(sensor::ShockSensorHHO)
 end
 
 function finishRevm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
-                    opts, sensor::ShockSensorHHO)
+                    opts, sensor::HHOSensors)
 
   calcAnisoFactors_revm(mesh, sbp, opts, sensor.h_k_tilde, sensor.h_k_tilde_bar)
 
   return nothing
 end
+
 
 #------------------------------------------------------------------------------
 # Creating shock sensors
@@ -353,6 +445,7 @@ global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSens
 "SensorHIso" => ShockSensorHIso,
 "SensorBO" => ShockSensorBO,
 "SensorHHO" => ShockSensorHHO,
+"SensorHHOConst" => ShockSensorHHOConst,
 )
 
 """

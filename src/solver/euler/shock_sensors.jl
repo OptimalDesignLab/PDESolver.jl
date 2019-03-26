@@ -475,8 +475,68 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
 end
 
 
+#------------------------------------------------------------------------------
+# ShockSensorHHOConst
+
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHHOConst{Tsol, Tres},
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+  @unpack sensor p_dot press_el press_dx work res Rp fp epsilon
+  fill!(press_dx, 0); fill!(res, 0); fill!(Rp, 0)
+
+  # compute Rm
+  computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
+
+  # compute Rp
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    press = calcPressure_diff(params, q_i, p_dot)
+    press_el[1, i] = press
+
+    for j=1:numDofPerNode
+      Rp[i] += p_dot[j]*res[j, i]/press
+    end
+  end
+
+  # compute pressure switch fp (excluding the h_k factor)
+  applyDx(sbp, press_el, dxidx, jac, work, press_dx)
+  for i=1:numNodesPerElement
+    val = zero(Tres)
+    for d=1:Tdim
+      val += press_dx[1, i, d]*press_dx[1, i, d]
+    end
+    fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
+  end
+
+  # compute L2 norm of fp * Rp
+  for i=1:numNodesPerElement
+    epsilon[1, i] = fp[i]*Rp[i]
+  end
+
+  val = computeL2Norm(params, sbp, jac, epsilon)
+
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      h_fac = sensor.h_k_tilde[d, elnum]
+      Se_mat[d, i] = h_fac*val
+      ee_mat[d, i] = Se_mat[d, i]*h_fac*h_fac*sensor.C_eps
+    end
+  end
+
+  return true
+end
+
+
+
 function isShockElement(params::ParamType{Tdim}, sbp::AbstractOperator,
-                        sensor::ShockSensorHHO{Tsol, Tres},
+                        sensor::HHOSensors{Tsol, Tres},
                         q::AbstractMatrix, elnum::Integer,
                         coords::AbstractMatrix,
                         dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},

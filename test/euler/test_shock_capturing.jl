@@ -27,6 +27,7 @@ function test_shocksensorPP()
     sensor3 = EulerEquationMod.ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
     sensor4 = EulerEquationMod.ShockSensorHHO{Tsol, Tres}(mesh, sbp, opts)
     sensor5 = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh, sbp, opts)
+    sensor6 = EulerEquationMod.ShockSensorHHOConst{Tsol, Tres}(mesh, sbp, opts)
     # initial condition is constant, check the sensor reports no shock
     EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, 1, coords,
                                              dxidx, jac, Se, ee)
@@ -68,6 +69,7 @@ function test_shocksensorPP()
     test_shocksensor_diff(eqn.params, sbp, sensor2, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor3, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
+    test_shocksensor_diff(eqn.params, sbp, sensor6, q, coords, dxidx, jac)
 
     test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
     test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
@@ -109,6 +111,7 @@ end
 function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
                                coords, dxidx, jac)
 
+  srand(1234)
   numDofPerNode, numNodesPerElement = size(_q)
   dim = size(dxidx, 1)
 
@@ -142,6 +145,7 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
 
   @test maximum(abs.(Se_jac - Se_jac2)) < 1e-11
   @test maximum(abs.(ee_jac - ee_jac2)) < 1e-11
+
 
   # test vector mode
   q_dot = rand_realpart(size(q))
@@ -463,7 +467,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """
