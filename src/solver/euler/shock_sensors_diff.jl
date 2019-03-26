@@ -102,7 +102,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   lambda_max = zero(Tsol)
   lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)  #TODO: use preallocated version
   h_avg = zero(Tmsh)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = sview(q, :, i)
     lambda_max_dot_i = sview(lambda_max_dot, :, i)
     lambda_max += getLambdaMax_diff(params, q_i, lambda_max_dot_i)
@@ -114,19 +114,19 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   h_avg = h_avg^(1/Tdim)
 
   fill!(ee_jac, 0)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     ee_jac[1, 1, 1, i] = lambda_max*h_avg*ee_dot[i]/sbp.degree
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       ee_jac[1, j, 1, i] += lambda_max_dot[j, i]*ee*h_avg/sbp.degree
     end
   end
   ee *= lambda_max*h_avg/sbp.degree
 
   # fill in the rest of the jac arrays
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
-        for i=1:dim
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
+        @simd for i=1:dim
           Se_jac[i, j, p, q] = Se_jac[1, j, 1, q]
           ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
         end
@@ -202,8 +202,8 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
   fill!(ee_jac, 0)
 
   # derivative with momentum in direction d = d, all others zero
-  for p=1:numNodesPerElement
-    for d=1:dim
+  @simd for p=1:numNodesPerElement
+    @simd for d=1:dim
       Se_jac[d, d+1, p, p] = d
       ee_jac[d, d+1, p, p] = d
     end
@@ -229,8 +229,8 @@ function getShockSensor_revq(params::ParamType, sbp::AbstractOperator,
   numNodesPerElement = size(q, 2)
   dim = size(coords, 1)
 
-  for i=1:numNodesPerElement
-    for d=1:dim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:dim
       ee_mat[d, i] = d*q[d+1, i]
       q_bar[d+1, i] += ee_bar[d, i]*d
     end
@@ -266,17 +266,17 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   h_fac = h_avg^((2 - sensor.beta)/Tdim)
 
   ee = Tres(sensor.C_eps*h_fac*val)
-  for q=1:numNodesPerElement
-    for j=1:numDofPerNode
+  @simd for q=1:numNodesPerElement
+    @simd for j=1:numDofPerNode
       ee_jac[1, j, 1, q] = sensor.C_eps*h_fac*_Se_jac[j, q]
     end
   end
 
   # fill in the rest of the jac arrays
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
-        for i=1:dim
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
+        @simd for i=1:dim
           Se_jac[i, j, p, q] = _Se_jac[j, q]
           ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
         end
@@ -322,9 +322,9 @@ function computeStrongResidual_diff(params::ParamType{Tdim},
   @unpack data flux nrm aux_vars work flux_jac Dx
   fill!(res, 0); fill!(nrm, 0); fill!(flux_jac, 0); fill!(res_jac, 0)
 
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = sview(q, :, i)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       nrm[d] = 1
       flux_d = sview(flux, :, i, d)
       fluxjac_d = sview(flux_jac, :, :, d, i, i)
@@ -376,10 +376,10 @@ function computeStrongResidual_revq(params::ParamType{Tdim},
   # reverse sweep
   applyDx_revq(sbp, flux_bar, dxidx, jac, work, res_bar)
 
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = sview(q, :, i)
     q_bar_i = sview(q_bar, :, i)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       nrm[d] = 1
       flux_bar_d = ro_sview(flux_bar, :, i, d)
 
@@ -407,9 +407,9 @@ function computeStrongResidual_revm(params::ParamType{Tdim},
 
   numDofPerNode, numNodesPerElement = size(q)
 
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = sview(q, :, i)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       nrm[d] = 1
       flux_d = sview(flux, :, i, d)
 
@@ -456,9 +456,9 @@ function computeL2Norm_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   # compute norm
   val = zero(Tres)
   fill!(val_jac, 0)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     fac = sbp.w[i]/jac[i]
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       val += res[j, i]*fac*res[j, i]
     end
   end
@@ -467,11 +467,11 @@ function computeL2Norm_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   # jacobian of val (including the sqrt)
   fac_val = 1/(2*val)
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
       fac = sbp.w[p]/jac[p]
-      for j=1:size(res_jac, 2)
-        for i=1:size(res_jac, 1)
+      @simd for j=1:size(res_jac, 2)
+        @simd for i=1:size(res_jac, 1)
           val_jac[j, q] += fac_val*2*res[i, p]*fac*res_jac[i, j, p, q]
         end
       end
@@ -501,7 +501,7 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   _Se_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
   #lambda_max_dot = zeros(Tres, numDofPerNode, numNodesPerElement)
   h_avg = zero(Tmsh)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = sview(q, :, i)
     lambda_max_dot_i = sview(_Se_jac, :, i)
     lambda_max += getLambdaMax_diff(params, q_i, lambda_max_dot_i)
@@ -512,17 +512,17 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   scale!(_Se_jac, 1/numNodesPerElement)
   h_avg = h_avg^(1/Tdim)
 
-  for i=1:numNodesPerElement
-    for j=1:numDofPerNode
+  @simd for i=1:numNodesPerElement
+    @simd for j=1:numDofPerNode
       ee_jac[1, j, 1, i] = sensor.alpha*h_avg*_Se_jac[j, i]/sbp.degree
     end
   end
 
   # fill in the rest of the jac arrays
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
-        for i=1:dim
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
+        @simd for i=1:dim
           Se_jac[i, j, p, q] = _Se_jac[j, q]
           ee_jac[i, j, p, q] = ee_jac[1, j, 1, q]
         end
@@ -559,8 +559,8 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   computeStrongResidual_diff(params, sbp, sensor.strongdata,
                              q_el, coords, dxidx, jac, res, res_jac)
 
-  # compute pressure and pressure_jac for entire element
-  for p=1:numNodesPerElement
+  # compute pressure and pressure_jac @simd for entire element
+  @simd for p=1:numNodesPerElement
     q_p = ro_sview(q_el, :, p)
     p_dot = sview(p_jac, 1, :, p)
     press_el[1, p] = calcPressure_diff(params, q_p, p_dot)
@@ -570,12 +570,12 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   # jacobian first: p_dot/p * dR/dq + R*d/dq (p_dot/p)
   # first term
   
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
       press = press_el[1, p]
       p_dot = sview(p_jac, 1, :, p)
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
           #res_jac[i, j, p, q] *= p_dot[i]/press
           Rp_jac[p, j, q] += res_jac[i, j, p, q]*p_dot[i]/press
         end
@@ -585,25 +585,25 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   # second term
-  for p=1:numNodesPerElement
+  @simd for p=1:numNodesPerElement
     q_p = sview(q_el, :, p)
     press = press_el[1, p]
     p_dot = sview(p_jac, 1, :, p)
     calcPressure_hess(params, q_p, p_hess)
-    for j=1:numDofPerNode
-      for i=1:numDofPerNode
+    @simd for j=1:numDofPerNode
+      @simd for i=1:numDofPerNode
         Rp_jac[p, j, p] += res[i, p]*(-p_dot[i]*p_dot[j]/(press*press) + p_hess[i, j]/press)
       end
     end
   end
 
   # residual itself
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = ro_sview(q_el, :, i)
     press = press_el[1, i]
     p_dot = sview(p_jac, 1, :, i)
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
@@ -614,13 +614,13 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
-  for p=1:numNodesPerElement
+  @simd for p=1:numNodesPerElement
     val = zero(Tres)
     fill!(val_dot, 0)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, p, d]*press_dx[1, p, d]
-      for q=1:numNodesPerElement
-        for j=1:numDofPerNode
+      @simd for q=1:numNodesPerElement
+        @simd for j=1:numDofPerNode
           val_dot[j, q] += 2*press_dx[1, p, d]*px_jac[1, j, d, p, q]
         end
       end
@@ -634,29 +634,29 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     val3 = val2/t1
 
     # contribution of derivative of val2
-    for q=1:numNodesPerElement
-      for j=1:numDofPerNode
+    @simd for q=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
         val_dot[j, q] = val_dot[j, q]/t1
       end
     end
 
     # contribution of derivative of p
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       val_dot[j, p] += val2*(-p_jac[1, j, p]/(t1*t1))
     end
 
     fp[p] = val3
-    for q=1:numNodesPerElement
-      for j=1:numDofPerNode
+    @simd for q=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
         fp_jac[j, p, q] = val_dot[j, q]
       end
     end
   end
 
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
-        for d=1:Tdim
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
+        @simd for d=1:Tdim
           h_fac = sensor.h_k_tilde[d, elnum]
           Se_jac[d, j, p, q] = h_fac*(fp[p]*sign_c(Rp[p])*Rp_jac[p, j, q] + 
                                       fp_jac[j, p, q]*absvalue(Rp[p]))
@@ -688,28 +688,28 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
 
   # compute Rp
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = ro_sview(q, :, i)
     press = calcPressure_diff(params, q_i, p_dot)
     press_el[1, i] = press
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
 
   # compute pressure switch fp (excluding the h_k factor)
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     val = zero(Tres)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
     fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
   end
 
-  for i=1:numNodesPerElement
-    for d=1:Tdim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
       Se = h_fac*fp[i]*absvalue(Rp[i])
       ee_mat[d, i] = Se*h_fac*h_fac*sensor.C_eps
@@ -722,8 +722,8 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
   fill!(fp_bar, 0); fill!(Rp_bar, 0); fill!(press_el_bar, 0)
   fill!(press_dx_bar, 0); fill!(res_bar, 0)
 
-  for i=1:numNodesPerElement
-    for d=1:Tdim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
       Se_bar = h_fac*h_fac*sensor.C_eps*ee_bar[d, i]
       fp_bar[i] += h_fac*absvalue(Rp[i])*Se_bar
@@ -732,16 +732,16 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
   end
 
   # fp_bar
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     val = zero(Tres)
     val_bar = zero(Tres)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
     val_bar += fp_bar[i]/(2*sqrt(val)*(press_el[1, i] + 1e-12))
     press_el_bar[1, i] += -sqrt(val)*fp_bar[i]/( 
                           (press_el[1, i] + 1e-12)*(press_el[1, i] + 1e-12) )
-    for d=1:Tdim
+    @simd for d=1:Tdim
       press_dx_bar[1, i, d] += 2*press_dx[1, i, d]*val_bar
     end
   end
@@ -749,14 +749,14 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   # Rp_bar
-   for i=1:numNodesPerElement
+   @simd for i=1:numNodesPerElement
     q_i = ro_sview(q, :, i)
     q_bar_i = sview(q_bar, :, i)
     calcPressure_diff(params, q_i, p_dot)
     press = press_el[1, i]
     fill!(p_dot_bar, 0)
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       #Rp[i] += p_dot[j]*res[j, i]/press
       p_dot_bar[j]       += res[j, i]*Rp_bar[i]/press
       res_bar[j, i]      += p_dot[j]*Rp_bar[i]/press
@@ -792,28 +792,28 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
   computeStrongResidual(params, sbp, sensor.strongdata, q, dxidx, jac, res)
 
   # compute Rp
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = ro_sview(q, :, i)
     press = calcPressure_diff(params, q_i, p_dot)
     press_el[1, i] = press
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
 
   # compute pressure switch fp (excluding the h_k factor)
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     val = zero(Tres)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
     fp[i] = sqrt(val)/(press_el[1, i] + 1e-12)
   end
 #=
-  for i=1:numNodesPerElement
-    for d=1:Tdim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
       Se = h_fac*fp[i]*absvalue(Rp[i])
       ee_mat[d, i] = Se*h_fac*h_fac*sensor.C_eps
@@ -826,8 +826,8 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
   fill!(fp_bar, 0); fill!(Rp_bar, 0); fill!(press_el_bar, 0)
   fill!(press_dx_bar, 0); fill!(res_bar, 0)
 
-  for i=1:numNodesPerElement
-    for d=1:Tdim
+  @simd for i=1:numNodesPerElement
+    @simd for d=1:Tdim
       h_fac = sensor.h_k_tilde[d, elnum]
       Se_bar = h_fac*h_fac*sensor.C_eps*ee_bar[d, i]
       fp_bar[i] += h_fac*absvalue(Rp[i])*Se_bar
@@ -837,16 +837,16 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
   end
 
   # fp_bar
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     val = zero(Tres)
     val_bar = zero(Tres)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, i, d]*press_dx[1, i, d]
     end
     val_bar += fp_bar[i]/(2*sqrt(val)*(press_el[1, i] + 1e-12))
     #press_el_bar[1, i] += -sqrt(val)*fp_bar[i]/( 
     #                      (press_el[1, i] + 1e-12)*(press_el[1, i] + 1e-12) )
-    for d=1:Tdim
+    @simd for d=1:Tdim
       press_dx_bar[1, i, d] += 2*press_dx[1, i, d]*val_bar
     end
   end
@@ -856,13 +856,13 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   # Rp_bar
-   for i=1:numNodesPerElement
+   @simd for i=1:numNodesPerElement
     q_i = ro_sview(q, :, i)
     calcPressure_diff(params, q_i, p_dot)
     press = press_el[1, i]
     fill!(p_dot_bar, 0)
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       #Rp[i] += p_dot[j]*res[j, i]/press
       #p_dot_bar[j]       += res[j, i]*Rp_bar[i]/press
       res_bar[j, i]      += p_dot[j]*Rp_bar[i]/press
@@ -902,8 +902,8 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   computeStrongResidual_diff(params, sbp, sensor.strongdata,
                              q_el, coords, dxidx, jac, res, res_jac)
 
-  # compute pressure and pressure_jac for entire element
-  for p=1:numNodesPerElement
+  # compute pressure and pressure_jac @simd for entire element
+  @simd for p=1:numNodesPerElement
     q_p = ro_sview(q_el, :, p)
     p_dot = sview(p_jac, 1, :, p)
     press_el[1, p] = calcPressure_diff(params, q_p, p_dot)
@@ -913,12 +913,12 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
   # jacobian first: p_dot/p * dR/dq + R*d/dq (p_dot/p)
   # first term
   
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
       press = press_el[1, p]
       p_dot = sview(p_jac, 1, :, p)
-      for j=1:numDofPerNode
-        for i=1:numDofPerNode
+      @simd for j=1:numDofPerNode
+        @simd for i=1:numDofPerNode
           #res_jac[i, j, p, q] *= p_dot[i]/press
           Rp_jac[p, j, q] += res_jac[i, j, p, q]*p_dot[i]/press
         end
@@ -928,25 +928,25 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   # second term
-  for p=1:numNodesPerElement
+  @simd for p=1:numNodesPerElement
     q_p = sview(q_el, :, p)
     press = press_el[1, p]
     p_dot = sview(p_jac, 1, :, p)
     calcPressure_hess(params, q_p, p_hess)
-    for j=1:numDofPerNode
-      for i=1:numDofPerNode
+    @simd for j=1:numDofPerNode
+      @simd for i=1:numDofPerNode
         Rp_jac[p, j, p] += res[i, p]*(-p_dot[i]*p_dot[j]/(press*press) + p_hess[i, j]/press)
       end
     end
   end
 
   # residual itself
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     q_i = ro_sview(q_el, :, i)
     press = press_el[1, i]
     p_dot = sview(p_jac, 1, :, i)
 
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       Rp[i] += p_dot[j]*res[j, i]/press
     end
   end
@@ -957,13 +957,13 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 
   applyDx(sbp, press_el, dxidx, jac, work, press_dx)
-  for p=1:numNodesPerElement
+  @simd for p=1:numNodesPerElement
     val = zero(Tres)
     fill!(val_dot, 0)
-    for d=1:Tdim
+    @simd for d=1:Tdim
       val += press_dx[1, p, d]*press_dx[1, p, d]
-      for q=1:numNodesPerElement
-        for j=1:numDofPerNode
+      @simd for q=1:numNodesPerElement
+        @simd for j=1:numDofPerNode
           val_dot[j, q] += 2*press_dx[1, p, d]*px_jac[1, j, d, p, q]
         end
       end
@@ -977,32 +977,32 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
     val3 = val2/t1
 
     # contribution of derivative of val2
-    for q=1:numNodesPerElement
-      for j=1:numDofPerNode
+    @simd for q=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
         val_dot[j, q] = val_dot[j, q]/t1
       end
     end
 
     # contribution of derivative of p
-    for j=1:numDofPerNode
+    @simd for j=1:numDofPerNode
       val_dot[j, p] += val2*(-p_jac[1, j, p]/(t1*t1))
     end
 
     fp[p] = val3
-    for q=1:numNodesPerElement
-      for j=1:numDofPerNode
+    @simd for q=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
         fp_jac[j, p, q] = val_dot[j, q]
       end
     end
   end
 
-  for i=1:numNodesPerElement
+  @simd for i=1:numNodesPerElement
     epsilon[1, i] = fp[i]*Rp[i]
   end
 
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
         epsilon_dot[1, j, p, q] = fp[p]*Rp_jac[p, j, q] + Rp[p]*fp_jac[j, p, q]
       end
     end
@@ -1010,18 +1010,18 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   #val = computeL2Norm_diff(params, sbp, jac, epsilon, epsilon_dot, val2_dot)
   fill!(val2_dot, 0)
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
         val2_dot[j, q] += absvalue_deriv(epsilon[1, p])*sbp.w[p]*epsilon_dot[1, j, p, q]
       end
     end
   end
 
-  for q=1:numNodesPerElement
-    for p=1:numNodesPerElement
-      for j=1:numDofPerNode
-        for d=1:Tdim
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerElement
+      @simd for j=1:numDofPerNode
+        @simd for d=1:Tdim
           h_fac = sensor.h_k_tilde[d, elnum]
           Se_jac[d, j, p, q] = h_fac*val2_dot[j, q]
           ee_jac[d, j, p, q] = Se_jac[d, j, p, q]*h_fac*h_fac*sensor.C_eps
@@ -1047,12 +1047,12 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
   fill!(hk_all, 0)
 
   # do all faces (interior, boundary, shared)
-  for i=1:mesh.numInterfaces
+  @simd for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
     nrm_i = ro_sview(mesh.nrm_face, :, :, i)
 
-    for j=1:mesh.numNodesPerFace
-      for k=1:mesh.dim
+    @simd for j=1:mesh.numNodesPerFace
+      @simd for k=1:mesh.dim
         fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
         hk_all[k, iface_i.elementL] += fac
         hk_all[k, iface_i.elementR] += fac
@@ -1060,25 +1060,25 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
     end
   end
 
-  for i=1:mesh.numBoundaryFaces
+  @simd for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
     nrm_i = ro_sview(mesh.nrm_bndry, :, :, i)
 
-    for j=1:mesh.numNodesPerFace
-      for k=1:mesh.dim
+    @simd for j=1:mesh.numNodesPerFace
+      @simd for k=1:mesh.dim
         fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
         hk_all[k, bndry_i.element] += fac
       end
     end
   end
 
-  for peer=1:mesh.npeers
-    for i=1:length(mesh.shared_interfaces[peer])
+  @simd for peer=1:mesh.npeers
+    @simd for i=1:length(mesh.shared_interfaces[peer])
       iface_i = mesh.shared_interfaces[peer]
       nrm_i = ro_sview(mesh.nrm_sharedface[peer], :, :, i)
 
-      for j=1:mesh.numNodesPerFace
-        for k=1:mesh.dim
+      @simd for j=1:mesh.numNodesPerFace
+        @simd for k=1:mesh.dim
           fac = mesh.sbpface.wface[j]*absvalue2(nrm_i[k, j])
           hk_all[k, iface_i.elementL] += fac
         end
@@ -1112,24 +1112,24 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
 =#
 
   # reverse sweep
-  for i=1:mesh.numEl
+  @simd for i=1:mesh.numEl
 
     jac_i = ro_sview(mesh.jac, :, i)
     vol = zero(T)
-    for j=1:mesh.numNodesPerElement
+    @simd for j=1:mesh.numNodesPerElement
       vol += sbp.w[j]/jac_i[j]
     end
 
     h_k = vol^(1/mesh.dim)
     pk_prod = one(T)
-    for d=1:mesh.dim
+    @simd for d=1:mesh.dim
       pk_prod *= hk_all[d, i]
     end
     pk_prod_d = pk_prod^(1/mesh.dim)
 
     pk_prod_d_bar = zero(T)
     h_k_bar = zero(T)
-    for d=1:mesh.dim
+    @simd for d=1:mesh.dim
       #hk_all[d, i] = h_k*pk_prod_d/(hk_all[d, i]*(sbp.degree + 1))
       tmp = hk_all[d, i]*(sbp.degree + 1)
       h_k_bar += pk_prod_d*hk_all_bar[d, i]/tmp
@@ -1139,7 +1139,7 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
 
 
     pk_prod_bar = (pk_prod_d_bar/mesh.dim)*(pk_prod)^((1/mesh.dim) - 1)
-    for d=mesh.dim:-1:1
+    @simd for d=mesh.dim:-1:1
       pk_prod /= hk_all[d, i]  # reset primal value
       hk_all_bar[d, i] += pk_prod*pk_prod_bar
       pk_prod_bar = hk_all[d, i]*pk_prod_bar
@@ -1147,19 +1147,19 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
 
     jac_bar_i = sview(mesh.jac_bar, :, i)
     vol_bar = (h_k_bar/mesh.dim)*vol^((1/mesh.dim) - 1)
-    for j=1:mesh.numNodesPerElement
+    @simd for j=1:mesh.numNodesPerElement
       jac_bar_i[j] += -sbp.w[j]*vol_bar/(jac_i[j]*jac_i[j])
     end
 
   end  # end i
 
-  for i=1:mesh.numInterfaces
+  @simd for i=1:mesh.numInterfaces
     iface_i = mesh.interfaces[i]
     nrm_i = ro_sview(mesh.nrm_face, :, :, i)
     nrm_bar_i = sview(mesh.nrm_face_bar, :, :, i)
 
-    for j=1:mesh.numNodesPerFace
-      for k=1:mesh.dim
+    @simd for j=1:mesh.numNodesPerFace
+      @simd for k=1:mesh.dim
         fac = absvalue2_deriv(nrm_i[k, j])*mesh.sbpface.wface[j]
         nrm_bar_i[k, j] += fac*hk_all_bar[k, iface_i.elementL]
         nrm_bar_i[k, j] += fac*hk_all_bar[k, iface_i.elementR]
@@ -1167,27 +1167,27 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
     end
   end
 
-  for i=1:mesh.numBoundaryFaces
+  @simd for i=1:mesh.numBoundaryFaces
     bndry_i = mesh.bndryfaces[i]
     nrm_i = ro_sview(mesh.nrm_bndry, :, :, i)
     nrm_bar_i = sview(mesh.nrm_bndry_bar, :, :, i)
 
-    for j=1:mesh.numNodesPerFace
-      for k=1:mesh.dim
+    @simd for j=1:mesh.numNodesPerFace
+      @simd for k=1:mesh.dim
         fac = mesh.sbpface.wface[j]*absvalue2_deriv(nrm_i[k, j])
         nrm_bar_i[k, j] += fac*hk_all_bar[k, bndry_i.element]
       end
     end
   end
 
-  for peer=1:mesh.npeers
-    for i=1:length(mesh.shared_interfaces[peer])
+  @simd for peer=1:mesh.npeers
+    @simd for i=1:length(mesh.shared_interfaces[peer])
       iface_i = mesh.shared_interfaces[peer]
       nrm_i = ro_sview(mesh.nrm_sharedface[peer], :, :, i)
       nrm_bar_i = sview(mesh.nrm_sharedface_bar[peer], :, :, i)
 
-      for j=1:mesh.numNodesPerFace
-        for k=1:mesh.dim
+      @simd for j=1:mesh.numNodesPerFace
+        @simd for k=1:mesh.dim
           fac = mesh.sbpface.wface[j]*absvalue2_deriv(nrm_i[k, j])
           nrm_bar_i[k, j] += fac*hk_all_bar[k, iface_i.elementL]
         end
@@ -1199,22 +1199,22 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
   # exit.
   # hk_all now contains the p_i in each direction
   # Now compute h_k tilde from p_i
-  for i=1:mesh.numEl
+  @simd for i=1:mesh.numEl
 
     jac_i = ro_sview(mesh.jac, :, i)
     vol = zero(T)
-    for j=1:mesh.numNodesPerElement
+    @simd for j=1:mesh.numNodesPerElement
       vol += sbp.w[j]/jac_i[j]
     end
 
     h_k = vol^(1/mesh.dim)
     pk_prod = one(T)
-    for d=1:mesh.dim
+    @simd for d=1:mesh.dim
       pk_prod *= hk_all[d, i]
     end
     pk_prod = pk_prod^(1/mesh.dim)
 
-    for d=1:mesh.dim
+    @simd for d=1:mesh.dim
       hk_all[d, i] = h_k*pk_prod/(hk_all[d, i]*(sbp.degree + 1))
     end
   end
