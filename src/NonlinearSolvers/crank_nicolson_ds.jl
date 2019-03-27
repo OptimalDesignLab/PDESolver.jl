@@ -108,7 +108,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #           new to the CN version of the complex step method (CSR: 'complex step residual')
       old_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn
       new_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn_nextstep
+      old_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn
+      new_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn_nextstep
       res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
+      # TODO: ensure all of these are being used when debugging complete; otherwise, cleanup
 
       beforeDS_eqn_q_vec = zeros(eqn.q_vec)
       beforeDS_eqn_nextstep_q_vec = zeros(eqn.q_vec)
@@ -394,6 +397,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           beforeDS_eqn_res_vec[ix_dof] = eqn.res_vec[ix_dof]
           beforeDS_eqn_nextstep_res_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
         end
+        println(BSTDOUT, " q_vec and res_vec, both eqn & eqn_nextstep saved")
 
 
         #------------------------------------------------------------------------------
@@ -403,6 +407,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         pert = complex(0, Ma_pert_mag)
         # eqn.params.Ma += pert
         eqn_nextstep.params.Ma += pert
+        println(BSTDOUT, " Perturbing Ma. eqn_nextstep.params.Ma: ", eqn_nextstep.params.Ma)
+
         #=
         # DEBUG_CNTHES
         println("-------------- term23 debugging 0 -------------")
@@ -417,21 +423,42 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
 
         for ix_dof = 1:mesh.numDof
-          old_res_vec_Maimag[ix_dof] = new_res_vec_Maimag[ix_dof]        # F(q^(n)) -- with Ma perturbation
-          new_res_vec_Maimag[ix_dof] = eqn_nextstep.res_vec[ix_dof]      # F(q^(n+1)) -- with Ma perturbation
+          # store F(q^(n)): it was calculated as F(q^(n+1)) during the last time step
+          old_res_vec_Maimag[ix_dof] = new_res_vec_Maimag[ix_dof]         # F(q^(n)) -- with Ma perturbation
+          old_q_vec_Maimag[ix_dof] = new_q_vec_Maimag[ix_dof]             # q^(n) -- with Ma perturbation
+
+          new_res_vec_Maimag[ix_dof] = eqn_nextstep.res_vec[ix_dof]       # F(q^(n+1)) -- with Ma perturbation
+          new_q_vec_Maimag[ix_dof] = eqn_nextstep.q_vec[ix_dof]           # q^(n+1) -- with Ma perturbation
 
           # form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
-          res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          # res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          # TODO: above is wrong?? that was the first attempt
+
+          # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
+          res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] 
+                                - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
         end
+        println(BSTDOUT, " vecnorm(res_hat_vec): ", vecnorm(res_hat_vec))
+        println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
+        println(BSTDOUT, " vecnorm(imag(new_q_vec_Maimag)): ", vecnorm(imag(new_q_vec_Maimag)))
+        println(BSTDOUT, " vecnorm(old_q_vec_Maimag): ", vecnorm(old_q_vec_Maimag))
+        println(BSTDOUT, " vecnorm(imag(old_q_vec_Maimag)): ", vecnorm(imag(old_q_vec_Maimag)))
+        println(BSTDOUT, " vecnorm(new_res_vec_Maimag): ", vecnorm(new_res_vec_Maimag))
+        println(BSTDOUT, " vecnorm(imag(new_res_vec_Maimag)): ", vecnorm(imag(new_res_vec_Maimag)))
+        println(BSTDOUT, " vecnorm(old_res_vec_Maimag): ", vecnorm(old_res_vec_Maimag))
+        println(BSTDOUT, " vecnorm(imag(old_res_vec_Maimag)): ", vecnorm(imag(old_res_vec_Maimag)))
+
 
         # obtain dR/dM using the complex step method
         for ix_dof = 1:mesh.numDof
           # dRdM_vec[ix_dof] = imag(dRdM_vec[ix_dof])/Ma_pert_mag     # TODO TODO, what am I doing here
           dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
         end
+        println(BSTDOUT, " vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
 
         # eqn.params.Ma -= pert
         eqn_nextstep.params.Ma -= pert
+        println(BSTDOUT, " Removing Ma perturbation. eqn_nextstep.params.Ma: ", eqn_nextstep.params.Ma)
         #------------------------------------------------------------------------------
 
         #------------------------------------------------------------------------------
@@ -444,6 +471,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         for ix_dof = 1:mesh.numDof
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
           eqn_nextstep.q_vec[ix_dof] += Ma_pert_mag*im*v_vec[ix_dof]
+          # TODO: don't think it's this easy: check derivation. v_vec is what? n or n+1? where should it be applied? not both.
         end
         #=
         # DEBUG_CNTHES
@@ -488,6 +516,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # update linear operator
         calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+
+        # CN modify???? TODO
 
         if opts["stabilize_v"]
 
