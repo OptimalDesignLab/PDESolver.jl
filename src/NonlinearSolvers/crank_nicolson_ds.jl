@@ -435,10 +435,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # TODO: above is wrong?? that was the first attempt
 
           # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
-          res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] 
-                                - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+
+          imag_contrib = imag(- 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof]))
+          imag_contrib2 = imag(new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof]))
+          # println(BSTDOUT, " ix_dof: ", ix_dof,"  imag_contrib: ", imag_contrib, "  imag_contrib2: ", imag_contrib2, 
+                           # "  eqn.Minv: ", eqn.Minv[ix_dof], "  res_hat_vec: ", res_hat_vec[ix_dof], "  imag(res_hat_vec): ", imag(res_hat_vec[ix_dof]))
         end
-        println(BSTDOUT, " vecnorm(res_hat_vec): ", vecnorm(res_hat_vec))
+        println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
         println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
         println(BSTDOUT, " vecnorm(imag(new_q_vec_Maimag)): ", vecnorm(imag(new_q_vec_Maimag)))
         println(BSTDOUT, " vecnorm(old_q_vec_Maimag): ", vecnorm(old_q_vec_Maimag))
@@ -447,6 +451,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " vecnorm(imag(new_res_vec_Maimag)): ", vecnorm(imag(new_res_vec_Maimag)))
         println(BSTDOUT, " vecnorm(old_res_vec_Maimag): ", vecnorm(old_res_vec_Maimag))
         println(BSTDOUT, " vecnorm(imag(old_res_vec_Maimag)): ", vecnorm(imag(old_res_vec_Maimag)))
+        println(BSTDOUT, " vecnorm(res_hat_vec): ", vecnorm(res_hat_vec))
+        println(BSTDOUT, " vecnorm(imag(res_hat_vec)): ", vecnorm(imag(res_hat_vec)))
+        # 20190328: q_vec does not contain imaginary components here
+        # should I be collecting into q?
 
 
         # obtain dR/dM using the complex step method
@@ -470,8 +478,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # so: need to add evi to old_q_vec too. Because to form res_hat, need F(q^(n)) and F(q^(n+1))
         for ix_dof = 1:mesh.numDof
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
-          eqn_nextstep.q_vec[ix_dof] += Ma_pert_mag*im*v_vec[ix_dof]
-          # TODO: don't think it's this easy: check derivation. v_vec is what? n or n+1? where should it be applied? not both.
+          # TODO: commented this eqn_nextstep application out. Verify with formulation.
+          #       Do I need to save and restore eqn_nextstep??? Could save cycles
         end
         #=
         # DEBUG_CNTHES
@@ -487,12 +495,18 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
-        f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
+        # f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
+        # TODO: commented this eqn_nextstep calculation out. Verify with formulation.
 
         for ix_dof = 1:mesh.numDof
           
           # form unsteady residual (res_hat) with F(q^(n) + evi) and F(q^(n+1) + evi)
-          res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (eqn_nextstep.res_vec[ix_dof] + eqn.res_vec[ix_dof])
+          # res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (eqn_nextstep.res_vec[ix_dof] + eqn.res_vec[ix_dof])
+          # WRONG
+
+          # dR_hat^(n)/dq^(n) * v^(n) = 
+          #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
+          res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
 
           # calc dRdq * v^(n) by doing matrix-free complex step
           dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
@@ -505,6 +519,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdM_vec[ix_dof] - dRdq_vn_prod[ix_dof]
 
         end
+        println(BSTDOUT, " vecnorm(res_hat_vec) (perturbed by v_vec for mat-free product): ", vecnorm(res_hat_vec))
+        println(BSTDOUT, " vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
+        println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
 
         #------------------------------------------------------------------------------
         # Now the calculation of v_ix at n+1
@@ -576,6 +593,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   verbose=5
         #--------
         linearSolve(ls_ds, b_vec, v_vec)      
+        println(BSTDOUT, " vecnorm(v_vec): ", vecnorm(v_vec))
 
         # Choice: calc the stab, then modify it according to modifyJacCN, then add to the ls_ds LO?
         #     or  modify the ls_ ???
