@@ -61,6 +61,7 @@ include("test_staggered.jl")
 include("test_checkpoint.jl")
 include("test_coordsfd.jl")
 include("test_shock_capturing.jl")
+include("test_lps.jl")
 
 #------------------------------------------------------------------------------
 # run tests

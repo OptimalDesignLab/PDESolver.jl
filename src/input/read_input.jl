@@ -727,7 +727,18 @@ end
 
     error("type 2 face integral not supported for Diagonal E operators on flux grid, use type 1 face integral with appropriate flux function instead")
   end
-    
+
+  if arg_dict["use_lps"]
+    if arg_dict["use_staggered_grid"]
+      key = "operator_type2"
+    else
+      key = "operator_type"
+    end
+    if !contains(arg_dict[key], "DiagonalE")
+      error("cannot use LPS stabiization with non diagonal E operators")
+    end
+  end
+  
 
 
 

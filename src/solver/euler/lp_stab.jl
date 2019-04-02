@@ -2,6 +2,7 @@
 
 import SummationByParts: UnaryFunctor, Add, Subtract
 
+#=
 """
   Computes the LPS matrix P = I - L*L^T*H
 """
@@ -14,6 +15,20 @@ function getLPSMatrix(sbp::AbstractOperator)
   end
 
   return P
+end
+=#
+function getLPSMatrix(sbp::AbstractOperator)
+
+  diss = zeros(sbp.numnodes, sbp.numnodes)
+
+  x = calcnodes(sbp)
+  V = SummationByParts.calcvandermondproriol(x.', sbp.degree)
+
+  # Minv = diagm(1./diag(V.'*diagm(sbp.w)*V))
+  # Minv is the idenity, since the V's are orthogonal in L2
+  diss[:,:] = eye(sbp.numnodes) - (V*V.')*diagm(sbp.w)
+
+  return diss
 end
 
 """
