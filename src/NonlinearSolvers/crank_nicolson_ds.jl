@@ -403,21 +403,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #------------------------------------------------------------------------------
         # This section calculates dR/dM
 
+        # TODO Make sure to remove this v_vec. Making v^(n) a random vector for testing purposes.
+        # v_vec = rand(size(v_vec))
+
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
         # eqn.params.Ma += pert
         eqn_nextstep.params.Ma += pert
         println(BSTDOUT, " Perturbing Ma. eqn_nextstep.params.Ma: ", eqn_nextstep.params.Ma)
-
-        #=
-        # DEBUG_CNTHES
-        println("-------------- term23 debugging 0 -------------")
-        println(" i: ", i)
-        println(" eqn.params.Ma: ", eqn.params.Ma)
-        println(" eqn_nextstep.params.Ma: ", eqn.params.Ma)
-        println(" f: ", f)
-        println("-----------------------------------------------")
-        =#
 
         # now evalResidual to store into F(q^(n+1))
         f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
@@ -440,10 +433,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           #                       - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
           res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
-          imag_contrib = imag(- 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof]))
-          imag_contrib2 = imag(new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof]))
-          # println(BSTDOUT, " ix_dof: ", ix_dof,"  imag_contrib: ", imag_contrib, "  imag_contrib2: ", imag_contrib2, 
-                           # "  eqn.Minv: ", eqn.Minv[ix_dof], "  res_hat_vec: ", res_hat_vec[ix_dof], "  imag(res_hat_vec): ", imag(res_hat_vec[ix_dof]))
         end
         println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
         println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
@@ -462,13 +451,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " vecnorm(imag(old_res_vec_Maimag)): ", vecnorm(imag(old_res_vec_Maimag)))
         println(BSTDOUT, " vecnorm(res_hat_vec): ", vecnorm(res_hat_vec))
         println(BSTDOUT, " vecnorm(imag(res_hat_vec)): ", vecnorm(imag(res_hat_vec)))
-        # 20190328: q_vec does not contain imaginary components here
         # should I be collecting into q?
-
 
         # obtain dR/dM using the complex step method
         for ix_dof = 1:mesh.numDof
-          # dRdM_vec[ix_dof] = imag(dRdM_vec[ix_dof])/Ma_pert_mag     # TODO TODO, what am I doing here
           dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
         end
         println(BSTDOUT, " vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
@@ -490,18 +476,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # TODO: commented this eqn_nextstep application out. Verify with formulation.
           #       Do I need to save and restore eqn_nextstep??? Could save cycles
         end
-        #=
-        # DEBUG_CNTHES
-        println("-------------- term23 debugging 1 -------------")
-        println(" i: ", i)
-        println(" eqn.params.Ma: ", eqn.params.Ma)
-        println(" vecnorm(real(eqn.q_vec)): ", vecnorm(real(eqn.q_vec)))
-        println(" vecnorm(imag(eqn.q_vec)): ", vecnorm(imag(eqn.q_vec)))
-        println(" vecnorm(real(eqn_nextstep.q_vec)): ", vecnorm(real(eqn_nextstep.q_vec)))
-        println(" vecnorm(imag(eqn_nextstep.q_vec)): ", vecnorm(imag(eqn_nextstep.q_vec)))
-        println("-----------------------------------------------")
-        =#
-
 
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
         # f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
@@ -551,7 +525,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn_nextstep.res_vec[ix_dof] = beforeDS_eqn_nextstep_res_vec[ix_dof]
         end
 
-        # update linear operator
+        # Update linear operator:
+        #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
         calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
         # CN modify???? TODO
