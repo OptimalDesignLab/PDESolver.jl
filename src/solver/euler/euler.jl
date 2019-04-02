@@ -733,6 +733,9 @@ function addStabilization(mesh::AbstractMesh{Tmsh},
 #    test_GLS(mesh, sbp, eqn, opts)
   end
 
+  if opts["use_lps"]
+    applyLPStab(mesh, sbp, eqn, opts)
+  end
 #  println("==== end of addStabilization ====")
 
 

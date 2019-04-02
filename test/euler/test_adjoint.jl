@@ -59,6 +59,9 @@ function test_adjoint()
     DJDaoa_fd = (val2 - real(val))/pert
     err_val = norm(DJDaoa - DJDaoa_fd, 2)
 
+    println("dJDaoa = ", DJDaoa)
+    println("dJdaoa_fd = ", DJDaoa_fd)
+    println("diff = ", DJDaoa - DJDaoa_fd)
     @test isapprox( err_val, 0.0) atol= 1e-6
 
   end # End  testset("Checking complete derivative of a functional using adjoint vector")

@@ -729,9 +729,9 @@ function (obj::noPenetrationBC)(params::ParamType2,
   # params says we are using entropy variables
 
 
-#  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
 #  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
-  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
 
   return nothing
 end

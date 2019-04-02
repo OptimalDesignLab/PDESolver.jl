@@ -259,7 +259,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
   #TODO: make a type to store these
   iter = 1
   homotopy_tol = 1e-2
-  delta_max = 1.0  # step size limit, set to 1 initially,
+  delta_max = 0.5  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
   psi = 0.0  # angle between tangent vectors
   tan_norm = 0.0  # current tangent vector norm
@@ -383,12 +383,14 @@ function predictorCorrectorHomotopy(physics_func::Function,
     for i=1:length(eqn.q)
       delta_q[i] = eqn.q_vec[i] - q_vec0[i]
     end
-    #TODO: compute SBP L2 norm?
     delta = calcNorm(eqn, delta_q)
-    delta = calcEuclidianNorm(mesh.comm, delta_q)
-    if iter == 2
-      delta_max = delta
-    end
+    println("L2 norm delta = ", delta)
+    #delta = calcEuclidianNorm(mesh.comm, delta_q)
+    #println("Euclidian norm delta = ", delta)
+    #if iter == 2
+    #  delta_max = delta
+    #  println("delta max = ", delta_max)
+    #end
 
     # predictor step calculation
     if abs(lambda - lambda_min) > eps()
@@ -406,18 +408,24 @@ function predictorCorrectorHomotopy(physics_func::Function,
       eqn.params.time.t_solve += tsolve
 
       # normalize tangent vector
+      # t = [z, -1], where z is a delta_q sized vector, so the norm is
+      # sqrt(calcNorm(z)^2 + (1)^2).  In the code tan_vec = z, so what is
+      # really happenening is the z component of t is being normalize.  The
+      # -1 component will be handled below
       tan_norm = calcNorm(eqn, tan_vec)
-#      tan_norm = calcEuclidianNorm(mesh.comm, tan_vec)
       tan_norm = sqrt(tan_norm*tan_norm + 1)
       scale!(tan_vec, 1/tan_norm)
 
       psi = psi_max
       if iter > 1
+        #TODO: make psi real, not complex
         # compute phi = acos(tangent_i_1 dot tangent_i)
-        # however, use the L2 norm for the q part of the tangent vector
-#        tan_term = dot(tan_vec_1, tan_vec)
+        # however, use the L2 norm for the z part of the tangent vector
         tan_term = calcL2InnerProduct(eqn, tan_vec_1, tan_vec)
 #        time.t_allreduce += @elapsed tan_term = MPI.Allreduce(tan_term, MPI.SUM, eqn.comm)
+        # now add the normalized -1 components of t_i and t_i_1 to complete
+        # the inner product between t_i and t_i_1 = inner_product(z_i, z_i_1) 
+        # + -1*-1/(||z_i||*||z_i_1||)
         tan_norm_term = (1/tan_norm)*(1/tan_norm_1)
         arg = tan_term + tan_norm_term
         arg = clamp(arg, -1.0, 1.0)
@@ -429,8 +437,13 @@ function predictorCorrectorHomotopy(physics_func::Function,
       tan_norm_1 = tan_norm
 
       # calculate step size
-      fac = max(psi/psi_max, sqrt(delta/delta_max))
+      fac = max(real(psi/psi_max), sqrt(delta/delta_max))
+      #fac = real(psi/psi_max)
+      println("psi/psi_max = ", psi/psi_max)
+      println("delta/delta_max = ", delta/delta_max)
+      println("fac = ", fac)
       h /= fac
+      println("new h = ", h)
 
       # take predictor step
       scale!(tan_vec, h)

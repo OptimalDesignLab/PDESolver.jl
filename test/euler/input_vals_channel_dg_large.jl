@@ -30,5 +30,6 @@ arg_dict = Dict{String, Any}(
 "step_tol" => 1e-9,
 "itermax" => 20,
 "write_face_vertnums" => true,
-"solve" => false
+"solve" => false,
+"error_undefined_bc" => false,
 )

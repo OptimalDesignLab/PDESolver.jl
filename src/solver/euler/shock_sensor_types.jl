@@ -225,7 +225,7 @@ mutable struct ShockSensorBO{Tsol, Tres} <: AbstractShockSensor
   alpha::Float64  # arbitrary coeffcieint
   function ShockSensorBO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
-    alpha = 1.0
+    alpha = 0.01  # was 1.0
     return new(alpha)
   end
 end

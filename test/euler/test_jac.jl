@@ -35,7 +35,7 @@ function test_jac_terms()
     
     test_pressure(eqn.params)
     test_pressure(eqn3.params)
-#=
+
     test_eulerflux(eqn.params)
     test_eulerflux_revm(eqn.params)
     test_eulerflux_revq(eqn.params)
@@ -254,7 +254,7 @@ function test_jac_terms()
 
     println("\ntesting jac assembly 3d")
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
-=#
+
   end
 
   return nothing
@@ -283,14 +283,11 @@ function test_jac_terms_long()
     opts_tmp["jac_type"] =2  # was 2
     opts_tmp["operator_type"] = "SBPDiagonalE"
     opts_tmp["order"] = 2
+    opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
-    test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
-    Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
-    capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh9, sbp9, eqn9, opts9)
-    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, use_sensor=false)
-
+    test_jac_general(mesh9, sbp9, eqn9, opts9)
 =#
 
    
@@ -318,7 +315,7 @@ function test_jac_terms_long()
     opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2
     opts_tmp["operator_type"] = "SBPDiagonalE"
-    #opts_tmp["order"] = 2  #DEBUGGING
+    opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
 
@@ -2101,8 +2098,8 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
     evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
-    @test isapprox( norm(b1 - b2), 0.0) atol=1e-11
-    @test isapprox( norm(b1 - b3), 0.0) atol=1e-11
+    @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11
+    @test isapprox( maximum(abs.((b2 - b3))), 0.0) atol=1e-11
   end
 
   A = getBaseLO(lo2).A

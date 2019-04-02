@@ -94,6 +94,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
   calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
 
+  # stabilization functions
+  lps_data::LPSData{Tsol, Tres}
 
   # entropy kernels
   entropy_lf_kernel::LFKernel{Tsol, Tres, Tmsh}
@@ -222,6 +224,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
                                mesh.numDofPerNode, mesh.numNodesPerFace,
                                mesh.numNodesPerElement)
+    lps_data = LPSData{Tsol, Tres}(mesh, sbp, opts)
     entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, nd)
     entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
@@ -318,6 +321,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # entire mesh functions
                calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
+               lps_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                get_ira0data,
                shockmesh,

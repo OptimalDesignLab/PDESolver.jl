@@ -241,6 +241,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
       res_0[j] = -res_0[j]
     end
 
+    #TODO: DEBUGGING
+    println(BSTDOUT, "writing newton_q_vec_$i")
+    writeSolutionFiles(mesh, sbp, eqn, opts, "newton_q_vec_$i")
+    flush(BSTDOUT)
+
+
     # calculate Newton step
     flush(BSTDOUT)
     tsolve = @elapsed linearSolve(ls, res_0, delta_q_vec, verbose)
@@ -377,7 +383,6 @@ function writeFiles(newton_data::NewtonData, mesh, sbp, eqn, opts)
   #TODO: have an option to control this
 #    saveSolutionToMesh(mesh, eqn.q_vec)
 #    writeVisFiles(mesh, "newton_$i")
-
 
   @verbose5 eqn.majorIterationCallback(itr, mesh, sbp, eqn, opts, BSTDOUT)
 
@@ -548,6 +553,7 @@ function doMatrixCalculations(newton_data::NewtonData, opts)
     println(BSTDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
 
   end
+
 
   return nothing
 end

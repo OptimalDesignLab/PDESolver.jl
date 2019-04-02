@@ -186,6 +186,8 @@ where input_file_name.jl is in your current directory.
 "use_GLS" : use Galerkin Least-Squares stabilization, (Bool), default false
 "use_GLS2": use Hughes' formulation of Galerkin Least-Squares, (Bool), default false
 "tau_type" : which definition of tau to use of GLS, (Int), default 1
+"use_lps" : use local projection stabilization, (Bool), default false
+
 # stabilization preconditioning options
 "use_edgestab_prec" : use edge stabilization for preconditioning matrix, (Bool), default false
 "use_filter_prec" : use filter for preconditioning matrix, (Bool), default false
@@ -276,6 +278,9 @@ Note that any values associated with these options are shared with the regular
 "use_linear_metrics": use the metric calculation for straight-sided elements,
                        (Bool), default false (ie. the curvilinear calculation is
                        used even for straight-sided meshes
+"error_undefined_bc": throw an error if a geometric entity does not have a
+                      boundary condition assigned to it, (Bool), default true
+
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are
                          "adjacency" for the adjacency based reordering by Zhou

@@ -911,3 +911,36 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
   end
 end
 
+
+#------------------------------------------------------------------------------
+# Stabilization structs
+
+"""
+  Data for Local Projection Stabiization (LPS).
+
+  **Fields**
+
+   * P: the projection matrix that captures the high frequency modes
+        (I - L L^T H) in the paper
+   * alpha: coefficient in front of the stabilization term
+   * entropy_vars: specifies what variables to apply the stabiization to.
+                   This is an abstractly-typed field, so it should be access
+                   through a function barrier.
+  
+"""
+struct LPSData{Tsol, Tres}
+  P::Matrix{Float64}
+  alpha::Float64
+  entropy_vars::AbstractVariables
+
+  function LPSData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
+
+    P = getLPSMatrix(sbp)
+    alpha = 0.5
+    entropy_vars = ConservativeVariables()
+
+    return new(P, alpha, entropy_vars)
+  end
+end
+
+

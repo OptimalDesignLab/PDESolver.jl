@@ -283,9 +283,9 @@ end
 """
 global const SKYLAKE_STACKSMASH=true
 
-function _linearSolve(
-ls::StandardLinearSolver{Tpc, Tlo},
-b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: AbstractSparseDirectLO, Tpc}
+function _linearSolve(ls::StandardLinearSolver{Tpc, Tlo},
+                      b::AbstractVector, x::AbstractVector;
+                      trans=false) where {Tlo <: AbstractSparseDirectLO, Tpc}
 
   @assert typeof(ls.pc) <: PCNone
 

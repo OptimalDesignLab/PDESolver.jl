@@ -214,6 +214,7 @@ get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
 get!(arg_dict, "use_GLS2", false)
 get!(arg_dict, "tau_type", 1)
+get!(arg_dict, "use_lps", false)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run
@@ -391,6 +392,7 @@ get!(arg_dict, "write_interfaces", false)
 get!(arg_dict, "write_boundaries", false)
 get!(arg_dict, "write_sharedboundaries", false)
 get!(arg_dict, "use_linear_metrics", false)
+get!(arg_dict, "error_undefined_bc", true)
 
 # mesh options
 get!(arg_dict, "reordering_algorithm", "default")

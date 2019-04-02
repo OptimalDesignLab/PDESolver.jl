@@ -266,6 +266,9 @@ function addStabilization_diff(mesh::AbstractMesh{Tmsh},
 #    test_GLS(mesh, sbp, eqn, opts)
   end
 
+  if opts["use_lps"]
+    applyLPStab_diff(mesh, sbp, eqn, opts, assembler)
+  end
 #  println("==== end of addStabilization ====")
 
 
