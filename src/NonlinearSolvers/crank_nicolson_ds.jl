@@ -430,12 +430,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           new_res_vec_Maimag[ix_dof] = eqn_nextstep.res_vec[ix_dof]       # F(q^(n+1)) -- with Ma perturbation
           new_q_vec_Maimag[ix_dof] = eqn_nextstep.q_vec[ix_dof]           # q^(n+1) -- with Ma perturbation
 
-          # form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
-          # res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-          # TODO: above is wrong?? that was the first attempt
+          # Form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
+          # Note: q^(n+1) and q^(n) should have no imaginary component. Therefore,
+          #       we do not need to include them in the calculation of res_hat_vec,
+          #       as it is only formed to later consider only its imaginary component.
 
           # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
-          res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          # res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] 
+          #                       - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
           imag_contrib = imag(- 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof]))
           imag_contrib2 = imag(new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof]))
@@ -444,9 +447,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
         println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
         println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
-        println(BSTDOUT, " vecnorm(imag(new_q_vec_Maimag)): ", vecnorm(imag(new_q_vec_Maimag)))
         println(BSTDOUT, " vecnorm(old_q_vec_Maimag): ", vecnorm(old_q_vec_Maimag))
-        println(BSTDOUT, " vecnorm(imag(old_q_vec_Maimag)): ", vecnorm(imag(old_q_vec_Maimag)))
+        if vecnorm(imag(new_q_vec_Maimag)) > 1e-15
+          println(BSTDOUT, " NON-ZERO imag(new_q_vec_Maimag)!")
+          println(BSTDOUT, " vecnorm(imag(new_q_vec_Maimag)): ", vecnorm(imag(new_q_vec_Maimag)))
+        end
+        if vecnorm(imag(old_q_vec_Maimag)) > 1e-15
+          println(BSTDOUT, " NON-ZERO imag(old_q_vec_Maimag)!")
+          println(BSTDOUT, " vecnorm(imag(old_q_vec_Maimag)): ", vecnorm(imag(old_q_vec_Maimag)))
+        end
         println(BSTDOUT, " vecnorm(new_res_vec_Maimag): ", vecnorm(new_res_vec_Maimag))
         println(BSTDOUT, " vecnorm(imag(new_res_vec_Maimag)): ", vecnorm(imag(new_res_vec_Maimag)))
         println(BSTDOUT, " vecnorm(old_res_vec_Maimag): ", vecnorm(old_res_vec_Maimag))
@@ -531,6 +540,17 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         fill!(v_vec, 0.0)
 
+        #------------------------------------------------------------------------------
+        # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
+        #   before the DS calcs
+        for ix_dof = 1:mesh.numDof
+          eqn.q_vec[ix_dof] = beforeDS_eqn_q_vec[ix_dof]
+          eqn_nextstep.q_vec[ix_dof] = beforeDS_eqn_nextstep_q_vec[ix_dof]
+
+          eqn.res_vec[ix_dof] = beforeDS_eqn_res_vec[ix_dof]
+          eqn_nextstep.res_vec[ix_dof] = beforeDS_eqn_nextstep_res_vec[ix_dof]
+        end
+
         # update linear operator
         calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
@@ -599,16 +619,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #     or  modify the ls_ ???
 
 
-        #------------------------------------------------------------------------------
-        # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
-        #   before the DS calcs
-        for ix_dof = 1:mesh.numDof
-          eqn.q_vec[ix_dof] = beforeDS_eqn_q_vec[ix_dof]
-          eqn_nextstep.q_vec[ix_dof] = beforeDS_eqn_nextstep_q_vec[ix_dof]
-
-          eqn.res_vec[ix_dof] = beforeDS_eqn_res_vec[ix_dof]
-          eqn_nextstep.res_vec[ix_dof] = beforeDS_eqn_nextstep_res_vec[ix_dof]
-        end
 
         #### The above is all new CSR code
 
