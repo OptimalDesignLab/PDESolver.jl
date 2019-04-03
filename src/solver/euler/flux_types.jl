@@ -936,8 +936,9 @@ struct LPSData{Tsol, Tres}
   function LPSData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
 
     P = getLPSMatrix(sbp)
-    alpha = 0.5
-    entropy_vars = ConservativeVariables()
+    alpha = 1.0
+    #entropy_vars = ConservativeVariables()
+    entropy_vars = IRVariables()
 
     return new(P, alpha, entropy_vars)
   end

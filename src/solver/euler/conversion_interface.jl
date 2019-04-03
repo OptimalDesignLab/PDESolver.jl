@@ -108,6 +108,35 @@ function getA0inv(obj::AbstractVariables, params::AbstractParamType,
   error("abstract method for getA0inv() reached")
 end
 
+"""
+  Computes the derivative of [`getA0`](@ref) with respect to the conservative
+  variables.
+
+  **Inputs**
+
+   * obj: an [`AbstractVariables`](@ref) object
+   * params: `AbstractParamType` object
+   * q: vector of conservative variables, length `numDofPerNode`
+   * q_dot: derivative part of `q`, `numDofPerNode` x `nd`, where `nd` defines
+            the number of derivative parts
+
+  **Inputs/Outputs**
+
+   * A0: same as [`getA0`](@ref)
+   * A0_dot: `numDofPerNode` x `numDofPerNode` x `nd` array to be overwritten
+             with the output.  The final dimension `nd` must be the same as
+             the final dimension of `q_dot`.
+"""
+function getA0_diff(obj::AbstractVariables, params::AbstractParamType, 
+                    q::AbstractVector,
+                    q_dot::AbstractMatrix,
+                    A0::AbstractMatrix,
+                    A0_dot::Abstract3DArray)
+
+
+  error("abstract method for getA0_diff() reached")
+end
+
 #TODO: add: entropy function, entropy flux
 
 
@@ -146,8 +175,18 @@ function getA0inv(obj::IRVariables, params::AbstractParamType, qc::AbstractVecto
   getIRA0inv(params, qc, A0inv)
 end
 
+function getA0_diff(obj::IRVariables, params::AbstractParamType, 
+                    q::AbstractVector,
+                    q_dot::AbstractMatrix,
+                    A0::AbstractMatrix,
+                    A0_dot::Abstract3DArray)
+
+  getIRA0_diff(params, q, q_dot, A0, A0_dot)
+end
+
+
 #------------------------------------------------------------------------------
-# Hughes entropy variables variables
+# Hughes entropy variables
 
 """
   Variables used by Hughes.  See "A New Finite Element Formulation For
@@ -231,4 +270,12 @@ function getA0inv(obj::ConservativeVariables, params::AbstractParamType, qc::Abs
 end
 
 
+function getA0_diff(obj::ConservativeVariables, params::AbstractParamType, 
+                    q::AbstractVector,
+                    q_dot::AbstractMatrix,
+                    A0::AbstractMatrix,
+                    A0_dot::Abstract3DArray)
 
+  getA0(obj, params, q, A0)
+  fill!(A0_dot, 0)
+end

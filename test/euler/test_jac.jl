@@ -275,7 +275,7 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-#=
+
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -288,9 +288,9 @@ function test_jac_terms_long()
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
     test_jac_general(mesh9, sbp9, eqn9, opts9)
-=#
 
-   
+
+#= 
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -597,13 +597,13 @@ function test_jac_terms_long()
 
    test_revm_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
-
+=#
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -2071,7 +2071,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
   ctx_residual = (evalResidual,)
-  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+#  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
@@ -2089,16 +2089,20 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   # the same
   for i=1:10
     x = rand(PetscScalar, mesh.numDof)
+#    x = zeros(PetscScalar, mesh.numDof); x[1] = 1
     b1 = zeros(PetscScalar, mesh.numDof)
     b2 = zeros(PetscScalar, mesh.numDof)
     b3 = zeros(PetscScalar, mesh.numDof)
 
     t = 0.0
-    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
+#    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
     evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
-    @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11
+    println("maximum(abs.(b2 - b3)) = ", maximum(abs.(b2 - b3)))
+    println("b2[1] = ", b2[1])
+    println("b3[1] = ", b3[1])
+#    @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11
     @test isapprox( maximum(abs.((b2 - b3))), 0.0) atol=1e-11
   end
 

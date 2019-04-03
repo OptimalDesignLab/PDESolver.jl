@@ -99,7 +99,7 @@ function test_lps()
 end
 
 
-add_func1!(EulerTests, test_lps, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_lps, [TAG_SHORTTEST])
 
 
 
