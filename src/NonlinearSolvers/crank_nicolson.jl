@@ -524,6 +524,38 @@ function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
   return nothing
 end
 
+function modifyJacCN(mat::AbstractMatrix, ctx_residual)
+
+  h = ctx_residual[3]
+  # println(BSTDOUT, " in modifyJacCN. h: ", h)
+
+  scale_factor = -h*0.5
+  scale!(mat, scale_factor)
+
+  diagonal_shift!(mat, 1)
+
+  return nothing
+
+end
+
+function modifyJacVecProdCN(jacVecProd::AbstractArray, vec::AbstractArray, ctx_residual)
+
+  @assert length(size(jacVecProd)) == 1
+  @assert length(size(vec)) == 1
+
+  h = ctx_residual[3]
+
+  for i = 1:length(jacVecProd)
+    jacVecProd[i] = vec[i] - h*0.5*jacVecProd[i]
+  end
+
+  return nothing
+
+end
+
+
+
+
 
 """
   This function uses [`calcVolumePreconditioner`](@ref) to compute a

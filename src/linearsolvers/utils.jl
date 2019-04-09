@@ -1,5 +1,6 @@
 
 export createPetscMat       # 20190311: put this in so I can access it in a script
+export createPetscVec       # 20190402: put this in so I can access it in a script
 
 # helper functions
 

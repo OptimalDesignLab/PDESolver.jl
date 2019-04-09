@@ -103,6 +103,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       dDdu = zeros(eqn.res)         # dDdu is of size eqn.q or eqn.res (dDdu is term2 in rk4_ds.jl)
       dDdu_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
       v_vec = zeros(eqn.res_vec)
+      # TODO: random test. remove the following lines when done
+      v_vec_petsc_for_test = createPetscVec(mesh, sbp, eqn, opts)
+      TEST_LHS_petsc = createPetscVec(mesh, sbp, eqn, opts)
+      # TEST_LHS_index = zeros(PetscInt, mesh.numDof, 1)
+      # TEST_LHS_insert = zeros(PetscScalar, mesh.numDof, 1)
+      TEST_LHS_index = zeros(PetscInt, mesh.numDof)
+      TEST_LHS_insert = zeros(PetscScalar, mesh.numDof)
+      TEST_LHS = zeros(Float64, mesh.numDof, 1)
+      # TEST_RHS = zeros(Float64, mesh.numDof, 1)
 
       ###### CSR: This section is the only section that contains things that are 
       #           new to the CN version of the complex step method (CSR: 'complex step residual')
@@ -387,6 +396,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # It is wrapped in:  if opts["perturb_Ma_CN"]
       # Such that it should only be included/evaluated when opts["perturb_Ma_CN"] is set
 
+      println(BSTDOUT, " Now entering perturb_Ma_CN block.")
+      # ctx_residual: f, eqn, h, newton_data
+      # println(BSTDOUT, " ctx_residual: ", ctx_residual)
+      # println(BSTDOUT, " fieldnames(ctx_residual): ", fieldnames(ctx_residual)) 
+      println(BSTDOUT, " h: (ctx_residual[3]): ", ctx_residual[3])
+      flush(BSTDOUT)
+
       if i != 1     # can't do F(q^(n+1)) + F(q^(n)) until we have both
 
         # Store both q_vec's & both res_vec's. Will be put back after all DS calcs.
@@ -403,8 +419,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #------------------------------------------------------------------------------
         # This section calculates dR/dM
 
+        println(BSTDOUT, "\n > Now solving dR/dM\n")
+
         # TODO Make sure to remove this v_vec. Making v^(n) a random vector for testing purposes.
-        # v_vec = rand(size(v_vec))
+        v_vec = rand(size(v_vec))
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
@@ -475,11 +493,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
           # TODO: commented this eqn_nextstep application out. Verify with formulation.
           #       Do I need to save and restore eqn_nextstep??? Could save cycles
+
+          # TODO TODO: random test. revert to perturbing only eqn.q_vec when done
+          eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
         end
 
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
-        # f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
-        # TODO: commented this eqn_nextstep calculation out. Verify with formulation.
+        f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
+        # TODO: random test. revert to only evalResidual'ing on eqn when done
 
         for ix_dof = 1:mesh.numDof
           
@@ -489,10 +510,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
           # dR_hat^(n)/dq^(n) * v^(n) = 
           #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
-          res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
+          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
+          # TODO random test. when done, uncomment the above res_hat_vec calc line and remove the below line(s)
+          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn_nextstep.res_vec[ix_dof]
+          res_hat_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
+          # TODO TODO: figure out which of the above two lines is correct, or if it's a third
 
           # calc dRdq * v^(n) by doing matrix-free complex step
           dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
+
 
           # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
           # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
@@ -511,8 +537,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Solve:
         #   dR/dq^(n+1) v^(n+1) = b
         #--------
+        println(BSTDOUT, "\n > Now solving dR/dq * v^(n)\n")
 
-        fill!(v_vec, 0.0)
+        # TODO TODO. Uncomment this when done with random vector test
+        # fill!(v_vec, 0.0)
 
         #------------------------------------------------------------------------------
         # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
@@ -527,7 +555,91 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
-        calcLinearOperator(ls_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        println(BSTDOUT, " \nNow updating linear operator.")
+        flush(BSTDOUT)
+        # typeof(ls_ds): LinearSolvers.StandardLinearSolver{NonlinearSolvers.CNMatPC,NonlinearSolvers.CNPetscMatLO}
+        # typeof(ls_ds.lo): NonlinearSolvers.CNPetscMatLO
+        # typeof(ls_ds.lo.lo_inner): NonlinearSolvers.NewtonPetscMatLO
+        # fieldnames(ls_ds): Symbol[:pc, :lo, :shared_mat, :comm, :myrank, 
+        #                           :commsize, :ksp, :is_finalized, :reltol, :abstol, :dtol, :itermax]
+        calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
+        # this is calling: 
+        # - calcLinearOperator(ls::LinearSolvers.StandardLinearSolver, 
+        #                      mesh::ODLCommonTools.AbstractMesh, 
+        #                      sbp::SummationByParts.AbstractSBP, 
+        #                      eqn::ODLCommonTools.AbstractSolutionData, 
+        #                      opts::Dict, ctx_residual, t; start_comm) 
+        #   in LinearSolvers at /users/ashlea/.julia/v0.6/PDESolver/src/linearsolvers/ls_standard.jl:76
+        # which has
+        #   calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
+        # which is calling
+        # - calcLinearOperator(lo::Union{NonlinearSolvers.CNDenseLO, 
+        #                                NonlinearSolvers.CNPetscMatLO, NonlinearSolvers.CNSparseDirectLO}, 
+        #                      mesh::ODLCommonTools.AbstractMesh, sbp::SummationByParts.AbstractSBP, 
+        #                      eqn::ODLCommonTools.AbstractSolutionData, 
+        #                      opts::Dict, ctx_residual, t) 
+        #   in NonlinearSolvers at /users/ashlea/.julia/v0.6/PDESolver/src/NonlinearSolvers/crank_nicolson.jl:412
+        # which has
+        #   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+        #   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+        # which is calling
+        # - calcLinearOperator(lo::Union{NonlinearSolvers.NewtonDenseLO, NonlinearSolvers.NewtonPetscMatLO, 
+        #                                NonlinearSolvers.NewtonSparseDirectLO}, 
+        #                      mesh::ODLCommonTools.AbstractMesh, sbp::SummationByParts.AbstractSBP, 
+        #                      eqn::ODLCommonTools.AbstractSolutionData, opts::Dict, ctx_residual, t) 
+        #   in NonlinearSolvers at /users/ashlea/.julia/v0.6/PDESolver/src/NonlinearSolvers/newton_setup.jl:516
+        # which has 
+        #   lo2 = getBaseLO(lo)
+        #   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
+        #
+        # SO! this is modifying the Jac for CN.
+        println(BSTDOUT, " \nLinear operator updated.")
+        flush(BSTDOUT)
+
+        # println(BSTDOUT, " size(v_vec): ", size(v_vec))
+        # println(BSTDOUT, " size(v_vec_petsc_for_test): ", size(v_vec_petsc_for_test))
+        println(BSTDOUT, " typeof(v_vec): ", typeof(v_vec))
+        println(BSTDOUT, " typeof(v_vec_petsc_for_test): ", typeof(v_vec_petsc_for_test))
+        flush(BSTDOUT)
+
+        for ix_dof = 1:mesh.numDof
+          TEST_LHS_insert[ix_dof] = v_vec[ix_dof]
+          TEST_LHS_index[ix_dof] = ix_dof
+        end
+        # What this is doing: v_vec_petsc_for_test[ix_dof] = v_vec[ix_dof]
+        set_values1!(v_vec_petsc_for_test, TEST_LHS_index, TEST_LHS_insert)
+        println(BSTDOUT, " If the following two match, v_vec and the petsc version of v_vec are equal.")
+        println(BSTDOUT, "  norm(v_vec_petsc_for_test): ", norm(v_vec_petsc_for_test))
+        println(BSTDOUT, "  vecnorm(v_vec): ", vecnorm(v_vec))
+
+        
+
+
+        println(BSTDOUT, " Now doing random test.")
+        flush(BSTDOUT)
+        # TEST_LHS = lo_ds_innermost.A * v_vec
+        A_mul_B!(TEST_LHS_petsc, lo_ds_innermost.A, v_vec_petsc_for_test)
+        
+        # now setting TEST_LHS values to TEST_LHS_petsc's values so we can subtract vectors (...)
+        get_values1!(TEST_LHS_petsc, TEST_LHS_index, TEST_LHS_insert)
+        for ix_dof = 1:mesh.numDof
+          TEST_LHS[ix_dof] = TEST_LHS_insert[ix_dof]
+        end
+        println(BSTDOUT, " If the following two match, the petsc & julia matvec products are equal")
+        println(BSTDOUT, "  norm(TEST_LHS_insert): ", norm(TEST_LHS_insert))
+        println(BSTDOUT, "  vecnorm(TEST_LHS_insert): ", norm(TEST_LHS_insert))
+        println(BSTDOUT, "  vecnorm(TEST_LHS): ", vecnorm(TEST_LHS))
+
+
+        TEST_RHS = dRdq_vn_prod
+        # Can't CN modify dRdq_vn_prod with modifyJacCN(TEST_RHS, ctx_residual), this function had to be written.
+        modifyJacVecProdCN(TEST_RHS, v_vec, ctx_residual)
+        println(BSTDOUT, "\n")
+        println(BSTDOUT, " vecnorm(TEST_RHS): ", vecnorm(TEST_RHS))
+        println(BSTDOUT, " vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
+        println(BSTDOUT, "\n")
+        println(BSTDOUT, "  random test difference: ", vecnorm(TEST_LHS - TEST_RHS))
+        println(BSTDOUT, " ")
 
         # CN modify???? TODO
 
