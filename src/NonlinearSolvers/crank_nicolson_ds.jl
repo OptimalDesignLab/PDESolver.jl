@@ -103,15 +103,18 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       dDdu = zeros(eqn.res)         # dDdu is of size eqn.q or eqn.res (dDdu is term2 in rk4_ds.jl)
       dDdu_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
       v_vec = zeros(eqn.res_vec)
-      # TODO: random test. remove the following lines when done
+
+      # TODO: linearSolve verify. remove the following lines when done
       v_vec_petsc_for_test = createPetscVec(mesh, sbp, eqn, opts)
-      TEST_LHS_petsc = createPetscVec(mesh, sbp, eqn, opts)
-      # TEST_LHS_index = zeros(PetscInt, mesh.numDof, 1)
-      # TEST_LHS_insert = zeros(PetscScalar, mesh.numDof, 1)
-      TEST_LHS_index = zeros(PetscInt, mesh.numDof)
-      TEST_LHS_insert = zeros(PetscScalar, mesh.numDof)
-      TEST_LHS = zeros(Float64, mesh.numDof, 1)
-      # TEST_RHS = zeros(Float64, mesh.numDof, 1)
+      TEST_V_petsc = createPetscVec(mesh, sbp, eqn, opts)
+      # PETSC_index = zeros(PetscInt, mesh.numDof, 1)
+      # PETSC_insert = zeros(PetscScalar, mesh.numDof, 1)
+      PETSC_index = zeros(PetscInt, mesh.numDof)
+      PETSC_insert = zeros(PetscScalar, mesh.numDof)
+      TEST_V = zeros(Float64, mesh.numDof, 1)
+
+      ccc_petsc = createPetscVec(mesh, sbp, eqn, opts)
+      Accc_petsc = createPetscVec(mesh, sbp, eqn, opts)
 
       ###### CSR: This section is the only section that contains things that are 
       #           new to the CN version of the complex step method (CSR: 'complex step residual')
@@ -138,6 +141,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       println(" typeof(pc_ds): ", typeof(pc_ds))
       println(" typeof(lo_ds): ", typeof(lo_ds))
       println(" typeof(ls_ds): ", typeof(ls_ds))
+
+      #------------------------------------------------------------------------------
+      # debug linear solver
+      # pc_debug, lo_debug = getCNDSPCandLO(mesh, sbp, eqn, opts)
+      # ls_debug = StandardLinearSolver(pc_debug, lo_debug, eqn.comm, opts)
+
 
       # these are needed for direct manipulation of the Petsc Jac later
       lo_ds_innermost = getBaseLO(lo_ds)     # makes sure to return the innermost LO object (basically returning the Jac)
@@ -287,7 +296,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     t = (i-2)*h
-    @mpi_master println(BSTDOUT, "\ni = ", i, ", t = ", t)
+    @mpi_master println(BSTDOUT, "\n============== i = ", i, ", t = ", t, " ==============\n")
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
@@ -421,9 +430,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         println(BSTDOUT, "\n > Now solving dR/dM\n")
 
-        # TODO Make sure to remove this v_vec. Making v^(n) a random vector for testing purposes.
-        v_vec = rand(size(v_vec))
-
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
         # eqn.params.Ma += pert
@@ -493,14 +499,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
           # TODO: commented this eqn_nextstep application out. Verify with formulation.
           #       Do I need to save and restore eqn_nextstep??? Could save cycles
-
-          # TODO TODO: random test. revert to perturbing only eqn.q_vec when done
-          eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
+          # eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
         end
 
-        f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec
-        f(mesh, sbp, eqn_nextstep, opts)    # F(q^(n+1) + evi) now in eqn_nextstep.res_vec
-        # TODO: random test. revert to only evalResidual'ing on eqn when done
+        f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec (confirmed w/ random test)
 
         for ix_dof = 1:mesh.numDof
           
@@ -510,22 +512,17 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
           # dR_hat^(n)/dq^(n) * v^(n) = 
           #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
-          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
-          # TODO random test. when done, uncomment the above res_hat_vec calc line and remove the below line(s)
-          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn_nextstep.res_vec[ix_dof]
-          res_hat_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
-          # TODO TODO: figure out which of the above two lines is correct, or if it's a third
+          res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
 
           # calc dRdq * v^(n) by doing matrix-free complex step
           dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
-
 
           # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
           # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
           # eqn_nextstep.q_vec[ix_dof] = complex(real(eqn_nextstep.q_vec[ix_dof]))
 
           # combine (-dRdM - dRdq * v^(n)) into b
-          b_vec[ix_dof] = - dRdM_vec[ix_dof] - dRdq_vn_prod[ix_dof]
+          b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
         println(BSTDOUT, " vecnorm(res_hat_vec) (perturbed by v_vec for mat-free product): ", vecnorm(res_hat_vec))
@@ -539,8 +536,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #--------
         println(BSTDOUT, "\n > Now solving dR/dq * v^(n)\n")
 
-        # TODO TODO. Uncomment this when done with random vector test
-        # fill!(v_vec, 0.0)
+        fill!(v_vec, 0.0)
 
         #------------------------------------------------------------------------------
         # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
@@ -555,7 +551,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
-        println(BSTDOUT, " \nNow updating linear operator.")
+        println(BSTDOUT, "\n  Now updating linear operator.")
         flush(BSTDOUT)
         # typeof(ls_ds): LinearSolvers.StandardLinearSolver{NonlinearSolvers.CNMatPC,NonlinearSolvers.CNPetscMatLO}
         # typeof(ls_ds.lo): NonlinearSolvers.CNPetscMatLO
@@ -593,55 +589,22 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
         #
         # SO! this is modifying the Jac for CN.
-        println(BSTDOUT, " \nLinear operator updated.")
+        println(BSTDOUT, "\n  Linear operator updated.")
         flush(BSTDOUT)
 
-        # println(BSTDOUT, " size(v_vec): ", size(v_vec))
-        # println(BSTDOUT, " size(v_vec_petsc_for_test): ", size(v_vec_petsc_for_test))
-        println(BSTDOUT, " typeof(v_vec): ", typeof(v_vec))
-        println(BSTDOUT, " typeof(v_vec_petsc_for_test): ", typeof(v_vec_petsc_for_test))
-        flush(BSTDOUT)
+        ccc = ones(Float64, mesh.numDof)
 
         for ix_dof = 1:mesh.numDof
-          TEST_LHS_insert[ix_dof] = v_vec[ix_dof]
-          TEST_LHS_index[ix_dof] = ix_dof
+          PETSC_insert[ix_dof] = ccc[ix_dof]
+          PETSC_index[ix_dof] = ix_dof
         end
-        # What this is doing: v_vec_petsc_for_test[ix_dof] = v_vec[ix_dof]
-        set_values1!(v_vec_petsc_for_test, TEST_LHS_index, TEST_LHS_insert)
-        println(BSTDOUT, " If the following two match, v_vec and the petsc version of v_vec are equal.")
-        println(BSTDOUT, "  norm(v_vec_petsc_for_test): ", norm(v_vec_petsc_for_test))
-        println(BSTDOUT, "  vecnorm(v_vec): ", vecnorm(v_vec))
+        # set values of ccc_petsc to ccc
+        set_values1!(ccc_petsc, PETSC_index, PETSC_insert)
+        A_mul_B!(Accc_petsc, lo_ds_innermost.A, ccc_petsc)
+        println(BSTDOUT, " norm(ccc_petsc): ", norm(ccc_petsc))
+        println(BSTDOUT, " norm(Accc_petsc): ", norm(Accc_petsc))
+        # !!!!!!!!!! here 20190415
 
-        
-
-
-        println(BSTDOUT, " Now doing random test.")
-        flush(BSTDOUT)
-        # TEST_LHS = lo_ds_innermost.A * v_vec
-        A_mul_B!(TEST_LHS_petsc, lo_ds_innermost.A, v_vec_petsc_for_test)
-        
-        # now setting TEST_LHS values to TEST_LHS_petsc's values so we can subtract vectors (...)
-        get_values1!(TEST_LHS_petsc, TEST_LHS_index, TEST_LHS_insert)
-        for ix_dof = 1:mesh.numDof
-          TEST_LHS[ix_dof] = TEST_LHS_insert[ix_dof]
-        end
-        println(BSTDOUT, " If the following two match, the petsc & julia matvec products are equal")
-        println(BSTDOUT, "  norm(TEST_LHS_insert): ", norm(TEST_LHS_insert))
-        println(BSTDOUT, "  vecnorm(TEST_LHS_insert): ", norm(TEST_LHS_insert))
-        println(BSTDOUT, "  vecnorm(TEST_LHS): ", vecnorm(TEST_LHS))
-
-
-        TEST_RHS = dRdq_vn_prod
-        # Can't CN modify dRdq_vn_prod with modifyJacCN(TEST_RHS, ctx_residual), this function had to be written.
-        modifyJacVecProdCN(TEST_RHS, v_vec, ctx_residual)
-        println(BSTDOUT, "\n")
-        println(BSTDOUT, " vecnorm(TEST_RHS): ", vecnorm(TEST_RHS))
-        println(BSTDOUT, " vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
-        println(BSTDOUT, "\n")
-        println(BSTDOUT, "  random test difference: ", vecnorm(TEST_LHS - TEST_RHS))
-        println(BSTDOUT, " ")
-
-        # CN modify???? TODO
 
         if opts["stabilize_v"]
 
@@ -683,7 +646,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
             #   the strong Jacobian from the actual Jacobian
         
             # Add the negated block to the existing Jac inside the ls_ds LO object
-            # set_values1!(lo_ds_innermost, ix_petsc_row, ix_petsc_col, block_to_add, ADD_VALUES)
             set_values1!(lo_ds_innermost.A, ix_petsc_row, ix_petsc_col, block_to_add, ADD_VALUES)
 
           end
@@ -699,12 +661,60 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   x::AbstractVector     -> what is solved for
         #   verbose=5
         #--------
-        linearSolve(ls_ds, b_vec, v_vec)      
-        println(BSTDOUT, " vecnorm(v_vec): ", vecnorm(v_vec))
+        # linearSolve(ls_ds, b_vec, v_vec, verbose=5)
+        linearSolve(ls_ds, b_vec, v_vec)
 
-        # Choice: calc the stab, then modify it according to modifyJacCN, then add to the ls_ds LO?
-        #     or  modify the ls_ ???
+        #------------------------------------------------------------------------------
+        # Checking linearSolve
 
+        for ix_dof = 1:mesh.numDof
+          PETSC_insert[ix_dof] = v_vec[ix_dof]
+          PETSC_index[ix_dof] = ix_dof
+        end
+        # What this is doing: v_vec_petsc_for_test[ix_dof] = v_vec[ix_dof]
+        set_values1!(v_vec_petsc_for_test, PETSC_index, PETSC_insert)
+        println(BSTDOUT, " If the following two match, v_vec and the petsc version of v_vec are equal.")
+        println(BSTDOUT, "  norm(v_vec_petsc_for_test): ", norm(v_vec_petsc_for_test))
+        println(BSTDOUT, "  vecnorm(v_vec): ", vecnorm(v_vec))
+
+        A_mul_B!(TEST_V_petsc, lo_ds_innermost.A, v_vec_petsc_for_test)
+        # now setting TEST_V values to TEST_V_petsc's values so we can subtract vectors (...)
+        get_values1!(TEST_V_petsc, PETSC_index, PETSC_insert)
+
+        # reusing TEST_V
+        for ix_dof = 1:mesh.numDof
+          TEST_V[ix_dof] = PETSC_insert[ix_dof]
+        end
+        println(BSTDOUT, " ")
+        println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_V - b_vec))
+        println(BSTDOUT, " ")
+        flush(BSTDOUT)
+
+        #------------------------------------------------------------------------------
+
+
+        println(BSTDOUT, " lo_ds_innermost.A: ")
+        flush(BSTDOUT)
+        println(BSTDOUT, "  vecnorm: ", vecnorm(lo_ds_innermost.A))
+        flush(BSTDOUT)
+        # println(BSTDOUT, "  maximum: ", maximum(lo_ds_innermost.A))
+        # flush(BSTDOUT)
+        # println(BSTDOUT, "  minimum: ", minimum(lo_ds_innermost.A))
+        # flush(BSTDOUT)
+        # println(BSTDOUT, "  minimum abs: ", minimum(abs(lo_ds_innermost.A)))
+        # flush(BSTDOUT)
+        println(BSTDOUT, " b_vec: ")
+        println(BSTDOUT, "  vecnorm: ", vecnorm(b_vec))
+        println(BSTDOUT, "  maximum: ", maximum(b_vec))
+        println(BSTDOUT, "  minimum: ", minimum(b_vec))
+        println(BSTDOUT, "  minimum abs: ", minimum(abs.(b_vec)))
+        println(BSTDOUT, " v_vec: ")
+        println(BSTDOUT, "  vecnorm: ", vecnorm(v_vec))
+        println(BSTDOUT, "  maximum: ", maximum(v_vec))
+        println(BSTDOUT, "  minimum: ", minimum(v_vec))
+        println(BSTDOUT, "  minimum abs: ", minimum(abs.(v_vec)))
+        println(BSTDOUT, " ")
+        flush(BSTDOUT)
 
 
         #### The above is all new CSR code
@@ -844,6 +854,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # direct-sensitivity: moved these breaks here. Before they were before the eqn/eqn_nextstep/eqn_temp flip
     # check stopping conditions
+
+    # commenting this out - was not allowing run w/ steady-generated IC to proceed. 
+    # Why is it here anyway?
+    #=
     if (res_norm < res_tol)  # ???
       if myrank == 0
         println(BSTDOUT, "breaking due to res_tol, res norm = $res_norm")
@@ -852,6 +866,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
       break       # EXIT condition
     end
+    =#
 
 
     if use_itermax && i > itermax

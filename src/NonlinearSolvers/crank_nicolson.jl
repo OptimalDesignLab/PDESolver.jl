@@ -506,6 +506,8 @@ end
 """
 function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  println(BSTDOUT, " modifyJacCN(lo...) called")
+
 
   lo2 = getBaseLO(lo)
   h = ctx_residual[3]
@@ -525,6 +527,8 @@ function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 end
 
 function modifyJacCN(mat::AbstractMatrix, ctx_residual)
+
+  println(BSTDOUT, " modifyJacCN(mat...) called")
 
   h = ctx_residual[3]
   # println(BSTDOUT, " in modifyJacCN. h: ", h)
