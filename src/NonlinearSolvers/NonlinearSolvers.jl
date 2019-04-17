@@ -15,6 +15,9 @@ using Utils
 using SummationByParts
 using LinearSolvers
 
+global IN_DS = 0
+global CN_IX = 0
+
 import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
                       applyLinearOperator, applyLinearOperatorTranspose,
                       needParallelData

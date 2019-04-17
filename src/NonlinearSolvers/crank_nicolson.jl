@@ -411,6 +411,30 @@ function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
 
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  lo_innermost = getBaseLO(lo)
+
+  println(BSTDOUT, " in calcLinearOperator(lo::CNMatLO...)")
+  println(BSTDOUT, " vecnorm(lo_innermost.A): ", vecnorm(lo_innermost.A))
+
+  println(BSTDOUT, " IN_DS: ", IN_DS)
+  println(BSTDOUT, " CN_IX: ", CN_IX)
+
+  if IN_DS == 1
+    if opts["jac_type"] != 2
+      error("You're trying to print eigenvalue data, but jac_type is not 2.")
+    end
+    Jaceigs = eigvals(full(lo_innermost.A))
+    filename = string("Jac_eigs_i-", CN_IX, ".dat")
+    writedlm(filename, Jaceigs)
+
+    println(BSTDOUT, " maximum(real(Jaceigs)): ", maximum(real(Jaceigs)))
+    println(BSTDOUT, " minimum(real(Jaceigs)): ", minimum(real(Jaceigs)))
+    println(BSTDOUT, " maximum(imag(Jaceigs)): ", maximum(imag(Jaceigs)))
+    println(BSTDOUT, " minimum(imag(Jaceigs)): ", minimum(imag(Jaceigs)))
+    flush(BSTDOUT)
+  end
+
+
   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
   return nothing

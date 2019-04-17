@@ -1,6 +1,9 @@
 __precompile__(false)
 module PDESolver
 
+# IN_DS = 0
+# CN_IX = 0
+
 # defs.jl
 export AssembleElementData
 

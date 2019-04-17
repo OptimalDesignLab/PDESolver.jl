@@ -102,8 +102,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       term23 = zero(eqn.params.Ma)
       dDdu = zeros(eqn.res)         # dDdu is of size eqn.q or eqn.res (dDdu is term2 in rk4_ds.jl)
       dDdu_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
-      v_vec = zeros(eqn.res_vec)
+      # v_vec = zeros(eqn.res_vec)
+      v_vec = zeros(Float64, length(eqn.res_vec))
 
+      #=
       # TODO: linearSolve verify. remove the following lines when done
       v_vec_petsc_for_test = createPetscVec(mesh, sbp, eqn, opts)
       TEST_V_petsc = createPetscVec(mesh, sbp, eqn, opts)
@@ -115,6 +117,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       ccc_petsc = createPetscVec(mesh, sbp, eqn, opts)
       Accc_petsc = createPetscVec(mesh, sbp, eqn, opts)
+      =#
 
       ###### CSR: This section is the only section that contains things that are 
       #           new to the CN version of the complex step method (CSR: 'complex step residual')
@@ -131,7 +134,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       beforeDS_eqn_nextstep_res_vec = zeros(eqn.res_vec)
 
       dRdM_vec = zeros(eqn.res_vec)
-      b_vec = zeros(eqn.res_vec)
+      # b_vec = zeros(eqn.res_vec)
+      b_vec = zeros(Float64, length(eqn.res_vec))
+      TEST_b_vec = zeros(b_vec)
       dRdq_vn_prod = zeros(eqn.res_vec)
 
       #------------------------------------------------------------------------------
@@ -215,11 +220,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #   no evalResidual yet, and hasn't entered the time-stepper yet
       #   so no appropriate scaling factors like delta_t or fac or anything
 
-      v_vec = zeros(eqn.q_vec)      # direct sensitivity vector       This is at the IC
+      # v_vec = zeros(eqn.q_vec)      # direct sensitivity vector       This is at the IC
+      fill!(v_vec, 0.0)     # We should do this instead of zeros, so it's not re-allocated every time. 
+                            # This also permits v_vec to be Complex{Float64} or Float64 independent 
+                            # of the type of q_vec or res_vec, and doesn't change it.
       # for v_ix = 1:length(v_vec)
         # v_vec[v_ix] = imag(eqn.q_vec[v_ix])/Ma_pert_mag
       # end
-      fill!(v_vec, 0.0)       # v at IC is all 0's  ++++ new CS'ing R method (CSR) <- CSR comment on all lines new to CS'ing R method
+
+      # Note: CSR comment on all lines new to CS'ing R method
 
       # q_vec_save_imag = Array{Float64}(length(eqn.q_vec))     # set up array for saving imag component of q (CSR)
 
@@ -282,6 +291,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # ### Main timestepping loop ###
   #   this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
+
+    global CN_IX = i       # global variable, useful for writing output files elsewhere
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma_CN"]
@@ -359,6 +370,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       doRecalculation(recalc_policy, i,
                     ls, mesh, sbp, eqn_nextstep, opts, ctx_residual, t_nextstep)
 
+      println(BSTDOUT, " Calling newtonInner from CN.")
+      flush(BSTDOUT)
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
                   rhs_vec, ctx_residual, t_nextstep)
 
@@ -366,9 +379,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                   #   newtonInner -> rhs_func -> physicsRhs (residual_evaluation.jl)
                   # TODO: need to save the complex part of R inside physicsRhs
     end
+    println(BSTDOUT, " Newton solve on primal complete.")
 
     # do the callback using the current eqn object at time t
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
+    println(BSTDOUT, " majorIterationCallback called.")
+    println(BSTDOUT, " ")
+    flush(BSTDOUT)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # TODO: stabilization in newtonInner
@@ -382,7 +399,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
     
     @mpi_master if i % output_freq == 0
-      println(BSTDOUT, "flushing convergence.dat to disk")
+      println(BSTDOUT, " flushing convergence.dat to disk")
       flush(f1)
     end
 
@@ -401,6 +418,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # Start direct sensitivity calc's for each time step      2222
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma_CN"]
+
+      global IN_DS = 1   # stating that we are in direct sensitivity calculations. 
+                  # This is used in the eigenvalue writing routine in calcLinearOperator, in cn.jl
+
       # This entire code block is called with an include().
       # It is wrapped in:  if opts["perturb_Ma_CN"]
       # Such that it should only be included/evaluated when opts["perturb_Ma_CN"] is set
@@ -592,6 +613,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "\n  Linear operator updated.")
         flush(BSTDOUT)
 
+        #=
+        # This section is intended to assess the magnitude of A at every iteration 
+        #   by contracting it with a vector of ones
         ccc = ones(Float64, mesh.numDof)
 
         for ix_dof = 1:mesh.numDof
@@ -603,7 +627,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         A_mul_B!(Accc_petsc, lo_ds_innermost.A, ccc_petsc)
         println(BSTDOUT, " norm(ccc_petsc): ", norm(ccc_petsc))
         println(BSTDOUT, " norm(Accc_petsc): ", norm(Accc_petsc))
-        # !!!!!!!!!! here 20190415
+        =#
 
 
         if opts["stabilize_v"]
@@ -662,11 +686,42 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   verbose=5
         #--------
         # linearSolve(ls_ds, b_vec, v_vec, verbose=5)
+        println(BSTDOUT, " typeof(ls_ds): ", typeof(ls_ds))
+        println(BSTDOUT, " typeof(b_vec): ", typeof(b_vec))
+        println(BSTDOUT, " typeof(v_vec): ", typeof(v_vec))
+        flush(BSTDOUT)
         linearSolve(ls_ds, b_vec, v_vec)
+
+        ########
+        # eigenvalue printing
+        # this is commented out because it prints the CN Jac's eigs, not the spatial Jac's eigs
+        #=
+        if opts["jac_type"] != 2
+          error("You're trying to print eigenvalue data, but jac_type is not 2.")
+        end
+        Jaceigs = eigvals(full(lo_ds_innermost.A))
+        filename = string("Jac_eigs_i-", i, ".dat")
+        writedlm(filename, Jaceigs)
+
+        println(BSTDOUT, " maximum(real(Jaceigs)): ", maximum(real(Jaceigs)))
+        println(BSTDOUT, " minimum(real(Jaceigs)): ", minimum(real(Jaceigs)))
+        println(BSTDOUT, " maximum(imag(Jaceigs)): ", maximum(imag(Jaceigs)))
+        println(BSTDOUT, " minimum(imag(Jaceigs)): ", minimum(imag(Jaceigs)))
+        flush(BSTDOUT)
+        =#
+        ########
 
         #------------------------------------------------------------------------------
         # Checking linearSolve
 
+        A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
+        println(BSTDOUT, " ")
+        println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
+        println(BSTDOUT, " ")
+        flush(BSTDOUT)
+
+        #=
+        # only works for petsc
         for ix_dof = 1:mesh.numDof
           PETSC_insert[ix_dof] = v_vec[ix_dof]
           PETSC_index[ix_dof] = ix_dof
@@ -689,6 +744,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_V - b_vec))
         println(BSTDOUT, " ")
         flush(BSTDOUT)
+        =#
 
         #------------------------------------------------------------------------------
 
@@ -935,6 +991,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(BSTDOUT, " total dCd/dM: ", total_dCddM)
         end
 
+        global IN_DS = 0
       end   # end if opts["perturb_Ma_CN"]
 
       @mpi_master begin
