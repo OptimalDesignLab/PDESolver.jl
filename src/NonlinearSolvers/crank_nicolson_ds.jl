@@ -64,7 +64,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   myrank = eqn.myrank
   if myrank == 0
-    println(BSTDOUT, "\nEntered Crank-Nicolson")
+    println(BSTDOUT, "Entered Crank-Nicolson")
     println(BSTDOUT, "res_tol = ", res_tol)
   end
   flush(BSTDOUT)
@@ -287,7 +287,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     t = (i-2)*h
-    @mpi_master println(BSTDOUT, "\n============== i = ", i, ", t = ", t, " ==============\n")
+    @mpi_master println(BSTDOUT, " ")
+    @mpi_master println(BSTDOUT, "============== i = ", i, ", t = ", t, " ==============\n")
     @debug1 println(eqn.params.f, "====== CN: at the top of time-stepping loop, t = $t, i = $i")
     @debug1 flush(eqn.params.f)
 
@@ -359,11 +360,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                   #   newtonInner -> rhs_func -> physicsRhs (residual_evaluation.jl)
                   # TODO: need to save the complex part of R inside physicsRhs
     end
-    println(BSTDOUT, " Newton solve on primal complete.")
+    print(BSTDOUT, " Newton solve on primal complete.")
 
     # do the callback using the current eqn object at time t
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
-    println(BSTDOUT, " majorIterationCallback called.")
+    print(BSTDOUT, " majorIterationCallback called.")
     println(BSTDOUT, " ")
     flush(BSTDOUT)
 
@@ -403,11 +404,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # It is wrapped in:  if opts["perturb_Ma_CN"]
       # Such that it should only be included/evaluated when opts["perturb_Ma_CN"] is set
 
-      println(BSTDOUT, " Now entering perturb_Ma_CN block.")
+      println(BSTDOUT, "                        ~~~~~~~~~~~~~~~~ DUPLICATE ~~~~~~~~~~~~~~~~")
+      print(BSTDOUT, " Now entering perturb_Ma_CN block.")
       # ctx_residual: f, eqn, h, newton_data
-      # println(BSTDOUT, " ctx_residual: ", ctx_residual)
-      # println(BSTDOUT, " fieldnames(ctx_residual): ", fieldnames(ctx_residual)) 
-      println(BSTDOUT, " h: (ctx_residual[3]): ", ctx_residual[3])
       flush(BSTDOUT)
 
       if i != 1     # can't do F(q^(n+1)) + F(q^(n)) until we have both
@@ -420,13 +419,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           beforeDS_eqn_res_vec[ix_dof] = eqn.res_vec[ix_dof]
           beforeDS_eqn_nextstep_res_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
         end
-        println(BSTDOUT, " q_vec and res_vec, both eqn & eqn_nextstep saved")
+        print(BSTDOUT, " q_vec and res_vec, both eqn & eqn_nextstep saved")
 
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dM
 
-        println(BSTDOUT, "\n > Now solving dR/dM\n")
+        println(BSTDOUT, " > Now solving dR/dM")
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
@@ -456,6 +455,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
         end
+        # DUPEDEBUG
         println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
         println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
         println(BSTDOUT, " vecnorm(old_q_vec_Maimag): ", vecnorm(old_q_vec_Maimag))
@@ -532,7 +532,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Solve:
         #   dR/dq^(n+1) v^(n+1) = b
         #--------
-        println(BSTDOUT, "\n > Now solving dR/dq * v^(n)\n")
+        println(BSTDOUT, " > Now solving dR/dq * v^(n)")
 
         fill!(v_vec, 0.0)
 
@@ -549,7 +549,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
-        println(BSTDOUT, "\n  Now updating linear operator.")
+        println(BSTDOUT, "  Now updating linear operator.")
         flush(BSTDOUT)
         # typeof(ls_ds): LinearSolvers.StandardLinearSolver{NonlinearSolvers.CNMatPC,NonlinearSolvers.CNPetscMatLO}
         # typeof(ls_ds.lo): NonlinearSolvers.CNPetscMatLO
@@ -587,7 +587,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
         #
         # SO! this is modifying the Jac for CN.
-        println(BSTDOUT, "\n  Linear operator updated.")
+        println(BSTDOUT, "  Linear operator updated.")
         flush(BSTDOUT)
 
         #=
@@ -663,45 +663,25 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   verbose=5
         #--------
         # linearSolve(ls_ds, b_vec, v_vec, verbose=5)
-        println(BSTDOUT, " typeof(ls_ds): ", typeof(ls_ds))
-        println(BSTDOUT, " typeof(b_vec): ", typeof(b_vec))
-        println(BSTDOUT, " typeof(v_vec): ", typeof(v_vec))
-        flush(BSTDOUT)
         linearSolve(ls_ds, b_vec, v_vec)
 
         #------------------------------------------------------------------------------
         # Checking linearSolve
 
         A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
-        println(BSTDOUT, " ")
         println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
-        println(BSTDOUT, " ")
         flush(BSTDOUT)
 
         #------------------------------------------------------------------------------
 
 
-        println(BSTDOUT, " lo_ds_innermost.A: ")
-        flush(BSTDOUT)
-        println(BSTDOUT, "  vecnorm: ", vecnorm(lo_ds_innermost.A))
-        flush(BSTDOUT)
-        println(BSTDOUT, "  maximum: ", maximum(lo_ds_innermost.A))
-        flush(BSTDOUT)
-        println(BSTDOUT, "  minimum: ", minimum(lo_ds_innermost.A))
-        flush(BSTDOUT)
-        println(BSTDOUT, "  minimum abs: ", minimum(abs(lo_ds_innermost.A)))
-        flush(BSTDOUT)
-        println(BSTDOUT, " b_vec: ")
-        println(BSTDOUT, "  vecnorm: ", vecnorm(b_vec))
-        println(BSTDOUT, "  maximum: ", maximum(b_vec))
-        println(BSTDOUT, "  minimum: ", minimum(b_vec))
-        println(BSTDOUT, "  minimum abs: ", minimum(abs.(b_vec)))
-        println(BSTDOUT, " v_vec: ")
-        println(BSTDOUT, "  vecnorm: ", vecnorm(v_vec))
-        println(BSTDOUT, "  maximum: ", maximum(v_vec))
-        println(BSTDOUT, "  minimum: ", minimum(v_vec))
-        println(BSTDOUT, "  minimum abs: ", minimum(abs.(v_vec)))
-        println(BSTDOUT, " ")
+        println(BSTDOUT, " lo_ds_innermost.A:  vecnorm: ", vecnorm(lo_ds_innermost.A), 
+                         "  max: ", maximum(lo_ds_innermost.A), 
+                         "  min: ", minimum(lo_ds_innermost.A), "  minabs: ", minimum(abs.(lo_ds_innermost.A)))
+        println(BSTDOUT, " b_vec:  vecnorm: ", vecnorm(b_vec), "  max: ", maximum(b_vec), 
+                         "  min: ", minimum(b_vec), "  minabs: ", minimum(abs.(b_vec)))
+        println(BSTDOUT, " v_vec:  vecnorm: ", vecnorm(v_vec), "  max: ", maximum(v_vec), 
+                         "  min: ", minimum(v_vec), "  minabs: ", minimum(abs.(v_vec)))
         flush(BSTDOUT)
 
 
@@ -798,6 +778,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     end   # end of opts["perturb_Ma_CN"]
+
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # End direct sensitivity calc's for each time step
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
