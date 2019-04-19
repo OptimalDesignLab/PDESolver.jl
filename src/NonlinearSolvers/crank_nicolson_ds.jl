@@ -511,6 +511,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # dR_hat^(n)/dq^(n) * v^(n) = 
           #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
           res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
+          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.res_vec[ix_dof]
+          # TODO TODO ----- is this the bug???
 
           # calc dRdq * v^(n) by doing matrix-free complex step
           dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
@@ -590,6 +592,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "  Linear operator updated.")
         flush(BSTDOUT)
 
+        ccc = ones(Float64, mesh.numDof)
+        Accc = zeros(Float64, mesh.numDof)
+        A_mul_B!(Accc, lo_ds_innermost.A, ccc)
+        println(BSTDOUT, " vecnorm(Accc): ", vecnorm(Accc))
+        flush(BSTDOUT)
+        println(BSTDOUT, " cond(lo_ds_innermost.A): ", cond(full(lo_ds_innermost.A)))
+        flush(BSTDOUT)
         #=
         # This section is intended to assess the magnitude of A at every iteration 
         #   by contracting it with a vector of ones
