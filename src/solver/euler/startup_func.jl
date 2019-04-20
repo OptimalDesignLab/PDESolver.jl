@@ -178,6 +178,12 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
     end
   end
 
+  #TODO: TESTING
+  if opts["freeze_viscosity"]
+    freezeViscosity(mesh, sbp, eqn, opts)
+  end
+
+
   if opts["calc_error"]
     @mpi_master println("\ncalculating error of file ",
                        opts["calc_error_infname"],

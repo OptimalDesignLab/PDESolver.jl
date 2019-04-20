@@ -261,6 +261,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
   homotopy_tol = 1e-2
   delta_max = 0.5  # step size limit, set to 1 initially,
   psi_max = 10*pi/180  # angle between tangent limiter
+  h_max = 0.1  # maximum h
   psi = 0.0  # angle between tangent vectors
   tan_norm = 0.0  # current tangent vector norm
   tan_norm_1 = 0.0  # previous tangent vector norm
@@ -443,6 +444,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
       println("delta/delta_max = ", delta/delta_max)
       println("fac = ", fac)
       h /= fac
+      h = min(h, h_max)
       println("new h = ", h)
 
       # take predictor step

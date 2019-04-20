@@ -1592,4 +1592,51 @@ function getLambdaMax_revq(params::ParamType{Tdim},
 end
 
 
+function getLambdaMax_revq(params::ParamType{Tdim}, 
+                           qL::AbstractVector{Tsol}, 
+                           qL_bar::AbstractVector{Tsol},
+                           lambda_bar::Number) where {Tsol, Tdim}
+
+  gamma = params.gamma
+  Un = zero(Tsol)
+  rhoLinv = 1/qL[1]
+
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    u_i = qL[i+1]*rhoLinv
+    Un += u_i*u_i
+  end
+
+  Un2 = sqrt(Un)
+  lambda_max = Un2 + aL
+ 
+
+  # reverse sweep
+  fac = Un > 0 ? 1 : -1
+  Un_bar = lambda_bar/(2*Un2)
+  aL_bar = lambda_bar
+
+  
+  rhoLinv_bar = zero(Tsol)
+  for i=1:Tdim
+    u_i = qL[i+1]*rhoLinv
+
+    u_i_bar = 2*u_i*Un_bar
+    qL_bar[i+1] += u_i_bar*rhoLinv
+    rhoLinv_bar += qL[i+1]*u_i_bar
+  end
+
+  # aL
+  pL_bar = gamma*rhoLinv*aL_bar/(2*aL)
+  rhoLinv_bar += gamma*pL*aL_bar/(2*aL)
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+
+  qL_bar[1] += -rhoLinv*rhoLinv*rhoLinv_bar
+  
+  return lambda_max
+end
+
 

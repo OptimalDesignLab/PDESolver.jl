@@ -50,6 +50,7 @@ end
     # apply diffusion tensor
     applyDiffusionTensor(diffusion, sbp, eqn.params, q_i, w_i, coords, dxidx_i,
                          jac_i, i, grad_w, lambda_gradw)
+
     # apply Q^T
     res_i = sview(eqn.res, :, :, i)
     applyQxTransposed(sbp, lambda_gradw, dxidx_i, work, res_i, op)

@@ -86,6 +86,11 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
 
   end
 
+  if opts["addStabilization"]
+    addStabilization_revq(mesh, sbp, eqn, opts)
+  end
+
+
   # do the parallel face calculations
   finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func)
 
@@ -162,6 +167,12 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
         data, flux_functor_revm)
   end
 
+  if opts["addStabilization"]
+    addStabilization_revm(mesh, sbp, eqn, opts)
+  end
+
+
+
   # do the parallel part of the computation
   finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calc_func)
 
@@ -232,6 +243,11 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     # do shared face integrals
     finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, pfunc)
   end
+
+  if opts["addStabilization"]
+    addStabilization(mesh, sbp, eqn, opts)
+  end
+
 
   # compute the contraction
   val = zero(Tres)

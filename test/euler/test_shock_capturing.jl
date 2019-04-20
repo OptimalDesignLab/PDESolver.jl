@@ -48,7 +48,7 @@ function test_shocksensorPP()
                                              dxidx, jac, Se, ee)
 
     @test maximum(abs.(Se)) > 1e-12
-    @test maximum(ee) > 0.01
+    @test maximum(ee) > 0.01*sensor.e0
 
     fill!(res, 0)
     w = copy(q)
@@ -71,20 +71,24 @@ function test_shocksensorPP()
     test_shocksensor_diff(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor6, q, coords, dxidx, jac)
 
+    test_shocksensor_revq(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
     test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
-    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
+    println("testing PP sensor revm")
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor)
+#    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
 
     # case 2: ee on sin wave
-    q[1, 3] = 1.0105
-    for i=1:mesh.numNodesPerElement
-      for j=2:mesh.numDofPerNode
-        q[j, i] += 0.1*(i + j)
-      end
-    end
+    q[1, 3] = 1.005
+#    for i=1:mesh.numNodesPerElement
+#      for j=2:mesh.numDofPerNode
+#        q[j, i] += 0.1*(i + j)
+#      end
+#    end
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
+    test_shocksensor_revq(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
     # for isotropic grids, the HHO anisotropy factors should be ~h/(p+1)
     for i=1:mesh.numEl
@@ -189,15 +193,15 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
 
   Se = zeros(Complex128, dim, numNodesPerElement)
   ee = zeros(Complex128, dim, numNodesPerElement)
-  q_dot = rand_realpart(size(_q))
-#  q_dot = zeros(Complex128, size(_q)); q_dot[5] = 2
+#  q_dot = rand_realpart(size(_q))
+  q_dot = zeros(Complex128, size(_q)); q_dot[1] = 1
   q_bar = zeros(Complex128, size(q_dot))
-  ee_bar = rand_realpart(size(ee))
-#  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 3
+#  ee_bar = rand_realpart(size(ee))
+  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 1
   
   q = zeros(Complex128, numDofPerNode, numNodesPerElement)
   copy!(q, _q)
-  q .+= 0.1*rand(size(q))
+  q .+= 0.01*rand(size(q))
 
   # complex step
   h = 1e-20
@@ -215,6 +219,8 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
  
   val2 = sum(q_bar .* q_dot)
 
+  println("val1 = ", val1)
+  println("val2 = ", val2)
   @test abs(val1 - val2) < 1e-12
 
   # run twice to check accumulation behavior

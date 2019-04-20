@@ -159,7 +159,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-#  println("source integral @time printed above")
+  #println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]

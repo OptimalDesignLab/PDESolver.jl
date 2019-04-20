@@ -66,15 +66,19 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   ee_dot::Vector{Tres}
   lambda_max_dot::Matrix{Tres}
 
+  up_tilde_bar::Vector{Tsol}
+  up1_tilde_bar::Vector{Tsol}
+  up_bar::Vector{Tsol}
+
   function ShockSensorPP{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator, opts) where {Tsol, Tres}
 
     Vp = VandermondeData(sbp, sbp.degree)
     Vp1 = VandermondeData(sbp, sbp.degree-1)  #TODO: unneded?
 
     # constants from Barter's thesis
-    s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
-    kappa = 0.5  # was 0.5
-    e0 = 0.0001
+    s0 = -(4.5 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
+    kappa = 1.0  # was 0.5
+    e0 = 0.01
     
     up = zeros(Tsol, sbp.numnodes)
     up_tilde = zeros(Tsol, sbp.numnodes)
@@ -85,8 +89,13 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     ee_dot = zeros(Tres, mesh.numNodesPerElement)
     lambda_max_dot = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
 
+    up_tilde_bar = zeros(Tsol, mesh.numNodesPerElement)
+    up1_tilde_bar = zeros(Tsol, mesh.numNodesPerElement)
+    up_bar = zeros(Tsol, mesh.numNodesPerElement)
+
     return new(Vp, Vp1, s0, kappa, e0, up, up_tilde, up1_tilde,
-               num_dot, den_dot, ee_dot, lambda_max_dot)
+               num_dot, den_dot, ee_dot, lambda_max_dot,
+               up_tilde_bar, up1_tilde_bar, up_bar)
   end
 end
 

@@ -28,9 +28,9 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator, eqn::Euler
     evalBoundaryIntegrals_revq(mesh, sbp, eqn, opts)
   end
 
-  # time.t_stab += @elapsed if opts["addStabilization"]
-  #   addStabilization(mesh, sbp, eqn, opts)
-  # end
+  time.t_stab += @elapsed if opts["addStabilization"]
+     addStabilization_revq(mesh, sbp, eqn, opts)
+  end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_revq(mesh, sbp, eqn, opts)
@@ -171,6 +171,16 @@ function evalBoundaryIntegrals_revq(mesh::AbstractMesh{Tmsh},
 
 end  # end evalBoundaryIntegrals
 
+
+function addStabilization_revq(mesh::AbstractMesh, sbp::AbstractOperator,
+                               eqn::EulerData, opts)
+
+  if opts["use_lps"]
+    applyLPStab_revq(mesh, sbp, eqn, opts)
+  end
+
+  return nothing
+end
 
 """
 

@@ -275,7 +275,7 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-
+#=
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -284,13 +284,24 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPDiagonalE"
     opts_tmp["order"] = 2
     opts_tmp["use_lps"] = true
+    #opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
-    test_jac_general(mesh9, sbp9, eqn9, opts9)
+    test_revm_product(mesh9, sbp9, eqn9, opts9)
+    #test_revq_product(mesh9, sbp9, eqn9, opts9)
+
+    Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
+    sc = "Volume"
+    sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh9, sbp9, opts9)
+    capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
+                                                    sbp9, eqn9, opts9, sensor)
+
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, freeze=true)
+    #test_jac_general(mesh9, sbp9, eqn9, opts9)
+=#
 
 
-#= 
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -439,6 +450,7 @@ function test_jac_terms_long()
                                                     sbp4, eqn4, opts4, sensor)
       test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
       test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+      test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture, freeze=true)
 
 
       println("case5")
@@ -489,6 +501,10 @@ function test_jac_terms_long()
       test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
       test_sbp_cartesian_revm(mesh4, sbp4, eqn4, opts4)
       test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+
+      if sc == "Volume"
+        test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture, freeze=true)
+      end
     end
 
 
@@ -591,19 +607,23 @@ function test_jac_terms_long()
     opts_tmp["addVolumeIntegrals"] = false
     opts_tmp["addFaceIntegrals"] = false
     opts_tmp["addBoundaryIntegrals"] = false
+    opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
 
     mesh_r5, sbp_r5, eqn_r5, opts_r5 = run_solver(fname4)
 
    test_revm_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
+   test_revm_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
-=#
+   println("\nTesting revq frozen")
+   test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
+
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------
@@ -872,8 +892,6 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
     qL[i] -= pert
   end
 
-  println("lambda_dot4 = ", real(lambda_dot4))
-  println("lambda_dot3 = ", real(lambda_dot3))
   @test isapprox( norm(lambda_dot - lambda_dot2), 0.0) atol=1e-13
   @test isapprox( norm(lambda_dot3 - lambda_dot4), 0.0) atol=1e-13
 
@@ -887,22 +905,30 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
 
   # revq
   qL_bar = zeros(qL)
+  qL2_bar = zeros(qL)
   qL_barc = zeros(qL)
+  qL2_barc = zeros(qL)
 
   for i=1:length(qL)
     qL[i] += pert
     qL_barc[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    qL2_barc[i] = imag(EulerEquationMod.getLambdaMax(params, qL))/h
     qL[i] -= pert
   end
 
-  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 2)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL2_bar, 2)
 
-  @test maximum(abs.(qL_bar - qL_barc)) < 1e-14
+  @test maximum(abs.(qL_bar - 2*qL_barc)) < 1e-14
+  @test maximum(abs.(qL2_bar - 2*qL2_barc)) < 1e-14
 
   # test accumulation behavior
   qL_bar_orig = copy(qL_bar)
-  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
+  qL2_bar_orig = copy(qL2_bar)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 2)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL2_bar, 2)
   @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-14
+  @test maximum(abs.(qL2_bar - 2*qL2_bar_orig)) < 1e-14
 
 
   # revm
@@ -2034,6 +2060,7 @@ end
 function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prealloc=true)
 
   # use a spatially varying solution
+  srand(1234)
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
@@ -2071,7 +2098,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   opts["calc_jac_explicit"] = false
   println("calculating regular jacobian"); flush(STDOUT)
   ctx_residual = (evalResidual,)
-#  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
+  NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
@@ -2089,20 +2116,19 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   # the same
   for i=1:10
     x = rand(PetscScalar, mesh.numDof)
-#    x = zeros(PetscScalar, mesh.numDof); x[1] = 1
     b1 = zeros(PetscScalar, mesh.numDof)
     b2 = zeros(PetscScalar, mesh.numDof)
     b3 = zeros(PetscScalar, mesh.numDof)
 
     t = 0.0
-#    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
+    applyLinearOperator(lo1, mesh, sbp, eqn, opts, ctx_residual, t, x, b1)
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
     evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
-    println("maximum(abs.(b2 - b3)) = ", maximum(abs.(b2 - b3)))
-    println("b2[1] = ", b2[1])
-    println("b3[1] = ", b3[1])
-#    @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11
+#    println("maximum(abs.(b2 - b3)) = ", maximum(abs.(b2 - b3)))
+#    println("b2[1] = ", b2[1])
+#    println("b3[1] = ", b3[1])
+    @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11
     @test isapprox( maximum(abs.((b2 - b3))), 0.0) atol=1e-11
   end
 
@@ -2354,7 +2380,7 @@ end
 """
   Test psi^T dRdm product
 """
-function test_revm_product(mesh, sbp, eqn, opts)
+function test_revm_product(mesh, sbp, eqn, opts; freeze=false)
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -2364,6 +2390,15 @@ function test_revm_product(mesh, sbp, eqn, opts)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
                                      # interfaces non-zero
+  
+  # to test freezing the viscosity, have two different qs and evaluate the
+  # Jacobian using the frozen viscosity while a different q in eqn.q
+  if freeze
+    q_frozen = copy(eqn.q)
+    EulerEquationMod.freezeViscosity(mesh, sbp, eqn, opts)
+    eqn.q .+= 0.01*rand(size(eqn.q))
+  end
+
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
@@ -2508,6 +2543,11 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
   end
 
+  if freeze
+    EulerEquationMod.thawViscosity(mesh, sbp, eqn, opts)
+  end
+
+
 
 
   return nothing
@@ -2518,7 +2558,7 @@ end
 """
   Test the psi^T dR/dq product
 """
-function test_revq_product(mesh, sbp, eqn, opts)
+function test_revq_product(mesh, sbp, eqn, opts; freeze=false)
 
   srand(1234)
   h = 1e-20
@@ -2529,6 +2569,15 @@ function test_revq_product(mesh, sbp, eqn, opts)
 #  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
                                      # interfaces non-zero
+
+  # to test freezing the viscosity, have two different qs and evaluate the
+  # Jacobian using the frozen viscosity while a different q in eqn.q
+  if freeze
+    q_frozen = copy(eqn.q)
+    EulerEquationMod.freezeViscosity(mesh, sbp, eqn, opts)
+    eqn.q .+= 0.01*rand(size(eqn.q))
+  end
+
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
@@ -2622,6 +2671,12 @@ function test_revq_product(mesh, sbp, eqn, opts)
 
   end
 =#
+
+  if freeze
+    EulerEquationMod.thawViscosity(mesh, sbp, eqn, opts)
+  end
+
+
   return nothing
 end
 
@@ -3102,7 +3157,7 @@ end
    * use_sensor: if true use `ShockSensorPP`, otherwise use `ShockSensorEverywher`
 """
 function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
-      capture::EulerEquationMod.AbstractShockCapturing) where {Tsol, Tres}
+      capture::EulerEquationMod.AbstractShockCapturing; freeze=false) where {Tsol, Tres}
 
   opts = copy(_opts)  # don't modify the original
   opts["addVolumeIntegrals"] = false
@@ -3125,8 +3180,17 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
 #    sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
 #  end
   
-  eqn.q .+= 0.1*rand(size(eqn.q))
+  eqn.q .+= 0.01*rand(size(eqn.q))
   eqn.shock_capturing = capture
+
+  # to test freezing the viscosity, have two different qs and evaluate the
+  # Jacobian using the frozen viscosity while a different q in eqn.q
+  if freeze
+    q_frozen = copy(eqn.q)
+    EulerEquationMod.freezeViscosity(mesh, sbp, eqn, opts)
+    eqn.q .+= 0.01*rand(size(eqn.q))
+  end
+
 
   # set a boundary condition where getDirichletState depends on qface
   opts["BC1_name"] = "noPenetrationBC"
@@ -3145,37 +3209,11 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
 
 #  println("mesh.dofs[:, :, 1] = \n", mesh.dofs[:, :, 1])
 #  println("mesh.dofs[:, :, 5] = \n", mesh.dofs[:, :, 5])
-#=
+
   # complex step
+
   q_dot = rand_realpart(size(eqn.q_vec))
-
-  for i=1:mesh.numEl
-    if i == 5
-      continue
-    end
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        q_dot[mesh.dofs[k, j, i]] = 0
-      end
-    end
-  end
-=#
-  q_dot = zeros(size(eqn.q_vec))  
-  q_dot[261] = 1
-#  q_dot[idx] = 3
-  #q_dot[46] = 1
-#  q_dot_arr = zeros(Float64, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numEl)
-#  array1DTo3D(mesh, sbp, eqn, opts, q_dot, q_dot_arr)
-#=
-  eqn.q .+= pert*q_dot_arr
-  fill!(eqn.res, 0)
-
-  EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
-  #println("real(eqn.res) = ", real(eqn.res))
-  eqn.q .-= pert*q_dot_arr
-  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-  res_dot = imag(eqn.res_vec)/h
-=#
+  #q_dot = zeros(length(eqn.q_vec)); q_dot[1] = 1
   res_dot = zeros(eqn.res_vec)
   evaldRdqProduct(mesh, sbp, eqn, opts, q_dot, res_dot)
 
@@ -3191,6 +3229,11 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
   t = 0.0
   ctx_residual = (evalResidual,)
   applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, q_dot, b)
+
+  if freeze
+    EulerEquationMod.thawViscosity(mesh, sbp, eqn, opts)
+  end
+
 
 #  dofs1 = vec(mesh.dofs[:, :, 1])
 #  println("res_dot = ", real(res_dot))

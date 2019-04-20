@@ -12,10 +12,15 @@
 
   ```
     getShockSensor
+    getDiffusion
   ```
 
-  This method only needs to be extended if the `AbstractShockCapturing` does
+  `getShockSensor` only needs to be extended if the `AbstractShockCapturing` does
   not store the sensor in the `.sensor` field.
+  
+  `getDiffusion` only needs to be extended if the `AbstractShockCapturing` does
+  not store the sensor in the `.diffusion` field.
+
 """
 abstract type AbstractShockCapturing end
 
@@ -36,6 +41,22 @@ function getShockSensor(obj::AbstractShockCapturing)
   return obj.sensor
 end
 
+"""
+  Returns the `AbstractDiffusion` object.  This function is not required to
+  be type stable.
+
+  **Inputs**
+
+   * obj: an `AbstractShockCapturing`
+
+  **Outputs**
+
+   * diffusion: an `AbstractDiffusion`
+"""
+function getDiffusion(obj::AbstractShockCapturing)
+
+  return obj.diffusion
+end
 
 #------------------------------------------------------------------------------
 # Volume shock capturing

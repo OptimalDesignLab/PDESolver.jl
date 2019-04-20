@@ -48,13 +48,23 @@ function test_functionals()
     "need_adjoint" => true,
     )
 
+  # make second sets of 2D objects with Diagonal E (to test LPS)
+  opts2 = copy(opts)
+  opts2["operator_type"] = "SBPDiagonalE"
+  delete!(opts2, "face_integral_type")
+  delete!(opts2, "FaceElementIntegral_name")
+  opts2["Flux_name"] = "IRSLFFlux"
+  opts2["use_lps"] = true
+
   mesh, sbp, eqn, opts = solvePDE(opts)
+  mesh2, sbp2, eqn2, opts2 = solvePDE(opts2)
   mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_jac3d.jl")
 
   testEntropyDissFunctional(mesh, sbp, eqn, opts)
 
   # test derivative of all functionals
 
+  funcs_diage = ["negboundaryentropydiss", "entropydissipation", "negentropydissipation"]
   for funcname in keys(EulerEquationMod.FunctionalDict)
     println("testing functional", funcname)
     obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
@@ -63,9 +73,15 @@ function test_functionals()
     end
 
     test_functional_deriv_q(mesh, sbp, eqn, opts, obj)
+
+    if funcname in funcs_diage
+      obj = createFunctional(mesh2, sbp2, eqn2, opts2, funcname, [1, 3])
+      test_functional_deriv_q(mesh2, sbp2, eqn2, opts2, obj)
+    end
   end
 
-  
+
+ 
   func1 = createFunctional(mesh, sbp, eqn, opts, "massflow", [1, 3])
   func2 = createFunctional(mesh, sbp, eqn, opts, "lift", [1, 3])
   test_compositefunctional(mesh, sbp, eqn, opts, func1, func2)
@@ -86,6 +102,11 @@ function test_functionals()
     
     obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
     test_functional_deriv_m(mesh, sbp, eqn, opts, obj)
+
+    if funcname in funcs_diage
+      obj = createFunctional(mesh2, sbp2, eqn2, opts2, funcname, [1, 3])
+      test_functional_deriv_m(mesh2, sbp2, eqn2, opts2, obj)
+    end
 
     obj3 = createFunctional(mesh3, sbp3, eqn3, opts3, funcname, [1])
     test_functional_deriv_m(mesh3, sbp3, eqn3, opts3, obj3)

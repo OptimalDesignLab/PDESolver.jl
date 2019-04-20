@@ -137,6 +137,29 @@ function getA0_diff(obj::AbstractVariables, params::AbstractParamType,
   error("abstract method for getA0_diff() reached")
 end
 
+"""
+  Computes the reverse mode of getA0 wrt `q`
+
+  **Inputs**
+
+   * obj: an [`AbstractVariables`](@ref) object
+   * params: `AbstractParamType` object
+   * q: vector of conservative variables, length `numDofPerNode`
+   * A0_bar: adjoint part of `A0`, same size as `A0`.
+
+  **Inputs/Outputs**
+
+   * q_bar: adjoint part of `q`, to be updated.  Same size as `q`
+   * A0: same as [`getA0`](@ref)
+"""
+function getA0_revq(obj::AbstractVariables, params::AbstractParamType, 
+                     q::AbstractArray, q_bar::AbstractArray,
+                     A0::AbstractMatrix, A0_bar::AbstractMatrix)
+
+  error("abstract method for getA0_revq() reached")
+end
+
+
 #TODO: add: entropy function, entropy flux
 
 
@@ -184,6 +207,12 @@ function getA0_diff(obj::IRVariables, params::AbstractParamType,
   getIRA0_diff(params, q, q_dot, A0, A0_dot)
 end
 
+function getA0_revq(obj::IRVariables, params::AbstractParamType, 
+                     q::AbstractArray, q_bar::AbstractArray,
+                     A0::AbstractMatrix, A0_bar::AbstractMatrix)
+
+  getIRA0_revq(params, q, q_bar, A0, A0_bar)
+end
 
 #------------------------------------------------------------------------------
 # Hughes entropy variables

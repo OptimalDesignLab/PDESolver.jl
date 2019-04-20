@@ -138,6 +138,290 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 end
 
 
+function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorPP{Tsol, Tres},
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ee_mat::AbstractMatrix, ee_mat_bar::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numNodesPerElement = size(q, 2)
+
+  @unpack sensor up up_tilde up1_tilde s0 kappa e0 up_tilde_bar up1_tilde_bar
+  @unpack sensor up_bar
+  fill!(up_tilde_bar, 0); fill!(up1_tilde_bar, 0); fill!(up_bar, 0)
+
+
+  # use density as the key variable
+  for i=1:numNodesPerElement
+    up[i] = q[1, i]
+  end
+
+  getFilteredSolutions(params, sensor.Vp, up, up_tilde, up1_tilde)
+  #getFilteredSolution(params, sensor.Vp, up, up_tilde)
+  #getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
+
+  # compute the inner product
+  num = zero(Tres)
+  den = zero(Tres)
+  for i=1:numNodesPerElement
+    fac = sbp.w[i]/jac[i]
+    delta_u = up_tilde[i] - up1_tilde[i]
+
+    num += delta_u*fac*delta_u
+    # use the filtered variables for (u, u).  This is a bit different than
+    # finite element methods, where the original solution has a basis, and the
+    # norm in any basis should be the same.  Here we use the filtered u rather
+    # than the original because it is probably smoother.
+    den += up_tilde[i]*fac*up_tilde[i]
+
+    # see if this makes the sensor less sensitive
+    #den += up[i]*fac*up[i]
+  end
+
+  Se = num/den
+  se = log10(Se)
+ 
+  # should this be a separate function from computing Se?
+  if se < s0 - kappa
+    ee = Tres(0.0)
+    is_nonzero = false
+  elseif se > s0 - kappa && se < s0 + kappa
+    ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
+    is_nonzero = true
+  else
+    ee = Tres(e0)
+    is_nonzero = true
+  end
+
+  # scale by lambda_max * h/p to get subcell resolution
+  lambda_max = zero(Tsol)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max += getLambdaMax(params, q_i)
+    h_avg += sbp.w[i]/jac[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  h_avg = h_avg^(1/Tdim)
+
+  ee_final = ee*lambda_max*h_avg/sbp.degree
+
+
+  # use elementwise constant
+  fill!(ee_mat, ee)
+
+  #---------------------
+  # reverse sweep
+  ee_final_bar = zero(Tres)
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      ee_final_bar += ee_mat_bar[d, i]
+    end
+  end
+
+  ee_bar = zero(Tres); lambda_max_bar = zero(Tres)
+  ee_bar         += ee_final_bar*lambda_max*h_avg/sbp.degree
+  lambda_max_bar += ee_final_bar*ee*h_avg/sbp.degree
+
+  lambda_max_bar /= numNodesPerElement
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    q_bar_i = sview(q_bar, :, i)
+    getLambdaMax_revq(params, q_i, q_bar_i, lambda_max_bar)
+  end
+
+  # if s < s0 - kappa or > s0 + kappa, then ee is either 1 or 0, so there is
+  # no q dependence and no need for further computation
+  if se > s0 - kappa && se < s0 + kappa
+
+    # derivative of ee wrt Se (not se)
+    Se_bar = ee_bar*0.5*e0*cospi( (se - s0)/(2*kappa) ) * (Float64(pi)/(2*kappa*log(10)*Se))
+
+    num_bar = Se_bar/den
+    den_bar = -num*Se_bar/(den*den)
+
+#    up_tilde_bar = zeros(Tsol, numNodesPerElement)
+#    up1_tilde_bar = zeros(Tsol, numNodesPerElement)
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up_tilde[i] - up1_tilde[i]
+
+      delta_u_bar       = 2*delta_u*fac*num_bar
+      up_tilde_bar[i]  += 2*up_tilde[i]*fac*den_bar
+      up_tilde_bar[i]  += delta_u_bar
+      up1_tilde_bar[i] -= delta_u_bar
+    end
+
+
+    #up_bar = zeros(Tsol, numNodesPerElement)
+    getFilteredSolutions_rev(params, sensor.Vp, up_bar, up_tilde_bar, up1_tilde_bar)
+
+    for i=1:numNodesPerElement
+      q_bar[1, i] += up_bar[i]
+    end
+  end
+
+  return is_nonzero
+end
+
+
+function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorPP{Tsol, Tres},
+                        q::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix, coords_bar::AbstractMatrix,
+                        dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                        jac::AbstractVector{Tmsh}, jac_bar::AbstractVector,
+                        ee_mat_bar::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numNodesPerElement = size(q, 2)
+
+  @unpack sensor up up_tilde up1_tilde s0 kappa e0
+  #fill!(up_tilde, 0); fill!(up1_tilde, 0)
+
+  # use density as the key variable
+  for i=1:numNodesPerElement
+    up[i] = q[1, i]
+  end
+
+  getFilteredSolutions(params, sensor.Vp, up, up_tilde, up1_tilde)
+  #getFilteredSolution(params, sensor.Vp, up, up_tilde)
+  #getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
+
+  # compute the inner product
+  num = zero(Tres)
+  den = zero(Tres)
+  for i=1:numNodesPerElement
+    fac = sbp.w[i]/jac[i]
+    delta_u = up_tilde[i] - up1_tilde[i]
+
+    num += delta_u*fac*delta_u
+    # use the filtered variables for (u, u).  This is a bit different than
+    # finite element methods, where the original solution has a basis, and the
+    # norm in any basis should be the same.  Here we use the filtered u rather
+    # than the original because it is probably smoother.
+    den += up_tilde[i]*fac*up_tilde[i]
+
+    # see if this makes the sensor less sensitive
+    #den += up[i]*fac*up[i]
+  end
+
+  Se = num/den
+  se = log10(Se)
+ 
+  # should this be a separate function from computing Se?
+  if se < s0 - kappa
+    ee = Tres(0.0)
+    is_nonzero = false
+  elseif se > s0 - kappa && se < s0 + kappa
+    ee = 0.5*e0*(1 + sinpi( (se - s0)/(2*kappa)))
+    is_nonzero = true
+  else
+    ee = Tres(e0)
+    is_nonzero = true
+  end
+
+  # scale by lambda_max * h/p to get subcell resolution
+  lambda_max = zero(Tsol)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max += getLambdaMax(params, q_i)
+    h_avg += sbp.w[i]/jac[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  h_avg2 = h_avg^(1/Tdim)
+
+  ee_final = ee*lambda_max*h_avg2/sbp.degree
+
+
+  # use elementwise constant
+  #fill!(ee_mat, ee)
+
+  #---------------------
+  # reverse sweep
+  ee_final_bar = zero(Tres)
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      ee_final_bar += ee_mat_bar[d, i]
+    end
+  end
+
+  ee_bar = zero(Tres); lambda_max_bar = zero(Tres); h_avg2_bar = zero(Tres)
+  ee_bar         += ee_final_bar*lambda_max*h_avg2/sbp.degree
+  h_avg2_bar += ee*lambda_max*ee_final_bar/sbp.degree
+
+  h_avg_bar = (1/Tdim)*h_avg2_bar*h_avg^((1/Tdim) - 1)
+
+  for i=1:numNodesPerElement
+    jac_bar[i] += -sbp.w[i]*h_avg_bar/(jac[i]*jac[i])
+  end
+#=
+  lambda_max_bar /= numNodesPerElement
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    q_bar_i = sview(q_bar, :, i)
+    getLambdaMax_revq(params, q_i, q_bar_i, lambda_max_bar)
+  end
+=#
+  # if s < s0 - kappa or > s0 + kappa, then ee is either 1 or 0, so there is
+  # no metric dependence and no need for further computation
+  if se > s0 - kappa && se < s0 + kappa
+
+    # derivative of ee wrt Se (not se)
+    Se_bar = ee_bar*0.5*e0*cospi( (se - s0)/(2*kappa) ) * (Float64(pi)/(2*kappa*log(10)*Se))
+
+    num_bar = Se_bar/den
+    den_bar = -num*Se_bar/(den*den)
+
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up_tilde[i] - up1_tilde[i]
+
+      fac_bar     = delta_u*delta_u*num_bar
+      fac_bar    += up_tilde[i]*up_tilde[i]*den_bar
+      jac_bar[i] += -sbp.w[i]*fac_bar/(jac[i]*jac[i])
+    end
+  end
+
+  return is_nonzero
+end
+
+
+"""
+  Computed the two filtered solutions required by the shock sensor (well, only
+  one of them is required, the other one may or may not be useful)
+
+  **Inputs**
+
+   * params
+   * vand: `VandermondeData`
+   * u_nodal_bar:
+
+  **Inputs/Outputs**
+
+   * u_filt1_bar:
+   * u_filt2_bar
+"""
+function getFilteredSolutions_rev(params::ParamType, vand::VandermondeData,
+                              u_nodal, u_filt1, u_filt2)
+
+
+  smallmatTvec!(vand.filt, u_filt1, u_nodal)
+  smallmatTvec_kernel!(vand.filt1, u_filt2,  u_nodal, 1, 1)
+
+  return nothing
+end
+
+
+
+
 #------------------------------------------------------------------------------
 # ShockSensorNone
 

@@ -25,7 +25,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    #println("volume integral @time printed above")
+    #println("volume integral diff @time printed above")
   end
 
   if opts["use_GLS"]
@@ -34,7 +34,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_bndry_diff += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    #println("boundary integral @time printed above")
+    #println("boundary integral diff @time printed above")
   end
 
 
@@ -45,7 +45,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    #println("face integral @time printed above")
+    #println("face integral diff @time printed above")
   end
 
 
@@ -59,8 +59,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
   end
 
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
-
-#  println("source integral @time printed above")
+  #println("source integral diff @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   #TODO: this will have to be done at the element level

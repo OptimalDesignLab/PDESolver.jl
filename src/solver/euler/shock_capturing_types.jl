@@ -143,10 +143,13 @@ end
 struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
   sensor::AbstractShockSensor
+  diffusion::AbstractDiffusion
   function ErrorShockCapturing{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                            eqn, opts,
                                            sensor::AbstractShockSensor) where {Tsol, Tres}
-    return new(sensor)
+
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
+    return new(sensor, diffusion)
   end
 end
 

@@ -124,7 +124,7 @@ end
 
    * params
    * vand: `VandermondeData`
-   * u_nodal: `numDofPerNode` x `numNodesPerElement` nodal solution
+   * u_nodal: `numNodesPerElement` nodal solution
 
   **Inputs/Outputs**
 
@@ -136,7 +136,8 @@ end
               the nodal basis
 """
 function getFilteredSolutions(params::ParamType, vand::VandermondeData,
-                              u_nodal, u_filt1, u_filt2)
+                              u_nodal::AbstractVector,
+                              u_filt1::AbstractVector, u_filt2::AbstractVector)
 
 
   smallmatvec!(vand.filt, u_nodal, u_filt1)

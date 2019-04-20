@@ -933,14 +933,70 @@ struct LPSData{Tsol, Tres}
   alpha::Float64
   entropy_vars::AbstractVariables
 
+  t1::Matrix{Tsol}
+  t2::Matrix{Tres}
+  A0::Matrix{Tsol}
+  dir::Vector{Tres}
+
+  t1_jac::Array{Tsol, 3}
+  t2_jac::Array{Tsol, 3}
+  t3_jac::Array{Tres, 3}
+  A0_diff::Array{Tsol, 3}
+  q_dot::Matrix{Float64}
+  lambdas::Vector{Tres}
+  lambdas_jac::Matrix{Tres}
+  lambda_dot_p::Vector{Tres}
+
+  t1_bar::Matrix{Tres}
+  t2_bar::Matrix{Tres}
+  tmp::Vector{Tres}
+  tmp_bar::Vector{Tres}
+  A0_bar::Matrix{Tres}
+
+  dir_bar::Vector{Tres}
   function LPSData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
 
+    @unpack mesh numDofPerNode numNodesPerElement dim
     P = getLPSMatrix(sbp)
     alpha = 1.0
     #entropy_vars = ConservativeVariables()
     entropy_vars = IRVariables()
 
-    return new(P, alpha, entropy_vars)
+    t1 = zeros(Tsol, numDofPerNode, numNodesPerElement)
+    t2 = zeros(Tres, numDofPerNode, numNodesPerElement)
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+    dir = zeros(Tres, dim)
+
+    
+    t1_jac = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    t2_jac = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    t3_jac = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    A0_diff = zeros(Tsol, numDofPerNode, numDofPerNode, numDofPerNode)
+    q_dot = zeros(numDofPerNode, numDofPerNode)
+    for i=1:numDofPerNode
+      q_dot[i, i] = 1
+    end
+
+    lambdas = zeros(Tres, numNodesPerElement)
+    lambdas_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
+    lambda_dot_p = zeros(Tres, numDofPerNode)
+
+
+    t1_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+    t2_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+    tmp = zeros(Tres, numDofPerNode)
+    tmp_bar = zeros(Tres, numDofPerNode)
+    A0_bar = zeros(Tres, numDofPerNode, numDofPerNode)
+
+  
+    dir_bar = zeros(Tres, dim)
+
+    return new(P, alpha, entropy_vars,
+               t1, t2, A0, dir,
+               t1_jac, t2_jac, t3_jac, A0_diff, q_dot, lambdas, lambdas_jac,
+               lambda_dot_p,
+               t1_bar, t2_bar, tmp, tmp_bar, A0_bar,
+               dir_bar)
   end
 end
 

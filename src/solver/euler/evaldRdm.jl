@@ -39,9 +39,9 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::Euler
     evalBoundaryIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
-  # time.t_stab += @elapsed if opts["addStabilization"]
-  #   addStabilization(mesh, sbp, eqn, opts)
-  # end
+   time.t_stab += @elapsed if opts["addStabilization"]
+     addStabilization_revm(mesh, sbp, eqn, opts)
+   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
@@ -183,6 +183,17 @@ function evalBoundaryIntegrals_revm(mesh::AbstractMesh{Tmsh},
   return nothing
 
 end  # end evalBoundaryIntegrals
+
+
+function addStabilization_revm(mesh::AbstractMesh, sbp::AbstractOperator,
+                               eqn::EulerData, opts)
+
+  if opts["use_lps"]
+    applyLPStab_revm(mesh, sbp, eqn, opts)
+  end
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.evalFaceIntegrals_revm
