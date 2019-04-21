@@ -1,7 +1,7 @@
 module NonlinearSolvers
 
-pde_pumi_interface_path = joinpath(Pkg.dir("PumiInterface"), "src")
-push!(LOAD_PATH, pde_pumi_interface_path)
+#pde_pumi_interface_path = joinpath(Pkg.dir("PumiInterface"), "src")
+#push!(LOAD_PATH, pde_pumi_interface_path)
 using ArrayViews
 import ArrayViews.view
 using PDESolver

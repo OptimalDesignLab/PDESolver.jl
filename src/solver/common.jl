@@ -604,7 +604,7 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
 
     elseif flag == 40  # predictor-corrector newton
 
-      predictorCorrectorHomotopy(evalResidual, evalHomotopy, mesh, sbp, eqn, opts, pmesh=pmesh)
+      predictorCorrectorHomotopy(evalResidual, evalHomotopy, mesh, sbp, eqn, opts)
 
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
