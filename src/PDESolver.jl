@@ -2,7 +2,7 @@ __precompile__(false)
 module PDESolver
 
 # defs.jl
-export AssembleElementData
+export AssembleElementData, AbstractShockSensor
 
 # from registration.jl
 export register_physics, retrieve_physics, registerIC, registerBC
@@ -13,7 +13,8 @@ export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        evalFunctional, evalFunctionalDeriv_q, evalFunctionalDeriv_m,
        updateMetricDependents,
        solvePDE, evalResidual_revm, evalResidual_revq, evaldRdqProduct,
-       _getSparsityPattern
+       _getSparsityPattern, getShockSensor, setShockSensor, setShockSensorAlpha,
+       createShockSensor
 
 # from interface2.jl
 export createObjects, createLinearSolver, getSparsityPattern

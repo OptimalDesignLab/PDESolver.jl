@@ -76,7 +76,7 @@ function test_shocksensorPP()
     test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
     println("testing PP sensor revm")
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor)
-#    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
 
     # case 2: ee on sin wave
     q[1, 3] = 1.005
@@ -119,6 +119,8 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   numDofPerNode, numNodesPerElement = size(_q)
   dim = size(dxidx, 1)
 
+  EulerEquationMod.setAlpha(sensor, 2)
+
   q = zeros(Complex128, numDofPerNode, numNodesPerElement)
   copy!(q, _q)
   Se_jac = zeros(Complex128, dim, numDofPerNode, numNodesPerElement,
@@ -155,7 +157,7 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   @test maximum(abs.(Se_jac - Se_jac2)) < 1e-11
   @test maximum(abs.(ee_jac - ee_jac2)) < 1e-11
 
-#=
+
   # test vector mode
   q_dot = rand_realpart(size(q))
   q .+= pert*q_dot
@@ -180,7 +182,9 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
 
   @test maximum(abs.(Se_dot - Se_dot2)) < 1e-11
   @test maximum(abs.(ee_dot - ee_dot2)) < 1e-11
-=#
+
+
+  EulerEquationMod.setAlpha(sensor, 1)
 
   return nothing
 end
@@ -190,6 +194,8 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
 
   numDofPerNode, numNodesPerElement = size(_q)
   dim = size(dxidx, 1)
+
+  EulerEquationMod.setAlpha(sensor, 1)
 
   Se = zeros(Complex128, dim, numNodesPerElement)
   ee = zeros(Complex128, dim, numNodesPerElement)
@@ -230,6 +236,8 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
 
   @test maximum(abs.(q_bar - 2*q_bar_orig)) < 1e-13
 
+  EulerEquationMod.setAlpha(sensor, 1)
+
   return nothing
 end
 
@@ -239,6 +247,8 @@ function test_shocksensor_revm(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, sens
   # the capturing scheme doesn't matter here, but eqn.shock_capturing must be set
   capture = EulerEquationMod.VolumeShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   eqn.shock_capturing = capture
+
+  EulerEquationMod.setAlpha(sensor, 2)
 
   srand(1234)
   elnum = 1
@@ -301,6 +311,7 @@ function test_shocksensor_revm(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, sens
   println("val2 = ", real(val2))
   @test abs(val1 - val2) < 1e-12
 
+  EulerEquationMod.setAlpha(sensor, 1)
   return nothing
 end
 
@@ -387,7 +398,7 @@ function test_vandermonde(params, sbp, coords)
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

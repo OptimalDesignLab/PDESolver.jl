@@ -486,10 +486,11 @@ function getShockSensor_diff(params::ParamType, sbp::AbstractOperator,
   fill!(ee_jac, 0)
 
   # derivative with momentum in direction d = d, all others zero
+  alpha = sensor.alpha
   @simd for p=1:numNodesPerElement
     @simd for d=1:dim
-      Se_jac[d, d+1, p, p] = d
-      ee_jac[d, d+1, p, p] = d
+      Se_jac[d, d+1, p, p] = d*alpha
+      ee_jac[d, d+1, p, p] = d*alpha
     end
   end
 

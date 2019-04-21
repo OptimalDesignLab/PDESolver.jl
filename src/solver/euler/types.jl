@@ -699,7 +699,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
-   sensor = getShockSensor(mesh, sbp, eqn, opts)
+   sensor = createShockSensor(mesh, sbp, eqn, opts)
    getShockCapturing(mesh, sbp, eqn, opts, sensor)
    eqn.assembler = NullAssembleElementData
 

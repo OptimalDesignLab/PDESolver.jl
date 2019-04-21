@@ -359,6 +359,8 @@ abstract type AbstractLDGFlux end
 const Abstract4DArray{T} = AbstractArray{T, 4}
 const Abstract5DArray{T} = AbstractArray{T, 5}
 
+import PDESolver: getShockSensor, setShockSensor, setShockSensorAlpha
+
 
 include("types.jl")  # type definitions
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro

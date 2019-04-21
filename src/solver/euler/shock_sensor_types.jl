@@ -54,7 +54,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   # constants (this struct is mutable so these can be changed at runtime)
   s0::Float64
   kappa::Float64
-  e0::Float64
+  _e0::Float64  # original e0 value
+  e0::Float64  # e0 scaled by alpha
 
   # storage
   up::Vector{Tsol}
@@ -78,7 +79,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     # constants from Barter's thesis
     s0 = -(4.5 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
     kappa = 1.0  # was 0.5
-    e0 = 0.01
+    _e0 = 0.01
+    e0 = _e0
     
     up = zeros(Tsol, sbp.numnodes)
     up_tilde = zeros(Tsol, sbp.numnodes)
@@ -93,10 +95,17 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     up1_tilde_bar = zeros(Tsol, mesh.numNodesPerElement)
     up_bar = zeros(Tsol, mesh.numNodesPerElement)
 
-    return new(Vp, Vp1, s0, kappa, e0, up, up_tilde, up1_tilde,
+    return new(Vp, Vp1, s0, kappa, _e0, e0, up, up_tilde, up1_tilde,
                num_dot, den_dot, ee_dot, lambda_max_dot,
                up_tilde_bar, up1_tilde_bar, up_bar)
   end
+end
+
+
+function setAlpha(obj::ShockSensorPP, alpha::Number)
+
+  obj.e0 = obj._e0*alpha
+
 end
 
 
@@ -112,6 +121,10 @@ struct ShockSensorNone{Tsol, Tres} <: AbstractShockSensor
 end
 
 
+function setAlpha(obj::ShockSensorNone, alpha::Number)
+
+end
+
 #------------------------------------------------------------------------------
 # Sensor for testing only: there is a shock everywhere
 
@@ -120,11 +133,22 @@ end
   of 1
 """
 mutable struct ShockSensorEverywhere{Tsol, Tres} <: AbstractShockSensor
+  alpha::Float64
 
   function ShockSensorEverywhere{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres}
-    return new()
+    alpha = 1.0
+
+    return new(alpha)
   end
 end
+
+function setAlpha(obj::ShockSensorEverywhere, alpha::Number)
+
+  obj.alpha = alpha
+end
+
+
+
 
 #------------------------------------------------------------------------------
 # ShockSensoryVelocity
@@ -135,11 +159,20 @@ end
   constant viscoscity with non-zero derivative wrt q.
 """
 mutable struct ShockSensorVelocity{Tsol, Tres} <: AbstractShockSensor
+  alpha::Float64
 
   function ShockSensorVelocity{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP, opts) where {Tsol, Tres}
-    return new()
+    alpha = 1.0
+
+    return new(alpha)
   end
 end
+
+function setAlpha(obj::ShockSensorVelocity, alpha::Number)
+
+  obj.alpha = alpha
+end
+
 
 
 
@@ -196,8 +229,9 @@ end
   isotropic meshes only.  See the paper "for the Compressible Navier-Stokes
   Equations" for the anisotropic one.
 """
-struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
-  C_eps::Float64
+mutable struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
+  _C_eps::Float64  # original value
+  C_eps::Float64  # value scaled by alpha
   beta::Float64
 
   strongdata::StrongFormData{Tsol, Tres}
@@ -210,16 +244,25 @@ struct ShockSensorHIso{Tsol, Tres} <: AbstractShockSensor
     numDofPerNode = mesh.numDofPerNode
     numNodesPerElement = mesh.numNodesPerElement
 
-    C_eps = 1/25  # was 1/25
+    _C_eps = 1/25  # was 1/25
+    C_eps = _C_eps
     beta = 1/10
     strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
     res = zeros(Tres, numDofPerNode, numNodesPerElement)
     res_jac = zeros(Tres, numDofPerNode, numDofPerNode, numNodesPerElement,
                         numNodesPerElement)
 
-    return new(C_eps, beta, strongdata, res, res_jac)
+    return new(_C_eps, C_eps, beta, strongdata, res, res_jac)
   end
 end
+
+
+function setAlpha(obj::ShockSensorHIso, alpha::Number)
+
+  obj.C_eps = obj._C_eps*alpha
+end
+
+
 
 #------------------------------------------------------------------------------
 # Odens gradient based sensor
@@ -231,13 +274,23 @@ end
   Basically a gradient sensor.
 """
 mutable struct ShockSensorBO{Tsol, Tres} <: AbstractShockSensor
-  alpha::Float64  # arbitrary coeffcieint
+  _alpha::Float64  # arbitrary coeffcieint
+  alpha::Float64  # scaled by user-defined alpha
   function ShockSensorBO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
-    alpha = 0.01  # was 1.0
-    return new(alpha)
+    _alpha = 0.01  # was 1.0
+    alpha = _alpha
+
+    return new(_alpha, alpha)
   end
 end
+
+
+function setAlpha(obj::ShockSensorBO, alpha::Number)
+
+  obj.alpha = obj._alpha*alpha
+end
+
 
 
 #------------------------------------------------------------------------------
@@ -248,8 +301,9 @@ end
   "Higher-order and adaptive discontinuous Galerkin methods with
    shock-capturing applied to transonic turbulent delta wing flow"
 """
-struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
-  C_eps::Float64
+mutable struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
+  _C_eps::Float64  # original value
+  C_eps::Float64  # value scaled by alpha
 
   strongdata::StrongFormData{Tsol, Tres}
   h_k_tilde::Matrix{Tres}
@@ -285,7 +339,8 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
 
     @unpack mesh numDofPerNode numNodesPerElement dim
 
-    C_eps = 1/5  # was 1/5
+    _C_eps = 1/5  # was 1/5
+    C_eps = _C_eps
     strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
     h_k_tilde = Array{Tres}(mesh.dim, mesh.numEl)
     h_k_tilde_bar = Array{Tres}(mesh.dim, mesh.numEl)
@@ -320,18 +375,21 @@ struct ShockSensorHHO{Tsol, Tres} <: AbstractShockSensor
     res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
 
 
-    return new(C_eps, strongdata, h_k_tilde, h_k_tilde_bar,
+    return new(_C_eps, C_eps, strongdata, h_k_tilde, h_k_tilde_bar,
                p_dot, press_el, press_dx, work, res, Rp, fp,
                p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac,
                fp_bar, Rp_bar, press_el_bar, press_dx_bar, p_dot_bar, res_bar)
   end
 end
 
+
+
 #------------------------------------------------------------------------------
 # Harten's High Order sensor, with elementwise constant viscoscity
 
-struct ShockSensorHHOConst{Tsol, Tres} <: AbstractShockSensor
-  C_eps::Float64
+mutable struct ShockSensorHHOConst{Tsol, Tres} <: AbstractShockSensor
+  _C_eps::Float64  # original value
+  C_eps::Float64  # value scaled by alpha
 
   strongdata::StrongFormData{Tsol, Tres}
   h_k_tilde::Matrix{Tres}
@@ -370,7 +428,8 @@ struct ShockSensorHHOConst{Tsol, Tres} <: AbstractShockSensor
 
     @unpack mesh numDofPerNode numNodesPerElement dim
 
-    C_eps = 1/5  # was 1/5
+    _C_eps = 1/5  # was 1/5
+    C_eps = _C_eps
     strongdata = StrongFormData{Tsol, Tres}(mesh, sbp, opts)
     h_k_tilde = Array{Tres}(mesh.dim, mesh.numEl)
     h_k_tilde_bar = Array{Tres}(mesh.dim, mesh.numEl)
@@ -409,7 +468,7 @@ struct ShockSensorHHOConst{Tsol, Tres} <: AbstractShockSensor
     res_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
 
 
-    return new(C_eps, strongdata, h_k_tilde, h_k_tilde_bar,
+    return new(_C_eps, C_eps, strongdata, h_k_tilde, h_k_tilde_bar,
                p_dot, press_el, press_dx, work, res, Rp, fp, epsilon,
                p_jac, res_jac, p_hess, Dx, px_jac, val_dot, Rp_jac, fp_jac,
                epsilon_dot, val2_dot,
@@ -419,6 +478,12 @@ end
 
 
 const HHOSensors{Tsol, Tres} = Union{ShockSensorHHO{Tsol, Tres}, ShockSensorHHOConst{Tsol, Tres}}
+
+function setAlpha(obj::HHOSensors, alpha::Number)
+
+  obj.C_eps = obj._C_eps*alpha
+end
+
 
 function updateMetrics(mesh, sbp, opts, sensor::HHOSensors)
 
@@ -457,10 +522,14 @@ global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSens
 "SensorHHOConst" => ShockSensorHHOConst,
 )
 
+
+import PDESolver: createShockSensor
 """
   Constructs and returns the shock sensor specified in the options dictionary.
 """
-function getShockSensor(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function createShockSensor(mesh::AbstractMesh, sbp::AbstractOperator,
+                        eqn::EulerData{Tsol, Tres}, opts,
+                        name=opts["shock_sensor_name"]) where {Tsol, Tres}
 
   name = opts["shock_sensor_name"]
   obj = ShockSensorDict[name]{Tsol, Tres}(mesh, sbp, opts)

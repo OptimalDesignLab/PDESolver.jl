@@ -7,6 +7,9 @@
 #=
 mutable struct HomotopyData{Tsol, Tjac}
 
+  physics_func::Function  # the function that will be solved at lambda = 0
+  g_func::Function        # the function to be blended with physics_func
+
   time::Float64
   lambda::Float64 # homotopy parameter
   myrank::Int
@@ -26,6 +29,7 @@ mutable struct HomotopyData{Tsol, Tjac}
   homotopy_tol::Float64
   delta_max::Float64  # step size limit
   psi_max::Float64  # max angle between tangent vectors (radians)
+  h_max::Float64  # maximum h value
   psi::Float64  # current angle between tangent vectors (radians)
   tan_norm::Float64  # current tangent vector norm
   tan_norm_1::Float64  # previous tangent vector norm
@@ -44,10 +48,12 @@ mutable struct HomotopyData{Tsol, Tjac}
   recalc_polocy::AbstractRecalculation
   ls::LinearSolver
   newton_data::NewtonData
-  fconv  #TODO: type
+  fconv::IO  #TODO: type
 
 
-  function HomotopyData{T}(mesh, sbp, eqn, opts) where {T}
+  function HomotopyData{T}(mesh, sbp, eqn, opts,
+                           physics_func::Function, g_func::Function) where {T}
+
     time = eqn.params.time
     lambda = 1.0  # homotopy parameter
     myrank = mesh.myrank
@@ -68,6 +74,7 @@ mutable struct HomotopyData{Tsol, Tjac}
     homotopy_tol = 1e-2
     delta_max = 1.0  # step size limit, set to 1 initially,
     psi_max = 10*pi/180  # angle between tangent limiter
+    h_max = 0.1  # maximum h
     psi = 0.0  # angle between tangent vectors
     tan_norm = 0.0  # current tangent vector norm
     tan_norm_1 = 0.0  # previous tangent vector norm
@@ -77,7 +84,11 @@ mutable struct HomotopyData{Tsol, Tjac}
     lambda -= h  # the jacobian is ill-conditioned at lambda=1, so skip it
     recalc_policy = getRecalculationPolicy(opts, "homotopy")
     # log file
-    @mpi_master fconv = BufferedIO("convergence.dat", "a+")
+    if myrank == 0
+      fconv = BufferedIO("convergence.dat", "a+")
+    else
+      fconv = DevNull
+    end
 
     # needed arrays
     q_vec0 = zeros(eqn.q_vec)
@@ -91,10 +102,6 @@ mutable struct HomotopyData{Tsol, Tjac}
     # Newton PC and LO stuff, supplying homotopyPhysics in ctx_residual
     rhs_func = physicsRhs
     pc, lo = getHomotopyPCandLO(mesh, sbp, eqn, opts)
-    use_pc = !(typeof(pc) <: PCNone)
-    if use_pc
-      pc.lambda = lambda
-    end
     lo.lambda = lambda
     ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
 
@@ -103,7 +110,18 @@ mutable struct HomotopyData{Tsol, Tjac}
     newton_data, rhs_vec = setupNewton(mesh, pmesh, sbp, eqn, opts, ls)
     newton_data.itermax = 30
 
-    obj = new()
+    obj = new(physics_func, g_func, time, myrank,
+              # parameters
+              lambda_min, lambda_cutoff, itermax, res_reltol, res_abstol,
+              krylov_reltol0, orig_newton_globalize_euler, use_pc,
+              # working variables
+              iter, homotopy_tol, delta_max, psi_max, h_max, psi, tan_norm
+              tan_norm_1, res_norm, res_norm_0, h,
+              # arrays
+              q_vec0, delta_q, tan_vec, tan_vec_1, dHdLambda_real
+              # composed objects
+              recalc_policy, ls, newton_data, fconv)
+
     setLambda(obj, lambda)
    
     return obj
@@ -112,7 +130,7 @@ end
 
 function setLambda(data::HomotopyData, lambda::Number)
 
-  if !(typeof(pc) <: PCNone)
+  if data.use_pc
     pc.lambda = lambda
   end
   lo.lambda = lambda

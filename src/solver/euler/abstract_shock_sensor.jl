@@ -10,6 +10,7 @@
   ```
   getShockSensor
   getShockSensor_diff
+  setAlpha
   ```
 
   Each type may optionally implement
@@ -19,7 +20,10 @@
   updateMetrics
   ```
 """
-abstract type AbstractShockSensor end
+abstract type _AbstractShockSensor end  # this is a dummy type, the real one
+                                        # is declared in defs.jl, this one
+                                        # is here for documentation purposes
+                                        # only.
 
 
 """
@@ -149,6 +153,20 @@ end
 
 
 """
+  This function sets an arbitrary constant in front of the shock viscosity.
+
+  **Inputs**
+
+   * obj: an `AbstractShockSensor`
+   * alpha: the constant
+"""
+function setAlpha(obj::AbstractShockSensor, alpha::Number)
+
+  error("abstract method for setAlpha() called: did you forget to extend it with a new method for shock sensor $(typeof(obj))")
+end
+
+
+"""
   Function to be called after the mesh metrics are updated.  This gives the
  eshock sensor the opportunity to recalculate mesh-wide quantities.
 
@@ -273,4 +291,26 @@ function finishRevm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
                     opts, sensor::AbstractShockSensor)
 
   return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# Required interface
+
+
+function getShockSensor(eqn::EulerData)
+
+  return getShockSensor(eqn.shock_capturing)
+end
+
+  
+function setShockSensor(eqn::EulerData, sensor::AbstractShockSensor)
+
+  setShockSensor(eqn.shock_capturing, sensor)
+end
+
+function setShockSensorAlpha(eqn::EulerData, alpha::Number)
+
+  sensor = getShockSensor(eqn)
+  setAlpha(sensor, alpha)
 end

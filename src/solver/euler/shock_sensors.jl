@@ -183,8 +183,8 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
                         Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
                         ) where {Tsol, Tres, Tmsh}
 
-  fill!(Se_mat, 1.0)
-  fill!(ee_mat, 1.0)
+  fill!(Se_mat, sensor.alpha)
+  fill!(ee_mat, sensor.alpha)
 
   return true
 end
@@ -215,10 +215,11 @@ function getShockSensor(params::ParamType, sbp::AbstractOperator,
   numNodesPerElement = size(q, 2)
   dim = size(coords, 1)
 
+  alpha = sensor.alpha
   for i=1:numNodesPerElement
     for d=1:dim
-      Se_mat[d, i] = d*q[d+1, i]
-      ee_mat[d, i] = d*q[d+1, i]
+      Se_mat[d, i] = alpha*d*q[d+1, i]
+      ee_mat[d, i] = alpha*d*q[d+1, i]
     end
   end
 

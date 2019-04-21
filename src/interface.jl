@@ -489,3 +489,80 @@ function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
 
   error("Generic fallback for getSparsityPattern() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
 end
+
+
+"""
+  This function returns the shock sensor currently in use by the `eqn`
+  object.  This function may error if shock capturing is not enabled.
+
+  This function is not required to be type-stable
+
+  **Inputs**
+
+   * eqn: an `AbstractSolutionData`
+
+
+  **Outputs**
+
+   * an `AbstractShockSensor`
+"""
+function getShockSensor(eqn::AbstractSolutionData)
+
+  error("Generic fallback for getShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  This function sets the shock sensor used by the `eqn`
+  object.  This function may error if shock capturing is not enabled.
+
+  **Inputs**
+
+   * eqn: an `AbstractSolutionData`
+   * an `AbstractShockSensor`
+"""
+function setShockSensor(eqn::AbstractSolutionData, sensor::AbstractShockSensor)
+
+  error("Generic fallback for setShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  This function sets the arbitrary constant in front of the shock capturing
+  term for the `AbstractShockSensor`.
+
+  **Inputs**
+
+   * sensor: an `AbstractShockSensor`
+   * alpha: number
+"""
+function setShockSensorAlpha(eqn::AbstractSolutionData, alpha::Number)
+
+  error("Generic fallback for setShockSensorAlpha() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  Create a new `AbstractShockSensor` object
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: physics modules should specialize this object
+   * opts
+   * name: the name of the shock sensor to create, default
+           opts["shock_sensor_name"]
+
+
+"""
+function createShockSensor(mesh::AbstractMesh, sbp::AbstractOperator,
+                        eqn::AbstractSolutionData, opts,
+                        name=opts["shock_sensor_name"])
+
+
+  error("Generic fallback for createShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+end

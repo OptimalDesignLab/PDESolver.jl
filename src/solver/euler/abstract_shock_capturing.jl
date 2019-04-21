@@ -12,11 +12,12 @@
 
   ```
     getShockSensor
+    getShockSensor
     getDiffusion
   ```
 
-  `getShockSensor` only needs to be extended if the `AbstractShockCapturing` does
-  not store the sensor in the `.sensor` field.
+  `getShockSensor` and `setShockSensor only need to be extended if the
+  `AbstractShockCapturing` does not store the sensor in the `.sensor` field.
   
   `getDiffusion` only needs to be extended if the `AbstractShockCapturing` does
   not store the sensor in the `.diffusion` field.
@@ -56,6 +57,19 @@ end
 function getDiffusion(obj::AbstractShockCapturing)
 
   return obj.diffusion
+end
+
+"""
+  Counterpart of `getShockSensor`, sets a new shock sensor to be used with
+  the existing `AbstractShockCapturing`.
+
+  **Inputs**
+
+   * obj: `AbstractShockCapturing`
+   * sensor: the new `AbstractShockSensor`
+"""
+function setShockSensor(obj::AbstractShockCapturing, sensor::AbstractShockSensor)
+  obj.sensor = sensor
 end
 
 #------------------------------------------------------------------------------

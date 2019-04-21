@@ -36,3 +36,8 @@ global const COLORING=3
 global const VISCOUSTIGHT=4
 
 
+#------------------------------------------------------------------------------
+# Shock Capturing stuff - see the docs in the Euler module
+
+
+abstract type AbstractShockSensor end
