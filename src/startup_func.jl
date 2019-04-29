@@ -23,7 +23,13 @@
 """
 function run_solver(input_file::AbstractString)
 
+  # run(`echo "Start time: "; date`)
+  run(`date`)
+
   return solvePDE(input_file)
+
+  # run(`echo "End time: "; date`)
+  run(`date`)
 
 end
 

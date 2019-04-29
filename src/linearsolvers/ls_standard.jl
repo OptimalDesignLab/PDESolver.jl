@@ -72,11 +72,16 @@ function calcLinearOperator(ls::StandardLinearSolver, mesh::AbstractMesh,
                          eqn::AbstractSolutionData, opts::Dict, ctx_residual, t;
                          start_comm=false)
 
+  println(BSTDOUT, "    entered cLO(lo::StandardLinearSolver...) in ls_standard.jl")
 
   if start_comm && needParallelData(ls.lo)
     startSolutionExchange(mesh, sbp, eqn, opts)
   end
+
+  println(BSTDOUT, "    calling inner cLO in cLO(lo::StandardLinearSolver...) in ls_standard.jl")
   calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  println(BSTDOUT, "    leaving cLO(lo::StandardLinearSolver...) in ls_standard.jl")
 
 end
 

@@ -64,6 +64,8 @@ function calcLinearOperator(lo::DenseLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
+  println(BSTDOUT, "    entered cLO(lo::DenseLO...) in lo_dense.jl")
+
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
   setIsSetup(lo, false)
 

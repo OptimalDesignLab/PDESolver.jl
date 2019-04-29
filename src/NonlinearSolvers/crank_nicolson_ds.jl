@@ -120,8 +120,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       dRdM_vec = zeros(eqn.res_vec)
       b_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
+      b_vec_not_matfree = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
       TEST_b_vec = zeros(b_vec)
       dRdq_vn_prod = zeros(eqn.res_vec)
+      dRdq_vn_prod_not_matfree = zeros(eqn.res_vec)
 
       #------------------------------------------------------------------------------
       # DS linear solver
@@ -404,7 +406,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # It is wrapped in:  if opts["perturb_Ma_CN"]
       # Such that it should only be included/evaluated when opts["perturb_Ma_CN"] is set
 
-      println(BSTDOUT, "                        ~~~~~~~~~~~~~~~~ DUPLICATE ~~~~~~~~~~~~~~~~")
       print(BSTDOUT, " Now entering perturb_Ma_CN block.")
       # ctx_residual: f, eqn, h, newton_data
       flush(BSTDOUT)
@@ -419,13 +420,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           beforeDS_eqn_res_vec[ix_dof] = eqn.res_vec[ix_dof]
           beforeDS_eqn_nextstep_res_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
         end
-        print(BSTDOUT, " q_vec and res_vec, both eqn & eqn_nextstep saved")
+        println(BSTDOUT, " q_vec and res_vec, both eqn & eqn_nextstep saved")
 
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dM
 
-        println(BSTDOUT, " > Now solving dR/dM")
+        println(BSTDOUT, "> Now solving dR/dM")
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
@@ -488,6 +489,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dq * v^(n)
+        println(BSTDOUT, "> Now solving dR/dq * v^(n)")
 
         # v_vec currently holds v at timestep n: v^(n)
 
@@ -500,7 +502,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
         end
 
+        opts["use_Minv"] = false
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec (confirmed w/ random test)
+        opts["use_Minv"] = true
 
         for ix_dof = 1:mesh.numDof
           
@@ -510,12 +514,20 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
           # dR_hat^(n)/dq^(n) * v^(n) = 
           #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
-          res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
-          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.res_vec[ix_dof]
-          # TODO TODO ----- is this the bug???
-
+          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
+          # FIXED: Bug 1: applying eqn.Minv here when it is already applied in evalResidual
+          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.res_vec[ix_dof]      # YES! IT IS THIS. EVALRESIDUAL CALLS
+                                                                                  # applyMassMatrixInverse3D at the end of 
+                                                                                  # the eqn.res
           # calc dRdq * v^(n) by doing matrix-free complex step
-          dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
+          # dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
+
+          # FIXED: Bug 2: Was complex stepping the whole statement, instead of just the ending part
+          # dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
+
+          # TODO: Bug 3? Moving eqn.Minv application to outside evalResidual
+          dRdq_vn_prod[ix_dof] =  v_vec[ix_dof] - 0.5*dt*eqn.Minv[ix_dof]*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
+
 
           # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
           # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
@@ -525,18 +537,26 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
-        println(BSTDOUT, " vecnorm(res_hat_vec) (perturbed by v_vec for mat-free product): ", vecnorm(res_hat_vec))
+        @time A_mul_B!(dRdq_vn_prod_not_matfree, lo_ds_innermost.A, v_vec)
         println(BSTDOUT, " vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
-        println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
+        println(BSTDOUT, " vecnorm(dRdq_vn_prod_not_matfree): ", vecnorm(dRdq_vn_prod_not_matfree))
+        filename = string("dRdq_vn_prod-i_", i, ".dat")
+        writedlm(filename, dRdq_vn_prod)
+        filename = string("dRdq_vn_prod_not_matfree1-i_", i, ".dat")
+        writedlm(filename, dRdq_vn_prod_not_matfree)
+        # for ix_dof = 1:mesh.numDof
+          # b_vec_not_matfree[ix_dof] = - dRdq_vn_prod_not_matfree[ix_dof] - dRdM_vec[ix_dof] 
+        # end
+
+
+        # Here was scratch content 1
 
         #------------------------------------------------------------------------------
         # Now the calculation of v_ix at n+1
         # Solve:
         #   dR/dq^(n+1) v^(n+1) = b
         #--------
-        println(BSTDOUT, " > Now solving dR/dq * v^(n)")
-
-        fill!(v_vec, 0.0)
+        println(BSTDOUT, "> Now solving for v^(n+1)")
 
         #------------------------------------------------------------------------------
         # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
@@ -589,16 +609,23 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
         #
         # SO! this is modifying the Jac for CN.
-        println(BSTDOUT, "  Linear operator updated.")
-        flush(BSTDOUT)
+        println(BSTDOUT, "  ---> Linear operator updated. i = ", i, ", t = ", t, " ==============\n")
+
+        # @time A_mul_B!(dRdq_vn_prod_not_matfree, lo_ds_innermost.A, v_vec)
+        # filename = string("dRdq_vn_prod_not_matfree2-i_", i, ".dat")
+        # writedlm(filename, dRdq_vn_prod_not_matfree)
+
+        # Here was scratch content 2
+
+        fill!(v_vec, 0.0)
 
         ccc = ones(Float64, mesh.numDof)
         Accc = zeros(Float64, mesh.numDof)
         A_mul_B!(Accc, lo_ds_innermost.A, ccc)
         println(BSTDOUT, " vecnorm(Accc): ", vecnorm(Accc))
         flush(BSTDOUT)
-        println(BSTDOUT, " cond(lo_ds_innermost.A): ", cond(full(lo_ds_innermost.A)))
-        flush(BSTDOUT)
+        # println(BSTDOUT, " cond(lo_ds_innermost.A): ", cond(full(lo_ds_innermost.A)))
+        # flush(BSTDOUT)
         #=
         # This section is intended to assess the magnitude of A at every iteration 
         #   by contracting it with a vector of ones
@@ -678,6 +705,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Checking linearSolve
 
         A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
+        # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
+        println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
+        println(BSTDOUT, " vecnorm(TEST_b_vec): ", vecnorm(TEST_b_vec))
         println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
         flush(BSTDOUT)
 
@@ -928,6 +958,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "    opts[checkpoint_freq]: ", opts["checkpoint_freq"])
         println(BSTDOUT, "    opts[ncheckpoints]: ", opts["ncheckpoints"])
         println(BSTDOUT, " ")
+        println(BSTDOUT, " sbp.w: ", sbp.w)
       end
 
       if opts["write_L2vnorm"]
