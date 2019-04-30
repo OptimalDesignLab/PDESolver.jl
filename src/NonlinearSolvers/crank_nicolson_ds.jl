@@ -526,8 +526,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
 
           # TODO: Bug 3? Moving eqn.Minv application to outside evalResidual
-          dRdq_vn_prod[ix_dof] =  v_vec[ix_dof] - 0.5*dt*eqn.Minv[ix_dof]*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
+          dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.Minv[ix_dof]*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
 
+          # Bug 4: the CN modification to Jac doesn't put a neg in front of I, meaning that a modification is
+          #         needed for modifyJacCN to add -I instead of I to properly use it to test
+          #         dRdq_vn_prod
 
           # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
           # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
@@ -537,16 +540,17 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
+        modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
         @time A_mul_B!(dRdq_vn_prod_not_matfree, lo_ds_innermost.A, v_vec)
+        modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+
         println(BSTDOUT, " vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
         println(BSTDOUT, " vecnorm(dRdq_vn_prod_not_matfree): ", vecnorm(dRdq_vn_prod_not_matfree))
+        println(BSTDOUT, " vecnorm(dRdq_vn_prod - dRdq_vn_prod_not_matfree): ", vecnorm(dRdq_vn_prod - dRdq_vn_prod_not_matfree))
         filename = string("dRdq_vn_prod-i_", i, ".dat")
         writedlm(filename, dRdq_vn_prod)
-        filename = string("dRdq_vn_prod_not_matfree1-i_", i, ".dat")
+        filename = string("dRdq_vn_prod_not_matfree-i_", i, ".dat")
         writedlm(filename, dRdq_vn_prod_not_matfree)
-        # for ix_dof = 1:mesh.numDof
-          # b_vec_not_matfree[ix_dof] = - dRdq_vn_prod_not_matfree[ix_dof] - dRdM_vec[ix_dof] 
-        # end
 
 
         # Here was scratch content 1
@@ -610,10 +614,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #
         # SO! this is modifying the Jac for CN.
         println(BSTDOUT, "  ---> Linear operator updated. i = ", i, ", t = ", t, " ==============\n")
-
-        # @time A_mul_B!(dRdq_vn_prod_not_matfree, lo_ds_innermost.A, v_vec)
-        # filename = string("dRdq_vn_prod_not_matfree2-i_", i, ".dat")
-        # writedlm(filename, dRdq_vn_prod_not_matfree)
 
         # Here was scratch content 2
 
