@@ -120,10 +120,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       dRdM_vec = zeros(eqn.res_vec)
       b_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
-      b_vec_not_matfree = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
       TEST_b_vec = zeros(b_vec)
       dRdq_vn_prod = zeros(eqn.res_vec)
-      dRdq_vn_prod_not_matfree = zeros(eqn.res_vec)
 
       #------------------------------------------------------------------------------
       # DS linear solver
@@ -506,53 +504,16 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         for ix_dof = 1:mesh.numDof
           
-          # form unsteady residual (res_hat) with F(q^(n) + evi) and F(q^(n+1) + evi)
-          # res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (eqn_nextstep.res_vec[ix_dof] + eqn.res_vec[ix_dof])
-          # WRONG
-
-          # dR_hat^(n)/dq^(n) * v^(n) = 
-          #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
-          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
-          # Bug 1: applying eqn.Minv here when it is already applied in evalResidual
-          # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.res_vec[ix_dof]      # YES! IT IS THIS. EVALRESIDUAL CALLS
-                                                                                  # applyMassMatrixInverse3D at the end of 
-                                                                                  # the eqn.res
-          # calc dRdq * v^(n) by doing matrix-free complex step
-          # dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
-
-          # Bug 2: Was complex stepping the whole statement, instead of just the ending part
-          #         Confirmed that it is a bug to take imag() of the whole of res_hat_vec, and not just res_vec.
+          # This calculation:
+          #   dR_hat^(n)/dq^(n) * v^(n) = 
+          #     -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
+          # Note that Minv is applied inside evalResidual already.
           dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
-
-          # Note: moving eqn.Minv application outside evalResidual() to this calculation of 
-          #       dRdq_vn_prod doesn't change the result.
-
-          # Note: the CN modification to Jac doesn't put a neg in front of I, meaning that a modification is
-          #         needed for modifyJacCN to add -I instead of I to properly use it to test
-          #         dRdq_vn_prod. use these functions:
-          #           modifyCNJacForMatFreeCheck and
-          #           modifyCNJacForMatFreeCheck_reverse
-
-          # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
-          # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
-          # eqn_nextstep.q_vec[ix_dof] = complex(real(eqn_nextstep.q_vec[ix_dof]))
 
           # combine (-dRdM - dRdq * v^(n)) into b
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
-        modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
-        @time A_mul_B!(dRdq_vn_prod_not_matfree, lo_ds_innermost.A, v_vec)
-        modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
-
-        println(BSTDOUT, " vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
-        println(BSTDOUT, " vecnorm(dRdq_vn_prod_not_matfree): ", vecnorm(dRdq_vn_prod_not_matfree))
-        println(BSTDOUT, " vecnorm(dRdq_vn_prod - dRdq_vn_prod_not_matfree): ", vecnorm(dRdq_vn_prod - dRdq_vn_prod_not_matfree))
-        filename = string("dRdq_vn_prod-i_", i, ".dat")
-        writedlm(filename, dRdq_vn_prod)
-        filename = string("dRdq_vn_prod_not_matfree-i_", i, ".dat")
-        writedlm(filename, dRdq_vn_prod_not_matfree)
-
 
         # Here was scratch content 1
 
