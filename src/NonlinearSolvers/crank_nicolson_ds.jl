@@ -513,17 +513,18 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # dR_hat^(n)/dq^(n) * v^(n) = 
           #   -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
           # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*eqn.Minv[ix_dof]*dt*eqn.res_vec[ix_dof]
-          # FIXED: Bug 1: applying eqn.Minv here when it is already applied in evalResidual
+          # Bug 1: applying eqn.Minv here when it is already applied in evalResidual
           # res_hat_vec[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.res_vec[ix_dof]      # YES! IT IS THIS. EVALRESIDUAL CALLS
                                                                                   # applyMassMatrixInverse3D at the end of 
                                                                                   # the eqn.res
           # calc dRdq * v^(n) by doing matrix-free complex step
           # dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
 
-          # FIXED: Bug 2: Was complex stepping the whole statement, instead of just the ending part
+          # Bug 2: Was complex stepping the whole statement, instead of just the ending part
+          #         Confirmed that it is a bug to take imag() of the whole of res_hat_vec, and not just res_vec.
           dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
 
-          # Note: moving eqn.Minv application to outside evalResidual(), and in this calculation of 
+          # Note: moving eqn.Minv application outside evalResidual() to this calculation of 
           #       dRdq_vn_prod doesn't change the result.
 
           # Note: the CN modification to Jac doesn't put a neg in front of I, meaning that a modification is
