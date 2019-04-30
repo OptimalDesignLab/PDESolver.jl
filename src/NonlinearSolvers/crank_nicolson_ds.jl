@@ -502,9 +502,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
         end
 
-        opts["use_Minv"] = false
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec (confirmed w/ random test)
-        opts["use_Minv"] = true
 
         for ix_dof = 1:mesh.numDof
           
@@ -523,14 +521,16 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # dRdq_vn_prod[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
 
           # FIXED: Bug 2: Was complex stepping the whole statement, instead of just the ending part
-          # dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
+          dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
 
-          # TODO: Bug 3? Moving eqn.Minv application to outside evalResidual
-          dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*eqn.Minv[ix_dof]*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
+          # Note: moving eqn.Minv application to outside evalResidual(), and in this calculation of 
+          #       dRdq_vn_prod doesn't change the result.
 
-          # Bug 4: the CN modification to Jac doesn't put a neg in front of I, meaning that a modification is
+          # Note: the CN modification to Jac doesn't put a neg in front of I, meaning that a modification is
           #         needed for modifyJacCN to add -I instead of I to properly use it to test
-          #         dRdq_vn_prod
+          #         dRdq_vn_prod. use these functions:
+          #           modifyCNJacForMatFreeCheck and
+          #           modifyCNJacForMatFreeCheck_reverse
 
           # remove the imaginary component from q used for matrix_dof-free product    # TODO: necessary?
           # eqn.q_vec[ix_dof] = complex(real(eqn.q_vec[ix_dof]))
