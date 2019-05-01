@@ -270,6 +270,22 @@ struct IRFluxData{Tsol}
   end
 end
 
+"""
+  Temporary storage for [`calcHLLFlux`](@ref)
+"""
+struct HLLFluxData{Tres}
+  fL::Vector{Tres}
+  fR::Vector{Tres}
+
+  function HLLFluxData{Tres}(numDofPerNode::Integer) where {Tres}
+
+    fL = zeros(Tres, numDofPerNode)
+    fR = zeros(Tres, numDofPerNode)
+
+    return new(fL, fR)
+  end
+end
+
 
 """
   Temporary arrays for [`applyEntropyKernel_diagE`](@ref)

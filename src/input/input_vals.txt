@@ -367,6 +367,12 @@ Note that any values associated with these options are shared with the regular
                      not all physics modules support this option
 "homotopy_tighten_early": tighten the Newton solve tolerance when
                           lambda < 0.005, (Bool), default false
+"homotopy_shock_capturing": do homotopy from one shock capturing scheme
+                            to another, (Bool), default false
+"homotopy_shock_sensor": the easy shock sensor to use with
+                         "homotopy_shock_capturing", (String), default
+                         "ShockSensorNone"
+                         
 
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (String),
@@ -468,3 +474,10 @@ Note that any values associated with these options are shared with the regular
 "no_input_duplicates_check" : Bool. If set, do not check the input dictionary for duplicates. 
                               Default: false
 
+
+# Euler-specific options
+
+"freeze_viscosity": freeze the shock capturing viscosity at the initial
+                    condition (Bool), default false
+"shock_capturing_variables": which variables to use for the shock capturing
+                             dissipation (String), default "IR"

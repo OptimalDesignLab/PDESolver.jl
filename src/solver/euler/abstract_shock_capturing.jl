@@ -70,6 +70,7 @@ end
 """
 function setShockSensor(obj::AbstractShockCapturing, sensor::AbstractShockSensor)
   obj.sensor = sensor
+  obj.diffusion = ShockDiffusion(obj.diffusion, sensor)
 end
 
 #------------------------------------------------------------------------------

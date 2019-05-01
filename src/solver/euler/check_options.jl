@@ -62,6 +62,7 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
 
   get!(opts, "homotopy_function", "FirstOrderDissipation")
   get!(opts, "freeze_viscosity", false)
+  get!(opts, "shock_capturing_variables", "IR")
 
   return nothing
 end

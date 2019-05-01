@@ -988,6 +988,26 @@ function (obj::LFPenalty_revq)(params::ParamType,
 end
 
 
+"""
+  Calls [`calcHLLFlux`](@ref)
+"""
+mutable struct HLLFlux <: FluxType
+end
+
+function (obj::HLLFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+
+  calcHLLFlux(params, uL, uR, aux_vars, nrm, F)
+
+  return nothing
+end
+
+
+
 
 @doc """
 ### EulerEquationMod.FluxDict
@@ -1038,6 +1058,7 @@ global const FluxDict = Dict{String, FluxType}(
 "IRFlux" => IRFlux(),
 "IRSLFFlux" => IRSLFFlux(),
 "LFPenalty" => LFPenalty(),
+"HLLFlux" => HLLFlux(),
 )
 
 @doc """

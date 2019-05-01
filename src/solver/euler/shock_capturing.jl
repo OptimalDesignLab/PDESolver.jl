@@ -101,7 +101,7 @@ function writeShockSensorField(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
   f_ptr = apf.findField(mesh.m_ptr, fname)
   if f_ptr == C_NULL
     fshape = apf.getConstantShapePtr(mesh.dim)
-    f_ptr = apf.createPackedField(mesh.m_ptr, fname, 2, fshape)
+    f_ptr = apf.createPackedField(mesh, fname, 2, fshape)
   end
 
   vals = zeros(Float64, 2)

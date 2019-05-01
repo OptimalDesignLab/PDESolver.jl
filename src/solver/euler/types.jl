@@ -76,6 +76,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
   irfluxdata::IRFluxData{Tsol}
+  hllfluxdata::HLLFluxData{Tres}
   apply_entropy_kernel_diagE_data::ApplyEntropyKernel_diagEData{Tsol, Tres}
   get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
   get_lambda_max_data::GetLambdaMaxData{Tsol}
@@ -203,6 +204,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
+    hllfluxdata = HLLFluxData{Tres}(mesh.numDofPerNode)
+
     apply_entropy_kernel_diagE_data = ApplyEntropyKernel_diagEData{Tsol, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
     get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
     get_lambda_max_data = GetLambdaMaxData{Tsol}(mesh.numDofPerNode)
@@ -310,7 +313,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                mesh.numNodesPerFace,
                # flux functions
                eulerfluxdata, bcdata,
-               roefluxdata, calcsatdata, lffluxdata, irfluxdata,
+               roefluxdata, calcsatdata, lffluxdata, irfluxdata, hllfluxdata,
                apply_entropy_kernel_diagE_data, get_lambda_max_simple_data,
                get_lambda_max_data,
                calc_vorticity_data, contract_res_entropy_vars_data,

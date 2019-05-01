@@ -77,8 +77,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     Vp1 = VandermondeData(sbp, sbp.degree-1)  #TODO: unneded?
 
     # constants from Barter's thesis
-    s0 = -(4.5 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
-    kappa = 1.0  # was 0.5
+    s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
+    kappa = 0.5  # was 0.5
     _e0 = 0.01
     e0 = _e0
     
@@ -105,7 +105,6 @@ end
 function setAlpha(obj::ShockSensorPP, alpha::Number)
 
   obj.e0 = obj._e0*alpha
-
 end
 
 
@@ -531,7 +530,6 @@ function createShockSensor(mesh::AbstractMesh, sbp::AbstractOperator,
                         eqn::EulerData{Tsol, Tres}, opts,
                         name=opts["shock_sensor_name"]) where {Tsol, Tres}
 
-  name = opts["shock_sensor_name"]
   obj = ShockSensorDict[name]{Tsol, Tres}(mesh, sbp, opts)
 
   return obj

@@ -55,13 +55,16 @@ mutable struct HomotopyData{Tsol, Tjac}
   fconv::IO
 
   # homotopy shock capturing
-  sensor_easy::AbstractShockSensor
-  opts_orig::Dict{String, Bool}
+  sensor_easy::AbstractShockSensor  # a shock sensor that is easy to solve
+  opts_orig::Dict{String, Bool}     # options dictionary used for resetting
+                                    # the real options dictionary to is
+                                    # original state
 
   function HomotopyData{Tsol, Tjac}(mesh, sbp, eqn, opts,
                            physics_func::Function, g_func::Function
                           ) where {Tsol, Tjac}
 
+    println("\nConstructing HomotopyData")
     time = eqn.params.time
     lambda = 1.0  # homotopy parameter
     myrank = mesh.myrank
@@ -88,6 +91,8 @@ mutable struct HomotopyData{Tsol, Tjac}
     res_norm = 0.0  # norm of residual (not homotopy)
     h = 0.05  # step size
     lambda -= h  # the jacobian is ill-conditioned at lambda=1, so skip it
+    #h = lambda/20
+
     recalc_policy = getRecalculationPolicy(opts, "homotopy")
     # log file
     if myrank == 0
@@ -193,12 +198,30 @@ end
                              implicit Euler globalization when 
                              `lambda < lambda_cutoff`, typically 0.005.
                              This may slow down the Newton solve significantly
+   * homotopy_shock_capturing: see below
+   * homotopy_shock_sensor: shock sensor for `R_easy` with
+                            `homotopy_shock_capturing`
 
   This function supports jacobian/preconditioner freezing using the
   prefix "newton".  Note that this recalcuation policy only affects
   this function, and not newtonInner, and defaults to never recalculating
   (and letting newtonInner update the jacobian/preconditioner according to
   its recalculationPolicy).
+
+  **Homotopy Shock Capturing**
+
+  Does homotopy from one shock capturing scheme to another.
+  The homotopy function is:
+
+  R_euler (1-lambda)*R_hard + lambda*R_easy
+
+  where R_euler is the physics residual, excluding shock capturing, R_hard
+  is the shock sensor that is difficult to converge, and R_easy is the shock
+  sensor that is easy to converge.  It is recommended that the initial
+  condition satisfy R_euler + R_easy.
+
+  In this mode, `g_func` is ignored.
+
 """
 function predictorCorrectorHomotopy(physics_func::Function,
                   g_func::Function,
@@ -206,14 +229,6 @@ function predictorCorrectorHomotopy(physics_func::Function,
                   sbp::AbstractOperator, 
                   eqn::AbstractSolutionData{Tsol, Tres}, 
                   opts) where {Tsol, Tres, Tmsh}
-
-#  global evalPhysicsResidual = physics_func
-#  global evalHomotopyResidual = g_func
-  #----------------------------------------------------------------------------
-  # define the homotopy function H and dH/dLambda
-  # defines these as nested functions so predictorCorrectorHomotopy is
-  # re-entrant
-
 
   #----------------------------------------------------------------------------
   # setup
@@ -231,8 +246,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
 
   # calculate physics residual
   res_norm = real(physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (physics_func,)))
-  res_norm_0 = res_norm  # TODO: have setter function (initialize to
-                               #       -1, use that as the special case for IC
+  res_norm_0 = res_norm
 
   # print to log file
   @mpi_master println(hdata.fconv, 0, " ", res_norm, " ", 0.0)
@@ -250,7 +264,6 @@ function predictorCorrectorHomotopy(physics_func::Function,
       println(BSTDOUT, "\npredictor iteration ", iter, ", lambda = ", lambda)
       println(BSTDOUT, "res_norm = ", res_norm)
       println(BSTDOUT, "res_norm/res_norm_0 = ", res_norm/res_norm_0)
-      println(BSTDOUT, "h = ", h)
     end
 
     # calculate homotopy residual
@@ -325,25 +338,30 @@ function _homotopyPhysics(hdata::HomotopyData, mesh, sbp, eqn, opts, t)
   # communication is started outside the physics
   # q_vec -> q
 
-#    res_homotopy = zeros(eqn.res)
-  fill!(eqn.res, 0.0)
-  res_homotopy = zeros(eqn.res)
+  if opts["homotopy_shock_capturing"]
+    evalHomotopyFunction_sc(hdata, mesh, sbp, eqn, opts, t)
+
+  else
+    fill!(eqn.res, 0.0)
+    res_homotopy = zeros(eqn.res)
 
 
-  # calculate physics residual
-  # call this function before g_func, to receive parallel communication
-  hdata.physics_func(mesh, sbp, eqn, opts, t)
+    # calculate physics residual
+    # call this function before g_func, to receive parallel communication
+    hdata.physics_func(mesh, sbp, eqn, opts, t)
 
-  # calculate homotopy function
-  hdata. g_func(mesh, sbp, eqn, opts, res_homotopy)
+    # calculate homotopy function
+    hdata.g_func(mesh, sbp, eqn, opts, res_homotopy)
 
-  # combine (use lambda from outer function)
-  lambda_c = 1 - hdata.lambda # complement of lambda
-  for i=1:length(eqn.res)
-    eqn.res[i] =  lambda_c*eqn.res[i] + hdata.lambda*res_homotopy[i]
+    # combine (use lambda from outer function)
+    lambda_c = 1 - hdata.lambda # complement of lambda
+    for i=1:length(eqn.res)
+      eqn.res[i] =  lambda_c*eqn.res[i] + hdata.lambda*res_homotopy[i]
+    end
+
+    #println("homotopy physics exiting with residual norm ", norm(vec(eqn.res)))
   end
 
-#  println("homotopy physics exiting with residual norm ", norm(vec(eqn.res)))
   return nothing
 end
 
@@ -351,6 +369,8 @@ end
 """
   Updates the linear and nonlinear tolerances for the Newton solve.
   The tolerances usually only change then lambda is close to or at 0.
+  This also has the effect of resetting the tolerances if Newton changed
+  them (for example, doing inexact Newton-Krylov)
 
   **Inputs**
 
@@ -480,20 +500,24 @@ function calcdHdLambda(hdata::HomotopyData, mesh, sbp, eqn, opts, res_vec)
   # it appears this only gets called after parallel communication is done
   # so no need to start communication here
 
-  res_homotopy = zeros(eqn.res)
+  if opts["homotopy_shock_capturing"]
+    calcdHdLambda_sc(hdata, mesh, sbp, eqn, opts, 0.0, res_vec)
+  else
+    res_homotopy = zeros(eqn.res)
 
-  # calculate physics residual
-  physics_func(mesh, sbp, eqn, opts)
-  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+    # calculate physics residual
+    physics_func(mesh, sbp, eqn, opts)
+    array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
 
-  # calculate homotopy function
-  g_func(mesh, sbp, eqn, opts, res_homotopy)
-  array3DTo1D(mesh, sbp, eqn, opts, res_homotopy, res_vec)
+    # calculate homotopy function
+    g_func(mesh, sbp, eqn, opts, res_homotopy)
+    array3DTo1D(mesh, sbp, eqn, opts, res_homotopy, res_vec)
 
-  # combine them
-  for i=1:length(res_vec)
-    res_vec[i] -= eqn.res_vec[i]
+    # combine them
+    for i=1:length(res_vec)
+      res_vec[i] -= eqn.res_vec[i]
+    end
   end
 
   return nothing
@@ -505,6 +529,8 @@ end
 
   * normalize tangent vector (overwrites `hdata.tan_vec`)
   * compute `delta_q` (overwrites `hdata.delta_q` and uses `hdata.q_vec0`
+  * applies the various heuristics to update the step size (step length, angle,
+    etc.)
 
 """
 function takePredictorStep(hdata::HomotopyData, mesh, sbp, eqn, opts)
@@ -550,6 +576,9 @@ function takePredictorStep(hdata::HomotopyData, mesh, sbp, eqn, opts)
   h /= fac
   h = min(h, h_max)
   lambda = max(lambda_min, lambda - h)
+  if lambda < eps()
+    lambda = 0.0
+  end
   println("new h = ", h)
 
   # take predictor step
@@ -628,7 +657,7 @@ function calcPC(pc::HomotopyMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
     scale!(A, lambda_c)
 
     # compute the homotopy contribution to the Jacobian
-    assembler = AssembleElementData(A, mesh, sbp, eqn, opts)
+    assembler = _AssembleElementData(A, mesh, sbp, eqn, opts)
     evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lambda)
   end
 
@@ -735,20 +764,28 @@ function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-   
-  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+  # ctx_residual[1] = is the *homotopy* function H, so for the non-explict
+  # case, calling calcLinearOperator(lo.lo_inner) is fine because it will
+  # do coloring
+  
+  if opts["homotopy_shock_capturing"] && opts["calc_jac_explicit"]
+    evalJacobian_homotopy_sc(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  else
 
-  if opts["calc_jac_explicit"]
-    A = getBaseLO(lo).A
-    assembly_begin(A, MAT_FINAL_ASSEMBLY)
-    assembly_end(A, MAT_FINAL_ASSEMBLY)
+    calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
-    lambda_c = 1 - lo.hdata.lambda # complement of lambda
-    scale!(A, lambda_c)
+    if opts["calc_jac_explicit"]
+      A = getBaseLO(lo).A
+      assembly_begin(A, MAT_FINAL_ASSEMBLY)
+      assembly_end(A, MAT_FINAL_ASSEMBLY)
 
-    # compute the homotopy contribution to the Jacobian
-    assembler = _AssembleElementData(A, mesh, sbp, eqn, opts)
-    evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo.hdata.lambda)
+      lambda_c = 1 - lo.hdata.lambda # complement of lambda
+      scale!(A, lambda_c)
+
+      # compute the homotopy contribution to the Jacobian
+      assembler = _AssembleElementData(A, mesh, sbp, eqn, opts)
+      evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo.hdata.lambda)
+    end
   end
 
   return nothing
@@ -759,11 +796,15 @@ function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractOperator, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+  if opts["homotopy_shock_capturing"]
+    error("homotopy shock capturing not supported for matrix-free")
+  else
+    calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
-  setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, 0.0)
+    setLOCtx(lo, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
-  # nothing to do here
+    # nothing to do here
+  end
 
   return nothing
 end
@@ -776,9 +817,13 @@ function applyLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
 
   @assert !(Tsol <: AbstractFloat)  # complex step only!
 
-  # ctx_residual[1] = homotopyPhysics, so this computes both the physics
-  # and homotopy contribution
-  applyLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+  if opts["homotopy_shock_capturing"]
+    error("homotopy shock capturing not supported for matrix-free")
+  else
+    # ctx_residual[1] = homotopyPhysics, so this computes both the physics
+    # and homotopy contribution
+    applyLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t, x, b)
+  end
 
   return nothing
 end
@@ -792,3 +837,5 @@ function applyLinearOperatorTranspose(lo::HomotopyPetscMatFreeLO,
   error("applyLinearOperatorTranspose() not supported by HomotopyPetscMatFreeLO")
 
 end
+
+include("shock_homotopy.jl")

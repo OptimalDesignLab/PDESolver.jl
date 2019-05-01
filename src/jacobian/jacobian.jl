@@ -3,7 +3,8 @@
 
 """
   This function computes the Jacobian of an evalResidual-like function.
-  Specifically, it computes \\partial (eqn.q_vec)/ \\partial (eqn.res_vec).
+  Specifically, it computes \\partial (eqn.q_vec)/ \\partial (eqn.res_vec),
+  overwriting the Jacobian by default
 
   Other users of [`newtonInner`](@ref) (for example, implicit time marching
   methods) will need to implemnt their own version of this function.  The
@@ -28,6 +29,11 @@
                    See [`physicsRhs`](@ref) for a more thorough description
                     of ctx_residual.
    * t: simulation time
+
+  **Keyword Arguments**
+
+   * zero_jac: if true, overwrite the Jacobian matrix, otherwise add to it,
+               default true.
 
   **Options Keys:**
 
@@ -61,7 +67,7 @@
 
 """
 function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
-                    ctx_residual, t=0.0;)
+                    ctx_residual, t=0.0; zero_jac=true)
 
   #TODO: add start_comm option
 
@@ -92,8 +98,10 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
   func = ctx_residual[1]
 
   #----------------------------------------------------------------------
-  # Calculate Jacobian using selected method 
-  fill_zero!(jac)
+  # Calculate Jacobian using selected method
+  if zero_jac
+    fill_zero!(jac)
+  end
   print_jacobian_timing = true
   eqn.params.time.t_jacobian += @elapsed if jac_method == 1
     @verbose5 @mpi_master println(BSTDOUT, "calculating finite difference jacobian")

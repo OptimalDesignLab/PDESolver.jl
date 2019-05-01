@@ -954,3 +954,103 @@ function logavg(aL, aR)
 
   return (aL + aR)/(2*F)
 end
+
+
+function calcHLLFlux(params::ParamType,
+                 q::AbstractArray{Tsol,1},
+                 qg::AbstractArray{Tsol, 1},
+                 aux_vars::AbstractArray{Tres, 1},
+                 nrm::AbstractArray{Tmsh,1},
+                 flux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+  @unpack params.hllfluxdata fL fR
+
+  numDofPerNode = length(q)
+  sL, sR = calc2RWaveSpeeds(params, q, qg, nrm)
+  if sL >= 0
+    calcEulerFlux(params, q, aux_vars, nrm, flux)
+  elseif sR <= 0
+    calcEulerFlux(params, qg, aux_vars, nrm, flux)
+  else
+    fL = zeros(Tres, numDofPerNode)
+    fR = zeros(Tres, numDofPerNode)
+    calcEulerFlux(params, q, aux_vars, nrm, fL)
+    calcEulerFlux(params, qg, aux_vars, nrm, fR)
+
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+    for i=1:numDofPerNode
+      flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
+    end
+  end
+
+  return nothing
+end
+
+
+"""
+  Compute approximate wave speeds for a Riemann problem using the 2 rarefaction
+  model (see Toro's Riemann Solvers book).
+  These values are upper bounds for the true wave speeds for 1 <= gamma <= 5/3.
+
+  Note that the wave speeds are *not* scaled by the length of the normal
+  vector.
+
+  **Inputs**
+
+   * params
+   * qL
+   * qR
+   * nrm: normal vector
+
+  **Outputs**
+
+   * sL: slowest wave speed
+   * sR: fastest wave speed
+"""
+function calc2RWaveSpeeds(params::ParamType{Tdim}, qL::AbstractVector{Tsol},
+                          qR::AbstractVector, nrm::AbstractVector{Tmsh}
+                         ) where {Tdim, Tsol, Tmsh}
+
+  Tres = promote_type(Tsol, Tmsh)
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  aL = sqrt(params.gamma*pL/qL[1]); aR = sqrt(params.gamma*pR/qR[1])
+  z = params.gamma_1/(2*params.gamma)
+
+  # compute velocity in face normal direction
+  u_nrmL = zero(Tres); u_nrmR = zero(Tres)
+  fac = calcLength(params, nrm)
+  for i=1:Tdim
+    u_nrmL += qL[i+1]*nrm[i]
+    u_nrmR += qR[i+1]*nrm[i]
+  end
+  u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+
+
+  num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
+  den = aL/(pL^z) + aR/(pR^z)
+
+  p_tr = (num/den)^(1/z)
+
+  # compute q values
+  if p_tr <= pL
+    qL = Tsol(1.0)
+  else
+    qL = sqrt(1 + (params.gamma + 1)*(p_tr/pL - 1)/(2*params.gamma))
+  end
+
+  if p_tr <= pR
+    qR = Tsol(1.0)
+  else
+    qR = sqrt(1 + (params.gamma + 1)*(p_tr/pR - 1)/(2*params.gamma))
+  end
+
+  sL = u_nrmL - aL*qL
+  sR = u_nrmR + aR*qR
+
+  return sL, sR
+end
+
+
+

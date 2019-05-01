@@ -436,6 +436,7 @@ get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
 get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
 get!(arg_dict, "homotopy_globalize_euler", false)
 get!(arg_dict, "homotopy_tighten_early", false)
+get!(arg_dict, "homotopy_shock_capturing", false)
 get!(arg_dict, "homotopy_shock_sensor", "SensorNone")
 
 # Crank-Nicolson options
@@ -740,6 +741,10 @@ end
     end
   end
   
+  if arg_dict["homotopy_shock_capturing"] && !arg_dict["addShockCapturing"]
+    error("homotopy shock caputuring requires shock capturing to be enabled")
+  end
+
 
 
 

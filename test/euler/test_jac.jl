@@ -32,7 +32,7 @@ function test_jac_terms()
 
 
   @testset "----- Testing jacobian -----" begin
-    
+  
     test_pressure(eqn.params)
     test_pressure(eqn3.params)
 
@@ -249,11 +249,23 @@ function test_jac_terms()
 
     println("\ntesting jac assembly 2d")
     test_jac_assembly(mesh, sbp, eqn, opts)
+
     opts_tmp = copy(opts)
     test_jac_homotopy(mesh, sbp, eqn, opts_tmp)
 
+
     println("\ntesting jac assembly 3d")
     test_jac_assembly(mesh3, sbp3, eqn3, opts3)
+
+
+   opts_sc = read_input_file(fname)
+   opts_sc["addShockCapturing"] = true
+   opts_sc["homotopy_shock_capturing"] = true
+   opts_sc["homotopy_shock_sensor"] = "SensorBO"
+   opts_sc["shock_sensor_name"] = "SensorHHO"
+   mesh, sbp, eqn, opts = run_solver(opts_sc)
+
+   test_jac_homotopy(mesh, sbp, eqn, opts_sc)
 
   end
 
@@ -623,7 +635,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------
@@ -2182,24 +2194,31 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   println("diff = \n", res1 - res2)
   @assert vecnorm(res1 - res2) < 1e-13
 =#
+
+  function _evalHomotopy(mesh, sbp, eqn, opts, t)
+    NonlinearSolvers._homotopyPhysics(hdata, mesh, sbp, eqn, opts, t)
+  end
+
+
   startSolutionExchange(mesh, sbp, eqn, opts)
 
+  Tsol = eltype(eqn.q)
+  Tjac = real(eltype(eqn.res))
+  hdata = NonlinearSolvers.HomotopyData{Tsol, Tjac}(mesh, sbp, eqn, opts,
+                                            evalResidual, evalHomotopy)
+  hdata.lambda = 0
   println("constructing first operator")
   opts["calc_jac_explicit"] = false
   pc1, lo1 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+  lo1.hdata = hdata
 
   println("constructing second operator")
   opts["calc_jac_explicit"] = true
   pc2, lo2 = NonlinearSolvers.getHomotopyPCandLO(mesh, sbp, eqn, opts)
+  lo2.hdata = hdata
 
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
-
-  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
-
-  function _evalHomotopy(mesh, sbp, eqn, opts, t)
-    evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
-  end
 
   ctx_residual = (_evalHomotopy,)
   println("\nevaluating jacobians")
@@ -2210,8 +2229,9 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
 
   # compute jacobian explicitly
   opts["calc_jac_explicit"] = true
-  
-  evalHomotopyJacobian(mesh, sbp, eqn, opts, assembler, lo2.lambda)
+ 
+  # was lambda = lo2.hdata.lambda
+  calcLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, 0.0)
 
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
   assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
@@ -2234,6 +2254,18 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   free(lo2)
   free(pc1)
   free(pc2)
+
+
+  # test enabling/disabling terms
+  opts_orig = copy(opts)
+
+  NonlinearSolvers.disableTerms(hdata, opts)
+  NonlinearSolvers.enableTerms(hdata, opts)
+
+  @test length(keys(opts)) == length(keys(opts_orig))
+  for (key, val) in opts_orig
+    @test opts[key] == val
+  end
 
   return nothing
 end

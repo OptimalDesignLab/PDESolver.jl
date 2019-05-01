@@ -79,7 +79,7 @@ mutable struct LDGShockCapturing{Tsol, Tres} <: AbstractFaceShockCapturing
     q_j = Array{Tsol}(0, 0, 0, 0)
 
     # default values
-    entropy_vars = IRVariables()
+    entropy_vars = getSCVariables(opts)
     flux = LDG_ESFlux()
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
 
@@ -390,8 +390,7 @@ mutable struct SBPParabolicSC{Tsol, Tres} <: AbstractFaceShockCapturing
     grad_w = Array{Tres}(0, 0, 0, 0)
 
     # default values
-    entropy_vars = IRVariables()
-#    entropy_vars = ConservativeVariables()
+    entropy_vars = getSCVariables(opts)
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     alpha = zeros(Float64, 0, 0)
@@ -532,10 +531,26 @@ mutable struct VolumeShockCapturing{Tsol, Tres} <: AbstractVolumeShockCapturing
   function VolumeShockCapturing{Tsol, Tres}(mesh::AbstractMesh, 
                                 sbp::AbstractOperator, eqn,  opts,
                                 sensor::AbstractShockSensor) where {Tsol, Tres}
-    entropy_vars = IRVariables()
-#    entropy_vars = ConservativeVariables()
+    entropy_vars = getSCVariables(opts)
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
     return new(entropy_vars, diffusion, sensor)
+  end
+end
+
+
+"""
+  Get the entropy variables specified by the options dictionary for use in the
+  shock capturing dissipation term.
+"""
+function getSCVariables(opts)
+
+  name = opts["shock_capturing_variables"]
+  if name == "IR"
+    return IRVariables()
+  elseif name == "conservative"
+    return Conservative()
+  else
+    error("unrecognized variables for shock capturing dissipation: $name")
   end
 end
 

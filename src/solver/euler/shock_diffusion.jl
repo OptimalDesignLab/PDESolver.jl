@@ -17,16 +17,17 @@ mutable struct ShockDiffusion{Tres, T <: AbstractShockSensor} <: AbstractDiffusi
   q::Array{Tres, 3}
 end
 
-function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
+function ShockDiffusion{Tres}(sensor::T, dim::Integer, numDofPerNode::Integer,
+                              numNodesPerElement::Integer
                              ) where {Tres, T <: AbstractShockSensor}
 
-  Se = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
-  ee = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
-  Se_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
-                       mesh.numNodesPerElement)
-  ee_dot = zeros(Tres, mesh.dim, mesh.numDofPerNode, mesh.numNodesPerElement,
-                       mesh.numNodesPerElement)
-  ee_bar = zeros(Tres, mesh.dim, mesh.numNodesPerElement)
+  Se = zeros(Tres, dim, numNodesPerElement)
+  ee = zeros(Tres, dim, numNodesPerElement)
+  Se_dot = zeros(Tres, dim, numDofPerNode, numNodesPerElement,
+                       numNodesPerElement)
+  ee_dot = zeros(Tres, dim, numDofPerNode, numNodesPerElement,
+                       numNodesPerElement)
+  ee_bar = zeros(Tres, dim, numNodesPerElement)
 
   is_frozen = false
   q = Array{Tres}(0, 0, 0)
@@ -34,6 +35,34 @@ function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T
   return ShockDiffusion{Tres, T}(sensor, Se, ee, Se_dot, ee_dot, ee_bar,
                                  is_frozen, q)
 end
+
+function ShockDiffusion{Tres}(mesh::AbstractMesh, sensor::T,
+                             ) where {Tres, T <: AbstractShockSensor}
+
+  return ShockDiffusion{Tres}(sensor, mesh.dim, mesh.numDofPerNode,
+                              mesh.numNodesPerElement)
+end
+
+"""
+  Copy constructor that makes a new object with a different sensor.
+"""
+function ShockDiffusion(diff::ShockDiffusion{Tres}, sensor::T
+                       ) where {Tres, T <: AbstractShockSensor}
+
+  dim, numNodesPerElement = size(diff.Se)
+  numDofPerNode = size(diff.Se_dot, 2)
+
+  obj = ShockDiffusion{Tres}(sensor, dim, numDofPerNode, numNodesPerElement)
+
+  if diff.is_frozen
+    diff2.is_frozen = true
+    diff2.q = copy(diff.q)
+  end
+
+  return obj
+end
+
+
 
 """
   This function makes the viscosity no longer a function of `q`, by copying
@@ -108,19 +137,8 @@ function applyDiffusionTensor(obj::ShockDiffusion, sbp::AbstractOperator,
     q2 = ro_sview(obj.q, :, :, elnum)
     getShockSensor(params, sbp, obj.sensor, q2, elnum, coords, dxidx, jac, Se, ee)
   else
-#    if elnum == 1
-#      println("q = \n", real(q))
-#      println("imag(q) = \n", imag(q)./1e-20)
-#    end
-
     getShockSensor(params, sbp, obj.sensor, q, elnum, coords, dxidx, jac, Se, ee)
   end
-
-#  if elnum == 1
-#    println("sensor = ", obj.sensor)
-#    println("ee = \n", real(ee))
-#    println("ee_dot = \n", imag(ee)./1e-20)
-#  end
 
   @simd for d=1:dim
     @simd for j in nodes

@@ -115,7 +115,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-#  println("entered evalResidual")
+  #println("\nentered evalResidual")
   time.t_send += @elapsed if opts["parallel_type"] == 1
     setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
@@ -141,7 +141,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
-#    println("stabilizing @time printed above")
+    #println("stabilizing @time printed above")
   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
@@ -151,11 +151,12 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("evalSharedFaceIntegrals @time printed above")
+    #println("evalSharedFaceIntegrals @time printed above")
   end
 
   time.t_shock += @elapsed if opts["addShockCapturing"]
     evalShockCapturing(mesh, sbp, eqn, opts)
+    #println("shock capturing @time printed above")
   end
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
