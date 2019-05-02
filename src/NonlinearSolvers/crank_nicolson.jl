@@ -118,6 +118,15 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   newton_data.itermax = 30
   recalc_policy = getRecalculationPolicy(opts, "CN")
 
+  # write drag at IC
+  if opts["write_drag"]
+    objective = createFunctional(mesh, sbp, eqn, opts, 1)     # 1 is the functional num (from input dict?)
+    drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+    @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+    @mpi_master println(f_drag, 1, " ", drag)
+    @mpi_master flush(f_drag)
+  end
+
   # this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
 
@@ -194,6 +203,8 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     # check stopping conditions
+    # I still believe this shouldn't be in a time-stepper
+    #=
     if (res_norm < res_tol)  # ???
       if myrank == 0
         println(BSTDOUT, "breaking due to res_tol, res norm = $res_norm")
@@ -202,6 +213,7 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
       break
     end
+    =#
 
 
     if use_itermax && i > itermax
@@ -220,6 +232,16 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     eqn_temp = eqn
     eqn = eqn_nextstep
     eqn_nextstep = eqn_temp
+
+    # write drag for this time step
+    if opts["write_drag"]
+      drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
+      @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+      @mpi_master println(f_drag, i, " ", drag)
+      @mpi_master if (i % opts["output_freq"]) == 0
+        flush(f_drag)
+      end
+    end
 
     # Note: we now need to copy the updated q over for the initial newton guess
     for j = 1:mesh.numDof
@@ -417,9 +439,9 @@ function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
   println(BSTDOUT, "     calling modifyJacCN from cLO()")
 
   lo_innermost = getBaseLO(lo)
-  writedlm("lo_innermost_A-before_modifyJacCN.dat", lo_innermost.A)
+  # writedlm("lo_innermost_A-before_modifyJacCN.dat", lo_innermost.A)
   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
-  writedlm("lo_innermost_A-after_modifyJacCN.dat", lo_innermost.A)
+  # writedlm("lo_innermost_A-after_modifyJacCN.dat", lo_innermost.A)
 
   println(BSTDOUT, "    leaving cLO(lo::CNMatLO...) in crank_nicolson.jl")
 

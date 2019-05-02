@@ -581,11 +581,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         fill!(v_vec, 0.0)
 
-        ccc = ones(Float64, mesh.numDof)
-        Accc = zeros(Float64, mesh.numDof)
-        A_mul_B!(Accc, lo_ds_innermost.A, ccc)
-        println(BSTDOUT, " vecnorm(Accc): ", vecnorm(Accc))
-        flush(BSTDOUT)
+        ### Same test as below, but only for non-Petsc
+        # ccc = ones(Float64, mesh.numDof)
+        # Accc = zeros(Float64, mesh.numDof)
+        # A_mul_B!(Accc, lo_ds_innermost.A, ccc)
+        # println(BSTDOUT, " vecnorm(Accc): ", vecnorm(Accc))
+        # flush(BSTDOUT)
+
         # println(BSTDOUT, " cond(lo_ds_innermost.A): ", cond(full(lo_ds_innermost.A)))
         # flush(BSTDOUT)
         #=
@@ -666,16 +668,19 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #------------------------------------------------------------------------------
         # Checking linearSolve
 
-        A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
+        ### Only for julia sparse?
+        # A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
         # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
-        println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
-        println(BSTDOUT, " vecnorm(TEST_b_vec): ", vecnorm(TEST_b_vec))
-        println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
-        flush(BSTDOUT)
+        # println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
+        # println(BSTDOUT, " vecnorm(TEST_b_vec): ", vecnorm(TEST_b_vec))
+        # println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
+        # flush(BSTDOUT)
 
         #------------------------------------------------------------------------------
 
 
+        #=
+        # This section is extremely slow for Petsc. Don't use.
         println(BSTDOUT, " lo_ds_innermost.A:  vecnorm: ", vecnorm(lo_ds_innermost.A), 
                          "  max: ", maximum(lo_ds_innermost.A), 
                          "  min: ", minimum(lo_ds_innermost.A), "  minabs: ", minimum(abs.(lo_ds_innermost.A)))
@@ -684,6 +689,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " v_vec:  vecnorm: ", vecnorm(v_vec), "  max: ", maximum(v_vec), 
                          "  min: ", minimum(v_vec), "  minabs: ", minimum(abs.(v_vec)))
         flush(BSTDOUT)
+        =#
 
 
         #### The above is all new CSR code
