@@ -1008,7 +1008,6 @@ end
 
 
 
-
 @doc """
 ### EulerEquationMod.FluxDict
 

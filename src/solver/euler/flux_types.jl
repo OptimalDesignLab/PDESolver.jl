@@ -277,12 +277,24 @@ struct HLLFluxData{Tres}
   fL::Vector{Tres}
   fR::Vector{Tres}
 
+  sL_dot::Matrix{Tres}
+  sR_dot::Matrix{Tres}
+  fL_jac::Matrix{Tres}
+  fR_jac::Matrix{Tres}
+
   function HLLFluxData{Tres}(numDofPerNode::Integer) where {Tres}
 
     fL = zeros(Tres, numDofPerNode)
     fR = zeros(Tres, numDofPerNode)
 
-    return new(fL, fR)
+    sL_dot = zeros(Tres, numDofPerNode, 2)
+    sR_dot = zeros(Tres, numDofPerNode, 2)
+    fL_jac = zeros(Tres, numDofPerNode,numDofPerNode)
+    fR_jac = zeros(Tres, numDofPerNode, numDofPerNode)
+
+
+    return new(fL, fR,
+              sL_dot, sR_dot, fL_jac, fR_jac)
   end
 end
 
@@ -373,6 +385,39 @@ struct GetLambdaMaxData{Tsol}
     return new(p_dot)
   end
 end
+
+
+"""
+  Temporary storage for [`calc2RWaveSpeed`](@ref)
+"""
+struct TwoRWaveSpeedData{Tsol, Tres}
+
+  pL_dot::Vector{Tsol}
+  pR_dot::Vector{Tsol}
+  aL_dot::Vector{Tsol}
+  aR_dot::Vector{Tsol}
+  u_nrmL_dot::Vector{Tres}
+  u_nrmR_dot::Vector{Tres}
+  p_tr_dot::Matrix{Tres}
+  qfL_dot::Matrix{Tres}
+  qfR_dot::Matrix{Tres}
+
+  function TwoRWaveSpeedData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
+    pL_dot = zeros(Tsol, numDofPerNode)
+    pR_dot = zeros(Tsol, numDofPerNode)
+    aL_dot = zeros(Tsol, numDofPerNode)
+    aR_dot = zeros(Tsol, numDofPerNode)
+    u_nrmL_dot = zeros(Tres, numDofPerNode)
+    u_nrmR_dot = zeros(Tres, numDofPerNode)
+    p_tr_dot = zeros(Tres, 2, numDofPerNode)
+    qfL_dot = zeros(Tres, 2, numDofPerNode)
+    qfR_dot = zeros(Tres, 2, numDofPerNode)
+
+    return new(pL_dot, pR_dot, aL_dot, aR_dot, u_nrmL_dot, u_nrmR_dot, p_tr_dot,
+               qfL_dot, qfR_dot)
+  end
+end
+
 
 
 struct CalcVorticityData{Tsol, Tres, Tmsh}

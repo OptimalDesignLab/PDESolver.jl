@@ -1205,6 +1205,22 @@ function (obj::ErrorFlux_diff)(params::ParamType,
 end
 
 
+mutable struct HLLFlux_diff <: FluxType_diff
+end
+
+function (obj::HLLFlux_diff)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
+
+  calcHLLFlux_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
+end
+
+
+
 
 """
   Container for all differentiated flux functors.  Maps name to object.
@@ -1216,6 +1232,7 @@ global const FluxDict_diff = Dict{String, FluxType_diff}(
 "IRFlux" => IRFlux_diff(),
 "IRSLFFlux" => IRSLFFlux_diff(),
 "StandardFlux" => StandardFlux_diff(),
+"HLLFlux" => HLLFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),
 )
 

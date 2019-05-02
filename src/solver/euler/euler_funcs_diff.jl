@@ -1639,4 +1639,135 @@ function getLambdaMax_revq(params::ParamType{Tdim},
   return lambda_max
 end
 
+"""
+  Differentiated version of [`calc2RWaveSpeeds`](@ref)
+
+  **Inputs**
+
+   * params
+   * qL
+   * qR
+   * nrm: normal vector
+
+  **Inputs/Outputs**
+
+   * sL_dot: derivative of sL wrt qL and qR, `numDofPerNode` x 2
+   * sR_dot: derivative of sR wrt qL and qR, `numDofPerNode` x 2
+
+  **Outputs**
+
+   * sL: slowest wave speed
+   * sR: fastest wave speed
+"""
+function calc2RWaveSpeeds_diff(params::ParamType{Tdim}, qL::AbstractVector{Tsol},
+                          qR::AbstractVector, nrm::AbstractVector{Tmsh},
+                          sL_dot::AbstractMatrix, sR_dot::AbstractMatrix
+                         ) where {Tdim, Tsol, Tmsh}
+
+  @unpack params.tworwavespeeddata pL_dot pR_dot aL_dot aR_dot u_nrmL_dot u_nrmR_dot p_tr_dot qfL_dot qfR_dot
+
+  Tres = promote_type(Tsol, Tmsh)
+  numDofPerNode = length(qL)
+
+  # compute pressure and speed of sound
+  pL = calcPressure_diff(params, qL, pL_dot)
+  pR = calcPressure_diff(params, qR, pR_dot)
+
+  facL = params.gamma/qL[1]; facR = params.gamma/qR[1]
+  aL = sqrt(facL*pL); aR = sqrt(facR*pR)
+
+  facL /= 2*aL; facR /= 2*aR
+  for i=1:numDofPerNode
+    aL_dot[i] = facL*pL_dot[i]
+    aR_dot[i] = facR*pR_dot[i]
+  end
+  aL_dot[1] -= facL*pL/qL[1]; aR_dot[1] -= facR*pR/qR[1]
+  z = params.gamma_1/(2*params.gamma)
+
+  # compute velocity in face normal direction
+  u_nrmL = zero(Tres); u_nrmR = zero(Tres)
+  fac = calcLength(params, nrm)
+  for i=1:Tdim
+    u_nrmL += qL[i+1]*nrm[i]; u_nrmL_dot[i+1] = nrm[i]/(fac*qL[1])
+    u_nrmR += qR[i+1]*nrm[i]; u_nrmR_dot[i+1] = nrm[i]/(fac*qR[1])
+  end
+  u_nrmL_dot[1] = -u_nrmL/(fac*qL[1]*qL[1])
+  u_nrmR_dot[1] = -u_nrmR/(fac*qR[1]*qR[1])
+
+  u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+
+
+  # compute p_tr
+  pLz = pL^z; pRz = pR^z
+  num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
+  den = aL/pLz + aR/pRz
+
+  t1 = num/den
+  p_tr = t1^(1/z)
+
+  # derivatives of num, den, t1, and p_tr
+  for i=1:numDofPerNode
+    num_dotL_i = aL_dot[i] + 0.5*params.gamma_1*u_nrmL_dot[i]
+    num_dotR_i = aR_dot[i] - 0.5*params.gamma_1*u_nrmR_dot[i]
+
+    den_dotL_i = aL_dot[i]/pLz + -z*aL*pL_dot[i]/(pLz*pL)
+    den_dotR_i = aR_dot[i]/pRz + -z*aR*pR_dot[i]/(pRz*pR)
+
+    t1_dotL_i = (num_dotL_i*den - num*den_dotL_i)/(den*den)
+    t1_dotR_i = (num_dotR_i*den - num*den_dotR_i)/(den*den)
+
+    fac_i = p_tr/(z*t1)
+    p_tr_dot[1, i] = fac_i*t1_dotL_i
+    p_tr_dot[2, i] = fac_i*t1_dotR_i
+  end
+
+  # compute q values
+  if p_tr <= pL
+    qfL = Tres(1.0)
+    for i=1:numDofPerNode
+      qfL_dot[1, i] = 0 ; qfL_dot[2, i] = 0
+    end
+  else
+    qfL = sqrt(1 + (params.gamma + 1)*(p_tr/pL - 1)/(2*params.gamma))
+    for i=1:numDofPerNode
+      t1_dotL_i = (p_tr_dot[1, i]*pL - p_tr*pL_dot[i])/(pL*pL)
+      t1_dotR_i = p_tr_dot[2, i]/pL
+
+      qfL_dot[1, i] = (params.gamma + 1)*t1_dotL_i/(4*qfL*params.gamma)
+      qfL_dot[2, i] = (params.gamma + 1)*t1_dotR_i/(4*qfL*params.gamma)
+    end
+  end
+
+  if p_tr <= pR
+    qfR = Tres(1.0)
+    for i=1:numDofPerNode
+      qfR_dot[1, i] = 0; qfR_dot[2, i] = 0
+    end
+  else
+    qfR = sqrt(1 + (params.gamma + 1)*(p_tr/pR - 1)/(2*params.gamma))
+    for i=1:numDofPerNode
+      t1_dotL_i = p_tr_dot[1, i]/pR
+      t1_dotR_i = (p_tr_dot[2, i]*pR - p_tr*pR_dot[i])/(pR*pR)
+
+      qfR_dot[1, i] = (params.gamma + 1)*t1_dotL_i/(4*qfR*params.gamma)
+      qfR_dot[2, i] = (params.gamma + 1)*t1_dotR_i/(4*qfR*params.gamma)
+    end
+  end
+
+  # compute sL and sR
+  sL = u_nrmL - aL*qfL
+  sR = u_nrmR + aR*qfR
+
+  for i=1:numDofPerNode
+    sL_dot[i, 1] = u_nrmL_dot[i] - aL_dot[i]*qfL - aL*qfL_dot[1, i]
+    sL_dot[i, 2] =                               - aL*qfL_dot[2, i]
+
+    sR_dot[i, 1] =                                 aR*qfR_dot[1, i]
+    sR_dot[i, 2] = u_nrmR_dot[i] + aR_dot[i]*qfR + aR*qfR_dot[2, i]
+  end
+
+  return sL, sR
+end
+
+
 

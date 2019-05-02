@@ -1943,6 +1943,71 @@ function getLambdaMax(params::ParamType{Tdim},
   return lambda_max
 end
 
+"""
+  Compute approximate wave speeds for a Riemann problem using the 2 rarefaction
+  model (see Toro's Riemann Solvers book).
+  These values are upper bounds for the true wave speeds for 1 <= gamma <= 5/3.
+
+  Note that the wave speeds are *not* scaled by the length of the normal
+  vector.
+
+  **Inputs**
+
+   * params
+   * qL
+   * qR
+   * nrm: normal vector
+
+  **Outputs**
+
+   * sL: slowest wave speed
+   * sR: fastest wave speed
+"""
+function calc2RWaveSpeeds(params::ParamType{Tdim}, qL::AbstractVector{Tsol},
+                          qR::AbstractVector, nrm::AbstractVector{Tmsh}
+                         ) where {Tdim, Tsol, Tmsh}
+
+  Tres = promote_type(Tsol, Tmsh)
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  aL = sqrt(params.gamma*pL/qL[1]); aR = sqrt(params.gamma*pR/qR[1])
+  z = params.gamma_1/(2*params.gamma)
+
+  # compute velocity in face normal direction
+  u_nrmL = zero(Tres); u_nrmR = zero(Tres)
+  fac = calcLength(params, nrm)
+  for i=1:Tdim
+    u_nrmL += qL[i+1]*nrm[i]
+    u_nrmR += qR[i+1]*nrm[i]
+  end
+  u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+
+
+  num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
+  den = aL/(pL^z) + aR/(pR^z)
+
+  p_tr = (num/den)^(1/z)
+
+  # compute q values
+  if p_tr <= pL
+    qfL = Tres(1.0)
+  else
+    qfL = sqrt(1 + (params.gamma + 1)*(p_tr/pL - 1)/(2*params.gamma))
+  end
+
+  if p_tr <= pR
+    qfR = Tres(1.0)
+  else
+    qfR = sqrt(1 + (params.gamma + 1)*(p_tr/pR - 1)/(2*params.gamma))
+  end
+
+  sL = u_nrmL - aL*qfL
+  sR = u_nrmR + aR*qfR
+
+  return sL, sR
+end
+
+
 
 
 function calcMomentContribution!(sbpface::AbstractFace{Tsbp}, xsbp::AbstractArray{Tmsh,3},

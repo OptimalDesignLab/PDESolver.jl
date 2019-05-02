@@ -5699,3 +5699,65 @@ function calcEulerFlux_IRSLF_diff(params::ParamType{Tdim, :conservative},
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# HLL Flux
+
+function calcHLLFlux_diff(params::ParamType{Tdim, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 1},
+                   FL_dot::AbstractArray{Tres, 2},
+                   FR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres, Tdim}
+
+  numDofPerNode = length(qL)
+  @unpack params.hllfluxdata fL fR sL_dot sR_dot fL_jac fR_jac
+
+  sL, sR = calc2RWaveSpeeds_diff(params, qL, qR, nrm, sL_dot, sR_dot)
+
+  if sL >= 0
+    calcEulerFlux_diff(params, qL, aux_vars, nrm, FL_dot)
+  elseif sR <= 0
+    calcEulerFlux_diff(params, qR, aux_vars, nrm, FR_dot)
+  else
+    calcEulerFlux(params, qL, aux_vars, nrm, fL)
+    calcEulerFlux(params, qR, aux_vars, nrm, fR)
+
+    fill!(fL_jac, 0); fill!(fR_jac, 0)
+    calcEulerFlux_diff(params, qL, aux_vars, nrm, fL_jac)
+    calcEulerFlux_diff(params, qR, aux_vars, nrm, fR_jac)
+
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+
+    for i=1:numDofPerNode
+      num = sR*fL[i] - sL*fR[i] + fac2*(qR[i] - qL[i])
+      den = sR - sL
+      for j=1:numDofPerNode
+        fac2_dotL = fac*(sL*sR_dot[j, 1] + sR*sL_dot[j, 1])
+        fac2_dotR = fac*(sL*sR_dot[j, 2] + sR*sL_dot[j, 2])
+
+        num_dotL_j = sR*fL_jac[i, j] + sR_dot[j, 1]*fL[i] - sL_dot[j, 1]*fR[i] +
+                     fac2_dotL*(qR[i] - qL[i])
+        num_dotR_j = fL[i]*sR_dot[j, 2] - sL*fR_jac[i, j] - fR[i]*sL_dot[j, 2] +
+                     fac2_dotR*(qR[i] - qL[i])
+
+        den_dotL_j = sR_dot[j, 1] - sL_dot[j, 1]
+        den_dotR_j = sR_dot[j, 2] - sL_dot[j, 2]
+
+        if j == i
+          num_dotL_j -= fac2
+          num_dotR_j += fac2
+        end
+
+        FL_dot[i, j] += (num_dotL_j*den - den_dotL_j*num)/(den*den)
+        FR_dot[i, j] += (num_dotR_j*den - den_dotR_j*num)/(den*den)
+      end
+    end
+  end
+
+  return nothing
+end
+
+

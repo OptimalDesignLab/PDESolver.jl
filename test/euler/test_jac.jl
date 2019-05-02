@@ -32,7 +32,30 @@ function test_jac_terms()
 
 
   @testset "----- Testing jacobian -----" begin
-  
+
+    func = EulerEquationMod.FluxDict["HLLFlux"]
+    func_diff = EulerEquationMod.FluxDict_diff["HLLFlux"]
+
+    nrm = [0.45, 0.55]
+    nrm2 = -nrm
+#=
+    q = Complex128[2.0, 3.0, 4.0, 7.0]
+    qg = q + 0.1
+
+    test_2RWave(eqn.params, q, qg, nrm)
+=#
+    
+#    q = Complex128[2.0, 3.0, 4.0, 7.0]
+#    qg = q + 0.1
+#    q = Complex128[1.1, -0.72405, -0.82405, 2.2] 
+#    qg = q + 0.1
+    q = Complex128[1.1, -0.681, 0.47, 2.2]
+    qg = q + 0.1
+
+    test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
+
+#    error("stop here")
+
     test_pressure(eqn.params)
     test_pressure(eqn3.params)
 
@@ -78,6 +101,9 @@ function test_jac_terms()
     func4_revm = EulerEquationMod.FluxDict_revm["IRSLFFlux"]
     func4_revq = EulerEquationMod.FluxDict_revq["IRSLFFlux"]
  
+    func5 = EulerEquationMod.FluxDict["HLLFlux"]
+    func5_diff = EulerEquationMod.FluxDict_diff["HLLFlux"]
+
 
     # Abstract Entropy Kernels
     lf_kernel = EulerEquationMod.LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
@@ -107,6 +133,8 @@ function test_jac_terms()
     test_EntropyKernel(eqn.params, lf_kernel)
     test_EntropyKernel_revq(eqn.params, lf_kernel)
     test_EntropyKernel_revm(eqn.params, lf_kernel)
+
+    test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
 
     # test boundary conditions
     for bcname in bclist_revm_2d
@@ -153,12 +181,16 @@ function test_jac_terms()
     test_lambda(eqn.params, q, nrm2)
     test_lambdasimple(eqn.params, q, qg, nrm2)
     
+    test_ad_inner(eqn.params, q, qg, nrm2, func5, func5_diff)
+
     println("testing lambda1 entropy fix")
     q = Complex128[1.1, -0.72405, -0.82405, 2.2] 
     qg = q + 0.1
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
     test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
+    
+    test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
    
     println("testing lambda2 entropy fix")
     q = Complex128[1.1, 0.64405, 0.73405, 2.2] 
@@ -168,6 +200,9 @@ function test_jac_terms()
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
     test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
 
+    test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
+    test_ad_inner(eqn.params, q, qg, nrm2, func5, func5_diff)
+
     println("testing lambda3 entropy fix")
     q = Complex128[1.1, -0.681, 0.47, 2.2]
     qg = q + 0.1
@@ -175,6 +210,9 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm2, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
     test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
+
+    test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
+    test_ad_inner(eqn.params, q, qg, nrm2, func5, func5_diff)
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
     
@@ -273,7 +311,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -1284,6 +1322,7 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
   resR = zeros(Complex128, numDofPerNode, numDofPerNode)
   h = 1e-20
   pert = Complex128(0, h)
+
   for j=1:numDofPerNode
     qL[j] += pert
     func(params, qL, qR, aux_vars, nrm, F)
@@ -1294,6 +1333,7 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
 
     qL[j] -= pert
   end
+
 
   for j=1:numDofPerNode
     qR[j] += pert
@@ -1314,15 +1354,15 @@ function test_ad_inner(params::AbstractParamType{Tdim}, qL, qR, nrm,
 
   if output
     println("\n----- Comparing left results -----")
-    println("resL = \n", resL)
-    println("resL2 = \n", resL2)
-    println("diff = \n", resL - resL2)
+    println("resL = \n", real(resL))
+    println("resL2 = \n", real(resL2))
+     println("diff = \n", real(resL - resL2))
     println("max diff = \n", maximum(abs.(resL - resL2)))
 
     println("\n----- Comparing right results -----")
-    println("resR = \n", resR)
-    println("resR2 = \n", resR2)
-    println("diff = \n", resR - resR2)
+    println("resR = \n", real(resR))
+    println("resR2 = \n", real(resR2))
+    println("diff = \n", real(resR - resR2))
     println("max diff = \n", maximum(abs.(resR - resR2)))
   end
 
@@ -1573,6 +1613,54 @@ function test_common_func_rev(params::AbstractParamType{Tdim},
 
   return nothing
 end
+
+
+function test_2RWave(params::AbstractParamType{Tdim}, qL, qR, nrm) where Tdim
+
+  # compute jacobian with complex step and AD, compare results
+  numDofPerNode = length(qL)
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  sL_dot = zeros(Complex128, numDofPerNode, 2)
+  sR_dot = zeros(Complex128, numDofPerNode, 2)
+
+  sL_dot2 = zeros(Complex128, numDofPerNode, 2)
+  sR_dot2 = zeros(Complex128, numDofPerNode, 2)
+
+
+  for i=1:numDofPerNode
+    
+    qL[i] += pert
+    sL, sR = EulerEquationMod.calc2RWaveSpeeds(params, qL, qR, nrm)
+    sL_dot[i, 1] = imag(sL)/h
+    sR_dot[i, 1] = imag(sR)/h
+    qL[i] -= pert
+    
+
+    
+    qR[i] += pert
+    sL, sR = EulerEquationMod.calc2RWaveSpeeds(params, qL, qR, nrm)
+    sL_dot[i, 2] = imag(sL)/h
+    sR_dot[i, 2] = imag(sR)/h
+    qR[i] -= pert
+    
+  end
+
+  # call this twice to make sure intermediate arrays are zeroed out if needed
+  EulerEquationMod.calc2RWaveSpeeds_diff(params, qL, qR, nrm, sL_dot2, sR_dot2)
+  EulerEquationMod.calc2RWaveSpeeds_diff(params, qL, qR, nrm, sL_dot2, sR_dot2)
+
+  maxdiffL = maximum(abs.(sL_dot - sL_dot2))
+  maxdiffR = maximum(abs.(sR_dot - sR_dot2))
+
+  @test maxdiffL < 1e-12
+  @test maxdiffR < 1e-12
+
+  return nothing
+end
+
+
 
 
 

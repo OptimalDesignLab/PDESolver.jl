@@ -1095,7 +1095,6 @@ function test_ESS()
     println("finished testing LW dissipation")
 =#
     # test using type 1 face integrals
-    println("\nTesting ES")
     irflux_diagE = EulerEquationMod.FluxDict["IRFlux"]
     runESTest_diagE(mesh, sbp, eqn, opts, irflux_diagE, isEC=true)
     penalty_lf_diagE = EulerEquationMod.FluxDict["LFPenalty"]
@@ -1111,4 +1110,4 @@ function test_ESS()
 end  # end function
 
 #test_ESS()
-add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ESS, [TAG_FLUX, TAG_ESS, TAG_SHORTTEST])
