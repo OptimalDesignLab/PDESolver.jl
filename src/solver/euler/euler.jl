@@ -163,7 +163,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
     println(BSTDOUT, " Calling applyMassMatrixInverse3D")
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   else
-    println(BSTDOUT, " NOT calling applyMassMatrixInverse3D")
+    # println(BSTDOUT, " NOT calling applyMassMatrixInverse3D")
   end
 
  

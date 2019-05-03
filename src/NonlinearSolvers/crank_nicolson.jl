@@ -59,6 +59,9 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                         mesh::AbstractMesh, sbp::AbstractSBP, eqn::AbstractSolutionData,
                         opts, res_tol=-1.0, real_time=true)
 
+  delta_t = h
+  dt = h
+
   myrank = eqn.myrank
   if myrank == 0
     println(BSTDOUT, "\nEntered Crank-Nicolson")
@@ -265,6 +268,39 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #   usage: copyForMultistage!(dest, src)
   copyForMultistage!(eqn, eqn_nextstep)
 
+
+  @mpi_master begin
+    f_Ma = open("Ma.dat", "w")
+    println(f_Ma, eqn.params.Ma)
+    close(f_Ma)
+    f_dt = open("delta_t.dat", "w")
+    println(f_dt, dt)
+    close(f_dt)
+
+    println(BSTDOUT, " ")
+    println(BSTDOUT, " run parameters that were used:")
+    # if opts["perturb_Ma_CN"]
+      # println("    Ma: ", eqn.params.Ma + Ma_pert_mag)
+    # else
+      println(BSTDOUT, "    Ma: ", eqn.params.Ma)
+    # end
+    println(BSTDOUT, "    aoa: ", eqn.params.aoa)
+    println(BSTDOUT, "    dt: ", dt)
+    println(BSTDOUT, "    a_inf: ", eqn.params.a_free)
+    println(BSTDOUT, "    rho_inf: ", eqn.params.rho_free)
+    println(BSTDOUT, "    c: ", 1.0)
+    println(BSTDOUT, "    mesh.coord_order: ", mesh.coord_order)
+    println(BSTDOUT, " ")
+    println(BSTDOUT, "    opts[stabilization_method]: ", opts["stabilization_method"])
+    println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
+    println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])
+    println(BSTDOUT, "    opts[itermax]: ", opts["itermax"])
+    println(BSTDOUT, "    opts[use_checkpointing]: ", opts["use_checkpointing"])
+    println(BSTDOUT, "    opts[checkpoint_freq]: ", opts["checkpoint_freq"])
+    println(BSTDOUT, "    opts[ncheckpoints]: ", opts["ncheckpoints"])
+    println(BSTDOUT, " ")
+    println(BSTDOUT, " sbp.w: ", sbp.w)
+  end
 
   #TODO: return the NewtonData?
   free(newton_data)
