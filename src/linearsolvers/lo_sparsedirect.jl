@@ -91,12 +91,12 @@ function calcLinearOperator(lo::SparseDirectLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::SparseDirectLO...) in lo_sparsedirect.jl")
+  # println(BSTDOUT, "    entered cLO(lo::SparseDirectLO...) in lo_sparsedirect.jl")
 
 #  physicsJac(lo, mesh, sbp, eqn, opts, lo.A, ctx_residual, t)
   setIsSetup(lo, false)
 
-  println(BSTDOUT, "    leaving cLO(lo::SparseDirectLO...) in lo_sparsedirect.jl")
+  # println(BSTDOUT, "    leaving cLO(lo::SparseDirectLO...) in lo_sparsedirect.jl")
 
   return nothing
 end

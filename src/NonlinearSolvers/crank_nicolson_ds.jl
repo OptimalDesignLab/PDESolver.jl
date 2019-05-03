@@ -351,7 +351,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       doRecalculation(recalc_policy, i,
                     ls, mesh, sbp, eqn_nextstep, opts, ctx_residual, t_nextstep)
 
-      println(BSTDOUT, " Calling newtonInner from CN.")
+      # println(BSTDOUT, " Calling newtonInner from CN.")
       flush(BSTDOUT)
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
                   rhs_vec, ctx_residual, t_nextstep)
@@ -360,11 +360,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                   #   newtonInner -> rhs_func -> physicsRhs (residual_evaluation.jl)
                   # TODO: need to save the complex part of R inside physicsRhs
     end
-    print(BSTDOUT, " Newton solve on primal complete.")
+    # print(BSTDOUT, " Newton solve on primal complete.")
 
     # do the callback using the current eqn object at time t
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
-    print(BSTDOUT, " majorIterationCallback called.")
+    # print(BSTDOUT, " majorIterationCallback called.")
     println(BSTDOUT, " ")
     flush(BSTDOUT)
 
@@ -455,6 +455,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         end
         # DUPEDEBUG
+        #=
         println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
         println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
         println(BSTDOUT, " vecnorm(old_q_vec_Maimag): ", vecnorm(old_q_vec_Maimag))
@@ -472,6 +473,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " vecnorm(imag(old_res_vec_Maimag)): ", vecnorm(imag(old_res_vec_Maimag)))
         println(BSTDOUT, " vecnorm(res_hat_vec): ", vecnorm(res_hat_vec))
         println(BSTDOUT, " vecnorm(imag(res_hat_vec)): ", vecnorm(imag(res_hat_vec)))
+        =#
         # should I be collecting into q?
 
         # obtain dR/dM using the complex step method
@@ -753,6 +755,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
         end
         =#
+        for ix_dof = 1:mesh.numDof
 
         if (i % output_freq) == 0
           # saveSolutionToMesh(mesh, v_energy)

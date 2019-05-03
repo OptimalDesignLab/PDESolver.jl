@@ -513,24 +513,24 @@ function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
    
-  println(BSTDOUT, "    entered cLO(lo::NewtonMatLO...) in newton_setup.jl")
+  # println(BSTDOUT, "    entered cLO(lo::NewtonMatLO...) in newton_setup.jl")
 
-  println(BSTDOUT, "     calling inner cLO in cLO(lo::NewtonMatLO...) in newton_setup.jl")
+  # println(BSTDOUT, "     calling inner cLO in cLO(lo::NewtonMatLO...) in newton_setup.jl")
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
   lo2 = getBaseLO(lo)
-  println(BSTDOUT, "     calling physicsJac from cLO()")
+  # println(BSTDOUT, "     calling physicsJac from cLO()")
   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
 
   if opts["newton_globalize_euler"]
-    println(BSTDOUT, "     performing newton_globalize_euler steps in cLO()")
+    # println(BSTDOUT, "     performing newton_globalize_euler steps in cLO()")
     # TODO: updating the Euler parameter here is potentially wrong if we
     #       are not updating the Jacobian at every newton step
     updateEuler(lo)
     applyEuler(mesh, sbp, eqn, opts, lo)
   end
 
-  println(BSTDOUT, "    leaving cLO(lo::NewtonMatLO...) in newton_setup.jl")
+  # println(BSTDOUT, "    leaving cLO(lo::NewtonMatLO...) in newton_setup.jl")
 
   return nothing
 end
@@ -539,7 +539,7 @@ function calcLinearOperator(lo::NewtonPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::NewtonPetscMatFreeLO...) in newton_setup.jl")
+  # println(BSTDOUT, "    entered cLO(lo::NewtonPetscMatFreeLO...) in newton_setup.jl")
 
   if opts["newton_globalize_euler"]
     updateEuler(lo)

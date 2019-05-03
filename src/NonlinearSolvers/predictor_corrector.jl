@@ -548,7 +548,7 @@ function calcLinearOperator(lo::HomotopyMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::HomotopyMatLO...) in predictor_corrector.jl")
+  # println(BSTDOUT, "    entered cLO(lo::HomotopyMatLO...) in predictor_corrector.jl")
    
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
@@ -573,7 +573,7 @@ function calcLinearOperator(lo::HomotopyPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::HomotopyPetscMatFreeLO...) in predictor_corrector.jl")
+  # println(BSTDOUT, "    entered cLO(lo::HomotopyPetscMatFreeLO...) in predictor_corrector.jl")
 
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 

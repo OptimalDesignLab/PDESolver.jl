@@ -467,19 +467,19 @@ function calcLinearOperator(lo::CNMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::CNMatLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "    entered cLO(lo::CNMatLO...) in crank_nicolson.jl")
 
-  println(BSTDOUT, "     calling inner cLO in cLO(lo::CNMatLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "     calling inner cLO in cLO(lo::CNMatLO...) in crank_nicolson.jl")
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
-  println(BSTDOUT, "     calling modifyJacCN from cLO()")
+  # println(BSTDOUT, "     calling modifyJacCN from cLO()")
 
   lo_innermost = getBaseLO(lo)
-  # writedlm("lo_innermost_A-before_modifyJacCN.dat", lo_innermost.A)
+  # writedlm("lo_innermost_A-before_modifyJacCN.dat", lo_innermost.A)   # can't do this with Petsc matrices, will hang
   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
-  # writedlm("lo_innermost_A-after_modifyJacCN.dat", lo_innermost.A)
+  # writedlm("lo_innermost_A-after_modifyJacCN.dat", lo_innermost.A)    # can't do this with Petsc matrices, will hang
 
-  println(BSTDOUT, "    leaving cLO(lo::CNMatLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "    leaving cLO(lo::CNMatLO...) in crank_nicolson.jl")
 
   return nothing
 end
@@ -508,7 +508,7 @@ function calcLinearOperator(lo::CNPetscMatFreeLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
   
-  println(BSTDOUT, "    entered cLO(lo::CNPetscMatFreeLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "    entered cLO(lo::CNPetscMatFreeLO...) in crank_nicolson.jl")
 
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
@@ -576,7 +576,7 @@ end
 """
 function modifyJacCN(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
-  println(BSTDOUT, " modifyJacCN(lo...) called")
+  # println(BSTDOUT, " modifyJacCN(lo...) called")
 
 
   lo2 = getBaseLO(lo)

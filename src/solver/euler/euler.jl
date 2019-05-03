@@ -160,7 +160,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractSBP, eqn::EulerData,
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
-    println(BSTDOUT, " Calling applyMassMatrixInverse3D")
+    # println(BSTDOUT, " Calling applyMassMatrixInverse3D")
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   else
     # println(BSTDOUT, " NOT calling applyMassMatrixInverse3D")
@@ -1021,7 +1021,7 @@ end  # end function
 """->
 function applyMassMatrixInverse3D(mesh, sbp, eqn, opts, arr)
 
-  println(BSTDOUT, " In applyMassMatrixInverse3D")
+  # println(BSTDOUT, " In applyMassMatrixInverse3D")
 
   for i = 1:mesh.numEl
     for j = 1:sbp.numnodes

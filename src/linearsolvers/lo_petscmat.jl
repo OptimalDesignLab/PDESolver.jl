@@ -113,7 +113,7 @@ function calcLinearOperator(lo::PetscMatLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
 
-  println(BSTDOUT, "    entered cLO(lo::PetscMatLO...) in lo_petscmat.jl")
+  # println(BSTDOUT, "    entered cLO(lo::PetscMatLO...) in lo_petscmat.jl")
 
 #  physicsJac(mesh, sbp, eqn, opts, pc.A, ctx_residual, t)
   setIsSetup(lo, false)

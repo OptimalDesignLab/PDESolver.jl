@@ -474,7 +474,7 @@ function calcLinearOperator(lo::AbstractLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::AbstractLO...) in LinearSolvers.jl")
+  # println(BSTDOUT, "    entered cLO(lo::AbstractLO...) in LinearSolvers.jl")
 
   error("reached AbstractLO calcLinearOperator(), did you forget to define calcLinearOperator() for your AbstractLO implementation?")
 end
