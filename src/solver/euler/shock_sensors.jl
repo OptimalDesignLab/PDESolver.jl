@@ -37,19 +37,32 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
   # compute the inner product
   num = zero(Tres)
   den = zero(Tres)
-  for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]
-    delta_u = up_tilde[i] - up1_tilde[i]
 
-    num += delta_u*fac*delta_u
-    # use the filtered variables for (u, u).  This is a bit different than
-    # finite element methods, where the original solution has a basis, and the
-    # norm in any basis should be the same.  Here we use the filtered u rather
-    # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
+  # use the filtered variables for (u, u) and ||u - u_tilde||.
+  # This is a bit different than
+  # finite element methods, where the original solution has a basis, and the
+  # norm in any basis should be the same.  Here we use the filtered u rather
+  # than the original because it is probably smoother.
+  if sensor.use_filtered
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up_tilde[i] - up1_tilde[i]
 
-    # see if this makes the sensor less sensitive
-    #den += up[i]*fac*up[i]
+      num += delta_u*fac*delta_u
+      den += up_tilde[i]*fac*up_tilde[i]
+    end
+  else
+    # use the original u for (u, u) and ||u - u_tilde||.  For the diagonal E
+    # operators, this means u - u_tilde contains the highest 2 degree
+    # polynomials (because diagonal E operators have enough nodes for one
+    # degree higher solution)
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up[i] - up1_tilde[i]
+
+      num += delta_u*fac*delta_u
+      den += up[i]*fac*up[i]
+    end
   end
 
   Se = num/den

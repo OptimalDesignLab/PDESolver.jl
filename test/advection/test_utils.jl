@@ -400,4 +400,4 @@ end
 
 add_func2!(AdvectionTests, test_utils3, test_3d_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])
 # it doesn't matter what mesh is loaded, so reuse the test_lowlevel one
-add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST, TAG_TMP])
+add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])

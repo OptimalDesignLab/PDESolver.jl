@@ -481,3 +481,7 @@ Note that any values associated with these options are shared with the regular
                     condition (Bool), default false
 "shock_capturing_variables": which variables to use for the shock capturing
                              dissipation (String), default "IR"
+"sensor_pp_use_filtered": for shock SensorPP, if true use the energy of the
+                          degree p modes to compute the shock sensor, if false
+                          use the energy of all modes greater than or equal
+                          to p, (Bool), default false

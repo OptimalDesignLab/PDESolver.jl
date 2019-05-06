@@ -99,6 +99,6 @@ function test_mms()
 end  # end function
 
 #test_mms()
-add_func1!(AdvectionTests, test_mms, [TAG_MMS, TAG_SHORTTEST])
+add_func1!(AdvectionTests, test_mms, [TAG_MMS, TAG_SHORTTEST, TAG_TMP])
 
 

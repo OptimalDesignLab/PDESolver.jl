@@ -16,12 +16,16 @@ function test_shocksensorPP()
     q = eqn.q[:, :, 1]
     coords = mesh.coords[:, :, 1]
     dxidx = mesh.dxidx[:, :, :, 1]
-    jac = ones(Float64, mesh.numNodesPerElement)
+    jac = ones(Complex128, mesh.numNodesPerElement) + 0.001*rand(mesh.numNodesPerElement)
+    #jac = ones(Complex128, mesh.numNodesPerElement) + 0.01*collect(1:mesh.numNodesPerElement)
     res = zeros(eltype(eqn.res), mesh.numDofPerNode, mesh.numNodesPerElement)
     Se = zeros(eltype(eqn.res), mesh.dim, mesh.numNodesPerElement)
     ee = zeros(eltype(eqn.res), mesh.dim, mesh.numNodesPerElement)
 
     sensor = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
+    sensor.use_filtered = false
+    sensora = EulerEquationMod.ShockSensorPP{Tsol, Tres}(mesh, sbp, opts)
+    sensora.use_filtered = true
     capture = EulerEquationMod.ProjectionShockCapturing{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
     sensor2 = EulerEquationMod.ShockSensorHIso{Tsol, Tres}(mesh, sbp, opts)
     sensor3 = EulerEquationMod.ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
@@ -44,6 +48,7 @@ function test_shocksensorPP()
 
     # test when a shock is present
     q[1, 3] += 5
+
     EulerEquationMod.getShockSensor(eqn.params, sbp, sensor, q, 1, coords,
                                              dxidx, jac, Se, ee)
 
@@ -64,6 +69,7 @@ function test_shocksensorPP()
 
     # case 3: ee = 1
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
+    test_shocksensor_diff(eqn.params, sbp, sensora, q, coords, dxidx, jac)
 
     # sensor2
     test_shocksensor_diff(eqn.params, sbp, sensor2, q, coords, dxidx, jac)
@@ -72,10 +78,16 @@ function test_shocksensorPP()
     test_shocksensor_diff(eqn.params, sbp, sensor6, q, coords, dxidx, jac)
 
     test_shocksensor_revq(eqn.params, sbp, sensor, q, coords, dxidx, jac)
+    test_shocksensor_revq(eqn.params, sbp, sensora, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
     test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
-    println("testing PP sensor revm")
+
+    test_shocksensor_revm(eqn.params, sbp, sensor, q, coords, dxidx, jac)
+    test_shocksensor_revm(eqn.params, sbp, sensora, q, coords, dxidx, jac)
+
+
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor)
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensora)
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
 
     # case 2: ee on sin wave
@@ -87,9 +99,18 @@ function test_shocksensorPP()
 #    end
 
     test_shocksensor_diff(eqn.params, sbp, sensor, q, coords, dxidx, jac)
+    test_shocksensor_diff(eqn.params, sbp, sensora, q, coords, dxidx, jac)
     test_shocksensor_diff(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor, q, coords, dxidx, jac)
+    test_shocksensor_revq(eqn.params, sbp, sensora, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor5, q, coords, dxidx, jac)
+
+    test_shocksensor_revm(eqn.params, sbp, sensor, q, coords, dxidx, jac)
+    test_shocksensor_revm(eqn.params, sbp, sensora, q, coords, dxidx, jac)
+
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor)
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensora)
+
     # for isotropic grids, the HHO anisotropy factors should be ~h/(p+1)
     for i=1:mesh.numEl
        jac_i = ro_sview(mesh.jac, :, i)
@@ -101,7 +122,7 @@ function test_shocksensorPP()
          @test sensor4.h_k_tilde[d, i] < h_avg*3
        end
      end
-
+  
   end  # end testset
 
 
@@ -131,13 +152,13 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
   ee_jac2 = copy(ee_jac)
 
 
-#  dof = 1; node = 1
+  dof = 1; node = 1
   Se = zeros(Complex128, dim, numNodesPerElement)
   ee = zeros(Complex128, dim, numNodesPerElement)
   h = 1e-20
   pert = Complex128(0, h)
-  for i=1:numNodesPerElement
-    for j=1:numDofPerNode
+  for i=1:1 #numNodesPerElement
+    for j=1:1 #numDofPerNode
       q[j, i] += pert
       EulerEquationMod.getShockSensor(params, sbp, sensor, q, 1, coords,
                                                dxidx, jac, Se, ee)
@@ -149,15 +170,15 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
 
   EulerEquationMod.getShockSensor_diff(params, sbp, sensor, q, 1,
                                        coords, dxidx, jac, Se_jac2, ee_jac2)
-#=
+
   @test maximum(abs.(Se_jac[:, dof, :, node] - Se_jac2[:, dof, :, node])) < 1e-11
   @test maximum(abs.(ee_jac[:, dof, :, node] - ee_jac2[:, dof, :, node])) < 1e-11
-=#
-
-  @test maximum(abs.(Se_jac - Se_jac2)) < 1e-11
-  @test maximum(abs.(ee_jac - ee_jac2)) < 1e-11
 
 
+#  @test maximum(abs.(Se_jac - Se_jac2)) < 1e-11
+#  @test maximum(abs.(ee_jac - ee_jac2)) < 1e-11
+
+#=
   # test vector mode
   q_dot = rand_realpart(size(q))
   q .+= pert*q_dot
@@ -185,7 +206,7 @@ function test_shocksensor_diff(params, sbp, sensor::AbstractShockSensor, _q,
 
 
   EulerEquationMod.setAlpha(sensor, 1)
-
+=#
   return nothing
 end
 
@@ -199,11 +220,11 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
 
   Se = zeros(Complex128, dim, numNodesPerElement)
   ee = zeros(Complex128, dim, numNodesPerElement)
-#  q_dot = rand_realpart(size(_q))
-  q_dot = zeros(Complex128, size(_q)); q_dot[1] = 1
+  q_dot = rand_realpart(size(_q))
+#  q_dot = zeros(Complex128, size(_q)); q_dot[1] = 1
   q_bar = zeros(Complex128, size(q_dot))
-#  ee_bar = rand_realpart(size(ee))
-  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 1
+  ee_bar = rand_realpart(size(ee))
+#  ee_bar = zeros(Complex128, size(ee)); ee_bar[1] = 1
   
   q = zeros(Complex128, numDofPerNode, numNodesPerElement)
   copy!(q, _q)
@@ -240,6 +261,61 @@ function test_shocksensor_revq(params, sbp, sensor::AbstractShockSensor, _q,
 
   return nothing
 end
+
+
+function test_shocksensor_revm(params, sbp, sensor::AbstractShockSensor, _q,
+                               coords, dxidx, jac)
+
+  numDofPerNode, numNodesPerElement = size(_q)
+  dim = size(dxidx, 1)
+
+  EulerEquationMod.setAlpha(sensor, 1)
+
+  dxidx_dot = rand_realpart(size(dxidx))
+  dxidx_bar = zeros(Complex128, size(dxidx))
+
+  jac_dot = rand_realpart(size(jac))
+  jac_bar = zeros(Complex128, size(jac))
+
+  coords_bar = zeros(Complex128, size(coords))
+
+  ee_bar = rand_realpart(dim, numNodesPerElement)
+
+  Se = zeros(Complex128, dim, numNodesPerElement)
+  ee = zeros(Complex128, dim, numNodesPerElement)
+
+  q = zeros(Complex128, numDofPerNode, numNodesPerElement)
+  copy!(q, _q)
+  q .+= 0.01*rand(size(q))
+
+  # complex step
+  h = 1e-20
+  pert = Complex128(0, h)
+  dxidx .+= pert*dxidx_dot
+  jac   .+= pert*jac_dot
+  EulerEquationMod.getShockSensor(params, sbp, sensor, q, 1, coords,
+                                  dxidx, jac, Se, ee)
+  dxidx .-= pert*dxidx_dot
+  jac   .-= pert*jac_dot
+
+  ee_dot = imag(ee)./h
+  val1 = sum(ee_dot .* ee_bar)
+
+  # reverse mode
+  EulerEquationMod.getShockSensor_revm(params, sbp, sensor, q, 1, coords,
+                        coords_bar, dxidx, dxidx_bar, jac, jac_bar, ee_bar)
+ 
+  val2 = sum(dxidx_bar .* dxidx_dot) + sum(jac_bar .* jac_dot)
+
+  println("val1 = ", val1)
+  println("val2 = ", val2)
+  @test abs(val1 - val2) < 1e-12
+
+  return nothing
+end
+
+
+
 
 
 function test_shocksensor_revm(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
@@ -398,7 +474,7 @@ function test_vandermonde(params, sbp, coords)
   return nothing
 end
 
-add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_shocksensorPP, [TAG_SHORTTEST, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

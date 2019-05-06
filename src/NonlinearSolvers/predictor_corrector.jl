@@ -84,7 +84,8 @@ mutable struct HomotopyData{Tsol, Tjac}
     iter = 1
     homotopy_tol = 1e-2
     delta_max = 1.0  # step size limit, set to 1 initially,
-    psi_max = 10*pi/180  # angle between tangent limiter
+    #psi_max = 10*pi/180  # angle between tangent limiter
+    psi_max = 5*pi/180  # angle between tangent limiter
     h_max = 0.1  # maximum h
     psi = 0.0  # angle between tangent vectors
     tan_norm_1 = 0.0  # previous tangent vector norm

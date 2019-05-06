@@ -4,6 +4,30 @@
 # Persson and Peraire stuff
 
 """
+  Return number of basis functions
+
+  **Inputs**
+
+  * dim: dimension (2D or 3D)
+  * degree: the maximum degree polynomial
+
+  **Outputs**
+
+   * npoly: number of polynomials in the basis
+"""
+function nbasis(dim::Integer, degree::Integer)
+
+  return binomial(degree + dim, dim)
+end
+
+function nbasis(sbp::AbstractSBP, degree::Integer=sbp.degree)
+
+  dim = size(sbp.Q, 3)
+  return nbasis(dim, degree)
+end
+
+
+"""
   Struct holding data required to transform back and form from a nodal to
   a modal solution representation.
 """
@@ -21,6 +45,9 @@ struct VandermondeData
 
   function VandermondeData(sbp::AbstractOperator, degree::Integer)
 
+    npoly1 = nbasis(sbp, sbp.degree + 1)
+    degree1 = degree - 1  # degree of modes to be projected back
+
     coords = calcnodes(sbp)
     Vp = SummationByParts.calcvandermondproriol(coords.', degree)
     nmodes = size(Vp, 2)
@@ -28,9 +55,8 @@ struct VandermondeData
     filt = Vp*Vpinv
     filtT = filt.'
 
-    # this is a rather inefficient way to compute the number of modes
-    Vp1 = SummationByParts.calcvandermondproriol(coords.', degree - 1)
-    nmodes1 = size(Vp1, 2)
+    # compute number of modes to keep
+    nmodes1 = nbasis(sbp, degree1)
     nmodes_diff = nmodes - nmodes1
 
     filt1 = Vp[:, 1:(end-nmodes_diff)]*Vpinv[1:(end-nmodes_diff), :]
@@ -56,7 +82,9 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
   kappa::Float64
   _e0::Float64  # original e0 value
   e0::Float64  # e0 scaled by alpha
-
+  use_filtered::Bool  # if true, use the filtered solution (Vp*Vpinv*u) for
+                      # computing (u - u_tilde, u - u_tilde).
+                      # If false, use the actual soltion for u.
   # storage
   up::Vector{Tsol}
   up_tilde::Vector{Tsol}
@@ -77,10 +105,11 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     Vp1 = VandermondeData(sbp, sbp.degree-1)  #TODO: unneded?
 
     # constants from Barter's thesis
-    s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
-    kappa = 0.5  # was 0.5
+    s0 = -(5 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
+    kappa = 1.5  # was 0.5
     _e0 = 0.01
     e0 = _e0
+    use_filtered = opts["sensor_pp_use_filtered"]
     
     up = zeros(Tsol, sbp.numnodes)
     up_tilde = zeros(Tsol, sbp.numnodes)
@@ -95,7 +124,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     up1_tilde_bar = zeros(Tsol, mesh.numNodesPerElement)
     up_bar = zeros(Tsol, mesh.numNodesPerElement)
 
-    return new(Vp, Vp1, s0, kappa, _e0, e0, up, up_tilde, up1_tilde,
+    return new(Vp, Vp1, s0, kappa, _e0, e0, use_filtered,
+               up, up_tilde, up1_tilde,
                num_dot, den_dot, ee_dot, lambda_max_dot,
                up_tilde_bar, up1_tilde_bar, up_bar)
   end

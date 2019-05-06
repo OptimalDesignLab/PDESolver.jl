@@ -35,35 +35,49 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 #  getFilteredSolution(params, sensor.Vp, up, up_tilde)
 #  getFilteredSolution(params, sensor.Vp1, up, up1_tilde)
   up_tilde_dotT = sensor.Vp.filtT  # use transposed because of memory order
+  up1_tilde_dotT = sensor.Vp.filt1T
   #up1_tilde_dotT = sensor.Vp1.filtT
-  up1_tilde_dotT = sensor.Vp1.filt1T
+  #up1_tilde_dotT = sensor.Vp1.filt1T
 
   # compute the inner product
   num = zero(Tres)
   den = zero(Tres)
 
-  @simd for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]
-    delta_u = up_tilde[i] - up1_tilde[i]
+  if sensor.use_filtered
+    @simd for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up_tilde[i] - up1_tilde[i]
 
+      num += delta_u*fac*delta_u
+      @simd for j=1:numNodesPerElement
+        delta_u_dot = up_tilde_dotT[j, i] - up1_tilde_dotT[j, i]
+        num_dot[j] += 2*fac*delta_u*delta_u_dot
+      end
 
-    num += delta_u*fac*delta_u
-    @simd for j=1:numNodesPerElement
-      delta_u_dot = up_tilde_dotT[j, i] - up1_tilde_dotT[j, i]
-      num_dot[j] += 2*fac*delta_u*delta_u_dot
+      den += up_tilde[i]*fac*up_tilde[i]
+      @simd for j=1:numNodesPerElement
+        den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
+      end
     end
+  else
+    @simd for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up[i] - up1_tilde[i]
 
-    # use the filtered variables for (u, u).  This is a bit different than
-    # finite element methods, where the original solution has a basis, and the
-    # norm in any basis should be the same.  Here we use the filtered u rather
-    # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
-    @simd for j=1:numNodesPerElement
-      den_dot[j] += 2*fac*up_tilde[i]*up_tilde_dotT[j, i]
+      num += delta_u*fac*delta_u
+
+      @simd for j=1:numNodesPerElement
+        delta_u_dot = -up1_tilde_dotT[j, i]
+        if j == i
+          delta_u_dot += 1
+        end
+
+        num_dot[j] += 2*fac*delta_u*delta_u_dot
+      end
+
+      den += up[i]*fac*up[i]
+      den_dot[i] += 2*fac*up[i]
     end
-
-    #den += up[i]*fac*up[i]
-    #den_dot[i] += 2*fac*up[i]
   end
 
   Se = num/den
@@ -166,19 +180,22 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
   # compute the inner product
   num = zero(Tres)
   den = zero(Tres)
-  for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]
-    delta_u = up_tilde[i] - up1_tilde[i]
+  if sensor.use_filtered
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up_tilde[i] - up1_tilde[i]
 
-    num += delta_u*fac*delta_u
-    # use the filtered variables for (u, u).  This is a bit different than
-    # finite element methods, where the original solution has a basis, and the
-    # norm in any basis should be the same.  Here we use the filtered u rather
-    # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
+      num += delta_u*fac*delta_u
+      den += up_tilde[i]*fac*up_tilde[i]
+    end
+  else
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up[i] - up1_tilde[i]
 
-    # see if this makes the sensor less sensitive
-    #den += up[i]*fac*up[i]
+      num += delta_u*fac*delta_u
+      den += up[i]*fac*up[i]
+    end
   end
 
   Se = num/den
@@ -245,19 +262,30 @@ function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
     den_bar = -num*Se_bar/(den*den)
 
 #    up_tilde_bar = zeros(Tsol, numNodesPerElement)
-#    up1_tilde_bar = zeros(Tsol, numNodesPerElement)
-    for i=1:numNodesPerElement
-      fac = sbp.w[i]/jac[i]
-      delta_u = up_tilde[i] - up1_tilde[i]
+#    up1_tilde_bar = zeros(Tsol, numNodesPerElement)a
 
-      delta_u_bar       = 2*delta_u*fac*num_bar
-      up_tilde_bar[i]  += 2*up_tilde[i]*fac*den_bar
-      up_tilde_bar[i]  += delta_u_bar
-      up1_tilde_bar[i] -= delta_u_bar
+    if sensor.use_filtered
+      for i=1:numNodesPerElement
+        fac = sbp.w[i]/jac[i]
+        delta_u = up_tilde[i] - up1_tilde[i]
+
+        delta_u_bar       = 2*delta_u*fac*num_bar
+        up_tilde_bar[i]  += 2*up_tilde[i]*fac*den_bar
+        up_tilde_bar[i]  += delta_u_bar
+        up1_tilde_bar[i] -= delta_u_bar
+      end
+    else
+      for i=1:numNodesPerElement
+        fac = sbp.w[i]/jac[i]
+        delta_u = up[i] - up1_tilde[i]
+
+        delta_u_bar       = 2*delta_u*fac*num_bar
+        up_bar[i]        += 2*up[i]*fac*den_bar
+        up_bar[i]        += delta_u_bar
+        up1_tilde_bar[i] -= delta_u_bar
+      end
     end
 
-
-    #up_bar = zeros(Tsol, numNodesPerElement)
     getFilteredSolutions_rev(params, sensor.Vp, up_bar, up_tilde_bar, up1_tilde_bar)
 
     for i=1:numNodesPerElement
@@ -296,19 +324,26 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
   # compute the inner product
   num = zero(Tres)
   den = zero(Tres)
-  for i=1:numNodesPerElement
-    fac = sbp.w[i]/jac[i]
-    delta_u = up_tilde[i] - up1_tilde[i]
+  if sensor.use_filtered
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up_tilde[i] - up1_tilde[i]
 
-    num += delta_u*fac*delta_u
-    # use the filtered variables for (u, u).  This is a bit different than
-    # finite element methods, where the original solution has a basis, and the
-    # norm in any basis should be the same.  Here we use the filtered u rather
-    # than the original because it is probably smoother.
-    den += up_tilde[i]*fac*up_tilde[i]
+      num += delta_u*fac*delta_u
+      den += up_tilde[i]*fac*up_tilde[i]
 
-    # see if this makes the sensor less sensitive
-    #den += up[i]*fac*up[i]
+      # see if this makes the sensor less sensitive
+      #den += up[i]*fac*up[i]
+    end
+  else
+    for i=1:numNodesPerElement
+      fac = sbp.w[i]/jac[i]
+      delta_u = up[i] - up1_tilde[i]
+
+      num += delta_u*fac*delta_u
+      den += up[i]*fac*up[i]
+    end
+
   end
 
   Se = num/den
@@ -380,13 +415,26 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
     num_bar = Se_bar/den
     den_bar = -num*Se_bar/(den*den)
 
-    for i=1:numNodesPerElement
-      fac = sbp.w[i]/jac[i]
-      delta_u = up_tilde[i] - up1_tilde[i]
+    #TODO: why didn't this error?
+    if sensor.use_filtered
+      for i=1:numNodesPerElement
+        fac = sbp.w[i]/jac[i]
+        delta_u = up_tilde[i] - up1_tilde[i]
 
-      fac_bar     = delta_u*delta_u*num_bar
-      fac_bar    += up_tilde[i]*up_tilde[i]*den_bar
-      jac_bar[i] += -sbp.w[i]*fac_bar/(jac[i]*jac[i])
+        fac_bar     = delta_u*delta_u*num_bar
+        fac_bar    += up_tilde[i]*up_tilde[i]*den_bar
+        jac_bar[i] += -sbp.w[i]*fac_bar/(jac[i]*jac[i])
+      end
+    else
+      for i=1:numNodesPerElement
+        fac = sbp.w[i]/jac[i]
+        delta_u = up[i] - up1_tilde[i]
+
+        fac_bar     = delta_u*delta_u*num_bar
+        fac_bar    += up[i]*up[i]*den_bar
+        jac_bar[i] += -sbp.w[i]*fac_bar/(jac[i]*jac[i])
+      end
+
     end
   end
 
@@ -413,7 +461,7 @@ function getFilteredSolutions_rev(params::ParamType, vand::VandermondeData,
                               u_nodal, u_filt1, u_filt2)
 
 
-  smallmatTvec!(vand.filt, u_filt1, u_nodal)
+  smallmatTvec_kernel!(vand.filt, u_filt1, u_nodal, 1, 1)
   smallmatTvec_kernel!(vand.filt1, u_filt2,  u_nodal, 1, 1)
 
   return nothing
