@@ -438,6 +438,7 @@ get!(arg_dict, "homotopy_globalize_euler", false)
 get!(arg_dict, "homotopy_tighten_early", false)
 get!(arg_dict, "homotopy_shock_capturing", false)
 get!(arg_dict, "homotopy_shock_sensor", "SensorNone")
+get!(arg_dict, "homotopy_psi_max", 10*pi/180)
 
 # Crank-Nicolson options
 get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")

@@ -372,7 +372,8 @@ Note that any values associated with these options are shared with the regular
 "homotopy_shock_sensor": the easy shock sensor to use with
                          "homotopy_shock_capturing", (String), default
                          "ShockSensorNone"
-                         
+"homotopy_psi_max": the maximum angle between tangent vectors, in radians,
+                    (Float64), default 10*pi/180                        
 
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (String),

@@ -324,9 +324,10 @@ macro newtonfields()
     res_norm_i_1::Float64  # previous step residual norm
     # Pseudo-transient continuation Euler
     tau_l::Float64  # current pseudo-timestep
-    tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
+    tau_vec::Array{Float64, 1}  # array of element-local time steps
   end)
 end
+
 
 
 """
