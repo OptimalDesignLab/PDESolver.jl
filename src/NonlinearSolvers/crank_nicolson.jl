@@ -270,9 +270,11 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 
   @mpi_master begin
-    f_Ma = open("Ma.dat", "w")
-    println(f_Ma, eqn.params.Ma)
-    close(f_Ma)
+    if :Ma in fieldnames(eqn.params)
+      f_Ma = open("Ma.dat", "w")
+      println(f_Ma, eqn.params.Ma)
+      close(f_Ma)
+    end
     f_dt = open("delta_t.dat", "w")
     println(f_dt, dt)
     close(f_dt)
@@ -282,12 +284,20 @@ function crank_nicolson(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # if opts["perturb_Ma_CN"]
       # println("    Ma: ", eqn.params.Ma + Ma_pert_mag)
     # else
+    if :Ma in fieldnames(eqn.params)
       println(BSTDOUT, "    Ma: ", eqn.params.Ma)
+    end
     # end
-    println(BSTDOUT, "    aoa: ", eqn.params.aoa)
+    if :aoa in fieldnames(eqn.params)
+      println(BSTDOUT, "    aoa: ", eqn.params.aoa)
+    end
     println(BSTDOUT, "    dt: ", dt)
-    println(BSTDOUT, "    a_inf: ", eqn.params.a_free)
-    println(BSTDOUT, "    rho_inf: ", eqn.params.rho_free)
+    if :a_free in fieldnames(eqn.params)
+      println(BSTDOUT, "    a_inf: ", eqn.params.a_free)
+    end
+    if :rho_free in fieldnames(eqn.params)
+      println(BSTDOUT, "    rho_inf: ", eqn.params.rho_free)
+    end
     println(BSTDOUT, "    c: ", 1.0)
     println(BSTDOUT, "    mesh.coord_order: ", mesh.coord_order)
     println(BSTDOUT, " ")

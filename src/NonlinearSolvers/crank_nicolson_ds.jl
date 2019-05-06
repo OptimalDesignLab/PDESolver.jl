@@ -173,7 +173,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       R_stab = zeros(eqn.q_vec)
       v_energy = zeros(eqn.q_vec)
 
-      @mpi_master f_v_energy_stageall = open("v_energy_data_stageall.dat", "w")
+      @mpi_master f_v_energy = open("v_energy_data.dat", "w")
     end
     if opts["perturb_Ma_CN"]
 
@@ -324,6 +324,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # save q_vec from the last time step in old_q_vec: used for v_energy calcs
+    # TODO: WHY
     if opts["write_L2vnorm"]
       # for visualization of element level DS energy
       fill!(old_q_vec, 0.0)
@@ -735,9 +736,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       if opts["write_L2vnorm"]
         # special case for calculating v_energy:
         #   Need to calculate v_vec after the first stage for use in the first-stage-only v_energy calculation.
-        # TODO: why only first-stage?
-        # TODO: stage parameter divide
-        # TODO: store old_q_vec
         #   Previously, this would only be done at the end of all the stages
         # for v_ix = 1:length(v_vec)
           # v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
@@ -756,6 +754,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
         =#
         for ix_dof = 1:mesh.numDof
+          v_energy[ix_dof] = v_vec[ix_dof] * eqn.M[ix_dof] * v_vec[ix_dof]
+        end
 
         if (i % output_freq) == 0
           # saveSolutionToMesh(mesh, v_energy)
@@ -779,9 +779,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         v_energy_norm = calcNorm(eqn, v_energy)
 
         # @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm), "  ", real(v_energy_mean), "  ", real(v_energy_min), "  ", real(v_energy_max))
-        @mpi_master println(f_v_energy_stageall, i, "  ", real(v_energy_norm))
+        @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm))
         if (i % 500) == 0
-          @mpi_master flush(f_v_energy_stageall)
+          @mpi_master flush(f_v_energy)
         end
 
       end
@@ -934,8 +934,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       if opts["write_L2vnorm"]
         @mpi_master close(f_L2vnorm)
-        # @mpi_master close(f_v_energy)
-        @mpi_master close(f_v_energy_stageall)
+        @mpi_master close(f_v_energy)
       end
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
