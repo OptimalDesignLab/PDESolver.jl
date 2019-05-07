@@ -136,7 +136,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
       @verbose5 @mpi_master println(BSTDOUT, "calculating sparse complex step jacobian")
 
       if calc_jac_explicit
-        println(BSTDOUT, "calculating jacobian explicitly, Julia sparse matrix")   # DEBUG_CNTHES
+        # println(BSTDOUT, "calculating jacobian explicitly, Julia sparse matrix")   # DEBUG_CNTHES
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else
@@ -149,7 +149,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
 
        @verbose5 @mpi_master println(BSTDOUT, "calculating Petsc jacobian")
       if calc_jac_explicit
-        println(BSTDOUT, "calculating Jacobian explicitly, Petsc matrix")   # DEBUG_CNTHES
+        # println(BSTDOUT, "calculating Jacobian explicitly, Petsc matrix")   # DEBUG_CNTHES
         assembler = _AssembleElementData(jac, mesh, sbp, eqn, opts)
         tmp, t_jac, t_gc, alloc = @time_all evalJacobian(mesh, sbp, eqn, opts, assembler, t)
       else

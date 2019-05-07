@@ -346,7 +346,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     cv = R/gamma_1
 
     Ma = opts["Ma"]
-    println(" typeof(Ma): ", typeof(Ma))
+    # println(" typeof(Ma): ", typeof(Ma))
     if opts["perturb_Ma"] == true     # NOTE: I am intentionally not perturbing Ma
                                       #       at solver initialization for opts["perturb_Ma_CN"].
                                       #       This has to be done within the time-stepper.
@@ -365,7 +365,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     T_free = opts["T_free"]
     E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
     a_free = sqrt(p_free/rho_free)  # free stream speed of sound
-    println(" ++++ a_free: ", a_free)
+    # println(" ++++ a_free: ", a_free)
     R_ND = R*a_free*a_free/T_free
 
     edgestab_gamma = opts["edgestab_gamma"]

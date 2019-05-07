@@ -278,8 +278,8 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
 
     writeFiles(newton_data, mesh, sbp, eqn, opts)
     is_converged = checkConvergence(newton_data)
-    @mpi_master println(BSTDOUT, " Newton: itr: ", newton_data.itr,"  step_norm_i: ", newton_data.step_norm_i, 
-                                 "  res_0_norm: ", res_0_norm, "  Rel res: ", res_0_norm/newton_data.res_norm_rel)
+    # @mpi_master println(BSTDOUT, " Newton: itr: ", newton_data.itr,"  step_norm_i: ", newton_data.step_norm_i, 
+                                 # "  res_0_norm: ", res_0_norm, "  Rel res: ", res_0_norm/newton_data.res_norm_rel)
     # DEBUG_CNTHES
 
     if is_converged
