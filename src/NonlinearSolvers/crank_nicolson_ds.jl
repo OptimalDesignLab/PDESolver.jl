@@ -150,37 +150,42 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end   # end if opts["perturb_Ma_CN"]
 
 
+    # setup all the checkpointing related data
+    chkpointer, chkpointdata, skip_checkpoint = CNDS_checkpoint_setup(mesh, opts, myrank)
+    istart = chkpointdata.i
+    i_test = chkpointdata.i_test
+    v_vec = chkpointdata.v_vec
+
     #------------------------------------------------------------------------------
     # capture direct sensitivity at the IC
     # v is the direct sensitivity, du/dM
-    # Ma has been perturbed during setup, in types.jl when eqn.params is initialized
+    # Ma has been perturbed during setup, in types.jl when eqn.params is initialized (old method)
     if opts["write_drag"]
       objective = createFunctional(mesh, sbp, eqn, opts, 1)    # 1 is the functional num
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       # note about drag writing: file_dict populated and file opened in src/solver/euler/types.jl
       @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
+    end
+    # only perform this at truly the first tstep, not if restarting
+    if opts["write_drag"] && ! opts["is_restart"]
       @mpi_master println(f_drag, 1, " ", drag)
       println("i: ", 1, "  myrank: ", myrank,"  drag: ", drag)
       @mpi_master flush(f_drag)
     end
     if opts["write_L2vnorm"]
-      @mpi_master f_L2vnorm = eqn.file_dict[opts["write_L2vnorm_fname"]]
-    end
 
-    if opts["write_L2vnorm"]
+      @mpi_master f_L2vnorm = eqn.file_dict[opts["write_L2vnorm_fname"]]
+
       # for visualization of element level DS energy
       old_q_vec = zeros(eqn.q_vec)
       R_stab = zeros(eqn.q_vec)
       v_energy = zeros(eqn.q_vec)
 
       @mpi_master f_v_energy = open("v_energy_data.dat", "w")
+      @mpi_master f_i_test = open("i_test.dat", "w")
     end
     if opts["perturb_Ma_CN"]
 
-      # this is the IC, so it gets the first time step's quad_weight
-      i = 1       # note that timestep loop below starts at i = 2
-      finaliter = calcFinalIter(t_steps, itermax)
-      quad_weight = calcQuadWeight(i, dt, finaliter)
 
       #------------------------------------------------------------------------------
       # allocation of objects for stabilization routine
@@ -200,6 +205,18 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       end
 
+    end
+
+    # only perform this at truly the first tstep, not if restarting
+    if opts["perturb_Ma_CN"] && ! opts["is_restart"]
+
+      # this is the IC, so it gets the first time step's quad_weight
+      i = 1       # note that timestep loop below starts at i = 2
+      finaliter = calcFinalIter(t_steps, itermax)
+      quad_weight = calcQuadWeight(i, dt, finaliter)
+
+      i_test = 10
+
       # Note: no stabilization of q_vec at the IC
       #   no evalResidual yet, and hasn't entered the time-stepper yet
       #   so no appropriate scaling factors like delta_t or fac or anything
@@ -218,7 +235,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # evalFunctional calls disassembleSolution, which puts q_vec into q
       # should be calling evalFunctional, not calcFunctional.
       evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, dDdu)    # dDdu is func_deriv_arr
-      println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  dDdu: ", vecnorm(dDdu), "  v_vec: ", vecnorm(v_vec))    # matches rk4_ds to 1e-5 or so, consistent with drag variation
+      println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  dDdu: ", vecnorm(dDdu), "  v_vec: ", vecnorm(v_vec))
 
       # do the dot product of the two terms, and save
       # this dot product is: dJdu*dudM
@@ -255,10 +272,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   @debug1 println("============ In CN ============")
 
-   # setup all the checkpointing related data
-  chkpointer, chkpointdata, skip_checkpoint = explicit_checkpoint_setup(opts, myrank)
-  istart = chkpointdata.i
-
   #-------------------------------------------------------------------------------
   # allocate Jac outside of time-stepping loop
 
@@ -273,6 +286,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   # ### Main timestepping loop ###
   #   this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1)
+
+    i_test = i_test+10
+    println(BSTDOUT, " CHECKPOINT TEST. i: ", i, " i_test: ", i_test)
+
+    finaliter = calcFinalIter(t_steps, itermax)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma_CN"]
@@ -300,6 +318,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         skip_checkpoint = false
         # save all needed variables to the chkpointdata
         chkpointdata.i = i
+        chkpointdata.i_test = i_test
+        chkpointdata.v_vec = v_vec
 
         if countFreeCheckpoints(chkpointer) == 0
           freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
@@ -778,10 +798,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         v_energy_norm = calcNorm(eqn, v_energy)
 
-        # @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm), "  ", real(v_energy_mean), "  ", real(v_energy_min), "  ", real(v_energy_max))
         @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm))
-        if (i % 500) == 0
+        @mpi_master println(f_i_test, i, "  ", i_test)
+        if (i % output_freq) == 0
           @mpi_master flush(f_v_energy)
+          @mpi_master flush(f_i_test)
         end
 
       end
@@ -876,7 +897,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
         =#
 
-        finaliter = calcFinalIter(t_steps, itermax)
         Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter)   # will use eqn.params.Ma
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
         global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
@@ -935,6 +955,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       if opts["write_L2vnorm"]
         @mpi_master close(f_L2vnorm)
         @mpi_master close(f_v_energy)
+        @mpi_master close(f_i_test)
       end
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

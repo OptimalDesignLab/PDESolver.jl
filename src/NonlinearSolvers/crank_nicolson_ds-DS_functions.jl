@@ -109,6 +109,57 @@ function modifyCNJacForMatFreeCheck_reverse(lo::CNHasMat, mesh, sbp, eqn, opts, 
 
 end   # end function modifyCNJacForMatFreeCheck_reverse
 
+#------------------------------------------------------------------------------
+# Checkpointing functions
+#------------------------------------------------------------------------------
+
+"""
+  This type stores all the data needed for:
+    1) CN to restart (time index), and
+    2) the direct sensitivity evolution to continue
+
+"""
+mutable struct CNDSCheckpointData <: AbstractCheckpointData
+  i::Int    # current time step
+  i_test::Int
+  numDof::Int   # number of DOFs in the mesh, needed for v_vec sizing
+  v_vec::Array{Float64,1}   # storing the direct sensitivity
+end
+
+""" 
+"""
+function CNDSCheckpointData(chkpointer::Checkpointer, comm_rank::Integer)
+
+  chkpoint_data = readLastCheckpointData(chkpointer, comm_rank)
+
+  return chkpoint_data::CNDSCheckpointData
+end
+
+function CNDS_checkpoint_setup(mesh, opts, myrank)
+  is_restart = opts["is_restart"]
+  ncheckpoints = opts["ncheckpoints"]
+
+  if ! is_restart
+    # this is a new simulation, create all the stuff needed to checkpoint
+    # note that having zero checkpoints is valid
+    istart = 2
+    i_test = istart*10
+    numDof = mesh.numDof
+    v_vec = zeros(Float64, numDof)
+    chkpointdata = CNDSCheckpointData(istart, i_test, numDof, v_vec)
+    chkpointer = Checkpointer(myrank, ncheckpoints)
+    skip_checkpoint = false
+  else
+    # this is a restart, load existing data
+    # using default value of 0 checkpoints is ok
+    chkpointer = Checkpointer(opts, myrank)
+    chkpointdata = CNDSCheckpointData(chkpointer, myrank)
+    skip_checkpoint = true  # when restarting, don't immediately write a checkpoint
+  end
+
+  return chkpointer, chkpointdata, skip_checkpoint
+end
+
 
 
 # #------------------------------------------------------------------------------
