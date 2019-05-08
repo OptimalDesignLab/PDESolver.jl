@@ -38,7 +38,7 @@
    * evalJacobian: function to evaluate the Jacobian, must have same
                    signature as `PDESolver.evalJacobian`.
 """
-mutable struct NewtonBDiagPC <: AbstractPetscMatFreePC
+mutable struct NewtonBDiagPC <: NewtonMatFreePC
   pc_inner::PetscMatFreePC
   assem::AssembleDiagJacData{Float64}
   diag_jac::DiagJac{Float64}  # same DiagJac used in assem
@@ -143,7 +143,7 @@ end
                          product.  Must have same signature as
                          `PDESolver.evalResidual_revq`
 """
-mutable struct NewtonBJacobiPC <: AbstractPetscMatFreePC
+mutable struct NewtonBJacobiPC <: NewtonMatFreePC
   pc_inner::PetscMatFreePC
   diag_pc::NewtonBDiagPC
   itermax::Int

@@ -39,9 +39,9 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::Euler
     evalBoundaryIntegrals_revm(mesh, sbp, eqn, opts)
   end
 
-  # time.t_stab += @elapsed if opts["addStabilization"]
-  #   addStabilization(mesh, sbp, eqn, opts)
-  # end
+   time.t_stab += @elapsed if opts["addStabilization"]
+     addStabilization_revm(mesh, sbp, eqn, opts)
+   end
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_revm(mesh, sbp, eqn, opts)
@@ -50,6 +50,11 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator, eqn::Euler
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_revm(mesh, sbp, eqn, opts)
   end
+
+  time.t_shock += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing_revm(mesh, sbp, eqn, opts)
+  end
+
 
   time.t_source += @elapsed evalSourceTerm_revm(mesh, sbp, eqn, opts)
 
@@ -178,6 +183,17 @@ function evalBoundaryIntegrals_revm(mesh::AbstractMesh{Tmsh},
   return nothing
 
 end  # end evalBoundaryIntegrals
+
+
+function addStabilization_revm(mesh::AbstractMesh, sbp::AbstractOperator,
+                               eqn::EulerData, opts)
+
+  if opts["use_lps"]
+    applyLPStab_revm(mesh, sbp, eqn, opts)
+  end
+
+  return nothing
+end
 
 @doc """
 ### EulerEquationMod.evalFaceIntegrals_revm
@@ -343,6 +359,33 @@ function evalSourceTerm_revm(mesh::AbstractMesh{Tmsh},
 
   return nothing
 end  # end function
+
+"""
+
+  Reverse mode of `evalShockCapturing` wrt metrics
+
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
+"""
+function evalShockCapturing_revm(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
+
+  # currently there is only one choice for the shock capturing scheme.
+  # If there are more, need something more sophisiticated to choose.
+  # Perhaps add an abstract typed field to eqn containing the structs
+
+  capture = eqn.shock_capturing
+  applyShockCapturing_revm(mesh, sbp, eqn, opts, capture)
+
+  return nothing
+end
+
+
 
 #=
 @doc """

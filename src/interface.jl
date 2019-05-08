@@ -464,3 +464,28 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
   error("Generic fallback for evalResidual_revq: did you forget to extend evalResidual_revq with a new method for your AbstractSolutionData")
 
 end
+
+
+"""
+  Function that returns one of the sparsity pattern enums from the Jacobian
+  module.  The sparsity pattern enum returned must be at least as wide as
+  the true sparsity pattern (it may be wider, but this will result in more
+  memory being allocated than necessary).
+
+  **Inputs**
+
+   * mesh: `AbstractMesh` object
+   * sbp:  `AbstractOperator` object
+   * eqn: `AbstractSolutionData` object, full initialized.  Each physics
+          module should specialize this argument
+   * opts: options dictonary.
+
+  **Outputs**
+
+   * disc_type: one of the enums
+"""
+function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
+                            eqn::AbstractSolutionData, opts)
+
+  error("Generic fallback for getSparsityPattern() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+end

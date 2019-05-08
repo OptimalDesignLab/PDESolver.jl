@@ -1,6 +1,14 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
 
+include("conversion_interface.jl")
 include("flux_types.jl")
+include("abstract_shock_sensor.jl")
+include("abstract_diffusion.jl")
+include("abstract_diffusion_penalty.jl")
+include("shock_mesh_types.jl")
+include("abstract_shock_capturing.jl")
+include("shock_capturing_types.jl")
+include("shock_sensor_types.jl")
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -86,6 +94,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
   calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
 
+  # stabilization functions
+  lps_data::LPSData{Tsol, Tres}
 
   # entropy kernels
   entropy_lf_kernel::LFKernel{Tsol, Tres, Tmsh}
@@ -93,6 +103,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
 
   get_ira0data::GetIRA0Data{Tsol}
+
+  shockmesh::ShockedElements{Tres}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -212,11 +224,13 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
                                mesh.numDofPerNode, mesh.numNodesPerFace,
                                mesh.numNodesPerElement)
+    lps_data = LPSData{Tsol, Tres}(mesh, sbp, opts)
     entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, nd)
     entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
     get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
+    shockmesh = ShockedElements{Tres}(mesh)
 
     h = maximum(mesh.jac)
 
@@ -307,8 +321,10 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # entire mesh functions
                calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
+               lps_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                get_ira0data,
+               shockmesh,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
@@ -450,9 +466,9 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   #   a square numnodes x numnodes matrix for every element
   dissipation_mat::Array{Tmsh, 3}
 
-  Minv3D::Array{Float64, 3}       # inverse mass matrix for application to res, not res_vec
-  Minv::Array{Float64, 1}         # inverse mass matrix
-  M::Array{Float64, 1}            # mass matrix
+  Minv3D::Array{Tmsh, 3}       # inverse mass matrix for application to res, not res_vec
+  Minv::Array{Tmsh, 1}         # inverse mass matrix
+  M::Array{Tmsh, 1}            # mass matrix
 
   # TODO: consider overloading getField instead of having function as
   #       fields
@@ -476,6 +492,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
+  shock_capturing::AbstractShockCapturing
 
   assembler::AssembleElementData  # temporary place to stash the assembler
 
@@ -682,7 +699,10 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
+   sensor = getShockSensor(mesh, sbp, eqn, opts)
+   getShockCapturing(mesh, sbp, eqn, opts, sensor)
    eqn.assembler = NullAssembleElementData
+
    if open_files
      eqn.file_dict = openLoggingFiles(mesh, opts)
    else
@@ -856,6 +876,9 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
   if eqn.params.use_edgestab
     calcEdgeStabAlpha(mesh, sbp, eqn)
   end
+
+  sensor = getShockSensor(eqn.shock_capturing)
+  updateMetrics(mesh, sbp, opts, sensor)
 
   return nothing
 end

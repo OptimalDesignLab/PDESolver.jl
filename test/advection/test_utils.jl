@@ -238,6 +238,8 @@ function test_utils2(mesh, sbp, eqn, opts)
 
     test_calcBCNormal(mesh, eqn)
     test_norms(mesh, sbp, eqn, opts)
+    test_identityarray()
+    test_sparsematrix()
 
     #TODO: test other things too
   end
@@ -253,6 +255,146 @@ function test_utils3(mesh, sbp, eqn, opts)
     test_area(mesh, sbp, eqn, opts)
   end
 
+end
+
+function test_identityarray()
+
+  @testset "IdentityArray" begin
+    @test size(IdentityArray{Int}(1)) == (1,)
+    @test size(IdentityArray{Int}(1, 2)) == (1, 2)
+    @test size(IdentityArray{Int}(1, 2, 3)) == (1, 2, 3)
+    @test size(IdentityArray{Int}(1, 2, 3, 4)) == (1, 2, 3, 4)
+    @test size(IdentityArray{Int}(1, 2, 3, 4, 5)) == (1, 2, 3, 4, 5)
+    @test size(IdentityArray{Int}(1, 2, 3, 4, 5, 6)) == (1, 2, 3, 4, 5, 6)
+    @test size(IdentityArray{Int}(1, 2, 3, 4, 5, 6, 7)) == (1, 2, 3, 4, 5, 6, 7)
+
+    obj = IdentityArray{Int}(5)
+    for i=1:5
+      @test obj[i] == i
+    end
+
+    @test_throws ErrorException (obj[1] = 1)
+
+    obj = IdentityArray{Int}(3, 4)
+    for i=1:size(obj, 2)
+      for j=1:size(obj, 1)
+        @test obj[j, i] == j
+      end
+    end
+
+    # test linear indexing
+    @test obj[4] == 1
+    @test_throws ErrorException (obj[1, 2] = 1)
+
+    obj = IdentityArray{Int32}(3, 4)
+    for i=1:size(obj, 2)
+      for j=1:size(obj, 1)
+        @test obj[j, i] == j
+        @test typeof(obj[j, i]) == Int32  # make sure the return type matches eltype
+      end
+    end
+
+    @test isbits(typeof(obj))  # test that this can be stack-allocated
+
+    # also test FullFace
+    @test isbits(FullFace{Float64})
+
+    # test sview
+    obj1 = sview(obj, :, 2)
+    @inferred sview(obj, :, 2)
+    @test size(obj1) == (3,)
+    for i=1:3
+      @test obj1[i] == i
+    end
+
+    obj2 = sview(obj, 2:3, 2)
+    @inferred sview(obj, 2:3, 2)
+    @test size(obj2) == (2,)
+    for i=1:2
+      @test obj2[i] == i + 1
+    end
+
+  end  # testset
+
+end
+
+function test_sparsematrix()
+
+  @testset "SparseMatrixCSC" begin
+    # test SparseMatrixCSC
+    mat_dense = [1 3 0 0; 2 4 6 0; 0 5 7 0; 0 0 0 8]
+    sparse_bnds = [1 1 2 4; 2 3 3 4]
+
+    mat = SparseMatrixCSC(sparse_bnds, Float64)
+    @time mat = SparseMatrixCSC(sparse_bnds, Float64)
+    mat2 = sparse(mat_dense)
+
+    @test ( mat.colptr )== mat2.colptr
+    @test ( mat.rowval )== mat2.rowval
+    @test ( mat2[1,1] )== 1
+    @test ( mat2[2,1] )== 2
+    @test ( mat2[1,2] )== 3
+    @test ( mat2[2,2] )== 4
+    @test ( mat2[3,2] )== 5
+    @test ( mat2[2,3] )== 6
+    @test ( mat2[3,3] )== 7
+    @test ( mat2[4,4] )== 8
+
+    mat2[3,2] = 9
+    @test ( mat2[3,2] )== 9
+
+    mat2[4,4] = 10
+    @test ( mat2[4,4] )== 10
+
+    # functions for checking sparsity
+    cnt, out_of_bounds = checkSparseColumns(mat_dense, sparse_bnds, 1e-14)
+    @test ( cnt )== 0
+
+    cnt, out_of_bounds = checkSparseRows(mat_dense, sparse_bnds, 1e-14)
+    @test ( cnt )== 0
+
+    # modify sparse_bnds to verify the functions detect out of bounds entries
+    sparse_bnds2 = copy(sparse_bnds)
+    sparse_bnds2[2, 1] = 1
+    cnt, out_of_bounds = checkSparseColumns(mat_dense, sparse_bnds2, 1e-14)
+    @test ( cnt )== 1
+    @test ( out_of_bounds )== [true, false, false, false]
+
+    cnt, out_of_bounds = checkSparseRows(mat_dense, sparse_bnds2, 1e-14)
+    @test ( cnt )== 1
+    @test ( out_of_bounds )== [true, false, false, false]
+
+
+    cnt = findLarge(mat_dense, 7.5)
+    @test ( cnt )== 1
+
+    # test fastfind
+    A = rand(Int, 999)
+    sort!(A)
+    for i=1:length(A)
+      idx = Jacobian.fastfind(A, A[i])
+      @test ( idx )== i
+    end
+
+    A = rand(Int, 1000)
+    sort!(A)
+    for i=1:length(A)
+      idx = Jacobian.fastfind(A, A[i])
+      @test ( idx )== i
+    end
+
+
+    A = collect(1:10)
+    idx = Jacobian.fastfind(A, 11)
+    @test ( idx )== 0
+
+    A = collect(1:2)
+    idx = Jacobian.fastfind(A, 2)
+    @test ( idx )== 2
+
+  end
+
+  return nothing
 end
 
 

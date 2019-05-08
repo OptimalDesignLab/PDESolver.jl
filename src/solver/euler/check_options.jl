@@ -60,5 +60,25 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
     get!(opts, "preallocate_jacobian_coloring", true)
   end
 
+  get!(opts, "homotopy_function", "FirstOrderDissipation")
+  get!(opts, "freeze_viscosity", false)
+
   return nothing
+end
+
+import PDESolver: _getSparsityPattern
+
+function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts)
+
+  if !opts["addShockCapturing"]
+    return INVISCID
+  else
+    if typeof(eqn.shock_capturing) <: AbstractVolumeShockCapturing
+      return INVISCID
+    else # AbstractElementShockCapturing
+      return VISCOUSTIGHT
+    end
+  end
+
 end

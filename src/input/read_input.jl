@@ -187,11 +187,18 @@ get!(arg_dict, "FaceElementIntegral_name", "ESLFFaceIntegral")
 # timestepping options
 get!(arg_dict, "t_max", 0.0)
 
+get!(arg_dict, "force_recalc_dt", false)
+
 if !haskey(arg_dict, "delta_t") && (arg_dict["run_type"] == 1 || arg_dict["run_type"] == 20 || arg_dict["run_type"] == 30)
   arg_dict["calc_dt"] = true
 else
   arg_dict["calc_dt"] = false
 end
+
+if arg_dict["force_recalc_dt"]
+  arg_dict["calc_dt"] = true
+end
+
 # should this really have a default value?
 get!(arg_dict, "CFL", 0.4)
 get!(arg_dict, "use_itermax", haskey(arg_dict, "itermax"))
@@ -207,6 +214,7 @@ get!(arg_dict, "dissipation_const", 0.0)
 get!(arg_dict, "use_GLS", false)
 get!(arg_dict, "use_GLS2", false)
 get!(arg_dict, "tau_type", 1)
+get!(arg_dict, "use_lps", false)
 
 # preconditioning stabilization options
 # non-logical values are shared between regular, preconditioned run
@@ -289,6 +297,7 @@ get!(arg_dict, "write_finalresidual", false)
 get!(arg_dict, "addVolumeIntegrals", true)
 get!(arg_dict, "addBoundaryIntegrals", true)
 get!(arg_dict, "addFaceIntegrals", true)
+get!(arg_dict, "addShockCapturing", false)
 get!(arg_dict, "addStabilization", true)
 
 # logging options
@@ -344,6 +353,18 @@ if !arg_dict["use_DG"]
   get!(arg_dict, "precompute_q_bndry", true)
 end
 
+if arg_dict["addShockCapturing"]
+  get!(arg_dict, "shock_sensor_name", "SensorHHO")
+  get!(arg_dict, "shock_capturing_name", "Volume")
+else
+  get!(arg_dict, "shock_sensor_name", "SensorNone")
+  get!(arg_dict, "shock_capturing_name", "ShockCapturingNone")
+end
+
+get!(arg_dict, "DiffusionPenalty", "BR2")
+
+
+
 # if not already specified, set to true just in case
 get!(arg_dict, "precompute_q_face", true)
 get!(arg_dict, "precompute_q_bndry", true)
@@ -371,6 +392,7 @@ get!(arg_dict, "write_interfaces", false)
 get!(arg_dict, "write_boundaries", false)
 get!(arg_dict, "write_sharedboundaries", false)
 get!(arg_dict, "use_linear_metrics", false)
+get!(arg_dict, "error_undefined_bc", true)
 
 # mesh options
 get!(arg_dict, "reordering_algorithm", "default")
@@ -413,6 +435,7 @@ get!(arg_dict, "krylov_gamma", 2)
 get!(arg_dict, "homotopy_addBoundaryIntegrals", false)
 get!(arg_dict, "homotopy_recalculation_policy", "RecalculateNever")
 get!(arg_dict, "homotopy_globalize_euler", false)
+get!(arg_dict, "homotopy_tighten_early", false)
 
 # Crank-Nicolson options
 get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")
@@ -704,7 +727,18 @@ end
 
     error("type 2 face integral not supported for Diagonal E operators on flux grid, use type 1 face integral with appropriate flux function instead")
   end
-    
+
+  if arg_dict["use_lps"]
+    if arg_dict["use_staggered_grid"]
+      key = "operator_type2"
+    else
+      key = "operator_type"
+    end
+    if !contains(arg_dict[key], "DiagonalE")
+      error("cannot use LPS stabiization with non diagonal E operators")
+    end
+  end
+  
 
 
 

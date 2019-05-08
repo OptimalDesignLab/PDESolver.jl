@@ -747,28 +747,9 @@ function (obj::noPenetrationBC)(params::ParamType3,
 # there might be a way to do this with fewer flops using the tangent vector
 
 
-  # calculate normal vector in xy space
-  nx = nrm_xy[1]
-  ny = nrm_xy[2]
-  nz = nrm_xy[3]
-  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
-  # normalize normal vector
-  nx = nx*fac
-  ny = ny*fac
-  nz = nz*fac
-
-  # this is momentum, not velocity?
-  Unrm = nx*q[2] + ny*q[3] + nz*q[4]
-
   qg = params.bcdata.qg
-  for i=1:length(q)
-    qg[i] = q[i]
-  end
 
-  # calculate normal velocity
-  qg[2] -= nx*Unrm
-  qg[3] -= ny*Unrm
-  qg[4] -= nz*Unrm
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
 
   # call Roe solver
   #RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
@@ -961,6 +942,45 @@ function getDirichletState(obj::noPenetrationBCs, params::ParamType2,
 
   return nothing
 end
+
+
+function getDirichletState(obj::noPenetrationBCs, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+# a clever optimizing compiler will clean this up
+# there might be a way to do this with fewer flops using the tangent vector
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  nz = nrm_xy[3]
+  fac = 1.0/(sqrt(nx*nx + ny*ny + nz*nz))
+  # normalize normal vector
+  nx = nx*fac
+  ny = ny*fac
+  nz = nz*fac
+
+  # this is momentum, not velocity?
+  Unrm = nx*q[2] + ny*q[3] + nz*q[4]
+
+  for i=1:length(q)
+    qg[i] = q[i]
+  end
+
+  # calculate normal velocity
+  qg[2] -= nx*Unrm
+  qg[3] -= ny*Unrm
+  qg[4] -= nz*Unrm
+
+  return nothing
+end
+
+
 
 
 function getDirichletState_revm(obj::noPenetrationBC_revm, params::ParamType2,
@@ -1885,6 +1905,70 @@ function (obj::reanalysisBC)(params::AbstractParamType{Tdim},
 end
 
 
+@makeBC ZeroBC """
+  Boundary condition that sets q = 0.  This is useful for testing
+"""
+
+function getDirichletState(obj::ZeroBC, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  fill!(qg, 0)
+
+  return nothing
+end
+
+
+function (obj::ZeroBC)(params::ParamType, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  qg = params.bcdata.qg
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end # end function
+
+
+@makeBC LaplaceBC """
+  Boundary condition for testing shock capturing diffusion terms
+"""
+
+function getDirichletState(obj::LaplaceBC, params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  calcLaplaceSolution(params, coords, qg)
+
+  return nothing
+end
+
+
+function (obj::LaplaceBC)(params::ParamType, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  qg = params.bcdata.qg
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end # end function
+
+
+
+
 # every time a new boundary condition is created,
 # add it to the dictionary
 
@@ -1912,6 +1996,8 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
 "subsonicOutflowBC" => SubsonicOutflowBC,
 "inviscidChannelFreeStreamBC" => inviscidChannelFreeStreamBC,
 "reanalysisBC" => reanalysisBC,
+"zeroBC" => ZeroBC,
+"LaplaceBC" => LaplaceBC,
 "defaultBC" => defaultBC,
 )
 

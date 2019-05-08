@@ -523,3 +523,37 @@ function createLinearSolver
   # this method is implemented with the Newton linear operators
 end
 
+
+"""
+  User-face function to get the sparsity pattern of the Jacobian.
+
+  **Inputs**
+
+   * mesh: `AbstractMesh` object
+   * sbp:  `AbstractOperator` object
+   * eqn: `AbstractSolutionData` object, full initialized.  Each physics
+          module should specialize this argument
+   * opts: options dictonary.
+
+  **Outputs**
+
+   * disc_type: one of the enums
+
+  **Options Keys**
+
+   * if `preallocate_jacobian_coloring` is true, this function returns
+     `COLORING`.  Otherwise is returns whatever the physics module specified.
+"""
+function getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
+                            eqn::AbstractSolutionData, opts)
+
+  
+  if opts["preallocate_jacobian_coloring"]
+    disctype = COLORING
+  else
+    disctype = _getSparsityPattern(mesh, sbp, eqn, opts)
+  end
+
+  return disctype
+end
+

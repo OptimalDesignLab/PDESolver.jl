@@ -215,6 +215,13 @@ end
   return sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]) 
 end
 
+function normalize_vec(params::AbstractParamType{T}, nrm::AbstractVector) where {T}
+  len = calcLength(params, nrm)
+  for d=1:T
+    nrm[d] /= len
+  end
+end
+
 
 """
   This function projects a vector x from x-y coordinates to normal-tangential

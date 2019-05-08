@@ -19,6 +19,7 @@ import ArrayViews.view
 using Input
 using LinearSolvers
 using PETSc2
+using Jacobian
 
 function clean_dict(collection)
   for i in keys(collection)

@@ -969,6 +969,93 @@ function calcPressure_diff(params::ParamType{3, :conservative},
   return (params.gamma_1)*(q[5] - 0.5*(t2 + t3 + t4)/q[1])
 end
 
+function calcPressure_hess(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractMatrix{Tsol} ) where Tsol
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  t1 = 1/(q[1]*q[1]); t1_dot1 = -2*t1/q[1]
+  t2 = q[2]*q[2]; t2_dot2 = 2*q[2]
+  t3 = q[3]*q[3]; t3_dot3 = 2*q[3]
+
+  #p_dot[1] = (params.gamma_1)*( 0.5*(t2*t1 + t3*t1))
+  #p_dot[2] = -(params.gamma_1)*(q[2]/q[1])
+  #p_dot[3] = -(params.gamma_1)*(q[3]/q[1])
+  #p_dot[4] = params.gamma_1
+
+  p_dot[1, 1] = params.gamma_1*0.5*t1_dot1*(t2 + t3)
+  p_dot[2, 1] = params.gamma_1*0.5*(t2_dot2*t1)
+  p_dot[3, 1] = params.gamma_1*0.5*(t3_dot3*t1)
+  p_dot[4, 1] = 0
+
+  p_dot[1, 2] = params.gamma_1*q[2]/(q[1]*q[1])
+  p_dot[2, 2] = -params.gamma_1/q[1]
+  p_dot[3, 2] = 0
+  p_dot[4, 2] = 0
+
+  p_dot[1, 3] = p_dot[3, 1]
+  p_dot[2, 3] = 0
+  p_dot[3, 3] = -params.gamma_1/q[1]
+  p_dot[4, 3] = 0
+
+  p_dot[1, 4] = 0
+  p_dot[2, 4] = 0
+  p_dot[3, 4] = 0
+  p_dot[4, 4] = 0
+
+  return  (params.gamma_1)*(q[4] - 0.5*(t2 + t3)/q[1])
+end
+
+
+function calcPressure_hess(params::ParamType{3, :conservative},
+                      q::AbstractArray{Tsol,1}, p_dot::AbstractMatrix{Tsol} ) where Tsol
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  t1 = 1/(q[1]*q[1]); t1_dot1 = -2*t1/q[1]
+  t2 = q[2]*q[2]; t2_dot2 = 2*q[2]
+  t3 = q[3]*q[3]; t3_dot3 = 2*q[3]
+  t4 = q[4]*q[4]; t4_dot4 = 2*q[4]
+
+  #p_dot[1] =  params.gamma_1*( 0.5*(t2 + t3 + t4)*t1)
+  #p_dot[2] = -params.gamma_1*(q[2]/q[1])
+  #p_dot[3] = -params.gamma_1*(q[3]/q[1])
+  #p_dot[4] = -params.gamma_1*(q[4]/q[1])
+  #p_dot[5] =  params.gamma_1
+
+
+  p_dot[1, 1] = params.gamma_1*0.5*t1_dot1*(t2 + t3 + t4)
+  p_dot[2, 1] = params.gamma_1*0.5*(t2_dot2*t1)
+  p_dot[3, 1] = params.gamma_1*0.5*(t3_dot3*t1)
+  p_dot[4, 1] = params.gamma_1*0.5*(t4_dot4*t1)
+  p_dot[5, 1] = 0
+
+  p_dot[1, 2] = params.gamma_1*q[2]/(q[1]*q[1])
+  p_dot[2, 2] = -params.gamma_1/q[1]
+  p_dot[3, 2] = 0
+  p_dot[4, 2] = 0
+  p_dot[5, 2] = 0
+
+  p_dot[1, 3] = p_dot[3, 1]
+  p_dot[2, 3] = 0
+  p_dot[3, 3] = -params.gamma_1/q[1]
+  p_dot[4, 3] = 0
+  p_dot[5, 3] = 0
+
+  p_dot[1, 4] = p_dot[4, 1]
+  p_dot[2, 4] = 0
+  p_dot[3, 4] = 0
+  p_dot[4, 4] = -params.gamma_1/q[1]
+  p_dot[5, 4] = 0
+
+  p_dot[1, 5] = 0
+  p_dot[2, 5] = 0
+  p_dot[3, 5] = 0
+  p_dot[5, 5] = 0
+
+  return  (params.gamma_1)*(q[4] - 0.5*(t2 + t3)/q[1])
+end
+
 
 """
   Reverse mode of the pressure calculation
@@ -1009,6 +1096,115 @@ function calcPressure_revq(params::ParamType{3, :conservative},
   return nothing
 end
 
+function calcPressure_diff_revq(params::ParamType{2, :conservative},
+                      q::AbstractArray{Tsol,1}, q_bar::AbstractVector{Tres},
+                      p_dot_bar::AbstractVector, press_bar::Number ) where {Tsol, Tres}
+  # calculate pressure for a node
+  # q is a vector of length 4 of the conservative variables
+
+  t1 = 1/(q[1]*q[1])
+  t2 = q[2]*q[2]
+  t3 = q[3]*q[3]
+ 
+
+#=
+  press = (params.gamma_1)*(q[4] - 0.5*(t2 + t3)/q[1])
+  p_dot[1] = (params.gamma_1)*( 0.5*(t2*t1 + t3*t1))
+  p_dot[2] = -(params.gamma_1)*(q[2]/q[1])
+  p_dot[3] = -(params.gamma_1)*(q[3]/q[1])
+  p_dot[4] = params.gamma_1
+=#
+  # reverse sweep
+
+  # pressure
+  q_bar[1] += (params.gamma_1)*( 0.5*(t2*t1 + t3*t1))*press_bar
+  q_bar[2] += -(params.gamma_1)*(q[2]/q[1])*press_bar
+  q_bar[3] += -(params.gamma_1)*(q[3]/q[1])*press_bar
+  q_bar[4] += params.gamma_1*press_bar
+
+  # p_dot
+  t1_bar = zero(Tres)
+  t2_bar = zero(Tres)
+  t3_bar = zero(Tres)
+
+  t1_bar += params.gamma_1*(0.5*(t2 + t3))*p_dot_bar[1]
+  t2_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+  t3_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+
+  q_bar[1] += params.gamma_1*q[2]*t1*p_dot_bar[2]
+  q_bar[2] -= params.gamma_1*p_dot_bar[2]/q[1]
+
+  q_bar[1] += params.gamma_1*q[3]*t1*p_dot_bar[3]
+  q_bar[3] -= params.gamma_1*p_dot_bar[3]/q[1]
+
+  # nothing to do for q_bar[4]
+
+  q_bar[3] += 2*q[3]*t3_bar
+  q_bar[2] += 2*q[2]*t2_bar
+  q_bar[1] -= 2*t1_bar/(q[1]^3)
+
+  return nothing
+end
+
+
+function calcPressure_diff_revq(params::ParamType{3, :conservative},
+                      q::AbstractArray{Tsol,1}, q_bar::AbstractVector{Tres},
+                      p_dot_bar::AbstractVector, press_bar::Number ) where {Tsol, Tres}
+
+  # calculate pressure for a node
+
+  t1 = 1/(q[1]*q[1])
+  t2 = q[2]*q[2]
+  t3 = q[3]*q[3]
+  t4 = q[4]*q[4]
+#=
+  (params.gamma_1)*(q[5] - 0.5*(t2 + t3 + t4)/q[1])
+  p_dot[1] =  params.gamma_1*( 0.5*(t2 + t3 + t4)*t1)
+  p_dot[2] = -params.gamma_1*(q[2]/q[1])
+  p_dot[3] = -params.gamma_1*(q[3]/q[1])
+  p_dot[4] = -params.gamma_1*(q[4]/q[1])
+  p_dot[5] =  params.gamma_1
+=#
+
+  # pressure
+  q_bar[1] += (params.gamma_1)*( 0.5*(t2*t1 + t3*t1 + t4*t1))*press_bar
+  q_bar[2] += -(params.gamma_1)*(q[2]/q[1])*press_bar
+  q_bar[3] += -(params.gamma_1)*(q[3]/q[1])*press_bar
+  q_bar[4] += -(params.gamma_1)*(q[4]/q[1])*press_bar
+  q_bar[5] += params.gamma_1*press_bar
+
+  # p_dot
+  t1_bar = zero(Tres)
+  t2_bar = zero(Tres)
+  t3_bar = zero(Tres)
+  t4_bar = zero(Tres)
+
+  t1_bar += params.gamma_1*(0.5*(t2 + t3 + t4))*p_dot_bar[1]
+  t2_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+  t3_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+  t4_bar += params.gamma_1*0.5*t1*p_dot_bar[1]
+
+  q_bar[1] += params.gamma_1*q[2]*t1*p_dot_bar[2]
+  q_bar[2] -= params.gamma_1*p_dot_bar[2]/q[1]
+
+  q_bar[1] += params.gamma_1*q[3]*t1*p_dot_bar[3]
+  q_bar[3] -= params.gamma_1*p_dot_bar[3]/q[1]
+
+  q_bar[1] += params.gamma_1*q[4]*t1*p_dot_bar[4]
+  q_bar[4] -= params.gamma_1*p_dot_bar[4]/q[1]
+
+  # nothing to do for q_bar[5]
+
+  q_bar[4] += 2*q[4]*t4_bar
+  q_bar[3] += 2*q[3]*t3_bar
+  q_bar[2] += 2*q[2]*t2_bar
+  q_bar[1] -= 2*t1_bar/(q[1]^3)
+
+  return nothing
+end
+
+
+
 
 """
   Differentiated version of [`getLambdaMax`](@ref)
@@ -1021,7 +1217,7 @@ end
 
   **Inputs/Outputs**
 
-   * qL_dot: derivative of lambda max wrt qL (overwritten)
+   * lambda_dot: derivative of lambda max wrt qL (overwritten)
 
   **Outputs**
 
@@ -1150,6 +1346,124 @@ function getLambdaMax_diff(params::ParamType{3},
   return lambda_max
 end
 
+"""
+  Method that computes the maximum eigenvalue in the volume (not in any
+  particular direction
+
+  **Inputs**
+
+   * params: ParamType
+   * qL: vector of conservative variables at a node
+   * dir: direction vector (can be scaled)
+
+  **Inputs/Outputs**
+
+   * lambda_dot: derivative of lambda max wrt qL (overwritten)
+
+  **Outputs**
+
+   * lambda_max: maximum eigenvalue
+
+"""
+function getLambdaMax_diff(params::ParamType{2},
+                      qL::AbstractVector{Tsol},
+                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres}
+
+  gamma = params.gamma
+  Un = zero(Tres)
+  rhoLinv = 1/qL[1]
+  rhoLinv_dotL1 = -rhoLinv*rhoLinv
+
+  p_dot = params.get_lambda_max_data.p_dot
+  pL = calcPressure_diff(params, qL, p_dot)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+  t1 = gamma*rhoLinv/(2*aL)
+  t2 = gamma*pL/(2*aL)
+  aL_dotL1 = t1*p_dot[1] + t2*rhoLinv_dotL1
+  aL_dotL2 = t1*p_dot[2]
+  aL_dotL3 = t1*p_dot[3]
+  aL_dotL4 = t1*p_dot[4]
+
+
+  u_i = qL[2]*rhoLinv
+  Un_dotL1 = 2*u_i*qL[2]*rhoLinv_dotL1
+  Un_dotL2 = 2*u_i*rhoLinv
+  Un += u_i*u_i
+
+  u_i = qL[3]*rhoLinv
+  Un_dotL1 += 2*u_i*qL[3]*rhoLinv_dotL1
+  Un_dotL3  = 2*u_i*rhoLinv
+  Un += u_i*u_i
+
+  Un1 = sqrt(Un)
+  Un1_dotL1 = (0.5/Un1)*Un_dotL1
+  Un1_dotL2 = (0.5/Un1)*Un_dotL2
+  Un1_dotL3 = (0.5/Un1)*Un_dotL3
+
+  lambda_max = Un1 + aL
+  lambda_dot[1] = Un1_dotL1 + aL_dotL1
+  lambda_dot[2] = Un1_dotL2 + aL_dotL2
+  lambda_dot[3] = Un1_dotL3 + aL_dotL3
+  lambda_dot[4] =             aL_dotL4
+
+  return lambda_max
+end
+
+
+function getLambdaMax_diff(params::ParamType{3},
+                      qL::AbstractVector{Tsol},
+                      lambda_dot::AbstractVector{Tres}) where {Tsol, Tres}
+
+  gamma = params.gamma
+  Un = zero(Tres)
+  rhoLinv = 1/qL[1]
+  rhoLinv_dotL1 = -rhoLinv*rhoLinv
+
+  p_dot = params.get_lambda_max_data.p_dot
+  pL = calcPressure_diff(params, qL, p_dot)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+  t1 = gamma*rhoLinv/(2*aL)
+  t2 = gamma*pL/(2*aL)
+  aL_dotL1 = t1*p_dot[1] + t2*rhoLinv_dotL1
+  aL_dotL2 = t1*p_dot[2]
+  aL_dotL3 = t1*p_dot[3]
+  aL_dotL4 = t1*p_dot[4]
+  aL_dotL5 = t1*p_dot[5]
+
+
+  u_i = qL[2]*rhoLinv
+  Un_dotL1 = 2*u_i*qL[2]*rhoLinv_dotL1
+  Un_dotL2 = 2*u_i*rhoLinv
+  Un += u_i*u_i
+
+  u_i = qL[3]*rhoLinv
+  Un_dotL1 += 2*u_i*qL[3]*rhoLinv_dotL1
+  Un_dotL3  = 2*u_i*rhoLinv
+  Un += u_i*u_i
+
+  u_i = qL[4]*rhoLinv
+  Un_dotL1 += 2*u_i*qL[4]*rhoLinv_dotL1
+  Un_dotL4  = 2*u_i*rhoLinv
+  Un += u_i*u_i
+
+
+  Un1 = sqrt(Un)
+  Un1_dotL1 = (0.5/Un1)*Un_dotL1
+  Un1_dotL2 = (0.5/Un1)*Un_dotL2
+  Un1_dotL3 = (0.5/Un1)*Un_dotL3
+  Un1_dotL4 = (0.5/Un1)*Un_dotL4
+
+  lambda_max = Un1 + aL
+  lambda_dot[1] = Un1_dotL1 + aL_dotL1
+  lambda_dot[2] = Un1_dotL2 + aL_dotL2
+  lambda_dot[3] = Un1_dotL3 + aL_dotL3
+  lambda_dot[4] = Un1_dotL4 + aL_dotL4
+  lambda_dot[5] =             aL_dotL5
+
+  return lambda_max
+end
+
+
 
 """
   Reverse mode of [`getLambdaMax`](@ref) with respect to the metrics
@@ -1277,5 +1591,52 @@ function getLambdaMax_revq(params::ParamType{Tdim},
   return lambda_max
 end
 
+
+function getLambdaMax_revq(params::ParamType{Tdim}, 
+                           qL::AbstractVector{Tsol}, 
+                           qL_bar::AbstractVector{Tsol},
+                           lambda_bar::Number) where {Tsol, Tdim}
+
+  gamma = params.gamma
+  Un = zero(Tsol)
+  rhoLinv = 1/qL[1]
+
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    u_i = qL[i+1]*rhoLinv
+    Un += u_i*u_i
+  end
+
+  Un2 = sqrt(Un)
+  lambda_max = Un2 + aL
+ 
+
+  # reverse sweep
+  fac = Un > 0 ? 1 : -1
+  Un_bar = lambda_bar/(2*Un2)
+  aL_bar = lambda_bar
+
+  
+  rhoLinv_bar = zero(Tsol)
+  for i=1:Tdim
+    u_i = qL[i+1]*rhoLinv
+
+    u_i_bar = 2*u_i*Un_bar
+    qL_bar[i+1] += u_i_bar*rhoLinv
+    rhoLinv_bar += qL[i+1]*u_i_bar
+  end
+
+  # aL
+  pL_bar = gamma*rhoLinv*aL_bar/(2*aL)
+  rhoLinv_bar += gamma*pL*aL_bar/(2*aL)
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+
+  qL_bar[1] += -rhoLinv*rhoLinv*rhoLinv_bar
+  
+  return lambda_max
+end
 
 

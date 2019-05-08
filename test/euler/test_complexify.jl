@@ -20,6 +20,7 @@ function test_complexify()
     d = complex(1.0, -1.0)
     f = complex(-1.0, 1.0)
     g = complex(-1.0, -1.0)
+    j = complex(0.0, 0.0)
 
     @test isapprox( absvalue(c), complex(1.0, 1.0)) atol=1e-15
     @test isapprox( absvalue_rev(c, 2)[1], complex(1.0, 1.0)) atol=1e-15
@@ -41,8 +42,25 @@ function test_complexify()
     @test isapprox( absvalue_rev(g, 2)[1], complex(1.0, 1.0)) atol=1e-15
     @test isapprox( absvalue_rev(g, 2)[2], -2) atol=1e-15
 
+    # absvalue2
+    @test isapprox( absvalue2(c), complex(1.0, 1.0)) atol=1e-15
+    @test isapprox( absvalue2(d), complex(1.0, -1.0)) atol=1e-15
+    @test isapprox( absvalue2(f), complex(1.0, -1.0)) atol=1e-15
+    @test isapprox( absvalue2(g), complex(1.0, 1.0)) atol=1e-15
+    @test isapprox( absvalue2(j), complex(0.0, 0.0)) atol=1e-15
+    # the spline is always below the y=x line
+    @test absvalue2(1e-14) < 1e-14
+    @test absvalue2(1e-14) > 0
+    @test absvalue2(-1e-14) < 1e-14
+    @test absvalue2(-1e-14) > 0
 
-
+    # test derivative
+    h = 1e-20; pert = Complex128(0, h)
+    vals = [2.0, 2e-13,  1e-14, -2e-13, -1e-14, 0.0, 0 + eps(), 0 - eps()]
+    for val in vals
+      @test isapprox(imag(absvalue2(val + pert))/h, absvalue2_deriv(val)) atol=2e-14
+    end
+    
     x = 1.0; y = 1.0
     checkdiff(x, y)
     checkderiv(x, y)

@@ -25,6 +25,7 @@ include("curvilinear.jl")
 include("area.jl")
 include("checkpoint.jl")
 include("interpolation.jl")
+include("identity_array.jl")
 
 export free
 export array1DTo3D, writeQ, array3DTo1D, removeComplex, assembleArray
@@ -42,10 +43,11 @@ export fastzero!, fastscale!, removeComplex
 export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
        assertArraysUnique, assertFieldsConcrete
 # projections.jl functions
-export getProjectionMatrix, projectToXY, projectToNT, calcLength
+export getProjectionMatrix, projectToXY, projectToNT, calcLength, normalize_vec
 
 # complexify.jl functions
-export absvalue, absvalue_deriv, absvalue_rev, atan2_rev
+export absvalue, absvalue_deriv, absvalue_rev, absvalue2, absvalue2_deriv, 
+       sign_c, atan2_rev
 
 # output.jl
 export printSolution, printCoordinates, printMatrix
@@ -62,7 +64,7 @@ export calcSCurvilinear, calcSCurvilinear_rev, calcECurvilinear, calcDCurvilinea
 export calcVolumeContribution!, calcVolumeContribution_rev!, calcProjectedAreaContribution!, calcProjectedAreaContribution_rev!, crossProd, crossProd_rev
 
 # io.jl
-export BufferedIO, BSTDOUT, BSTDERR
+export BufferedIO, BSTDOUT, BSTDERR, printArray
 
 # parallel_types.jl
 export SharedFaceData, getSharedFaceData, setParallelData, getParallelData,
@@ -76,7 +78,7 @@ export startSolutionExchange, startSolutionExchange_rev,
        finishSolutionBarExchange,
        @mpi_master, @time_all, print_time_all, verifyReceiveCommunication,
        MPITagManager, getNextTag, markTagUsed, freeTag, assertReceivesWaited,
-       assertSendsWaited
+       assertSendsWaited, TagManager
 
 # checkpoint.jl
 export Checkpointer, AbstractCheckpointData, readCheckpointData,
@@ -87,6 +89,9 @@ export Checkpointer, AbstractCheckpointData, readCheckpointData,
 
 # interpolation.jl
 export interpField
+
+# identity_array.jl
+export IdentityArray, FullFace
 
 """
   Generic function to free any memory belonging to other libraries
@@ -517,8 +522,7 @@ end
 
   This function calculates the average distance between nodes over the entire
   mesh.  This function allocates a bunch of temporary memory, so don't call
-  it too often.  This is, strictly speaking, not quite accurate in parallel
-  because the divison by length happens before the allreduce.
+  it too often.
 
   Inputs:
     mesh
@@ -559,6 +563,7 @@ mutable struct Timings
   t_volume::Float64  # time for volume integrals
   t_face::Float64 # time for surface integrals (interior)
   t_source::Float64  # time spent doing source term
+  t_shock::Float64   # time spent doing shock capturing
   t_sharedface::Float64  # time for shared face integrals
   t_bndry::Float64  # time spent doing boundary integrals
   t_dataprep::Float64  # time spent preparing data
@@ -567,6 +572,7 @@ mutable struct Timings
 
   t_volume_diff::Float64  # time for volume integrals
   t_face_diff::Float64 # time for surface integrals (interior)
+  t_shock_diff::Float64  # time for shock capturing
   t_source_diff::Float64  # time spent doing source term
   t_sharedface_diff::Float64  # time for shared face integrals
   t_bndry_diff::Float64  # time spent doing boundary integrals
@@ -596,7 +602,7 @@ mutable struct Timings
   function Timings()
     nbarriers = 7
     barriers = zeros(Float64, nbarriers)
-    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
+    return new(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, barriers)
   end
 end
 

@@ -17,7 +17,7 @@ function test_jac_parallel()
 end
 
 
-add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC, TAG_TMP]) 
+add_func1!(EulerTests, test_jac_parallel, [TAG_SHORTTEST, TAG_JAC]) 
 
 
 """
@@ -122,7 +122,7 @@ function test_jac_parallel_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
 
 #------------------------------------------------------------------------------
 # functions that run individual tests
@@ -167,7 +167,7 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   # compute jacobian via coloring
   opts["calc_jac_explicit"] = false
@@ -255,7 +255,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   function _evalHomotopy(mesh, sbp, eqn, opts, t)
     evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)

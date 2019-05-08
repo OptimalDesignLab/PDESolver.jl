@@ -48,7 +48,7 @@ function calcFaceIntegral_nopre_diff(
     end  # end loop j
 
     # compute dR/dq
-    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
+    interiorFaceCombined_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
 
@@ -444,8 +444,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
      end
 
      # this is excessive because we don't need jacRL, jacRR, but
-     # boundaryFaceIntegrate_jac can't handle jacLR
-     interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
+     # boundaryFaceCombined_jac can't handle jacLR
+     interiorFaceCombined_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 

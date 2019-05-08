@@ -125,9 +125,6 @@ function NewtonData(mesh, sbp,
                     delta_q_vec, fconv, verbose)
 end
 
-include("residual_evaluation.jl")  # some functions for residual evaluation
-include("jacobian.jl")
-
 @doc """
 ### NonlinearSolvers.setupNewton
   Performs setup work for [`newtonInner`](@ref), including creating a 
@@ -174,7 +171,7 @@ end   # end of setupNewton
   Note that this does not reset the linear solver, which might be a problem
   if inexact newton-krylov was used for the previous solve
 """
-function reinitNewtonData(newton_data::NewtonData)
+function reinitNewtonData(newton_data::NewtonData, mesh, sbp, eqn, opts)
 
   clearEulerConstants(newton_data.ls)
   newton_data.itr = 0
@@ -184,6 +181,23 @@ function reinitNewtonData(newton_data::NewtonData)
   newton_data.step_norm_i_1 = 0
   newton_data.step_fac = 1.0
   resetRecalculationPolicy(newton_data.recalc_policy)
+
+  # if using globalization, reset it
+  if opts["newton_globalize_euler"]
+    lo = getInnerLO(newton_data.ls.lo, NewtonLO)
+
+    #TODO: it would be slightly better to update tau_vec inplace
+    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
+    lo.tau_l = tau_l; lo.tau_vec = tau_vec
+
+    if !(typeof(newton_data.ls.pc) <: PCNone)
+      # no need to do anything for PCNone
+
+      pc = getInnerPC(newton_data.ls.pc, NewtonPC)
+      tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
+      pc.tau_l = tau_l; pc.tau_vec = tau_vec
+    end
+  end
 
   return nothing
 end
@@ -283,7 +297,6 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts,
   return pc, lo
 end
 
-
 import PDESolver.createLinearSolver
 
 function createLinearSolver(mesh::AbstractMesh, sbp::AbstractOperator,
@@ -300,6 +313,7 @@ end
 #------------------------------------------------------------------------------
 # preconditioner
 
+abstract type NewtonMatFreePC <: AbstractPetscMatFreePC end
 
 """
   Adds fields required by all Newton PCs and LOs
@@ -517,6 +531,10 @@ const NewtonHasMat = Union{NewtonMatPC, NewtonDenseLO, NewtonSparseDirectLO, New
 """
 const NewtonLinearObject = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC}
 
+"""
+  Any Newton PC
+"""
+const NewtonPC = Union{NewtonMatPC, NewtonMatFreePC}
 
 function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
                             sbp::AbstractOperator, eqn::AbstractSolutionData,

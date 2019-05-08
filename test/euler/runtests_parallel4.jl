@@ -31,6 +31,7 @@ global const EulerTests = TestList()
 
 include("test_ESS_parallel.jl")
 include("test_jacp.jl")
+include("test_shockcapturing_parallel.jl")
 
 #------------------------------------------------------------------------------
 # run tests

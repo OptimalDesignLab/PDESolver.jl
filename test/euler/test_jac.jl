@@ -275,6 +275,32 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
+#=
+    #TESTING
+    # SBPOmega, SparseMatrixCSC
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] =2  # was 2
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["order"] = 2
+    opts_tmp["use_lps"] = true
+    #opts_tmp["use_lps"] = true
+    make_input(opts_tmp, fname4)
+    mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
+
+    test_revm_product(mesh9, sbp9, eqn9, opts9)
+    #test_revq_product(mesh9, sbp9, eqn9, opts9)
+
+    Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
+    sc = "Volume"
+    sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh9, sbp9, opts9)
+    capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
+                                                    sbp9, eqn9, opts9, sensor)
+
+    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, freeze=true)
+    #test_jac_general(mesh9, sbp9, eqn9, opts9)
+=#
+
 
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
@@ -282,6 +308,7 @@ function test_jac_terms_long()
     opts_tmp["jac_type"] = 3
     make_input(opts_tmp, fname4)
     mesh4, sbp4, eqn4, opts4 = run_solver(fname4)
+
 
     # SBPDiagonalE, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
@@ -299,6 +326,7 @@ function test_jac_terms_long()
     opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2
     opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh6, sbp6, eqn6, opts6 = run_solver(fname4)
 
@@ -409,6 +437,77 @@ function test_jac_terms_long()
     test_jac_general(mesh12, sbp12, eqn12, opts12)
 
 
+    # test shock capturing schemes
+    println("\ntesting shock capturing")
+    shock_capturing_schemes = ["SBPParabolic"]
+    for sc in shock_capturing_schemes
+
+      Tsol = eltype(eqn4.q); Tres = eltype(eqn4.res)
+
+      println("case4")
+      sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh4, sbp4, opts4)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh4,
+                                                    sbp4, eqn4, opts4, sensor)
+      test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
+      test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+      test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture, freeze=true)
+
+
+      println("case5")
+      sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh5, sbp5, opts5)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh5,
+                                                    sbp5, eqn5, opts5, sensor) 
+      test_sbp_cartesian(mesh5, sbp5, eqn5, opts5)
+      test_shock_capturing_jac(mesh5, sbp5, eqn5, opts5, capture)
+
+      println("case6")
+      sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh6, sbp6, opts6)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh6,
+                                                    sbp6, eqn6, opts6, sensor) 
+      test_sbp_cartesian(mesh6, sbp6, eqn6, opts6)
+      test_shock_capturing_jac(mesh6, sbp6, eqn6, opts6, capture)
+
+      println("case8")
+      sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh8, sbp8, opts8)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh8,
+                                                      sbp8, eqn8, opts8, sensor) 
+      test_sbp_cartesian(mesh8, sbp8, eqn8, opts8)
+      test_shock_capturing_jac(mesh8, sbp8, eqn8, opts8, capture)
+
+      println("case9")
+      sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh9, sbp9, opts9)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
+                                                      sbp9, eqn9, opts9, sensor) 
+      test_sbp_cartesian(mesh9, sbp9, eqn9, opts9)
+      test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture)
+
+    end
+
+
+    # only need to do a single element type because all element volume matrices
+    # have the same structure
+    println("\nTesting volume shock capturing schemes")
+
+    shock_capturing_schemes_volume = ["ElementProjection", "Volume"]
+    for sc in shock_capturing_schemes_volume
+      println("sc = ", sc)
+
+      Tsol = eltype(eqn4.q); Tres = eltype(eqn4.res)
+
+      println("case4")
+      sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh4, sbp4, opts4)
+      capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh4,
+                                                    sbp4, eqn4, opts4, sensor)
+      test_sbp_cartesian(mesh4, sbp4, eqn4, opts4)
+      test_sbp_cartesian_revm(mesh4, sbp4, eqn4, opts4)
+      test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture)
+
+      if sc == "Volume"
+        test_shock_capturing_jac(mesh4, sbp4, eqn4, opts4, capture, freeze=true)
+      end
+    end
+
+
     # test revm products
 
     # regular Roe scheme
@@ -435,11 +534,20 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPOmega"
     opts_tmp["order"] = 2
     opts_tmp["need_adjoint"] = true
+    opts_tmp["addShockCapturing"] = true
+    opts_tmp["shock_capturing_name"] = "ElementProjection"
     make_input(opts_tmp, fname4)
     mesh_r2, sbp_r2, eqn_r2, opts_r2 = run_solver(fname4)
+    opts_r2["addShockCapturing"] = false
 
     test_revm_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
     test_revq_product(mesh_r2, sbp_r2, eqn_r2, opts_r2)
+
+    # the ExpIC looks enough like a shock that the indicator says it is one
+    opts_r2["addShockCapturing"] = true
+    test_jac_general(mesh_r2, sbp_r2, eqn_r2, opts_r2)
+    opts_r2["addShockCapturing"] = false
+
 
 
     # SBPOmega ES scheme
@@ -481,6 +589,34 @@ function test_jac_terms_long()
     test_revm_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
     test_revq_product(mesh_r4, sbp_r4, eqn_r4, opts_r4)
 
+    # shock capturing
+    println("\n\ntesting diagonalE ES scheme with shock capturing")
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["IC_name"] = "ICExp"
+    opts_tmp["BC1_name"] = "FreeStreamBC"  # BC with reverse mode functor
+    opts_tmp["volume_integral_type"] = 2
+    opts_tmp["Volume_flux_name"] = "IRFlux"
+    opts_tmp["Flux_name"] = "IRSLFFlux"
+    opts_tmp["order"] = 1
+    opts_tmp["need_adjoint"] = true
+    opts_tmp["addShockCapturing"] = true
+    opts_tmp["shock_capturing_name"] = "Volume"
+    opts_tmp["shock_sensor_name"] = "SensorHHO"
+    opts_tmp["addVolumeIntegrals"] = false
+    opts_tmp["addFaceIntegrals"] = false
+    opts_tmp["addBoundaryIntegrals"] = false
+    opts_tmp["use_lps"] = true
+    make_input(opts_tmp, fname4)
+
+    mesh_r5, sbp_r5, eqn_r5, opts_r5 = run_solver(fname4)
+
+   test_revm_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
+   test_revm_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
+   test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
+   println("\nTesting revq frozen")
+   test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
 
   end
 
@@ -505,6 +641,14 @@ function rand_realpart(dims...)
   end
 
   return a
+end
+
+function rand_realpart!(a::AbstractArray)
+
+  rand!(a)
+  for i=1:length(a)
+    a[i] = real(a[i])
+  end
 end
 
 
@@ -543,8 +687,50 @@ function test_pressure(params::AbstractParamType{Tdim}) where Tdim
   @test maximum(abs.(q_bar - p_dot)) < 1e-13
 
 
+  # test hessian
+  p_dot = zeros(Complex128, numDofPerNode)
+  p_hess = zeros(Complex128, numDofPerNode, numDofPerNode)
+  p_hessc = zeros(Complex128, numDofPerNode, numDofPerNode)
+
+  h = 1e-20 
+  pert = Complex128(0, h)
+
+  for i=1:numDofPerNode
+    q[i] += pert
+    EulerEquationMod.calcPressure_diff(params, q, p_dot)
+    p_hessc[:, i] = imag(p_dot)./h
+    q[i] -= pert
+  end
+
+  EulerEquationMod.calcPressure_hess(params, q, p_hess)
+
+  @test maximum(abs.(p_hess - p_hessc)) < 1e-13
+
+
+  # test calcPressure_diff_revq
+  # use hessian to test reverse mode of p_dot, use regular calcPressure_revq
+  # to test reverse mode of pressure
+  p_dot_bar = rand_realpart(size(q))
+
+  q_bar = p_hess.'*p_dot_bar
+
+  q_bar2 = zeros(Complex128, length(q))
+  EulerEquationMod.calcPressure_diff_revq(params, q, q_bar2, p_dot_bar, 0)
+
+  @test maximum(abs.(q_bar - q_bar2)) < 1e-13
+
+  fill!(q_bar, 0); fill!(q_bar2, 0); fill!(p_dot_bar, 0)
+
+  EulerEquationMod.calcPressure_revq(params, q, q_bar, 2.0)
+  EulerEquationMod.calcPressure_diff_revq(params, q, q_bar2, p_dot_bar, 2.0)
+
+  @test maximum(abs.(q_bar - q_bar2)) < 1e-13
+
+
   return nothing
 end
+
+
 
 """
   Tests the differentiated version of a single point flux
@@ -690,42 +876,59 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
 
 
   lambda_dot = zeros(qL)
+  lambda_dot3 = zeros(qL)
   EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+  EulerEquationMod.getLambdaMax_diff(params, qL, lambda_dot3)
 
   lambda_dot2 = zeros(qL)
+  lambda_dot4 = zeros(qL)
   h=1e-20
   pert = Complex128(0, h)
   for i=1:length(lambda_dot)
+    println("i = ", i)
     qL[i] += pert
     lambda_dot2[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    lambda_dot4[i] = imag(EulerEquationMod.getLambdaMax(params, qL))/h
     qL[i] -= pert
   end
 
   @test isapprox( norm(lambda_dot - lambda_dot2), 0.0) atol=1e-13
+  @test isapprox( norm(lambda_dot3 - lambda_dot4), 0.0) atol=1e-13
 
   # test accumulation behavior
   lambda_dot_orig = copy(lambda_dot)
+  lambda_dot3_orig = copy(lambda_dot3)
   EulerEquationMod.getLambdaMax_diff(params, qL, nrm, lambda_dot)
+  EulerEquationMod.getLambdaMax_diff(params, qL, lambda_dot3)
   @test isapprox( norm(lambda_dot - lambda_dot_orig), 0.0) atol=1e-13
+  @test isapprox( norm(lambda_dot3 - lambda_dot3_orig), 0.0) atol=1e-13
 
   # revq
   qL_bar = zeros(qL)
+  qL2_bar = zeros(qL)
   qL_barc = zeros(qL)
+  qL2_barc = zeros(qL)
 
   for i=1:length(qL)
     qL[i] += pert
     qL_barc[i] = imag(EulerEquationMod.getLambdaMax(params, qL, nrm))/h
+    qL2_barc[i] = imag(EulerEquationMod.getLambdaMax(params, qL))/h
     qL[i] -= pert
   end
 
-  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 2)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL2_bar, 2)
 
-  @test maximum(abs.(qL_bar - qL_barc)) < 1e-14
+  @test maximum(abs.(qL_bar - 2*qL_barc)) < 1e-14
+  @test maximum(abs.(qL2_bar - 2*qL2_barc)) < 1e-14
 
   # test accumulation behavior
   qL_bar_orig = copy(qL_bar)
-  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 1)
+  qL2_bar_orig = copy(qL2_bar)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL_bar, nrm, 2)
+  EulerEquationMod.getLambdaMax_revq(params, qL, qL2_bar, 2)
   @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-14
+  @test maximum(abs.(qL2_bar - 2*qL2_bar_orig)) < 1e-14
 
 
   # revm
@@ -1787,7 +1990,7 @@ function test_jac_assembly(mesh, sbp, eqn, _opts)
   
   jac1 = SparseMatrixCSC(mesh, Float64, COLORING, LinearSolvers.getFaceType(mesh.sbpface))
   jac2 = zeros(mesh.numDof, mesh.numDof)
-  assembler = NonlinearSolvers._AssembleElementData(jac2, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(jac2, mesh, sbp, eqn, opts)
 
   # compute jacobian via coloring
   opts["calc_jac_explicit"] = false
@@ -1857,6 +2060,7 @@ end
 function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prealloc=true)
 
   # use a spatially varying solution
+  srand(1234)
   icfunc = EulerEquationMod.ICDict["ICExp"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
@@ -1888,7 +2092,7 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   # computing coloring jacobian
   opts["calc_jac_explicit"] = false
@@ -1904,6 +2108,10 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
   assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
 
+  assembly_end(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_end(jac2, MAT_FINAL_ASSEMBLY)
+
+
   # multiply against a random vector to make sure the jacobian is
   # the same
   for i=1:10
@@ -1917,8 +2125,11 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
     evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
-    @test isapprox( norm(b1 - b2), 0.0) atol=1e-11
-    @test isapprox( norm(b1 - b3), 0.0) atol=1e-11
+#    println("maximum(abs.(b2 - b3)) = ", maximum(abs.(b2 - b3)))
+#    println("b2[1] = ", b2[1])
+#    println("b3[1] = ", b3[1])
+    @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11
+    @test isapprox( maximum(abs.((b2 - b3))), 0.0) atol=1e-11
   end
 
   A = getBaseLO(lo2).A
@@ -1929,8 +2140,6 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     else
       @test  matinfo.nz_unneeded  > 0
     end
-      
-
   end
 
   free(lo1)
@@ -1986,7 +2195,7 @@ function test_jac_homotopy(mesh, sbp, eqn, opts)
   jac1 = getBaseLO(lo1).A
   jac2 = getBaseLO(lo2).A
 
-  assembler = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   function _evalHomotopy(mesh, sbp, eqn, opts, t)
     evalHomotopy(mesh, sbp, eqn, opts, eqn.res, t)
@@ -2061,7 +2270,7 @@ function test_diagjac(mesh, sbp, eqn, opts)
   pc2, lo2 = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
   jac2 = getBaseLO(lo2).A
 
-  assem2 = NonlinearSolvers._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
+  assem2 = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
  
   evalJacobian(mesh, sbp, eqn, opts, assem1)
@@ -2171,7 +2380,7 @@ end
 """
   Test psi^T dRdm product
 """
-function test_revm_product(mesh, sbp, eqn, opts)
+function test_revm_product(mesh, sbp, eqn, opts; freeze=false)
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -2181,6 +2390,15 @@ function test_revm_product(mesh, sbp, eqn, opts)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
                                      # interfaces non-zero
+  
+  # to test freezing the viscosity, have two different qs and evaluate the
+  # Jacobian using the frozen viscosity while a different q in eqn.q
+  if freeze
+    q_frozen = copy(eqn.q)
+    EulerEquationMod.freezeViscosity(mesh, sbp, eqn, opts)
+    eqn.q .+= 0.01*rand(size(eqn.q))
+  end
+
 
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
@@ -2200,6 +2418,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
   mesh.nrm_bndry    .+= pert*nrm_bndry_dot
   mesh.nrm_face     .+= pert*nrm_face_dot
   mesh.coords_bndry .+= pert*coords_bndry_dot
+  updateMetricDependents(mesh, sbp, eqn, opts)
 
   fill!(eqn.res, 0)
   evalResidual(mesh, sbp, eqn, opts)
@@ -2211,7 +2430,7 @@ function test_revm_product(mesh, sbp, eqn, opts)
   mesh.nrm_bndry    .-= pert*nrm_bndry_dot
   mesh.nrm_face     .-= pert*nrm_face_dot
   mesh.coords_bndry .-= pert*coords_bndry_dot
-
+  updateMetricDependents(mesh, sbp, eqn, opts)
 
   evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
   val2 = sum(mesh.dxidx_bar .* dxidx_dot)              +
@@ -2324,6 +2543,11 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
   end
 
+  if freeze
+    EulerEquationMod.thawViscosity(mesh, sbp, eqn, opts)
+  end
+
+
 
 
   return nothing
@@ -2334,8 +2558,9 @@ end
 """
   Test the psi^T dR/dq product
 """
-function test_revq_product(mesh, sbp, eqn, opts)
+function test_revq_product(mesh, sbp, eqn, opts; freeze=false)
 
+  srand(1234)
   h = 1e-20
   pert = Complex128(0, h)
 
@@ -2345,10 +2570,21 @@ function test_revq_product(mesh, sbp, eqn, opts)
   eqn.q_vec .+= 0.01.*rand(size(eqn.q_vec))  # add a little noise, to make jump across
                                      # interfaces non-zero
 
+  # to test freezing the viscosity, have two different qs and evaluate the
+  # Jacobian using the frozen viscosity while a different q in eqn.q
+  if freeze
+    q_frozen = copy(eqn.q)
+    EulerEquationMod.freezeViscosity(mesh, sbp, eqn, opts)
+    eqn.q .+= 0.01*rand(size(eqn.q))
+  end
+
+
   # fields: dxidx, jac, nrm_bndry, nrm_face, coords_bndry
 
   res_vec_bar = rand_realpart(mesh.numDof)
   q_vec_dot = rand_realpart(mesh.numDof)
+#  q_vec_dot = zeros(mesh.numDof)
+#  q_vec_dot[1] = 1
   q_vec_bar = zeros(Complex128, mesh.numDof)
 
   fill!(eqn.res, 0)
@@ -2366,10 +2602,10 @@ function test_revq_product(mesh, sbp, eqn, opts)
 
   println("val = ", val)
   println("val2 = ", val2)
-  @test abs(val - val2) < 1e-13
+  @test abs(val - val2) < 5e-12
 
   #TODO: test accumulation behavior
-
+#=
   if opts["volume_integral_type"] == 2
     # test SplitFormLinear and SplitFormCurvilinear
 
@@ -2434,6 +2670,12 @@ function test_revq_product(mesh, sbp, eqn, opts)
 
 
   end
+=#
+
+  if freeze
+    EulerEquationMod.thawViscosity(mesh, sbp, eqn, opts)
+  end
+
 
   return nothing
 end
@@ -2604,4 +2846,425 @@ function test_BJacobiPC(mesh, sbp, eqn, opts)
 
 
   return nothing
+end
+
+
+function test_sbp_cartesian(mesh::AbstractMesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # use a spatially varying solution
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01*rand(size(eqn.q))
+
+  #q_dot = rand_realpart(size)
+
+  Dx = zeros(Complex128, mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+  wxi = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+
+  t2_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                 mesh.numNodesPerElement, mesh.numNodesPerElement)
+  t3_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode,
+                 mesh.numNodesPerElement,
+                         mesh.numNodesPerElement)
+  t4_dot = zeros(Complex128, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                 mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+  q2 = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  res2 = zeros(Complex128, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  for i=1:mesh.numEl
+
+    q_dot = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement,
+                           mesh.numNodesPerElement)
+    q_i = eqn.q[:, :, i]
+    dxidx_i = sview(mesh.dxidx, :, :, :, i)
+    jac_i = sview(mesh.jac, :, i)
+
+    # use differentiated version (4D -> 5D)
+    EulerEquationMod.calcDx(sbp, dxidx_i, jac_i, Dx)
+    EulerEquationMod.applyOperatorJac(Dx, q_dot, t2_dot)
+
+    for q=1:mesh.numNodesPerElement
+      for j=1:mesh.numDofPerNode
+        q_i .+= pert*q_dot[:, j, :, q]
+        fill!(res, 0)
+        EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, wxi, res)
+        q_i .-= pert*q_dot[:, j, :, q]
+        for d=1:mesh.dim
+          @test maximum(abs.(t2_dot[:, j, d, :, q] - imag(res[:, :, d])./h)) < 1e-13
+        end
+      end
+    end
+
+    # test the second method (5D -> 4D)
+    q_dot2 = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                           mesh.numNodesPerElement, mesh.numNodesPerElement)
+    EulerEquationMod.applyOperatorJac(Dx, q_dot2, t3_dot)
+
+    for d=1:mesh.dim
+      q2_d = sview(q2, :, :, d)
+      copy!(q2, q_i)
+    end
+
+    for q=1:mesh.numNodesPerElement
+      for j=1:mesh.numDofPerNode
+        for d=1:mesh.dim
+          q2[:, :, d] .+= pert*q_dot2[:, j, d, :, q]
+        end
+
+        fill!(res2, 0)
+        EulerEquationMod.applyDx(sbp, q2, dxidx_i, jac_i, wxi, res2)
+
+        for d=1:mesh.dim
+          q2[:, :, d] .-= pert*q_dot2[:, j, d, :, q]
+        end
+
+        @test maximum(abs.(t3_dot[:, j, :, q] - imag(res2)/h)) < 1e-13
+      end
+    end
+
+    # test the 3rd methods: (3D -> 5D)
+    # test consistency with 4D method
+    q_dot3 = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode,
+                           mesh.numNodesPerElement)
+    q_dot3b = zeros(mesh.numDofPerNode, mesh.numDofPerNode,
+                    mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    for j=1:mesh.numNodesPerElement
+      for k=1:mesh.numDofPerNode
+        for p=1:mesh.numDofPerNode
+          q_dot3b[p, k, j, j] = q_dot3[p, k, j]
+        end
+      end
+    end
+    EulerEquationMod.applyOperatorJac(Dx, q_dot3, t4_dot)
+    EulerEquationMod.applyOperatorJac(Dx, q_dot3b, t2_dot)
+
+    @test maximum(abs.(t4_dot - t2_dot)) < 1e-13
+  end
+
+  return nothing
+end
+
+function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
+
+  Tres = Complex128
+  w_dot = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement)
+  wx_bar = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  dxidx_dot = rand_realpart(mesh.dim, mesh.dim, mesh.numNodesPerElement)
+  jac_dot = rand_realpart(mesh.numNodesPerElement)
+  work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  wx1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  wx2 = copy(wx1); wx3 = copy(wx1); wx4 = copy(wx1)
+
+  w_bar1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  w_bar2 = copy(w_bar1); w_bar3 = copy(w_bar1); w_bar4 = copy(w_bar1)
+
+  dxidx_bar1 = zeros(Tres, mesh.dim, mesh.dim, mesh.numNodesPerElement)
+  jac_bar1 = zeros(mesh.numNodesPerElement)
+  dxidx_bar2 = copy(dxidx_bar1); dxidx_bar3 = copy(dxidx_bar1); dxidx_bar4 = copy(dxidx_bar1)
+  jac_bar2 = copy(jac_bar1); jac_bar3 = copy(jac_bar1)
+
+  w_i = rand_realpart((mesh.numDofPerNode, mesh.numNodesPerElement))
+  op = SummationByParts.Subtract()
+
+  println("w_i = ", w_i)
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:1  # mesh.numEl
+
+    #w_i = sview(eqn.q, :, :, i)
+    dxidx = sview(mesh.dxidx, :, :, :, i)
+    jac = sview(mesh.jac, :, i)
+
+    # perturb all the functions at once
+    w_i .+= pert*w_dot
+    dxidx .+= pert*dxidx_dot
+    jac .+= pert*jac_dot
+    EulerEquationMod.applyQxTransposed(sbp, w_i, dxidx, work, wx1, op)
+    EulerEquationMod.applyDx(sbp, w_i, dxidx, jac, work, wx2, op)
+    EulerEquationMod.applyDxTransposed(sbp, w_i, dxidx, jac, work, wx3, op)
+    EulerEquationMod.applyQx(sbp, w_i, dxidx, work, wx4, op)
+    w_i .-= pert*w_dot
+    dxidx .-= pert*dxidx_dot
+    jac .-= pert*jac_dot
+
+    # test applyQxTransposed, first method
+    EulerEquationMod.applyQxTransposed_revm(sbp, w_i, w_bar1, dxidx, dxidx_bar1, work, wx_bar, op)
+    wx_dot = imag(wx1)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar1 .* dxidx_dot) + sum(w_bar1 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+    # applyDx, first method
+    EulerEquationMod.applyDx_revm(sbp, w_i, w_bar2, dxidx, dxidx_bar2, jac,
+                                  jac_bar2, work, wx_bar, op)
+    wx_dot = imag(wx2)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot) + sum(w_bar2 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+ 
+    # applyDxTransposed, first method
+    EulerEquationMod.applyDxTransposed_revm(sbp, w_i, w_bar3, dxidx, dxidx_bar3,
+                                            jac, jac_bar3, work, wx_bar, op)
+    wx_dot = imag(wx3)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot) + sum(w_bar3 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+    # applyQx, first method
+    EulerEquationMod.applyQx_revm(sbp, w_i, w_bar4, dxidx, dxidx_bar4, work,
+                                  wx_bar, op)
+    wx_dot = imag(wx4)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar4 .* dxidx_dot) + sum(w_bar4 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+  end
+
+  test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
+
+  return nothing
+end
+
+
+function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
+  # test the second method (3D -> 2D) of all the sbp cartesian methods
+
+  println("\ntesting second methods")
+  Tres = Complex128
+  w_dot = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  wx_bar = rand_realpart(mesh.numDofPerNode, mesh.numNodesPerElement)
+  dxidx_dot = rand_realpart(mesh.dim, mesh.dim, mesh.numNodesPerElement)
+  jac_dot = rand_realpart(mesh.numNodesPerElement)
+  work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  wx1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  wx2 = copy(wx1); wx3 = copy(wx1); wx4 = copy(wx1)
+
+  w_bar1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  w_bar2 = copy(w_bar1); w_bar3 = copy(w_bar1); w_bar4 = copy(w_bar1)
+
+  dxidx_bar1 = zeros(Tres, mesh.dim, mesh.dim, mesh.numNodesPerElement)
+  jac_bar1 = zeros(mesh.numNodesPerElement)
+  dxidx_bar2 = copy(dxidx_bar1); dxidx_bar3 = copy(dxidx_bar1); dxidx_bar4 = copy(dxidx_bar1)
+  jac_bar2 = copy(jac_bar1); jac_bar3 = copy(jac_bar1)
+
+  w_i = rand_realpart((mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim))
+  op = SummationByParts.Subtract()
+
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:1  # mesh.numEl
+
+    #w_i = sview(eqn.q, :, :, i)
+    dxidx = sview(mesh.dxidx, :, :, :, i)
+    jac = sview(mesh.jac, :, i)
+
+    # perturb all the functions at once
+    w_i .+= pert*w_dot
+    dxidx .+= pert*dxidx_dot
+    jac .+= pert*jac_dot
+    EulerEquationMod.applyQxTransposed(sbp, w_i, dxidx, work, wx1, op)
+    EulerEquationMod.applyDx(sbp, w_i, dxidx, jac, work, wx2, op)
+    EulerEquationMod.applyDxTransposed(sbp, w_i, dxidx, jac, work, wx3, op)
+    EulerEquationMod.applyQx(sbp, w_i, dxidx, work, wx4, op)
+    w_i .-= pert*w_dot
+    dxidx .-= pert*dxidx_dot
+    jac .-= pert*jac_dot
+
+ 
+    # test applyQxTransposed, second method
+    EulerEquationMod.applyQxTransposed_revm(sbp, w_i, w_bar1, dxidx, dxidx_bar1, work, wx_bar, op)
+    wx_dot = imag(wx1)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar1 .* dxidx_dot) + sum(w_bar1 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+    # applyDx, second method
+    EulerEquationMod.applyDx_revm(sbp, w_i, w_bar2, dxidx, dxidx_bar2, jac,
+                                  jac_bar2, work, wx_bar, op)
+    wx_dot = imag(wx2)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot) + sum(w_bar2 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+    # applyDxTransposed, second method
+    EulerEquationMod.applyDxTransposed_revm(sbp, w_i, w_bar3, dxidx, dxidx_bar3,
+                                            jac, jac_bar3, work, wx_bar, op)
+    wx_dot = imag(wx3)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot) + sum(w_bar3 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+     # applyQx, second method
+    EulerEquationMod.applyQx_revm(sbp, w_i, w_bar4, dxidx, dxidx_bar4, work, wx_bar, op)
+    wx_dot = imag(wx4)./h
+    val1 = sum(wx_dot .* wx_bar)
+    val2 = sum(dxidx_bar4 .* dxidx_dot) + sum(w_bar4 .* w_dot)
+
+    println("val1 = ", real(val1))
+    println("val2 = ", real(val2))
+    @test abs(val1 - val2) < 1e-13
+
+
+  end
+
+  return nothing
+end
+
+
+
+"""
+  Tests jacobian of `AbstractFaceShockCapturing` against complex step.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * capture: `AbstractFaceShockCapturing`
+
+  **Keyword Arguments**
+
+   * use_sensor: if true use `ShockSensorPP`, otherwise use `ShockSensorEverywher`
+"""
+function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
+      capture::EulerEquationMod.AbstractShockCapturing; freeze=false) where {Tsol, Tres}
+
+  opts = copy(_opts)  # don't modify the original
+  opts["addVolumeIntegrals"] = false
+  opts["addFaceIntegrals"] = false
+  opts["addBoundaryIntegrals"] = false
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  # use a spatially varying solution
+  srand(1234)
+  icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+#  if use_sensor
+    # this only works for the 2 element mesh
+#    eqn.q[1] += 0.02
+#    eqn.q[25] += 0.01
+#  else
+#    sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+#  end
+  
+  eqn.q .+= 0.01*rand(size(eqn.q))
+  eqn.shock_capturing = capture
+
+  # to test freezing the viscosity, have two different qs and evaluate the
+  # Jacobian using the frozen viscosity while a different q in eqn.q
+  if freeze
+    q_frozen = copy(eqn.q)
+    EulerEquationMod.freezeViscosity(mesh, sbp, eqn, opts)
+    eqn.q .+= 0.01*rand(size(eqn.q))
+  end
+
+
+  # set a boundary condition where getDirichletState depends on qface
+  opts["BC1_name"] = "noPenetrationBC"
+  EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
+
+  # get explicitly computed linear operator
+  opts["calc_jac_explicit"] = true
+  opts["addShockCapturing"] = true
+#  val_orig = opts["preallocate_jacobian_coloring"]
+#  opts["preallocate_jacobian_coloring"] = true
+  pc, lo = NonlinearSolvers.getNewtonPCandLO(mesh, sbp, eqn, opts)
+#  opts["preallocate_jacobian_coloring"] = val_orig
+
+  jac = getBaseLO(lo).A
+  assembler = Jacobian._AssembleElementData(jac, mesh, sbp, eqn, opts)
+
+#  println("mesh.dofs[:, :, 1] = \n", mesh.dofs[:, :, 1])
+#  println("mesh.dofs[:, :, 5] = \n", mesh.dofs[:, :, 5])
+
+  # complex step
+
+  q_dot = rand_realpart(size(eqn.q_vec))
+  #q_dot = zeros(length(eqn.q_vec)); q_dot[1] = 1
+  res_dot = zeros(eqn.res_vec)
+  evaldRdqProduct(mesh, sbp, eqn, opts, q_dot, res_dot)
+
+  # explictly compute jacobian
+#  EulerEquationMod.applyShockCapturing_diff(mesh, sbp, eqn, opts, sensor, capture, assembler)
+  evalJacobian(mesh, sbp, eqn, opts, assembler)
+
+  assembly_begin(jac, MAT_FINAL_ASSEMBLY)
+  assembly_end(jac, MAT_FINAL_ASSEMBLY)
+
+
+  b = zeros(mesh.numDof)
+  t = 0.0
+  ctx_residual = (evalResidual,)
+  applyLinearOperator(lo, mesh, sbp, eqn, opts, ctx_residual, t, q_dot, b)
+
+  if freeze
+    EulerEquationMod.thawViscosity(mesh, sbp, eqn, opts)
+  end
+
+
+#  dofs1 = vec(mesh.dofs[:, :, 1])
+#  println("res_dot = ", real(res_dot))
+#  println("b = ", real(b))
+#  dofs5 = vec(mesh.dofs[:, :, 5])
+#  b = jac*q_dot
+#  println("diff = ", real(b - res_dot))
+#  println("\nb = ", real(b))
+#  println("\nres_dot = ", real(res_dot))
+#  println("diff1 = \n", real(b[dofs1] - res_dot[dofs1]))
+#  println("diff5 = \n", real(b[dofs5] - res_dot[dofs5]))
+#  println("max(b) = ", maximum(abs.(b)))
+#  println("max(res_dot) = ", maximum(abs.(res_dot)))
+#  println("maxdiff = ",  maximum(abs.(b - res_dot)))
+  @test maximum(abs.(b - res_dot)) < 1e-11
+
+  #println("b = \n", real(b))
+  #println("res_dot = \n", real(res_dot))
+  #println("q_dot = ", real(q_dot))
+  #println("full(A) = ", full(jac))
+  
+
+  if typeof(jac) <: PetscMat
+    matinfo = MatGetInfo(jac, PETSc2.MAT_LOCAL)
+#    if is_prealloc_exact
+      @test ( matinfo.nz_unneeded )== 0
+#    else
+#      @test  matinfo.nz_unneeded  > 0
+#    end
+  end
+
+
+  return nothing 
 end

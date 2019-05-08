@@ -6,7 +6,8 @@ using SolverCommon
 using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts
 using PdePumiInterface  # common mesh interface implementation - pumi
-using NonlinearSolvers
+#using NonlinearSolvers
+using Jacobian
 using LinearSolvers
 using Utils
 import ODLCommonTools.sview

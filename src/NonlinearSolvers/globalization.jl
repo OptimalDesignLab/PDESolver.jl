@@ -214,7 +214,7 @@ function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
         dof = mesh.dofs[k, j, i]
-        tau_vec[dof] = tau/(1 + sqrt(real(mesh.jac[j, i])))
+        tau_vec[dof] = tau/(1 + sqrt(real(mesh.jac[j, i])))  #TODO: should be |J|^1/dim
 #        tau_vec[dof] = tau
       end
     end
@@ -241,7 +241,6 @@ function updateEuler(lo::NewtonLinearObject)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
 
-  println(BSTDOUT, "typeof(lo) = ", typeof(lo))
   tau_l_old = lo.tau_l
   res_norm_i_1, res_norm_i = useEulerConstants(lo)
 

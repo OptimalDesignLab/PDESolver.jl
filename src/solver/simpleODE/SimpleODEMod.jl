@@ -7,7 +7,8 @@ import ArrayViews.view
 using ODLCommonTools
 using SummationByParts
 using PdePumiInterface
-using NonlinearSolvers
+using NonlinearSolvers  # need this because not using call_nlsolver
+using Jacobian
 using MPI
 using Utils
 using Input
