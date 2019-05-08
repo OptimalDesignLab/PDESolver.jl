@@ -31,8 +31,8 @@ global const PhysicsModDict = Dict{String, Tuple{Module, Function, Function}}()
    * mod:  the Module itself
 
    * _createObjects: function that creates the mesh, sbp, eqn, and opts
-                      objects. Must have a method with signature
-                      `_createObjects(opt::Dict)`
+                      objects. Must have a methods with signatures
+                      `_createObjects(opt::Dict)`  and
                       
                       If this physics modules supports solving on a submesh,
                       this function should also have a method
