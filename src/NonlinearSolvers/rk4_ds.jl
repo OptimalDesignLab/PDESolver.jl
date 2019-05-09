@@ -353,14 +353,17 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       for v_ix = 1:length(v_vec)
         v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
       end
+      #=
       fill!(R_stab, 0.0)
       for j = 1:length(q_vec)
         # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
         R_stab[j] = (q_vec[j] - old_q_vec[j])/(dt)
       end
+      =#      # VENERGY FIX
       fill!(v_energy, 0.0)
       for j = 1:length(q_vec)
-        v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+        # v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+        v_energy[j] = v_vec[j] * eqn.M[j] * v_vec[j]
       end
 
       if (i % output_freq) == 0
@@ -504,7 +507,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #     disassemble isn't getting called. but it shouldn't matter b/c DG
       # EulerEquationMod.evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
       evalFunctionalDeriv(mesh, sbp, eqn, opts, objective, term2)    # term2 is func_deriv_arr
-      println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  term2: ", vecnorm(term2), "  v_vec: ", vecnorm(v_vec))
+      # println(" >>>> i: ", i, "  quad_weight: ", quad_weight, "  term2: ", vecnorm(term2), "  v_vec: ", vecnorm(v_vec))
 
       # do the dot product of the two terms, and save
       fill!(term2_vec, 0.0)     # not sure this is necessary
@@ -515,6 +518,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # this accumulation occurs across all dofs and all time steps.
         term23 += quad_weight * term2_vec[v_ix] * v_vec[v_ix]
       end
+      #=
       println("-------------- term23 debugging ---------------")
       println(" i: ", i)
       println(" quad_weight: ", quad_weight)
@@ -523,6 +527,7 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       println(" term23: ", term23)
       # println("  term23 change: ", (term23 - old_term23)*1.0/dt)
       println("-----------------------------------------------")
+      =#
 
       #------------------------------------------------------------------------------
       # here is where we should be calculating the 'energy' to show that it is increasing over time
@@ -553,14 +558,17 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
       # end
       # RK4: the v_vec assignment is commented out because it should be set inside perturb_Ma just above
+      #=
       fill!(R_stab, 0.0)
       for j = 1:length(q_vec)
         # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
         R_stab[j] = (q_vec[j] - old_q_vec[j])/(dt)
       end
+      =#
       fill!(v_energy, 0.0)
       for j = 1:length(q_vec)
-        v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+        # v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
+        v_energy[j] = v_vec[j] * eqn.M[j] * v_vec[j]
       end
 
       if (i % output_freq) == 0
@@ -608,8 +616,6 @@ function rk4_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   if myrank == 0
     close(f1)
   end
-
-  flush(BSTDOUT)
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   @mpi_master begin
