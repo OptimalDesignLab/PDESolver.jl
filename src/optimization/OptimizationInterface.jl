@@ -13,6 +13,10 @@ using PdePumiInterface  # need write vtk files
 # steady_adjoint.jl
 export calcAdjoint
 
+# error_estimate.jl
+export doHAdaptation, solveAdaptive, AdaptOpts
+
 include("steady_adjoint.jl")
+include("error_estimate.jl")
 
 end  # end module

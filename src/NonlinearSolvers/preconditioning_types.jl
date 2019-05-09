@@ -171,6 +171,7 @@ function free(obj::NewtonBJacobiPC)
   # remove any references to the diagonal jacobian so the GC can free it
   etype = eltype(obj.diag_pc.diag_jac)
   obj.diag_pc.diag_jac = NullDiagJac
+
   obj.diag_pc.assem = NullAssembleDiagJacData(etype)
 end
 

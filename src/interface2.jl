@@ -556,4 +556,8 @@ function getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
 
   return disctype
 end
+# functions declared here but defined elsewhere
+function createSBPOperator
+end
+
 

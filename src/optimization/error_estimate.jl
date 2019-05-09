@@ -49,9 +49,74 @@ function AdaptOpts()
 
   # private options
   free_ls = false
+
+  return AdaptOpts(strategy, free_mesh, solve_itermax, element_limit,
+                   free_ls)
 end
 
 
+"""
+  Construct objects of degree p + 1
+"""
+function createEnrichedObjects(mesh::T, eqn, opts) where {T <: AbstractMesh}
+
+  opts_h = deepcopy(opts)
+  opts_h["order"] += 1
+
+  if opts_h["use_staggered_grid"]
+    error("staggered grids not supported for error estimation")
+  end
+
+  sbp_h, sbpface_h, shape_type, topo = createSBPOperator(opts_h, Float64, mesh.comm)
+
+  # call constructor for mesh
+  #mesh_h = T(mesh, sbp_h, opts_h, sbpface_h)
+  mesh_h = PumiMeshDG2(mesh, sbp_h, opts_h, sbpface_h)
+
+  # construct eqn object
+  mesh_h, sbp_h, eqn_h, opts_h, pmesh_h = createObjects(mesh_h, sbp_h, opts_h)
+
+  #TODO: need to copy any extra variables in params to new mesh (might be
+  #      needed for functional evaluation)
+  eqn_h.params.aoa = eqn.params.aoa
+  eqn_h.params.Ma = eqn.params.Ma
+  resize!(eqn_h.params.x_design, length(eqn.params.x_design))
+  copy!(eqn_h.params.x_design, eqn.params.x_design)
+
+  return mesh_h, sbp_h, eqn_h, opts_h
+end
+
+
+
+"""
+  Writes a visualization file with the error estimate.  The output file
+  is called "error_estimate".
+
+  **Inputs**
+
+   * mesh
+   * el_err: elementwise error estimate
+"""
+function writeErrorField(mesh, el_err::AbstractVector)
+
+  fshape_ptr = apf.getConstantShapePtr(mesh.dim)
+  f = apf.createPackedField(mesh, "error estimate", 1, fshape_ptr)
+
+  val = zeros(Float64, 1)
+  for i=1:mesh.numEl
+    val[1] = el_err[i]
+    apf.setComponents(f, mesh.elements[i], 0, val)
+  end
+
+  writeVisFiles(mesh, "error_estimate")
+
+  apf.destroyField(mesh, f)
+
+  return nothing
+end
+
+
+import NonlinearSolvers: NewtonBJacobiPC
 
 """
   Computes an adjoint-based error estimate and an estimate of each elements's
@@ -87,7 +152,7 @@ function calcErrorEstimate(adapt_opts::AdaptOpts, mesh::AbstractMesh,
 
   # compute adjoint on coarse space
   psi_H = zeros(Tres, mesh.numDof)
-  calcAdjoint(mesh, sbp, eqn, opts, ls, func psi_H; recalc_jac=true,
+  calcAdjoint(mesh, sbp, eqn, opts, ls, func, psi_H; recalc_jac=true,
               recalc_pc=true, start_comm=true)
   if adapt_opts.free_ls
     free(ls)
@@ -95,44 +160,45 @@ function calcErrorEstimate(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   end
 
   # construct objects on fine space
-  opts_h = deepcopy(opts)
-  opts_h["order"] += 1
-  #TODO: need to copy any extra variables in params to new mesh (might be
-  #      needed for functional evaluation)
-  #TODO: use the in-memory mesh as the basis for the degree+1 mesh, not the
-  #      one from disk
-  mesh_h, sbp_h, eqn_h, opts_h, pmesh_h = createObjects(opts_h)
-  eqn_h.params.aoa = eqn.params_h
-  resize!(eqn_h.params.x_design, length(eqn.params.x_design))
-  copy!(eqn_h.params.x_design, eqn.params.x_design)
+  mesh_h, sbp_h, eqn_h, opts_h = createEnrichedObjects(mesh, eqn, opts)
 
   # interpolate adjoint, solution to fine space
-  psi_h = zeros(Tres, mesh.numDof)
+  psi_h = zeros(Tres, mesh_h.numDof)
   interpField(mesh, sbp, eqn.q_vec, mesh_h, sbp_h, eqn_h.q_vec)
+  array1DTo3D(mesh_h, sbp_h, eqn_h, opts_h, eqn_h.q_vec, eqn_h.q)
   interpField(mesh, sbp, psi_H, mesh_h, sbp_h, psi_h)
 
 
   # smooth adjoint on fine space
   #TODO: verbose=false, res_tol < 0
-  pc = NewtonBJacobiPC(mesh_h, sbp_h, eqn_h, opts_h, itermax=5, verbose=true 
-  dJdu_h_arr = zeros(Tsol, mesh_h.numDofPerNode, mesh_h.numEl)
+  pc = NewtonBJacobiPC(mesh_h, sbp_h, eqn_h, opts_h, itermax=5, verbose=true) 
+  # this does parallel communication
+  calcPC(pc, mesh_h, sbp_h, eqn_h, opts_h, (evalResidual,), 0.0)
+
+  dJdu_h_arr = zeros(Tsol, mesh_h.numDofPerNode, mesh_h.numNodesPerElement,
+                           mesh_h.numEl)
   dJdu_h = zeros(Tsol, mesh_h.numDof)
-  evalFunctionalDeriv_q(mesh_h, sbp_h, eqn_h, opts_h, func, dJdu_h_arr)
+  evalFunctionalDeriv_q(mesh_h, sbp_h, eqn_h, opts_h, func, dJdu_h_arr,
+                        start_comm=false)
   array3DTo1D(mesh_h, sbp_h, eqn_h, opts_h, dJdu_h_arr, dJdu_h)
   scale!(dJdu_h, -1)  # the adjoint problem is dR/dq^T psi = -dJ/du
-  applyPCTranspose(pc, mesh, sbp, eqn, opts, 0.0, dJdu_h, psi_h)
+  applyPCTranspose(pc, mesh_h, sbp_h, eqn_h, opts_h, 0.0, dJdu_h, psi_h)
   free(pc)
 
   # compute residual on fine space
-  # parallel communication was done by evalFunctionalDeriv_q, so no need
-  # to do it here
+  # parallel communication was alredy done by calcPC()
   evalResidual(mesh_h, sbp_h, eqn_h, opts_h)
   array3DTo1D(mesh_h, sbp_h ,eqn_h, opts_h, eqn_h.res, eqn_h.res_vec)
 
   err, el_error = localizeErrorEstimate(mesh_h, sbp_h, eqn_h, opts_h,
-                                   eqn_h.res_vec, psi_h)
+                                        eqn_h.res_vec, psi_h)
 
+  println("estimated functional error = ", err)
   finalize(mesh_h)
+
+  if opts["write_error_estimate"]
+    writeErrorField(mesh, el_error)
+  end
 
   return err, el_error
 
@@ -219,7 +285,7 @@ function getTargetSizes(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   # likely leads to over-refinement
 
   err_target_el = err_target/mesh.numEl
-  rate::Int = convert(Int, opts["degree"] + 1)  # theoretical convergence rate
+  rate::Int = convert(Int, opts["order"] + 1)  # theoretical convergence rate
 
   if adapt_opts.strategy == 1
     for i=1:mesh.numEl
@@ -238,6 +304,29 @@ end
 
 import PdePumiInterface.adaptMesh
 
+
+"""
+  Wrapper for taking a new size field and adapting the mesh to it.
+  Constructs new `AbstractSolutionData` object
+
+  **Inputs**
+  
+   * adapt_opts: mesh adaptation options
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * el_sizes: vector of length `mesh.numEl` containing the new size for
+               each element.
+
+  **Outputs**
+
+   * newmesh
+   * newsbp
+   * neweqn
+   * newopts
+
+"""
 function adaptMesh(adapt_opts::AdaptOpts, mesh::AbstractMesh,
                    sbp::AbstractOperator,
                    eqn::AbstractSolutionData,
@@ -245,13 +334,17 @@ function adaptMesh(adapt_opts::AdaptOpts, mesh::AbstractMesh,
                    el_sizes::AbstractVector)
 
   #TODO: need options for mesh adaptation
+  #      The main thing we want is load balancing
 
-  # perform mesh adaptation
-  newmesh, q_new = adaptMesh(mesh, sbp, opts, el_sizes, eqn.q_vec, free_mesh=free_mesh)
+  # perform mesh adaptation (call PumiInterface function)
+  newmesh, q_new = adaptMesh(mesh, sbp, opts, el_sizes, eqn.q_vec,
+                             free_mesh=adapt_opts.free_mesh)
 
   # construct new objects
-  newmesh, newsbp, neweqn, newopts pmesh = createObjects(mesh, sbp, oldopts)
-  copy!(eqn.q_vec, q_new)
+  newopts = deepcopy(opts)
+  newmesh, newsbp, neweqn, newopts, pmesh = createObjects(newmesh, sbp,
+                                                          newopts)
+  copy!(neweqn.q_vec, q_new)
 
   # return new objects
   return newmesh, newsbp, neweqn, newopts
@@ -388,21 +481,21 @@ end
 function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
                        sbp::AbstractOperator, eqn::AbstractSolutionData,
                        opts,
-                       func::AbstratFunctional,
+                       func::AbstractFunctional,
                        err_target::Number)
-# we assume the PDE was *not* previously solved, unlike doHAdaptation
+  # we assume the PDE was *not* previously solved, unlike doHAdaptation
 
 
   # keep solving until tolerance met or some other criteria
   ic_orig = opts["IC_name"]
   exit_code = 1  # 1 = itermax, 0 = anything else
-  for i=1:adapt_opts.solve
+  for i=1:adapt_opts.solve_itermax
     
     solvePDE(mesh, sbp, eqn, opts)
     # for all future solves, use the previous solution
     opts["IC_name"] = "ICPassThrough"
 
-    mesh, sbp, eqn, opts, err = doHAdaptation(adapt_opts, mesh, sbp, eqn
+    mesh, sbp, eqn, opts, err = doHAdaptation(adapt_opts, mesh, sbp, eqn,
                                               opts, func, err_target)
 
     numel_global = MPI.Allreduce(mesh.numEl, MPI.SUM, eqn.comm)

@@ -32,7 +32,7 @@ function DiagJac(::Type{T}, blocksize::Integer, nblock::Integer) where T
   return DiagJac{T}(A)
 end
 
-const NullDiagJac = DiagJac(PetscScalar, 0, 0, 0)
+const NullDiagJac = DiagJac(PetscScalar, 0, 0)
 
 
 import Base: length, size, getindex, setindex!, show
@@ -260,8 +260,8 @@ function AssembleDiagJacData(mesh, sbp, eqn, opts, jac::DiagJac{T}) where T
   return AssembleDiagJacData{T}(jac)
 end
 
-function NullAssembleDiagJacData(::Type{T})
-  return AssembleDiagJacData{T}(DiagJac(T, 0, 0, 0))
+function NullAssembleDiagJacData(::Type{T}) where {T}
+  return AssembleDiagJacData{T}(DiagJac(T, 0, 0))
 end
 
 """

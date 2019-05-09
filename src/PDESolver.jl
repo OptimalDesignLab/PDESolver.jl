@@ -16,7 +16,8 @@ export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        _getSparsityPattern
 
 # from interface2.jl
-export createObjects, createLinearSolver, getSparsityPattern
+export createObjects, createLinearSolver, getSparsityPattern,
+       createSBPOperator
 
 # from startup_func
 export run_solver

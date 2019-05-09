@@ -489,3 +489,4 @@ function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
 
   error("Generic fallback for getSparsityPattern() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
 end
+
