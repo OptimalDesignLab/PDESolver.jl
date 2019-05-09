@@ -108,8 +108,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       #           new to the CN version of the complex step method (CSR: 'complex step residual')
       old_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn
       new_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn_nextstep
-      old_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn
-      new_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn_nextstep
+      println(BSTDOUT, " typeof(new_res_vec_Maimag): ", typeof(new_res_vec_Maimag))
+      # TODO: make sure we don't need old/new_q_vec_Ma_imag
+      # old_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn
+      # new_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn_nextstep
       res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
       # TODO: ensure all of these are being used when debugging complete; otherwise, cleanup
 
@@ -155,6 +157,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     istart = chkpointdata.i
     i_test = chkpointdata.i_test
     v_vec = chkpointdata.v_vec
+    new_res_vec_Maimag = chkpointdata.new_res_vec_Maimag
+    println(BSTDOUT, "\n >>>> Loaded checkpoint")
+    println(BSTDOUT, " istart: ", istart)
+    println(BSTDOUT, " i_test: ", i_test)
+    println(BSTDOUT, " vecnorm(v_vec): ", vecnorm(v_vec))
+    println(BSTDOUT, " vecnorm(new_res_vec_Maimag): ", vecnorm(new_res_vec_Maimag))
 
     #------------------------------------------------------------------------------
     # capture direct sensitivity at the IC
@@ -285,10 +293,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #------------------------------------------------------------------------------
   # ### Main timestepping loop ###
   #   this loop is 2:(t_steps+1) when not restarting
-  for i = istart:(t_steps + 1)
-
-    i_test = i_test+10
-    println(BSTDOUT, " CHECKPOINT TEST. i: ", i, " i_test: ", i_test)
+  for i = istart:(t_steps + 1) ########################################################################################################
 
     finaliter = calcFinalIter(t_steps, itermax)
 
@@ -306,20 +311,32 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     t = (i-2)*h
     if (i % opts["output_freq"]) == 0
-      @mpi_master println(BSTDOUT, " ")
-      @mpi_master println(BSTDOUT, "============== i = ", i, ", t = ", t, " ==============\n")
+      @mpi_master println(BSTDOUT, "\n============== i = ", i, ", t = ", t, " ==============\n")
+    end
+
+    if (i % output_freq) == 0
+      @mpi_master flush(BSTDOUT)
+      @mpi_master if opts["perturb_Ma_CN"]
+        flush(f_v_energy)
+      end
+      @mpi_master flush(f_i_test)
+      @mpi_master if opts["write_drag"]
+        flush(f_drag)
+      end
     end
 
     if use_checkpointing && i % chkpoint_freq == 0
       if skip_checkpoint
         skip_checkpoint = false
       else
+
         @mpi_master println(BSTDOUT, "Saving checkpoint at timestep ", i)
         skip_checkpoint = false
         # save all needed variables to the chkpointdata
         chkpointdata.i = i
         chkpointdata.i_test = i_test
         chkpointdata.v_vec = v_vec
+        chkpointdata.new_res_vec_Maimag = new_res_vec_Maimag
 
         if countFreeCheckpoints(chkpointer) == 0
           freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
@@ -372,8 +389,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       doRecalculation(recalc_policy, i,
                     ls, mesh, sbp, eqn_nextstep, opts, ctx_residual, t_nextstep)
 
-      # println(BSTDOUT, " Calling newtonInner from CN.")
-      flush(BSTDOUT)
       newtonInner(newton_data, mesh, sbp, eqn_nextstep, opts, cnRhs, ls, 
                   rhs_vec, ctx_residual, t_nextstep)
 
@@ -387,7 +402,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
     # print(BSTDOUT, " majorIterationCallback called.")
     # println(BSTDOUT, " ")
-    flush(BSTDOUT)
+    # flush(BSTDOUT)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # TODO: stabilization in newtonInner
@@ -422,11 +437,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if opts["perturb_Ma_CN"]
 
       # ctx_residual: f, eqn, h, newton_data
-      flush(BSTDOUT)
 
       if i != 1     # can't do F(q^(n+1)) + F(q^(n)) until we have both
 
         # Store both q_vec's & both res_vec's. Will be put back after all DS calcs.
+        # TODO: do we need all of these?
         for ix_dof = 1:mesh.numDof
           beforeDS_eqn_q_vec[ix_dof] = eqn.q_vec[ix_dof]
           beforeDS_eqn_nextstep_q_vec[ix_dof] = eqn_nextstep.q_vec[ix_dof]
@@ -452,10 +467,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         for ix_dof = 1:mesh.numDof
           # store F(q^(n)): it was calculated as F(q^(n+1)) during the last time step
           old_res_vec_Maimag[ix_dof] = new_res_vec_Maimag[ix_dof]         # F(q^(n)) -- with Ma perturbation
-          old_q_vec_Maimag[ix_dof] = new_q_vec_Maimag[ix_dof]             # q^(n) -- with Ma perturbation
+          # old_q_vec_Maimag[ix_dof] = new_q_vec_Maimag[ix_dof]             # q^(n) -- with Ma perturbation   # TODO: verify not needed
 
           new_res_vec_Maimag[ix_dof] = eqn_nextstep.res_vec[ix_dof]       # F(q^(n+1)) -- with Ma perturbation
-          new_q_vec_Maimag[ix_dof] = eqn_nextstep.q_vec[ix_dof]           # q^(n+1) -- with Ma perturbation
+          # new_q_vec_Maimag[ix_dof] = eqn_nextstep.q_vec[ix_dof]           # q^(n+1) -- with Ma perturbation   # TODO: verify not needed
 
           # Form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
           # Note: q^(n+1) and q^(n) should have no imaginary component. Therefore,
@@ -468,6 +483,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
         end
+
         # DUPEDEBUG
         #=
         println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
@@ -494,7 +510,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         for ix_dof = 1:mesh.numDof
           dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
         end
-        # println(BSTDOUT, " vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
+        # println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
 
         # eqn.params.Ma -= pert
         eqn_nextstep.params.Ma -= pert
@@ -530,6 +546,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
+        # println(BSTDOUT, "  vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
 
         # Here was scratch content 1
 
@@ -554,7 +571,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
         # println(BSTDOUT, "  Now updating linear operator.")
-        flush(BSTDOUT)
+
         # typeof(ls_ds): LinearSolvers.StandardLinearSolver{NonlinearSolvers.CNMatPC,NonlinearSolvers.CNPetscMatLO}
         # typeof(ls_ds.lo): NonlinearSolvers.CNPetscMatLO
         # typeof(ls_ds.lo.lo_inner): NonlinearSolvers.NewtonPetscMatLO
@@ -791,17 +808,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         v_energy_norm = calcNorm(eqn, v_energy)
 
-        @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm))
-        @mpi_master println(f_i_test, i, "  ", i_test)
-        if (i % output_freq) == 0
-          @mpi_master flush(f_v_energy)
-          @mpi_master flush(f_i_test)
-        end
-
-      end
+      end   # end of if opts["write_L2vnorm"]
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    end   # end of opts["perturb_Ma_CN"]
+    end   # end of if opts["perturb_Ma_CN"]
+
+    # This needs to be above the checkpoint write, in case the checkpoint is written before the 
+    #   files are flushed. This would cause a gap in the data files.
+    @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm))
+    @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # End direct sensitivity calc's for each time step
@@ -823,8 +838,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     end
 
     array1DTo3D(mesh, sbp, eqn_nextstep, opts, eqn_nextstep.q_vec, eqn_nextstep.q)
-
-    flush(BSTDOUT)
 
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -853,6 +866,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
       break       # EXIT condition
     end
+
+    i_test = i_test+10
 
   end   # end of t step loop
 

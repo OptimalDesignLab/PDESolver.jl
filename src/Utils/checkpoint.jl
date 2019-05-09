@@ -378,6 +378,15 @@ function saveCheckpoint(checkpointer::Checkpointer, checkpoint::Int,
     writeCheckpointer(checkpointer, checkpoint)
   end
 
+  ### File flushing should occur here to ensure that no gaps exist in the data files
+  if :file_dict in fieldnames(typeof(eqn))
+    for f in values(eqn.file_dict)
+      if isopen(f)
+        flush(f)
+      end
+    end
+  end
+
   # wait for all processes to finish writing
   MPI.Barrier(mesh.comm)
 
