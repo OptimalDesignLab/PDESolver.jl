@@ -171,7 +171,7 @@ function calcErrorEstimate(adapt_opts::AdaptOpts, mesh::AbstractMesh,
 
   # smooth adjoint on fine space
   #TODO: verbose=false, res_tol < 0
-  pc = NewtonBJacobiPC(mesh_h, sbp_h, eqn_h, opts_h, itermax=5, verbose=true) 
+  pc = NewtonBJacobiPC(mesh_h, sbp_h, eqn_h, opts_h, itermax=500, verbose=true, res_tol=1e-8) 
   # this does parallel communication
   calcPC(pc, mesh_h, sbp_h, eqn_h, opts_h, (evalResidual,), 0.0)
 
@@ -495,8 +495,16 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
     # for all future solves, use the previous solution
     opts["IC_name"] = "ICPassThrough"
 
+    old_numEl = mesh.numEl
     mesh, sbp, eqn, opts, err = doHAdaptation(adapt_opts, mesh, sbp, eqn,
                                               opts, func, err_target)
+
+    println("\n\nOn iteration ", i, ", error estimate = ", err, ", numEl = ", old_numEl)
+
+    #TESTING
+    J = evalFunctional(mesh, sbp, eqn, opts, func)
+    J_exact = -1/1.4
+    println(BSTDOUT, "J = ", J, ", J_exact = ", J_exact, ", err = ", J - J_exact)
 
     numel_global = MPI.Allreduce(mesh.numEl, MPI.SUM, eqn.comm)
     if err < err_target
@@ -505,7 +513,7 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
       break
     end
 
-    if numel_global > adapt_opts.element_limit
+    if numel_global > adapt_opts.el_limit
       println(BSTDOUT, "solveAdaptive exiting due to element limit.  Number of elements = ", numel_global, " > ", adapt_opts.element_limit)
       exit_code = 0
       break

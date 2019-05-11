@@ -9,6 +9,7 @@ using Utils
 using LinearSolvers
 using NonlinearSolvers  # need jacobian calculation function  # unneded?
 using PdePumiInterface  # need write vtk files
+using MPI
 
 # steady_adjoint.jl
 export calcAdjoint
