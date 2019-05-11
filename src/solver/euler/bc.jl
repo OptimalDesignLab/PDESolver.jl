@@ -804,7 +804,8 @@ function (obj::noPenetrationESBC)(params::ParamType2,
   qg[3] = -2*Unrm*ny + q[3]
   qg[4] = q[4]
 
-  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+  #calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+  calcHLLFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
 
   return nothing
 end

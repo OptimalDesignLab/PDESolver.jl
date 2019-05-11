@@ -417,8 +417,7 @@ function updateTolerances(hdata::HomotopyData, opts)
     newton_data.itermax = opts["itermax"]
   else  # normal iteration
     reltol = krylov_reltol0  # reset in case Newton did inexact Newton-Krylov
-    abstol = -1.0
-     
+    abstol = -1.0 
   end
 
   if changed_tols
