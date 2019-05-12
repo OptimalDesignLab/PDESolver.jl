@@ -450,8 +450,11 @@ function calcSAT_diff(params::ParamType{2},
   # dq_dotL* = 1, dq_dotR* = -1, so don't pass them explicitly
 
   # SAT parameters
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   tau = 1.0
 
   u = roe_vars[1]
@@ -1221,8 +1224,11 @@ end  # End function calcSAT
   # dq_dotL* = 1, dq_dotR* = -1, so don't pass them explicitly
 
   # SAT parameters
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   tau = 1.0
 
   u = roe_vars[1]

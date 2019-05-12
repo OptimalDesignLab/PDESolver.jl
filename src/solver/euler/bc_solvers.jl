@@ -228,8 +228,11 @@ function RoeSolver(params::ParamType{3},
 #  sgn = -1.0
   gamma = params.gamma
   gami = params.gamma_1
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   sat_fac = 1  # multiplier for SAT term
 
   # Begin main executuion
@@ -310,8 +313,11 @@ function RoeSolver_revm(params::ParamType{3},
   gamma = params.gamma
   gami = params.gamma_1
 
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   sat_fac = 1  # multiplier for SAT term
 
   # Begin main executuion
@@ -582,8 +588,11 @@ function calcSAT(params::ParamType{2},
 # roe_vars = [u, v, H] at Roe average 
 
   # SAT parameters
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   tau = 1.0
 
   u = roe_vars[1]
@@ -688,8 +697,11 @@ function calcSAT(params::ParamType{3},
   # roe_vars = [u, v, w, H] at Roe average 
 
   # SAT parameters
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   tau = 1.0
 
   u = roe_vars[1]
@@ -819,8 +831,11 @@ function calcSAT_revm(params::ParamType{2}, nrm::AbstractArray{Tmsh,1},
           nrm_bar::AbstractArray{Tmsh,1}) where {Tmsh, Tsol}
 
   # Forward Sweep
-  sat_Vn = convert(Tsol, 0.025)
-  sat_Vl = convert(Tsol, 0.025)
+  # SATVNVLMOD
+  # sat_Vn = convert(Tsol, 0.025)
+  # sat_Vl = convert(Tsol, 0.025)
+  sat_Vn = convert(Tsol, 0.5)
+  sat_Vl = convert(Tsol, 0.5)
   u = vel[1]
   v = vel[2]
   gami = params.gamma_1
