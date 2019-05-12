@@ -60,4 +60,4 @@ function test_interp()
 end
 
 
-add_func1!(EulerTests, test_interp, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_interp, [TAG_SHORTTEST])

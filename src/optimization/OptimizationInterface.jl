@@ -15,7 +15,7 @@ using MPI
 export calcAdjoint
 
 # error_estimate.jl
-export doHAdaptation, solveAdaptive, AdaptOpts
+export doHAdaptation, solveAdaptive, calcErrorEstimate, AdaptOpts
 
 include("steady_adjoint.jl")
 include("error_estimate.jl")

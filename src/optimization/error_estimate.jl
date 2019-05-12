@@ -162,17 +162,20 @@ function calcErrorEstimate(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   # construct objects on fine space
   mesh_h, sbp_h, eqn_h, opts_h = createEnrichedObjects(mesh, eqn, opts)
 
+  
   # interpolate adjoint, solution to fine space
   psi_h = zeros(Tres, mesh_h.numDof)
   interpField(mesh, sbp, eqn.q_vec, mesh_h, sbp_h, eqn_h.q_vec)
   array1DTo3D(mesh_h, sbp_h, eqn_h, opts_h, eqn_h.q_vec, eqn_h.q)
   interpField(mesh, sbp, psi_H, mesh_h, sbp_h, psi_h)
 
+  # start parallel communication
+  setParallelData(eqn_h.shared_data, opts["parallel_data"])
+  startSolutionExchange(mesh_h, sbp_h, eqn_h, opts_h)
 
   # smooth adjoint on fine space
   #TODO: verbose=false, res_tol < 0
-  pc = NewtonBJacobiPC(mesh_h, sbp_h, eqn_h, opts_h, itermax=500, verbose=true, res_tol=1e-8) 
-  # this does parallel communication
+  pc = NewtonBJacobiPC(mesh_h, sbp_h, eqn_h, opts_h, itermax=5, verbose=true, res_tol=1e-8) 
   calcPC(pc, mesh_h, sbp_h, eqn_h, opts_h, (evalResidual,), 0.0)
 
   dJdu_h_arr = zeros(Tsol, mesh_h.numDofPerNode, mesh_h.numNodesPerElement,
@@ -193,7 +196,6 @@ function calcErrorEstimate(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   err, el_error = localizeErrorEstimate(mesh_h, sbp_h, eqn_h, opts_h,
                                         eqn_h.res_vec, psi_h)
 
-  println("estimated functional error = ", err)
   finalize(mesh_h)
 
   if opts["write_error_estimate"]
@@ -232,8 +234,9 @@ function localizeErrorEstimate(mesh::AbstractMesh,
   # compute \sum | psi_j R_j |
   err = zero(Float64)
   @simd for i=1:length(R_h)
-    err += real(abs(R_h[i]*psi_h[i]))
+    err += real(R_h[i]*psi_h[i])
   end
+  err = MPI.Allreduce(abs(err), MPI.SUM, eqn.comm)
 
   el_error = zeros(Float64, mesh.numEl)
   for i=1:mesh.numEl
@@ -350,6 +353,47 @@ function adaptMesh(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   return newmesh, newsbp, neweqn, newopts
 
 end
+
+
+#------------------------------------------------------------------------------
+# Interface functions
+
+"""
+  Computes an error estimate for the given functional.
+
+  The PDE should have been solved before calling this function.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * func: the `AbstractFunctional`
+
+  **Outputs**
+
+   * err: the estimated functional error
+   * el_error: the estimated contribution of each element to `err`
+"""
+function calcErrorEstimate(mesh::AbstractMesh,
+                       sbp::AbstractOperator,
+                       eqn::AbstractSolutionData,
+                       opts,
+                       func::AbstractFunctional)
+
+  # make Newton linear solver
+  adapt_opts = AdaptOpts()
+
+  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+  adapt_opts.free_ls = true
+
+  # call other method
+  return calcErrorEstimate(adapt_opts, mesh, sbp, eqn, opts, func, ls)
+end
+
+
 
 """
   Does one round of h-adaptation, using an adjoint-based error estimate.

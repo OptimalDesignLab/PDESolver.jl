@@ -412,6 +412,7 @@ function test_jac_terms_long()
 
     println("testing mode 6")
     test_jac_general(mesh6, sbp6, eqn6, opts6)
+    test_diagjac(mesh6, sbp6, eqn6, opts6)
  
     println("testing mode 7")
     test_jac_general(mesh7, sbp7, eqn7, opts7)
@@ -623,7 +624,7 @@ function test_jac_terms_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------

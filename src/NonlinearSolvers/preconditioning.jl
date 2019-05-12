@@ -248,7 +248,7 @@ function applyPC(pc::NewtonBJacobiPC, mesh::AbstractMesh, sbp::AbstractOperator,
     @simd for j=1:length(t1)
       t1[j] = b[j] - t1[j]
     end
-
+    
     if pc.res_tol > 0 || pc.verbose  # save the expense of the mat-vec if residual will
                        # not be checked
       # compute residual: b - A*x = t1 - D*x
@@ -303,7 +303,7 @@ end
 
 
 """
-  Multiply R (= A - D, where A is the Jacobian and D is the block diagonal), by
+  Multiply R (= A - D), where A is the Jacobian and D is the block diagonal), by
   a vector.
 
   **Inputs**
@@ -321,7 +321,7 @@ end
 
   **Inputs/Outputs**
 
-   * trans: if true, compute A.'x, default false
+   * trans: if true, compute R.'x, default false
 """
 function computeRProduct(pc::NewtonBJacobiPC, mesh, sbp, eqn, opts, x, b; trans::Bool=false)
 
