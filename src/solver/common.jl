@@ -223,6 +223,9 @@ function getDataTypes(opts::Dict)
   return Tmsh, Tsbp, Tsol, Tres
 end
 
+
+import PDESolver.createSBPOperator
+
 """
   This function constructs the SBP operator and the associated SBP face
   operator, as specified by the options dictionary.  It also determines

@@ -22,7 +22,8 @@ export _AssembleElementData, assembleElement, assembleInterface,
        NullAssembleElementData, calcJacCol
 
 # jacobian_diag.jl
-export DiagJac, diagMatVec, AssembleDiagJacData
+export DiagJac, diagMatVec, AssembleDiagJacData, NullDiagJac,
+       NullAssembleDiagJacData
 
 # experimental stuff
 export filterDiagJac, removeUnstableModes!, findStablePerturbation!
