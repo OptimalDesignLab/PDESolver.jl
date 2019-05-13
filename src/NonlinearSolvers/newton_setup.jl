@@ -410,17 +410,9 @@ function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractOperator,
 
 
   pc_inner = PetscMatPC(mesh, sbp, eqn, opts)
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
+  idata = ImplicitEulerData(mesh, opts)
 
-
-  return NewtonMatPC(pc_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonMatPC(pc_inner, idata)
 end
 
 function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
