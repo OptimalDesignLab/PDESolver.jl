@@ -601,11 +601,7 @@ function createEnrichedObjects(mesh::T, sbp, eqn, opts) where {T <: AbstractMesh
 
   #TODO: need to copy any extra variables in params to new mesh (might be
   #      needed for functional evaluation)
-  eqn_h.params.aoa = eqn.params.aoa
-  eqn_h.params.Ma = eqn.params.Ma
-  resize!(eqn_h.params.x_design, length(eqn.params.x_design))
-  copy!(eqn_h.params.x_design, eqn.params.x_design)
-
+  copyParameters(eqn, eqn_h)
   return mesh_h, sbp_h, eqn_h, opts_h
 end
 

@@ -888,3 +888,61 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
 
   return nothing
 end
+
+import PDESolver: copyParameters
+
+function copyParameters(eqn_old::EulerData, eqn_new::EulerData)
+
+  copyParameters(eqn_old.params, eqn_new.params)
+  copyParameters(eqn_old.params_complex, eqn_new.params_complex)
+  copyParameters(eqn_old.params_conservative, eqn_new.params_conservative)
+  copyParameters(eqn_old.params_entropy, eqn_new.params_entropy)
+end
+
+
+function copyParameters(params_old::ParamType, params_new::ParamType)
+
+   params_new.h = params_old.h
+  params_new.cv = params_old.cv
+  params_new.R = params_old.R
+  params_new.R_ND = params_old.R_ND
+  params_new.gamma = params_old.gamma
+  params_new.gamma_1 = params_old.gamma_1
+
+  params_new.Ma = params_old.Ma
+
+  params_new.aoa = params_old.aoa
+  params_new.sideslip_angle = params_old.aoa
+  params_new.rho_free = params_old.rho_free
+  params_new.p_free = params_old.p_free
+  params_new.T_free = params_old.T_free
+  params_new.E_free = params_old.E_free
+  params_new.a_free = params_old.a_free
+
+  params_new.edgestab_gamma = params_old.edgestab_gamma
+
+  # debugging options
+  params_new.writeflux = params_old.writeflux
+  params_new.writeboundary = params_old.writeboundary
+  params_new.writeq = params_old.writeq
+  params_new.use_edgestab = params_old.use_edgestab
+  params_new.use_filter = params_old.use_filter
+  params_new.use_res_filter = params_old.use_res_filter
+
+  params_new.use_dissipation = params_old.use_dissipation
+  params_new.dissipation_const = params_old.dissipation_const
+
+  params_new.tau_type = params_old.tau_type
+
+  params_new.use_Minv = params_old.use_Minv
+  params_new.vortex_x0 = params_old.vortex_x0
+  params_new.vortex_strength = params_old.vortex_strength
+
+  resize!(params_new.x_design, length(params_old.x_design))
+  copy!(params_new.x_design, params_old.x_design)
+
+
+  return nothing
+end
+
+

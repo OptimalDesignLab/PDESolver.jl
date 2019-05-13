@@ -566,3 +566,23 @@ function createShockSensor(mesh::AbstractMesh, sbp::AbstractOperator,
 
   error("Generic fallback for createShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
 end
+
+
+
+"""
+  Copies parameters (Mach number, angle of attack, etc.) from one `eqn` object
+  to another`.  
+
+  **Inputs**
+
+   * eqn_old
+
+  **Inputs/Outputs**
+
+   * eqn_new
+"""
+function copyParameters(eqn_old::AbstractSolutionData, eqn_new::AbstractSolutionData)
+
+  error("Generic fallback for copyParameters() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end

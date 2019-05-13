@@ -289,3 +289,22 @@ function getAllTypeParams(mesh::AbstractMesh{Tmsh}, eqn::AdvectionData_{Tsol, Tr
 
   return tuple
 end
+
+import PDESolver: copyParameters
+
+function copyParameters(eqn_old::AdvectionData, eqn_new::AdvectionData)
+
+  eqn_new.params.LFalpha = eqn_old.params.LFalpha
+  eqn_new.alpha_x = eqn_old.alpha_x
+  eqn_new.params.alpha_y = eqn_old.params.alpha_y
+  eqn_new.params.alpha_z = eqn_old.params.alpha_z
+  eqn_new.params.sin_amplitude = eqn_old.params.sin_amplitude
+  eqn_new.params.omega = eqn_old.params.omega
+
+  resize!(eqn_new.params.x_design, length(eqn_old.params.x_design))
+  copy!(eqn_new.params.x_design, eqn_old.params.x_design)
+
+  return nothing
+end
+
+

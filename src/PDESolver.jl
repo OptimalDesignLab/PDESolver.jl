@@ -14,7 +14,7 @@ export evalResidual, evalJacobian, evalHomotopy, evalHomotopyJacobian,
        updateMetricDependents,
        solvePDE, evalResidual_revm, evalResidual_revq, evaldRdqProduct,
        _getSparsityPattern, getShockSensor, setShockSensor, setShockSensorAlpha,
-       createShockSensor
+       createShockSensor, copyParameters
 
 # from interface2.jl
 export createObjects, createLinearSolver, getSparsityPattern,
