@@ -86,7 +86,7 @@ function physicsJac(mesh, sbp, eqn, opts, jac::AbstractMatrix,
     pert = epsilon
   elseif jac_method == 2  # complex step
     pert = complex(0, epsilon)
-    removeComplex(mesh, sbp, eqn, opts)
+    # removeComplex(mesh, sbp, eqn, opts)       # commented out for cplx_PETSc
   end
 
   # ctx_residual: func must be the first element
@@ -829,7 +829,8 @@ function assembleElement(helper::_AssembleElementData, mesh::AbstractMesh,
       # get values
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
-          helper.vals[i, j] = real(jac[i, j, p, q])
+          # helper.vals[i, j] = real(jac[i, j, p, q])
+          helper.vals[i, j] = jac[i, j, p, q]
         end
       end
 
@@ -916,7 +917,8 @@ function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractM
             i_idx = i + (q-1)*numDofPerNode
             @simd for j=1:numDofPerNode
               j_idx = j + (p-1)*numDofPerNode
-              helper.vals_b[j_idx, i_idx] = real(jac[j, i, xoffset + p , yoffset + q])
+              # helper.vals_b[j_idx, i_idx] = real(jac[j, i, xoffset + p , yoffset + q])
+              helper.vals_b[j_idx, i_idx] = jac[j, i, xoffset + p , yoffset + q]
             end
           end
         end
@@ -943,7 +945,8 @@ function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractM
       # get values
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
-          helper.vals[i, j] = real(jac[i, j, p, q])
+          # helper.vals[i, j] = real(jac[i, j, p, q])
+          helper.vals[i, j] = jac[i, j, p, q]
         end
       end
 
@@ -964,7 +967,8 @@ function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractM
 
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
-          helper.vals[i, j] = real(jac[i, j, p, q])
+          # helper.vals[i, j] = real(jac[i, j, p, q])
+          helper.vals[i, j] = jac[i, j, p, q]
         end
       end
 
@@ -1039,10 +1043,14 @@ function assembleInterface(helper::_AssembleElementData,
       # put values into 2 x 2 block matrix
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
-          helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
-          helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
-          helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
-          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+          # helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+          # helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+          # helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+          # helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+          helper.vals_i[i,                 j]                 = jacLL[i, j, pL, qL]
+          helper.vals_i[i + numDofPerNode, j]                 = jacRL[i, j, pR, qL]
+          helper.vals_i[i,                 j + numDofPerNode] = jacLR[i, j, pL, qR]
+          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = jacRR[i, j, pR, qR]
         end
       end
 
@@ -1090,10 +1098,14 @@ function assembleInterface(helper::_AssembleElementData,
     # put values into 2 x 2 block matrix
     @simd for j=1:numDofPerNode
       @simd for i=1:numDofPerNode
-        helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
-        helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
-        helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
-        helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+        # helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+        # helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+        # helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+        # helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+        helper.vals_i[i,                 j]                 = jacLL[i, j, pL, qL]
+        helper.vals_i[i + numDofPerNode, j]                 = jacRL[i, j, pR, qL]
+        helper.vals_i[i,                 j + numDofPerNode] = jacLR[i, j, pL, qR]
+        helper.vals_i[i + numDofPerNode, j + numDofPerNode] = jacRR[i, j, pR, qR]
       end
     end
 
@@ -1145,10 +1157,14 @@ function assembleInterface(helper::_AssembleElementData{PetscMat},
       # put values into 2 x 2 block matrix
       @simd for j=1:numDofPerNode
         @simd for i=1:numDofPerNode
-          helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
-          helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
-          helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
-          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+          # helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+          # helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+          # helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+          # helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+          helper.vals_i[i,                 j]                 = jacLL[i, j, pL, qL]
+          helper.vals_i[i + numDofPerNode, j]                 = jacRL[i, j, pR, qL]
+          helper.vals_i[i,                 j + numDofPerNode] = jacLR[i, j, pL, qR]
+          helper.vals_i[i + numDofPerNode, j + numDofPerNode] = jacRR[i, j, pR, qR]
         end
       end
 
@@ -1199,10 +1215,14 @@ function assembleInterface(helper::_AssembleElementData{PetscMat},
     # put values into 2 x 2 block matrix
     @simd for j=1:numDofPerNode
       @simd for i=1:numDofPerNode
-        helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
-        helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
-        helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
-        helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+        # helper.vals_i[i,                 j]                 = real(jacLL[i, j, pL, qL])
+        # helper.vals_i[i + numDofPerNode, j]                 = real(jacRL[i, j, pR, qL])
+        # helper.vals_i[i,                 j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+        # helper.vals_i[i + numDofPerNode, j + numDofPerNode] = real(jacRR[i, j, pR, qR])
+        helper.vals_i[i,                 j]                 = jacLL[i, j, pL, qL]
+        helper.vals_i[i + numDofPerNode, j]                 = jacRL[i, j, pR, qL]
+        helper.vals_i[i,                 j + numDofPerNode] = jacLR[i, j, pL, qR]
+        helper.vals_i[i + numDofPerNode, j + numDofPerNode] = jacRR[i, j, pR, qR]
       end
     end
 
@@ -1258,8 +1278,10 @@ function assembleSharedFace(helper::_AssembleElementData{PetscMat}, sbpface::Den
       # put values into 2 x 2 block matrix
       for j=1:numDofPerNode
         for i=1:numDofPerNode
-          helper.vals_sf[i, j]                 = real(jacLL[i, j, pL, qL])
-          helper.vals_sf[i, j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+          # helper.vals_sf[i, j]                 = real(jacLL[i, j, pL, qL])
+          # helper.vals_sf[i, j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+          helper.vals_sf[i, j]                 = jacLL[i, j, pL, qL]
+          helper.vals_sf[i, j + numDofPerNode] = jacLR[i, j, pL, qR]
         end
       end
 
@@ -1301,8 +1323,10 @@ function assembleSharedFace(helper::_AssembleElementData{PetscMat}, sbpface::Spa
     # put values into 2 x 2 block matrix
     for j=1:numDofPerNode
       for i=1:numDofPerNode
-        helper.vals_sf[i, j]                 = real(jacLL[i, j, pL, qL])
-        helper.vals_sf[i, j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+        # helper.vals_sf[i, j]                 = real(jacLL[i, j, pL, qL])
+        # helper.vals_sf[i, j + numDofPerNode] = real(jacLR[i, j, pL, qR])
+        helper.vals_sf[i, j]                 = jacLL[i, j, pL, qL]
+        helper.vals_sf[i, j + numDofPerNode] = jacLR[i, j, pL, qR]
       end
     end
 
@@ -1358,7 +1382,8 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::DenseFace,
       # get values
       for j=1:numDofPerNode
         for i=1:numDofPerNode
-          helper.vals[i, j] = real(jac[i, j, pL, qL])
+          # helper.vals[i, j] = real(jac[i, j, pL, qL])
+          helper.vals[i, j] = jac[i, j, pL, qL]
         end
       end
 
@@ -1393,7 +1418,8 @@ function assembleBoundary(helper::_AssembleElementData, sbpface::SparseFace,
     # get values
     for j=1:numDofPerNode
       for i=1:numDofPerNode
-        helper.vals[i, j] = real(jac[i, j, pL, qL])
+        # helper.vals[i, j] = real(jac[i, j, pL, qL])
+        helper.vals[i, j] = jac[i, j, pL, qL]
       end
     end
 
