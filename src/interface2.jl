@@ -561,3 +561,52 @@ function createSBPOperator
 end
 
 
+"""
+  Construct objects of degree p + 1
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+
+  **Outputs**
+
+   * newmesh: new mesh, using the same underlying apf::Mesh as `mesh`
+   * newsbp: degree p + 1 SBP operator
+   * neweqn: new `eqn` object with solution interpolated from `eqn.q_vec`
+   * newopts: new options dictionary (copy of `opts`)
+"""
+function createEnrichedObjects(mesh::T, sbp, eqn, opts) where {T <: AbstractMesh}
+
+  opts_h = deepcopy(opts)
+  opts_h["order"] += 1
+
+  if opts_h["use_staggered_grid"]
+    error("staggered grids not supported for error estimation")
+  end
+
+  sbp_h, sbpface_h, shape_type, topo = createSBPOperator(opts_h, Float64, mesh.comm)
+
+  # call constructor for mesh
+  mesh_h = copy_mesh(mesh, sbp_h, opts_h, sbpface_h)
+
+  # construct eqn object
+  mesh_h, sbp_h, eqn_h, opts_h, pmesh_h = createObjects(mesh_h, sbp_h, opts_h)
+
+  # interpolate field
+  interpField(mesh, sbp, eqn.q_vec, mesh_h, sbp_h, eqn_h.q_vec)
+  array1DTo3D(mesh_h, sbp_h, eqn_h, opts_h, eqn_h.q_vec, eqn_h.q)
+
+  #TODO: need to copy any extra variables in params to new mesh (might be
+  #      needed for functional evaluation)
+  eqn_h.params.aoa = eqn.params.aoa
+  eqn_h.params.Ma = eqn.params.Ma
+  resize!(eqn_h.params.x_design, length(eqn.params.x_design))
+  copy!(eqn_h.params.x_design, eqn.params.x_design)
+
+  return mesh_h, sbp_h, eqn_h, opts_h
+end
+
+

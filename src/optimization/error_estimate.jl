@@ -56,39 +56,6 @@ end
 
 
 """
-  Construct objects of degree p + 1
-"""
-function createEnrichedObjects(mesh::T, eqn, opts) where {T <: AbstractMesh}
-
-  opts_h = deepcopy(opts)
-  opts_h["order"] += 1
-
-  if opts_h["use_staggered_grid"]
-    error("staggered grids not supported for error estimation")
-  end
-
-  sbp_h, sbpface_h, shape_type, topo = createSBPOperator(opts_h, Float64, mesh.comm)
-
-  # call constructor for mesh
-  #mesh_h = T(mesh, sbp_h, opts_h, sbpface_h)
-  mesh_h = PumiMeshDG2(mesh, sbp_h, opts_h, sbpface_h)
-
-  # construct eqn object
-  mesh_h, sbp_h, eqn_h, opts_h, pmesh_h = createObjects(mesh_h, sbp_h, opts_h)
-
-  #TODO: need to copy any extra variables in params to new mesh (might be
-  #      needed for functional evaluation)
-  eqn_h.params.aoa = eqn.params.aoa
-  eqn_h.params.Ma = eqn.params.Ma
-  resize!(eqn_h.params.x_design, length(eqn.params.x_design))
-  copy!(eqn_h.params.x_design, eqn.params.x_design)
-
-  return mesh_h, sbp_h, eqn_h, opts_h
-end
-
-
-
-"""
   Writes a visualization file with the error estimate.  The output file
   is called "error_estimate".
 
@@ -160,13 +127,11 @@ function calcErrorEstimate(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   end
 
   # construct objects on fine space
-  mesh_h, sbp_h, eqn_h, opts_h = createEnrichedObjects(mesh, eqn, opts)
+  mesh_h, sbp_h, eqn_h, opts_h = createEnrichedObjects(mesh, sbp, eqn, opts)
 
   
   # interpolate adjoint, solution to fine space
   psi_h = zeros(Tres, mesh_h.numDof)
-  interpField(mesh, sbp, eqn.q_vec, mesh_h, sbp_h, eqn_h.q_vec)
-  array1DTo3D(mesh_h, sbp_h, eqn_h, opts_h, eqn_h.q_vec, eqn_h.q)
   interpField(mesh, sbp, psi_H, mesh_h, sbp_h, psi_h)
 
   # start parallel communication
