@@ -172,7 +172,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   =#
   time::Timings
 
-  function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer) where {Tdim, var_type, Tsol, Tres, Tmsh} 
+  function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer; open_file::Bool=true) where {Tdim, var_type, Tsol, Tres, Tmsh} 
   # create values, apply defaults
 
     # all the spatial computations happen on the *flux* grid when using
@@ -190,8 +190,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
     t = 0.0
     myrank = mesh.myrank
-    #TODO: don't open a file in non-debug mode
-    if DB_LEVEL >= 1
+    if DB_LEVEL >= 1 && open_file
       f = BufferedIO("log_$myrank.dat", "w")
     else
       f = BufferedIO(DevNull)
@@ -530,7 +529,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
                                        mesh, sbp, opts, mesh.order)
     opts["variable_type"] = :entropy
     eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
-                                       mesh, sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order;
+                                       open_file=false)
 
     opts["variable_type"] = vars_orig
     if vars_orig == :conservative
@@ -542,7 +542,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     end
 
     eqn.params_complex = ParamType{Tdim, :conservative, Complex128, Complex128, Tmsh}(
-                                       mesh, sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order;
+                                       open_file=false)
 
 
     eqn.multiplyA0inv = matVecA0inv
@@ -710,7 +711,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
    eqn.assembler = NullAssembleElementData
 
    if open_files
-     eqn.file_dict = openLoggingFiles(mesh, opts)
+     eqn.file_dict = openLoggingFiles(opts, mesh.myrank)
    else
      eqn.file_dict = Dict{String, IO}()
    end
@@ -732,6 +733,8 @@ const ParamType2 = ParamType{2}
 const ParamType3 = ParamType{3}
 
 
+import PDESolver: openLoggingFiles, closeLoggingFiles
+
 """
   This function opens all used for logging data.  In particular, every data
   file that has data appended to it in majorIterationCallback should be
@@ -748,8 +751,8 @@ const ParamType3 = ParamType{3}
 
   **Inputs**:
 
-   * mesh: an AbstractMesh (needed for MPI Communicator)
    * opts: options dictionary
+   * myrank: MPI rank
 
   **Outputs**:
 
@@ -763,10 +766,7 @@ const ParamType3 = ParamType{3}
     When restarting, all files must be appended to.  Currently, files
     are appended to in all cases.
 """
-function openLoggingFiles(mesh, opts)
-
-  # comm rank
-  myrank = mesh.myrank
+function openLoggingFiles(opts, myrank::Integer)
 
   # output dictionary
   file_dict = Dict{AbstractString, IO}()
@@ -800,6 +800,31 @@ function openLoggingFiles(mesh, opts)
   return file_dict
 end
 
+
+function openLoggingFiles(eqn::EulerData, opts)
+
+  # verify all existing files are closed
+  for f in values(eqn.file_dict)
+    @assert !isopen(f)
+  end
+
+  eqn.file_dict = openLoggingFiles(opts, eqn.myrank)
+
+  # make all params object use the same file
+  eqn.params_entropy.f = eqn.params_conservative.f
+  eqn.params_complex.f = eqn.param.f
+
+
+  return nothing
+end
+
+
+function closeLoggingFiles(eqn::EulerData, opts)
+
+  cleanup(eqn, opts)
+end
+
+
 """
   This function performs all cleanup activities before the run_physics()
   function returns.  The mesh, sbp, eqn, opts are returned by run_physics()
@@ -807,16 +832,16 @@ end
 
   **Inputs/Outputs**:
 
-   * mesh: an AbstractMesh object
-   * sbp: an SBP operator
    * eqn: the EulerData object
    * opts: the options dictionary
 
 """
-function cleanup(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
+function cleanup(eqn::EulerData, opts)
 
   for f in values(eqn.file_dict)
-    close(f)
+    if isopen(f)
+      close(f)
+    end
   end
 
   return nothing

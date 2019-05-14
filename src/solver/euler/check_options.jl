@@ -44,7 +44,8 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
   #TODO: what to do for jac_type 4?
   if opts["use_DG"] && 
      opts["Flux_name"] in keys(FluxDict_diff) && 
-     (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 #&& 
+     (run_type == 5 || run_type == 40 || run_type == 20 || run_type == 50) &&
+     opts["jac_type"] >= 2 #&& 
 #     !opts["use_src_term"]
     get!(opts, "calc_jac_explicit", true)
   else

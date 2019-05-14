@@ -140,7 +140,7 @@ end
   Shock capturing type that errors out.  Used when shock capturing is not
   supposed to be added.
 """
-struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
+mutable struct ErrorShockCapturing{Tsol, Tres} <: AbstractShockCapturing
 
   sensor::AbstractShockSensor
   diffusion::AbstractDiffusion

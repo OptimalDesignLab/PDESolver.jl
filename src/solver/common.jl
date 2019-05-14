@@ -127,7 +127,7 @@ function getDataTypes(opts::Dict)
     Tsbp = Float64
     Tsol = Dual{Float64}
     Tres = Dual{Float64}
-  elseif flag == 5 || flag == 40 || flag == 41
+  elseif flag == 5 || flag == 40 || flag == 41 || flag == 50
     if jac_method == 1 # use Newton method using finite difference  (former flag 4)
       # println("========== utils/initialization: flag 5, jac_method 1")
       Tmsh = Float64
@@ -612,6 +612,10 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
       @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
+
+    elseif flag == 50  # pHomotopy
+
+      mesh, sbp, eqn, opts = pHomotopy(mesh, sbp, eqn, opts)
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")

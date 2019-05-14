@@ -426,7 +426,9 @@ get!(arg_dict, "newton_prec_recalc_freq", 1)
 get!(arg_dict, "newton_jac_recalc_freq", 1)
 get!(arg_dict, "newton_recalc_first", true)
 
-get!(arg_dict, "use_inexact_nk", arg_dict["run_type"] == 5 ? true : false)
+
+run_type = arg_dict["run_type"]
+get!(arg_dict, "use_inexact_nk", (run_type == 5 || run_type == 50) ? true : false)
 get!(arg_dict, "krylov_gamma", 2)
 
 
@@ -439,6 +441,21 @@ get!(arg_dict, "homotopy_tighten_early", false)
 get!(arg_dict, "homotopy_shock_capturing", false)
 get!(arg_dict, "homotopy_shock_sensor", "SensorNone")
 get!(arg_dict, "homotopy_psi_max", 10*pi/180)
+
+# pHomotopy options
+get!(arg_dict, "phomotopy_solve_homotopy", true)
+get!(arg_dict, "phomotopy_p_max", -1)
+get!(arg_dict, "phomotopy_flux_regular", arg_dict["Flux_name"])
+get!(arg_dict, "phomotopy_shock_sensor_hard", arg_dict["shock_sensor_name"])
+if arg_dict["phomotopy_p_max"] > 0
+  tmp = zeros(Int, arg_dict["phomotopy_p_max"])
+  fill!(tmp, arg_dict["euler_tau"])
+else
+  tmp = zeros(Int, 0)
+end
+get!(arg_dict, "phomotopy_euler_taus", tmp)
+get!(arg_dict, "phomotopy_euler_tau_final", arg_dict["euler_tau"])
+
 
 # Crank-Nicolson options
 get!(arg_dict, "CN_recalculation_policy", "RecalculateNever")
@@ -750,6 +767,16 @@ end
     error("homotopy shock caputuring requires shock capturing to be enabled")
   end
 
+  if arg_dict["run_type"] == 50  # pHomotopy
+    if arg_dict["phomotopy_p_max"] <= 0
+      error("phomotopy_p_max must be >= 1 when using pHomotopy")
+    end
+
+    p_max = arg_dict["phomotopy_p_max"]
+    if length(arg_dict["phomotopy_euler_taus"]) != p_max
+      error("phomotopy_euler_taus length must be == p_max")
+    end
+  end
 
 
 

@@ -586,3 +586,61 @@ function copyParameters(eqn_old::AbstractSolutionData, eqn_new::AbstractSolution
   error("Generic fallback for copyParameters() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
 
 end
+
+
+"""
+  Function for opening a new set of logging files.  This is useful for
+  doing several solves with the same `eqn` object in different directories.
+
+  It is an error to call this function without calling `closeLoggingFiles`
+  first.
+
+  This function must be implemented if the `eqn` object keeps file handles
+  open, but is optional if not.
+
+  **Inputs**
+
+   * eqn: `AbstractSolutionData`
+   * opts: options dictionary
+"""
+function openLoggingFiles(eqn::AbstractSolutionData, opts)
+
+
+  return nothing
+end
+
+
+"""
+  Closes any logging files the `eqn` object may have open.
+
+  This function must be implemented if the `eqn` object keeps file handles
+  open, but is optional if not.
+
+  **Inputs**
+
+   * eqn: `AbstractSolutionData`
+   * opts: options dictonary
+"""
+function closeLoggingFiles(eqn::AbstractSolutionData, opts)
+
+end
+
+
+"""
+  Sets a new flux function for DG-type methods
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * name: name of new flux function, defaults to opts["flux_name"]
+"""
+function setFluxFunction(mesh::AbstractDGMesh, sbp::AbstractOperator,
+                         eqn::AbstractSolutionData, opts,
+                         name::String=opts["Flux_name"])
+
+
+  error("Generic fallback for setFluxFunction() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+end

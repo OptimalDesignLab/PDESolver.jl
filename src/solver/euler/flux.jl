@@ -1198,9 +1198,25 @@ function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
   assertFieldsConcrete(eqn.flux_func_revq)
   assertFieldsConcrete(eqn.volume_flux_func_revq)
 
-
-
   return nothing
 end # End function getFluxFunctors_revq
 
+import PDESolver.setFluxFunction
 
+function setFluxFunction(mesh::AbstractDGMesh, sbp::AbstractOperator,
+                         eqn::EulerData, opts,
+                         name::String=opts["Flux_name"])
+
+  eqn.flux_func = FluxDict[name]
+  if !opts["need_adjoint"]
+    name = "ErrorFlux"
+  end
+  eqn.flux_func_revm = FluxDict_revm[name]
+  eqn.flux_func_revq = FluxDict_revq[name]
+
+  assertFieldsConcrete(eqn.flux_func)
+  assertFieldsConcrete(eqn.flux_func_revm)
+  assertFieldsConcrete(eqn.flux_func_revq)
+
+  return nothing
+end

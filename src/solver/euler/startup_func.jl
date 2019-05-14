@@ -256,7 +256,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
-  cleanup(mesh, sbp, eqn, opts)
+  cleanup(eqn, opts)
 
   MPI.Barrier(mesh.comm)
 

@@ -599,9 +599,8 @@ function createEnrichedObjects(mesh::T, sbp, eqn, opts) where {T <: AbstractMesh
   interpField(mesh, sbp, eqn.q_vec, mesh_h, sbp_h, eqn_h.q_vec)
   array1DTo3D(mesh_h, sbp_h, eqn_h, opts_h, eqn_h.q_vec, eqn_h.q)
 
-  #TODO: need to copy any extra variables in params to new mesh (might be
-  #      needed for functional evaluation)
   copyParameters(eqn, eqn_h)
+
   return mesh_h, sbp_h, eqn_h, opts_h
 end
 

@@ -447,7 +447,7 @@ function test_flux_3d()
       end
     end
 
-    testRoe(mesh, sbp, eqn, opts)
+    testRoe(mesh, sbp, eqn, opts, "RoeFlux")
   end  # end facts block
 
   return nothing

@@ -63,7 +63,7 @@ function BufferedIO(fname::AbstractString, mode::AbstractString="a")
   return BufferedIO(f)
 end
 # only provide write functionality, for now
-import Base.write, Base.flush, Base.close
+import Base.write, Base.flush, Base.close, Base.isopen
 
 # I think this is all that needs to be implemented, because it is the job of
 # functions like println and print to convert things to arrays of UInt8s
@@ -85,6 +85,13 @@ function close(io::BufferedIO)
     flush(io)
     close(io.fstream)
   end
+end
+
+"""
+  `Base` function `isopen` extended for BufferedIO
+"""
+function isopen(io::BufferedIO)
+  return isopen(io.fstream)
 end
 
 

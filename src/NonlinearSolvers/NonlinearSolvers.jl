@@ -33,6 +33,7 @@ include("crank_nicolson.jl")
 include("preconditioning.jl")
 include("globalization.jl")
 include("predictor_corrector.jl")
+include("p_homotopy.jl")
 #include("newton_fd_old.jl")
 
 #-----------------------------------------------------------
@@ -46,5 +47,8 @@ include("crank_nicolson_uadj/crank_nicolson_uadj_checkpointstraight.jl")
 
 # predictor_corrector.jl
 export predictorCorrectorHomotopy
+
+# p_homotopy.jl
+export pHomotopy
 
 end

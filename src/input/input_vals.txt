@@ -375,6 +375,23 @@ Note that any values associated with these options are shared with the regular
 "homotopy_psi_max": the maximum angle between tangent vectors, in radians,
                     (Float64), default 10*pi/180                        
 
+
+# pHomotopy options
+
+"phomotopy_solve_homotopy": solve the first case with homotopy, (Bool),
+                            default true,
+"phomotopy_p_max": maximum degree operator to solve, (Bool), required
+                   if using pHomotopy
+"phomotopy_flux_regular": flux function to use for all solves after first,
+                          (String), default same as "Flux_name",
+"phomotopy_shock_sensor_hard": shock sensor to use for final solve, (String),
+                               default same as "shock_sensor_name",
+"phomotopy_euler_taus": implicit Euler timestep size to use for each degree
+                        operator, (Vector{Float64}, length "phomotopy_p_max"),
+                        default same as "euler_tau"
+"phomotopy_euler_tau_final": implicit Euler timestep size for final solve,
+                             (Float64), default same as "euler_tau"
+
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (String),
                            default "RecalculateNever"
