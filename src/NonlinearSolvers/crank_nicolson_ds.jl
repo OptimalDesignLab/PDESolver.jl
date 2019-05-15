@@ -123,6 +123,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       dRdM_vec = zeros(eqn.res_vec)
       b_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
       TEST_b_vec = zeros(b_vec)
+      TEST_dRdq_vn_prod = zeros(b_vec)
       dRdq_vn_prod = zeros(eqn.res_vec)
 
       #------------------------------------------------------------------------------
@@ -480,7 +481,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
           # res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] 
           #                       - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-          res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          # TODO TODO: eqn.Minv shouldn't be here??????????
+          # res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          res_hat_vec[ix_dof] = -0.5*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
         end
 
@@ -546,7 +549,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
-        # println(BSTDOUT, "  vecnorm(dRdq_vn_prod): ", vecnorm(dRdq_vn_prod))
+        ### Only for julia sparse
+        # modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        # A_mul_B!(TEST_dRdq_vn_prod, lo_ds_innermost.A, v_vec)
+        # modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        # println(BSTDOUT, "  >>> mat-vec product verify: vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod): ", vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod))
+
 
         # Here was scratch content 1
 
@@ -698,10 +706,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # linearSolve(ls_ds, b_vec, v_vec, verbose=5)
         linearSolve(ls_ds, b_vec, v_vec)
 
+        # filename_v_vec_infs = string("v_vec_infs_i-", i, ".dat")
+        # writedlm(filename_v_vec_infs, find(isinf.(v_vec)))
+        # filename_v_vec_notinfs = string("v_vec_notinfs_i-", i, ".dat")
+        # writedlm(filename_v_vec_notinfs, find(! isinf.(v_vec)))
+
         #------------------------------------------------------------------------------
         # Checking linearSolve
 
-        ### Only for julia sparse?
+        ### Only for julia sparse
         # A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
         # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
         # println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
