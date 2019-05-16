@@ -195,7 +195,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       @mpi_master f_v_energy = open("v_energy_data.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
-      @mpi_master f_check1 = open("check1.dat", "w")
+      # @mpi_master f_check1 = open("check1.dat", "w")
     end
     if opts["perturb_Ma_CN"]
 
@@ -476,12 +476,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "  vecnorm(dRdM_vec_FD): ", vecnorm(dRdM_vec_FD))
         check1 = vecnorm(dRdM_vec_FD - dRdM_vec)
         print(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_FD - dRdM_vec): ", check1)
-        if check1 < 1e-15
+        if check1 < 10*FD_pert
           println(BSTDOUT, "   PASS")
         else
           println(BSTDOUT, "   FAIL")
         end
-        println(f_check1, i, "  ", check1)
+        # println(f_check1, i, "  ", check1)
         ### end check
 
         # should I be collecting into q?
@@ -826,7 +826,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         @mpi_master close(f_L2vnorm)
         @mpi_master close(f_v_energy)
         @mpi_master close(f_i_test)
-        @mpi_master close(f_check1)
+        # @mpi_master close(f_check1)
       end
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
