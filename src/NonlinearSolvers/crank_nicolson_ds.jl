@@ -294,20 +294,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #------------------------------------------------------------------------------
   # ### Main timestepping loop ###
   #   this loop is 2:(t_steps+1) when not restarting
-  for i = istart:(t_steps + 1) ########################################################################################################
+  for i = istart:(t_steps + 1) ##################################################################################################
 
     finaliter = calcFinalIter(t_steps, itermax)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     if opts["perturb_Ma_CN"]
       quad_weight = calcQuadWeight(i, dt, finaliter)
-
-      # for j = 1:length(eqn.q_vec)                 # store imaginary part of q_vec
-        # q_vec_save_imag[i] = imag(eqn.q_vec[i])
-        # Shouldn't need to remove the imaginary component here - PETSc call only takes in the real part
-      # end
-
-    end   # end if opts["perturb_Ma_CN"]
+    end
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     t = (i-2)*h
@@ -348,30 +342,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end   # end of if skip_checkpoint check
     end   # end of if use_checkpointing check
 
-#=
-    #----------------------------
-    # zero out Jac
-    #   this works for both PETSc and Julia matrices.
-    #   when jac is a Julia matrix, this is effectively wrapping: fill!(jac, 0.0)
-    if jac_type != 4
-      MatZeroEntries(jac)
-    end
-=#
-    # NOTE: Must include a comma in the ctx tuple to indicate tuple
-    # f is the physics function, like evalEuler
-
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # save q_vec from the last time step in old_q_vec: used for v_energy calcs
-    # TODO: WHY
-    if opts["write_L2vnorm"]
-      # for visualization of element level DS energy
-      fill!(old_q_vec, 0.0)
-      for j = 1:length(eqn.q_vec)
-        old_q_vec[j] = eqn.q_vec[j]
-      end
-    end
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     FAC = 1.0       # for making stabilization +=    (now that explicit fix has been implemented: no fac needed)
     # FAC = -1.0       # for making stabilization -=  (needed for eig clipping?)
@@ -397,13 +367,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
                   #   newtonInner -> rhs_func -> physicsRhs (residual_evaluation.jl)
                   # TODO: need to save the complex part of R inside physicsRhs
     end
-    # print(BSTDOUT, " Newton solve on primal complete.")
 
     # do the callback using the current eqn object at time t
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
-    # print(BSTDOUT, " majorIterationCallback called.")
-    # println(BSTDOUT, " ")
-    # flush(BSTDOUT)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # TODO: stabilization in newtonInner
@@ -460,7 +426,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
         eqn_nextstep.params.Ma += pert      # Note: perturbing eqn_nextstep, not eqn.
-        # println(BSTDOUT, " Perturbing Ma. eqn_nextstep.params.Ma: ", eqn_nextstep.params.Ma)
 
         # now evalResidual to store into F(q^(n+1))
         f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
@@ -479,34 +444,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           #       as it is only formed to later consider only its imaginary component.
 
           # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
-          # res_hat_vec[ix_dof] = new_q_vec_Maimag[ix_dof] - old_q_vec_Maimag[ix_dof] 
-          #                       - 0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-          # TODO TODO: eqn.Minv shouldn't be here??????????
-          # res_hat_vec[ix_dof] = -0.5*eqn.Minv[ix_dof]*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-          res_hat_vec[ix_dof] = -0.5*dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
         end
 
-        # DUPEDEBUG
-        #=
-        println(BSTDOUT, " typeof(res_hat_vec): ", typeof(res_hat_vec))
-        println(BSTDOUT, " vecnorm(new_q_vec_Maimag): ", vecnorm(new_q_vec_Maimag))
-        println(BSTDOUT, " vecnorm(old_q_vec_Maimag): ", vecnorm(old_q_vec_Maimag))
-        if vecnorm(imag(new_q_vec_Maimag)) > 1e-15
-          println(BSTDOUT, " NON-ZERO imag(new_q_vec_Maimag)!")
-          println(BSTDOUT, " vecnorm(imag(new_q_vec_Maimag)): ", vecnorm(imag(new_q_vec_Maimag)))
-        end
-        if vecnorm(imag(old_q_vec_Maimag)) > 1e-15
-          println(BSTDOUT, " NON-ZERO imag(old_q_vec_Maimag)!")
-          println(BSTDOUT, " vecnorm(imag(old_q_vec_Maimag)): ", vecnorm(imag(old_q_vec_Maimag)))
-        end
-        println(BSTDOUT, " vecnorm(new_res_vec_Maimag): ", vecnorm(new_res_vec_Maimag))
-        println(BSTDOUT, " vecnorm(imag(new_res_vec_Maimag)): ", vecnorm(imag(new_res_vec_Maimag)))
-        println(BSTDOUT, " vecnorm(old_res_vec_Maimag): ", vecnorm(old_res_vec_Maimag))
-        println(BSTDOUT, " vecnorm(imag(old_res_vec_Maimag)): ", vecnorm(imag(old_res_vec_Maimag)))
-        println(BSTDOUT, " vecnorm(res_hat_vec): ", vecnorm(res_hat_vec))
-        println(BSTDOUT, " vecnorm(imag(res_hat_vec)): ", vecnorm(imag(res_hat_vec)))
-        =#
         # should I be collecting into q?
 
         # obtain dR/dM using the complex step method
@@ -517,7 +458,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # eqn.params.Ma -= pert
         eqn_nextstep.params.Ma -= pert
-        # println(BSTDOUT, " Removing Ma perturbation. eqn_nextstep.params.Ma: ", eqn_nextstep.params.Ma)
         #------------------------------------------------------------------------------
 
         #------------------------------------------------------------------------------
@@ -527,7 +467,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # v_vec currently holds v at timestep n: v^(n)
 
         # need to add epsilon*v_vec*im (evi) to q_vec, then re-evaluate res_hat at the updated q
-        # so: need to add evi to old_q_vec too. Because to form res_hat, need F(q^(n)) and F(q^(n+1))
         for ix_dof = 1:mesh.numDof
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
           # TODO: commented this eqn_nextstep application out. Verify with formulation.
@@ -540,8 +479,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         for ix_dof = 1:mesh.numDof
           
           # This calculation:
-          #   dR_hat^(n)/dq^(n) * v^(n) = 
-          #     -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
+          #   dR_hat^(n)/dq^(n) * v^(n) = -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
           # Note that Minv is applied inside evalResidual already.
           dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
 
@@ -549,19 +487,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
-        ### Only for julia sparse
-        # modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
-        # A_mul_B!(TEST_dRdq_vn_prod, lo_ds_innermost.A, v_vec)
-        # modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
-        # println(BSTDOUT, "  >>> mat-vec product verify: vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod): ", vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod))
-
-
-        # Here was scratch content 1
 
         #------------------------------------------------------------------------------
         # Now the calculation of v_ix at n+1
-        # Solve:
-        #   dR/dq^(n+1) v^(n+1) = b
+        # Solve: dR/dq^(n+1) v^(n+1) = b
         #--------
         # println(BSTDOUT, "> Now solving for v^(n+1)")
 
@@ -578,75 +507,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
-        # println(BSTDOUT, "  Now updating linear operator.")
-
-        # typeof(ls_ds): LinearSolvers.StandardLinearSolver{NonlinearSolvers.CNMatPC,NonlinearSolvers.CNPetscMatLO}
-        # typeof(ls_ds.lo): NonlinearSolvers.CNPetscMatLO
-        # typeof(ls_ds.lo.lo_inner): NonlinearSolvers.NewtonPetscMatLO
-        # fieldnames(ls_ds): Symbol[:pc, :lo, :shared_mat, :comm, :myrank, 
-        #                           :commsize, :ksp, :is_finalized, :reltol, :abstol, :dtol, :itermax]
         calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
-        # this is calling: 
-        # - calcLinearOperator(ls::LinearSolvers.StandardLinearSolver, 
-        #                      mesh::ODLCommonTools.AbstractMesh, 
-        #                      sbp::SummationByParts.AbstractSBP, 
-        #                      eqn::ODLCommonTools.AbstractSolutionData, 
-        #                      opts::Dict, ctx_residual, t; start_comm) 
-        #   in LinearSolvers at /users/ashlea/.julia/v0.6/PDESolver/src/linearsolvers/ls_standard.jl:76
-        # which has
-        #   calcLinearOperator(ls.lo, mesh, sbp, eqn, opts, ctx_residual, t)
-        # which is calling
-        # - calcLinearOperator(lo::Union{NonlinearSolvers.CNDenseLO, 
-        #                                NonlinearSolvers.CNPetscMatLO, NonlinearSolvers.CNSparseDirectLO}, 
-        #                      mesh::ODLCommonTools.AbstractMesh, sbp::SummationByParts.AbstractSBP, 
-        #                      eqn::ODLCommonTools.AbstractSolutionData, 
-        #                      opts::Dict, ctx_residual, t) 
-        #   in NonlinearSolvers at /users/ashlea/.julia/v0.6/PDESolver/src/NonlinearSolvers/crank_nicolson.jl:412
-        # which has
-        #   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-        #   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
-        # which is calling
-        # - calcLinearOperator(lo::Union{NonlinearSolvers.NewtonDenseLO, NonlinearSolvers.NewtonPetscMatLO, 
-        #                                NonlinearSolvers.NewtonSparseDirectLO}, 
-        #                      mesh::ODLCommonTools.AbstractMesh, sbp::SummationByParts.AbstractSBP, 
-        #                      eqn::ODLCommonTools.AbstractSolutionData, opts::Dict, ctx_residual, t) 
-        #   in NonlinearSolvers at /users/ashlea/.julia/v0.6/PDESolver/src/NonlinearSolvers/newton_setup.jl:516
-        # which has 
-        #   lo2 = getBaseLO(lo)
-        #   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
-        #
-        # SO! this is modifying the Jac for CN.
-        # println(BSTDOUT, "  ---> Linear operator updated. i = ", i, ", t = ", t, " ==============\n")
-
-        # Here was scratch content 2
+        # Note: this is properly modifying the Jac for CN.
 
         fill!(v_vec, 0.0)
-
-        ### Same test as below, but only for non-Petsc
-        # ccc = ones(Float64, mesh.numDof)
-        # Accc = zeros(Float64, mesh.numDof)
-        # A_mul_B!(Accc, lo_ds_innermost.A, ccc)
-        # println(BSTDOUT, " vecnorm(Accc): ", vecnorm(Accc))
-        # flush(BSTDOUT)
-
-        # println(BSTDOUT, " cond(lo_ds_innermost.A): ", cond(full(lo_ds_innermost.A)))
-        # flush(BSTDOUT)
-        #=
-        # This section is intended to assess the magnitude of A at every iteration 
-        #   by contracting it with a vector of ones
-        ccc = ones(Float64, mesh.numDof)
-
-        for ix_dof = 1:mesh.numDof
-          PETSC_insert[ix_dof] = ccc[ix_dof]
-          PETSC_index[ix_dof] = ix_dof
-        end
-        # set values of ccc_petsc to ccc
-        set_values1!(ccc_petsc, PETSC_index, PETSC_insert)
-        A_mul_B!(Accc_petsc, lo_ds_innermost.A, ccc_petsc)
-        println(BSTDOUT, " norm(ccc_petsc): ", norm(ccc_petsc))
-        println(BSTDOUT, " norm(Accc_petsc): ", norm(Accc_petsc))
-        =#
-
 
         if opts["stabilize_v"]
 
@@ -697,46 +561,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         end   # end if opts["stabilize_v"]
 
-        # linearSolve: solves Ax=b for x
-        #   ls::StandardLinearSolver
-        #   b::AbstractVector     -> RHS
-        #   x::AbstractVector     -> what is solved for
-        #   verbose=5
-        #--------
-        # linearSolve(ls_ds, b_vec, v_vec, verbose=5)
+        # linearSolve: solves Ax=b for x. 
+        #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
-
-        # filename_v_vec_infs = string("v_vec_infs_i-", i, ".dat")
-        # writedlm(filename_v_vec_infs, find(isinf.(v_vec)))
-        # filename_v_vec_notinfs = string("v_vec_notinfs_i-", i, ".dat")
-        # writedlm(filename_v_vec_notinfs, find(! isinf.(v_vec)))
-
-        #------------------------------------------------------------------------------
-        # Checking linearSolve
-
-        ### Only for julia sparse
-        # A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
-        # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
-        # println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
-        # println(BSTDOUT, " vecnorm(TEST_b_vec): ", vecnorm(TEST_b_vec))
-        # println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
-        # flush(BSTDOUT)
-
-        #------------------------------------------------------------------------------
-
-
-        #=
-        # This section is extremely slow for Petsc. Don't use.
-        println(BSTDOUT, " lo_ds_innermost.A:  vecnorm: ", vecnorm(lo_ds_innermost.A), 
-                         "  max: ", maximum(lo_ds_innermost.A), 
-                         "  min: ", minimum(lo_ds_innermost.A), "  minabs: ", minimum(abs.(lo_ds_innermost.A)))
-        println(BSTDOUT, " b_vec:  vecnorm: ", vecnorm(b_vec), "  max: ", maximum(b_vec), 
-                         "  min: ", minimum(b_vec), "  minabs: ", minimum(abs.(b_vec)))
-        println(BSTDOUT, " v_vec:  vecnorm: ", vecnorm(v_vec), "  max: ", maximum(v_vec), 
-                         "  min: ", minimum(v_vec), "  minabs: ", minimum(abs.(v_vec)))
-        flush(BSTDOUT)
-        =#
-
 
         #### The above is all new CSR code
 
@@ -771,31 +598,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       end     # end 'if i != 1'
 
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      # start of old DS code (the above is mostly new CSR stuff (except for the dDdu & term23 stuff))
-      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
       # for visualization of element level DS energy: end of all stages
       if opts["write_L2vnorm"]
-        # special case for calculating v_energy:
-        #   Need to calculate v_vec after the first stage for use in the first-stage-only v_energy calculation.
-        #   Previously, this would only be done at the end of all the stages
-        # for v_ix = 1:length(v_vec)
-          # v_vec[v_ix] = imag(q_vec[v_ix])/Ma_pert_mag         # v_vec alloc'd outside timestep loop
-        # end
-        # RK4: the v_vec assignment is commented out because it should be set inside perturb_Ma just above
-
-        #=
-        fill!(R_stab, 0.0)
-        for j = 1:length(eqn.q_vec)
-          # R_stab[j] = (q_vec[j] - old_q_vec[j])/(fac*delta_t)     # This was LSERK's
-          R_stab[j] = (eqn.q_vec[j] - old_q_vec[j])/(dt)
-        end
-        fill!(v_energy, 0.0)
-        for j = 1:length(eqn.q_vec)
-          v_energy[j] = v_vec[j]*eqn.M[j]*imag(R_stab[j])/Ma_pert_mag
-        end
-        =#
         for ix_dof = 1:mesh.numDof
           v_energy[ix_dof] = v_vec[ix_dof] * eqn.M[ix_dof] * v_vec[ix_dof]
         end
@@ -909,14 +713,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
 
         @mpi_master close(f_drag)
-
-        #=
-        @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
-        @mpi_master println(" Ma_pert: ", Ma_pert_mag)
-        eqn.params.Ma -= Ma_pert_mag      # need to remove perturbation now
-        @mpi_master println(" pert removed from Ma")
-        @mpi_master println(" eqn.params.Ma: ", eqn.params.Ma)
-        =#
 
         Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter)   # will use eqn.params.Ma
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
