@@ -113,6 +113,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # old_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn
       # new_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn_nextstep
       res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
+      res_hat_vec_nopert = zeros(eqn.res_vec)    # unsteady residual
+      res_hat_vec_pospert = zeros(eqn.res_vec)    # unsteady residual
       # TODO: ensure all of these are being used when debugging complete; otherwise, cleanup
 
       beforeDS_eqn_q_vec = zeros(eqn.q_vec)
@@ -121,6 +123,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       beforeDS_eqn_nextstep_res_vec = zeros(eqn.res_vec)
 
       dRdM_vec = zeros(eqn.res_vec)
+      dRdM_vec_FD = zeros(eqn.res_vec)
       b_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
       TEST_b_vec = zeros(b_vec)
       TEST_dRdq_vn_prod = zeros(b_vec)
@@ -421,7 +424,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dM
-        # println(BSTDOUT, "> Now solving dR/dM")
+        println(BSTDOUT, "> Now solving dR/dM")
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
@@ -444,25 +447,46 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           #       as it is only formed to later consider only its imaginary component.
 
           # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
-          res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          # res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          # res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          res_hat_vec[ix_dof] = -0.5 * eqn.Minv[ix_dof] * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
         end
-
-        # should I be collecting into q?
-
         # obtain dR/dM using the complex step method
         for ix_dof = 1:mesh.numDof
           dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
         end
-        # println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
-
-        # eqn.params.Ma -= pert
         eqn_nextstep.params.Ma -= pert
+        println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
+
+        ### check
+        #=
+        FD_pert = 1e-8
+        eqn_nextstep.params.Ma += FD_pert
+        eqn.params.Ma += FD_pert
+        ctx = (f, eqn, h)
+
+        cnRhs(mesh, sbp, eqn_nextstep, opts, res_hat_vec_pospert, ctx, t)
+
+        eqn.params.Ma -= FD_pert
+        eqn_nextstep.params.Ma -= FD_pert
+
+        cnRhs(mesh, sbp, eqn_nextstep, opts, res_hat_vec_nopert, ctx, t)
+        for ix_dof = 1:mesh.numDof
+          dRdM_vec_FD[ix_dof] = (res_hat_vec_pospert[ix_dof] - res_hat_vec_nopert[ix_dof])/FD_pert
+        end
+        println(BSTDOUT, "  vecnorm(dRdM_vec_FD): ", vecnorm(dRdM_vec_FD))
+        println(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_FD - dRdM_vec): ", vecnorm(dRdM_vec_FD - dRdM_vec))
+        =#
+        ### end check
+
+        # should I be collecting into q?
+
         #------------------------------------------------------------------------------
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dq * v^(n)
-        # println(BSTDOUT, "> Now solving dR/dq * v^(n)")
+        println(BSTDOUT, "> Now solving dR/dq * v^(n)")
 
         # v_vec currently holds v at timestep n: v^(n)
 
@@ -487,12 +511,18 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
+        ### Only for julia sparse
+        modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        A_mul_B!(TEST_dRdq_vn_prod, lo_ds_innermost.A, v_vec)
+        modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        println(BSTDOUT, "  >>> mat-vec product verify: vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod): ", 
+                         vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod))
 
         #------------------------------------------------------------------------------
         # Now the calculation of v_ix at n+1
         # Solve: dR/dq^(n+1) v^(n+1) = b
         #--------
-        # println(BSTDOUT, "> Now solving for v^(n+1)")
+        println(BSTDOUT, "> Now solving for v^(n+1)")
 
         #------------------------------------------------------------------------------
         # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
@@ -564,6 +594,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # linearSolve: solves Ax=b for x. 
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
+
+        ### Only for julia sparse
+        A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
+        # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
+        println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
+        println(BSTDOUT, " vecnorm(TEST_b_vec): ", vecnorm(TEST_b_vec))
+        println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
+        flush(BSTDOUT)
 
         #### The above is all new CSR code
 
