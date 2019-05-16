@@ -460,7 +460,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
 
         ### check
-        #=
         FD_pert = 1e-8
         eqn_nextstep.params.Ma += FD_pert
         eqn.params.Ma += FD_pert
@@ -476,8 +475,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           dRdM_vec_FD[ix_dof] = (res_hat_vec_pospert[ix_dof] - res_hat_vec_nopert[ix_dof])/FD_pert
         end
         println(BSTDOUT, "  vecnorm(dRdM_vec_FD): ", vecnorm(dRdM_vec_FD))
-        println(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_FD - dRdM_vec): ", vecnorm(dRdM_vec_FD - dRdM_vec))
-        =#
+        check1 = vecnorm(dRdM_vec_FD - dRdM_vec)
+        print(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_FD - dRdM_vec): ", check1)
+        if check1 < 1e-15
+          println(BSTDOUT, "   PASS")
+        else
+          println(BSTDOUT, "   FAIL")
+        end
         ### end check
 
         # should I be collecting into q?
@@ -515,8 +519,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
         A_mul_B!(TEST_dRdq_vn_prod, lo_ds_innermost.A, v_vec)
         modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
-        println(BSTDOUT, "  >>> mat-vec product verify: vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod): ", 
-                         vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod))
+        check2 = vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod)
+        print(BSTDOUT, "  >>> mat-vec product verify: vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod): ", check2)
+        if check2 < 1e-15
+          println(BSTDOUT, "   PASS")
+        else
+          println(BSTDOUT, "   FAIL")
+        end
 
         #------------------------------------------------------------------------------
         # Now the calculation of v_ix at n+1
@@ -600,7 +609,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
         println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
         println(BSTDOUT, " vecnorm(TEST_b_vec): ", vecnorm(TEST_b_vec))
-        println(BSTDOUT, "  >>> b_vec verify: ", vecnorm(TEST_b_vec - b_vec))
+        check3 = vecnorm(TEST_b_vec - b_vec)
+        print(BSTDOUT, "  >>> b_vec verify: ", check3)
+        if check3 < 1e-15
+          println(BSTDOUT, "   PASS")
+        else
+          println(BSTDOUT, "   FAIL")
+        end
         flush(BSTDOUT)
 
         #### The above is all new CSR code
