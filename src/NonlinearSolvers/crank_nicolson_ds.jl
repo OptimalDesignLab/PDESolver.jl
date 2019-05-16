@@ -195,6 +195,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       @mpi_master f_v_energy = open("v_energy_data.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
+      @mpi_master f_check1 = open("check1.dat", "w")
     end
     if opts["perturb_Ma_CN"]
 
@@ -447,9 +448,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           #       as it is only formed to later consider only its imaginary component.
 
           # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
-          # res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-          # res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-          res_hat_vec[ix_dof] = -0.5 * eqn.Minv[ix_dof] * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
+          res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
 
         end
         # obtain dR/dM using the complex step method
@@ -460,7 +459,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
 
         ### check
-        FD_pert = 1e-8
+        FD_pert = 1e-7      # looks like minimum of the v is 1e-7
         eqn_nextstep.params.Ma += FD_pert
         eqn.params.Ma += FD_pert
         ctx = (f, eqn, h)
@@ -482,6 +481,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         else
           println(BSTDOUT, "   FAIL")
         end
+        println(f_check1, i, "  ", check1)
         ### end check
 
         # should I be collecting into q?
@@ -826,6 +826,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         @mpi_master close(f_L2vnorm)
         @mpi_master close(f_v_energy)
         @mpi_master close(f_i_test)
+        @mpi_master close(f_check1)
       end
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
