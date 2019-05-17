@@ -125,7 +125,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       dRdM_vec = zeros(eqn.res_vec)
       dRdM_vec_FD = zeros(eqn.res_vec)
-      dRdM_vec_cnRhs_CS = zeros(eqn.res_vec)
       b_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
       TEST_b_vec = zeros(b_vec)
       TEST_dRdq_vn_prod = zeros(b_vec)
@@ -431,46 +430,20 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
-        eqn_nextstep.params.Ma += pert      # Note: perturbing eqn_nextstep, not eqn.
-
-        # now evalResidual to store into F(q^(n+1))
-        f(mesh, sbp, eqn_nextstep, opts)      # F(q^(n+1)) -- with Ma perturbation, now in eqn_nextstep.res_vec
-
-        for ix_dof = 1:mesh.numDof
-          # store F(q^(n)): it was calculated as F(q^(n+1)) during the last time step
-          old_res_vec_Maimag[ix_dof] = new_res_vec_Maimag[ix_dof]         # F(q^(n)) -- with Ma perturbation
-          # old_q_vec_Maimag[ix_dof] = new_q_vec_Maimag[ix_dof]             # q^(n) -- with Ma perturbation   # TODO: verify not needed
-
-          new_res_vec_Maimag[ix_dof] = eqn_nextstep.res_vec[ix_dof]       # F(q^(n+1)) -- with Ma perturbation
-          # new_q_vec_Maimag[ix_dof] = eqn_nextstep.q_vec[ix_dof]           # q^(n+1) -- with Ma perturbation   # TODO: verify not needed
-
-          # Form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
-          # Note: q^(n+1) and q^(n) should have no imaginary component. Therefore,
-          #       we do not need to include them in the calculation of res_hat_vec,
-          #       as it is only formed to later consider only its imaginary component.
-
-          # R_hat = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
-          res_hat_vec[ix_dof] = -0.5 * dt * (new_res_vec_Maimag[ix_dof] + old_res_vec_Maimag[ix_dof])
-
-        end
-        # obtain dR/dM using the complex step method
-        for ix_dof = 1:mesh.numDof
-          dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
-        end
-        eqn_nextstep.params.Ma -= pert
-        println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
 
         ### using cnRhs, complex-step
         eqn_nextstep.params.Ma += pert
         eqn.params.Ma += pert
         ctx = (f, eqn, h)
 
-        cnRhs(mesh, sbp, eqn_nextstep, opts, res_hat_vec_cnRhs_CS, ctx, t)
+        # Form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
+        #   res_hat_vec = q^(n+1) - q^(n) - 0.5*Minv*dt* (F(q^(n+1)) - F(q^(n)))
+        cnRhs(mesh, sbp, eqn_nextstep, opts, res_hat_vec, ctx, t)
         eqn_nextstep.params.Ma -= pert
         eqn.params.Ma -= pert
 
         for ix_dof = 1:mesh.numDof
-          dRdM_vec_cnRhs_CS[ix_dof] = imag(res_hat_vec_cnRhs_CS[ix_dof])/Ma_pert_mag
+          dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
         end
         ### end cnRhs, complex-step
 
@@ -492,8 +465,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "  vecnorm(dRdM_vec_FD): ", vecnorm(dRdM_vec_FD))
         flush(BSTDOUT)
         check1 = vecnorm(dRdM_vec_FD - dRdM_vec)
-        check1b = vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec)
-        check1c = vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec_FD)
         print(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_FD - dRdM_vec): ", check1)
         flush(BSTDOUT)
         if check1 < 10*FD_pert
@@ -502,11 +473,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(BSTDOUT, "   FAIL")
         end
         flush(BSTDOUT)
-        println(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec): ", check1b)
-        flush(BSTDOUT)
-        println(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec_FD): ", check1c)
-        flush(BSTDOUT)
-        # println(f_check1, i, "  ", check1)
         ### end check
 
         # should I be collecting into q?
