@@ -980,12 +980,11 @@ function calcHLLFlux(params::ParamType,
 
     fac = calcLength(params, nrm)
     fac2 = fac*sL*sR
+    
     for i=1:numDofPerNode
-      num = sR*fL[i] - sL*fR[i]  + fac2*(qg[i] - q[i])
-      den = sR - sL
-
       flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
     end
+    
   end
 
   return nothing

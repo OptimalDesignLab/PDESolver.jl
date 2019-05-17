@@ -1006,6 +1006,39 @@ function (obj::HLLFlux)(params::ParamType,
   return nothing
 end
 
+
+mutable struct HLLFlux_revq <: FluxType_revq
+end
+
+function (obj::HLLFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcHLLFlux_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
+
+  return nothing
+end
+
+
+mutable struct HLLFlux_revm <: FluxType_revm
+end
+
+function (obj::HLLFlux_revm)(params::ParamType{Tdim},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tdim, Tmsh, Tsol, Tres}
+
+  calcHLLFlux_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+  return nothing
+end
+
+
+
+
 """
   A special flux function for computing the face integral of (psi_L - psi_R),
   where psi is the potential flux.  F[1] = psiL - psiR, all other components
@@ -1181,6 +1214,7 @@ global const FluxDict_revm = Dict{String, FluxType_revm}(
 "IRFlux" => IRFlux_revm(),
 "IRSLFFlux" => IRSLFFlux_revm(),
 "LFPenalty" => LFPenalty_revm(),
+"HLLFlux" => HLLFlux_revm(),
 "PotentialFlux" => PotentialFlux_revm(),
 )
 
@@ -1237,6 +1271,7 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 "IRFlux" => IRFlux_revq(),
 "IRSLFFlux" => IRSLFFlux_revq(),
 "LFPenalty" => LFPenalty_revq(),
+"HLLFlux" => HLLFlux_revq(),
 "PotentialFlux" => PotentialFlux_revq(),
 )
 

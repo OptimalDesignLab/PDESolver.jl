@@ -282,6 +282,9 @@ struct HLLFluxData{Tres}
   fL_jac::Matrix{Tres}
   fR_jac::Matrix{Tres}
 
+  fL_bar::Vector{Tres}
+  fR_bar::Vector{Tres}
+
   function HLLFluxData{Tres}(numDofPerNode::Integer) where {Tres}
 
     fL = zeros(Tres, numDofPerNode)
@@ -292,9 +295,14 @@ struct HLLFluxData{Tres}
     fL_jac = zeros(Tres, numDofPerNode,numDofPerNode)
     fR_jac = zeros(Tres, numDofPerNode, numDofPerNode)
 
+    fL_bar = zeros(Tres, numDofPerNode)
+    fR_bar = zeros(Tres, numDofPerNode)
+
+
 
     return new(fL, fR,
-              sL_dot, sR_dot, fL_jac, fR_jac)
+              sL_dot, sR_dot, fL_jac, fR_jac,
+              fL_bar, fR_bar)
   end
 end
 

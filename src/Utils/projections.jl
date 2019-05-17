@@ -215,6 +215,33 @@ end
   return sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3]) 
 end
 
+@inline function calcLength_rev(params::AbstractParamType{2}, nrm::AbstractVector,
+                            nrm_bar::AbstractVector, len_bar::Number)
+
+  len = sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2])
+  fac = len_bar/len
+  nrm_bar[1] += nrm[1]*fac
+  nrm_bar[2] += nrm[2]*fac
+
+  return nothing
+end
+
+@inline function calcLength_rev(params::AbstractParamType{3}, nrm::AbstractVector,
+                            nrm_bar::AbstractVector, len_bar::Number)
+
+  len = sqrt(nrm[1]*nrm[1] + nrm[2]*nrm[2] + nrm[3]*nrm[3])
+  fac = len_bar/len
+  nrm_bar[1] += nrm[1]*fac
+  nrm_bar[2] += nrm[2]*fac
+  nrm_bar[3] += nrm[3]*fac
+
+  return nothing
+end
+
+
+
+
+
 function normalize_vec(params::AbstractParamType{T}, nrm::AbstractVector) where {T}
   len = calcLength(params, nrm)
   for d=1:T

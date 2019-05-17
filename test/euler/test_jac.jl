@@ -35,16 +35,29 @@ function test_jac_terms()
 
     func = EulerEquationMod.FluxDict["HLLFlux"]
     func_diff = EulerEquationMod.FluxDict_diff["HLLFlux"]
+    func_revm = EulerEquationMod.FluxDict_revm["HLLFlux"]
+    func_revq = EulerEquationMod.FluxDict_revq["HLLFlux"]
 
     nrm = [0.45, 0.55]
     nrm2 = -nrm
-
+#=
+    #q = Complex128[2.0, 3.0, 4.0, 7.0]
+    #qg = q + 0.1
+    q = Complex128[1.1, 0.64405, 0.73405, 2.2] 
+    qg = q + 0.1
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 0.1
 
-    #test_2RWave(eqn.params, q, qg, nrm)
+
+    test_2RWave(eqn.params, q, qg, nrm)
     test_2RWave_revq(eqn.params, q, qg, nrm)
-#=
+    test_2RWave_revm(eqn.params, q, qg, nrm)
+    #test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
+    #test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
+=#
+
+
     
 #    q = Complex128[2.0, 3.0, 4.0, 7.0]
 #    qg = q + 0.1
@@ -104,6 +117,8 @@ function test_jac_terms()
  
     func5 = EulerEquationMod.FluxDict["HLLFlux"]
     func5_diff = EulerEquationMod.FluxDict_diff["HLLFlux"]
+    func5_revm = EulerEquationMod.FluxDict_revm["HLLFlux"]
+    func5_revq = EulerEquationMod.FluxDict_revq["HLLFlux"]
 
 
     # Abstract Entropy Kernels
@@ -136,6 +151,9 @@ function test_jac_terms()
     test_EntropyKernel_revm(eqn.params, lf_kernel)
 
     test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
+    test_2flux_revq(eqn.params, q, qg, nrm, func5, func5_revq)
+    test_2flux_revm(eqn.params, q, qg, nrm, func5, func5_revm)
+ 
 
     # test boundary conditions
     for bcname in bclist_revm_2d
@@ -182,7 +200,16 @@ function test_jac_terms()
     test_lambda(eqn.params, q, nrm2)
     test_lambdasimple(eqn.params, q, qg, nrm2)
     
+    test_2RWave(eqn.params, q, qg, nrm)
+    test_2RWave_revq(eqn.params, q, qg, nrm)
+    test_2RWave_revm(eqn.params, q, qg, nrm)
+
+
     test_ad_inner(eqn.params, q, qg, nrm2, func5, func5_diff)
+    test_2flux_revq(eqn.params, q, qg, nrm, func5, func5_revq)
+    test_2flux_revm(eqn.params, q, qg, nrm, func5, func5_revm)
+ 
+
 
     println("testing lambda1 entropy fix")
     q = Complex128[1.1, -0.72405, -0.82405, 2.2] 
@@ -190,9 +217,15 @@ function test_jac_terms()
     test_ad_inner(eqn.params, q, qg, nrm, func, func_diff)
     test_2flux_revm(eqn.params, q, qg, nrm, func, func_revm)
     test_2flux_revq(eqn.params, q, qg, nrm, func, func_revq)
-    
-    test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
    
+    test_2RWave(eqn.params, q, qg, nrm)
+    test_2RWave_revq(eqn.params, q, qg, nrm)
+    test_2RWave_revm(eqn.params, q, qg, nrm)
+
+    test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
+    test_2flux_revq(eqn.params, q, qg, nrm, func5, func5_revq)
+    test_2flux_revm(eqn.params, q, qg, nrm, func5, func5_revm)
+ 
     println("testing lambda2 entropy fix")
     q = Complex128[1.1, 0.64405, 0.73405, 2.2] 
     qg = q + 0.1
@@ -203,6 +236,9 @@ function test_jac_terms()
 
     test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
     test_ad_inner(eqn.params, q, qg, nrm2, func5, func5_diff)
+    test_2flux_revq(eqn.params, q, qg, nrm, func5, func5_revq)
+    test_2flux_revm(eqn.params, q, qg, nrm, func5, func5_revm)
+ 
 
     println("testing lambda3 entropy fix")
     q = Complex128[1.1, -0.681, 0.47, 2.2]
@@ -214,6 +250,9 @@ function test_jac_terms()
 
     test_ad_inner(eqn.params, q, qg, nrm, func5, func5_diff)
     test_ad_inner(eqn.params, q, qg, nrm2, func5, func5_diff)
+    test_2flux_revq(eqn.params, q, qg, nrm, func5, func5_revq)
+    test_2flux_revm(eqn.params, q, qg, nrm, func5, func5_revm)
+ 
 
     test_faceElementIntegral(eqn.params, mesh.sbpface, func3, func3_diff)
     
@@ -305,7 +344,7 @@ function test_jac_terms()
    mesh, sbp, eqn, opts = run_solver(opts_sc)
 
    test_jac_homotopy(mesh, sbp, eqn, opts_sc)
-=#
+
   end
 
   return nothing
@@ -1405,15 +1444,18 @@ function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
   numDofPerNode = length(qL)
   # test the single direction version
   qL_dot = rand_realpart(size(qL))
+#  qL_dot = zeros(numDofPerNode); qL_dot[1] = 1
   qR_dot = rand_realpart(size(qR))
+#  qR_dot = zeros(numDofPerNode)
   qL_bar = zeros(qL)
   qR_bar = zeros(qR)
   aux_vars = Complex128[]
   flux = zeros(Complex128, numDofPerNode)
   F_bar = rand_realpart(numDofPerNode)
+#   F_bar = zeros(Complex128, numDofPerNode); F_bar[1] = 1
 
 
-  for i=1:2  # run test twice to make sure all intermediate arrays are zeroed out
+  for i=1:1 #2  # run test twice to make sure all intermediate arrays are zeroed out
     # compute F_bar.'* dF/dq * q_dot using forward and reverse mode
     qL += pert*qL_dot
     func(params, qL, qR, aux_vars, nrm, flux)
@@ -1428,6 +1470,8 @@ function test_2flux_revq(params::AbstractParamType{Tdim}, qL, qR, nrm, func,
     func_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
     val = sum(qL_bar.*qL_dot) + sum(qR_bar.*qR_dot)
 
+    println("val_c = ", val_c)
+    println("val = ", val)
     @test abs(val - val_c) < 1e-12
 
     # test qL_bar is summed into
@@ -1705,6 +1749,42 @@ function test_2RWave_revq(params::AbstractParamType{Tdim}, qL, qR, nrm) where {T
 
 end
 
+
+function test_2RWave_revm(params::AbstractParamType{Tdim}, qL, qR, _nrm) where {Tdim}
+
+  nrm = zeros(Complex128, length(_nrm)); copy!(nrm, _nrm)
+  numDofPerNode = length(qL)
+  h = 1e-20
+  pert = Complex128(0, h)
+  nrm_dot = rand_realpart(length(nrm))
+  nrm_bar = zeros(Complex128, length(nrm))
+
+  sL_bar = rand()
+  sR_bar = rand()
+
+  # complex step
+  nrm .+= pert*nrm_dot
+  sL, sR = EulerEquationMod.calc2RWaveSpeeds(params, qL, qR, nrm)
+  nrm .-= pert*nrm_dot
+
+  sL_dot = imag(sL)./h
+  sR_dot = imag(sR)./h
+
+  val1 = sL_dot*sL_bar + sR_dot*sR_bar
+
+  # reverse mode
+  EulerEquationMod.calc2RWaveSpeeds_revm(params, qL, qR, nrm, nrm_bar,
+                                         sL_bar, sR_bar)
+
+  val2 = sum(nrm_bar.*nrm_dot)
+
+  println("val1 = ", val1)
+  println("val2 = ", val2)
+  @test abs(val1 - val2) < 1e-13
+
+  return nothing
+
+end
 
 
 
