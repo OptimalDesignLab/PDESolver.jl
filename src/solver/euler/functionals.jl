@@ -198,9 +198,9 @@ end
 """
 mutable struct EntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
   func::ELFPenaltyFaceIntegral
-  func_sparseface::LFPenalty
-  func_sparseface_revq::LFPenalty_revq
-  func_sparseface_revm::LFPenalty_revm
+  func_sparseface::FluxType
+  func_sparseface_revq::FluxType_revq
+  func_sparseface_revm::FluxType_revm
 end
 
 """
@@ -264,6 +264,44 @@ function EntropyJumpConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 
   return EntropyJumpData{Topt}(func)
 end
+
+
+"""
+  Computes entropy dissipation by computing
+  
+  -W^T * R_face + \int_\Gamma_interior (psi_L - psi_R)
+
+  This works for flux functions that do not have the EC + dissipation form,
+  and should be < 0 for any entropy stable scheme.
+"""
+mutable struct EntropyDissipation2Data{Topt} <: EntropyPenaltyFunctional{Topt}
+  flux_functional::EntropyDissipationData{Topt}
+  potential_flux::PotentialFlux
+  potential_flux_revq::PotentialFlux_revq
+  potential_flux_revm::PotentialFlux_revm
+end
+
+function EntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  flux_functional = EntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts,
+                                                  bcnums)
+
+  # configure the functional to compute (wL - wR)^T F, where F is the flux
+  # currently used by the discretization
+  flux_functional.func_sparseface = eqn.flux_func
+  flux_functional.func_sparseface_revq = eqn.flux_func_revq
+  flux_functional.func_sparseface_revm = eqn.flux_func_revm
+
+  potential_flux = FluxDict["PotentialFlux"]
+  potential_flux_revq = FluxDict_revq["PotentialFlux"]
+  potential_flux_revm = FluxDict_revm["PotentialFlux"]
+
+  return EntropyDissipation2Data{Topt}(flux_functional, potential_flux,
+                                       potential_flux_revq, potential_flux_revm)
+end
+
+
 
 
 function getParallelData(obj::EntropyPenaltyFunctional)
@@ -367,6 +405,7 @@ global const FunctionalDict = Dict{String, Function}(
 "massflow" => MassFlowDataConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
+"entropydissipation2" => EntropyDissipation2Constructor,
 "negentropydissipation" => NegEntropyDissipationConstructor,
 "entropyjump" => EntropyJumpConstructor,
 "boundaryentropydiss" => BoundaryEntropyDissConstructor,

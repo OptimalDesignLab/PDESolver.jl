@@ -130,4 +130,4 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) whe
 end
 
 
-add_func1!(EulerTests, test_shockcapturing_parallel, [TAG_SHORTTEST, TAG_TMP]) 
+add_func1!(EulerTests, test_shockcapturing_parallel, [TAG_SHORTTEST]) 

@@ -105,8 +105,8 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
     Vp1 = VandermondeData(sbp, sbp.degree-1)  #TODO: unneded?
 
     # constants from Barter's thesis
-    s0 = -(5 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
-    kappa = 1.5  # was 0.5
+    s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
+    kappa = 1.0  # was 0.5
     _e0 = 0.01
     e0 = _e0
     use_filtered = opts["sensor_pp_use_filtered"]

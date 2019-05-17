@@ -61,6 +61,7 @@ function test_functionals()
   mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_jac3d.jl")
 
   testEntropyDissFunctional(mesh, sbp, eqn, opts)
+  testEntropyDissFunctional2(mesh2, sbp2, eqn2, opts2)
 
   # test derivative of all functionals
 
@@ -95,7 +96,13 @@ function test_functionals()
   test_functional_zero(mesh3, sbp3, eqn3, opts3, obj)
   test_functional_deriv_q(mesh3, sbp3, eqn3, opts3, obj)
 =#
-  functional_revm_names = ["boundaryentropydiss", "negboundaryentropydiss", "entropydissipation", "negentropydissipation", "lift", "liftCoefficient", "drag", "dragCoefficient"]
+  functional_revm_names = ["boundaryentropydiss",
+                           "negboundaryentropydiss",
+                           "entropydissipation",
+                           "entropydissipation2",
+                           "negentropydissipation",
+                           "lift", "liftCoefficient",
+                           "drag", "dragCoefficient"]
 
   for funcname in functional_revm_names
     println("testing revm of functional ", funcname)
@@ -158,6 +165,26 @@ function testEntropyDissFunctional(mesh, sbp, eqn, _opts)
   return nothing
 end
 
+function testEntropyDissFunctional2(mesh, sbp, eqn, opts)
+
+  # test that the two methods of computing the entropy dissipation give the
+  # same answer
+  # This depends on the eqn object using the IRSLF flux with diagonal E
+  # operators
+
+  func1 = createFunctional(mesh, sbp, eqn, opts, "entropydissipation", [1])
+  func2 = createFunctional(mesh, sbp, eqn, opts, "entropydissipation2", [2])
+
+  val1 = evalFunctional(mesh, sbp, eqn, opts, func1)
+  val2 = evalFunctional(mesh, sbp, eqn, opts, func2)
+  println("first functional value = ", val1)
+  println("second functional value = ", val2)
+
+  @test abs(val1 - val2) < 1e-13
+
+  return nothing
+end
+
 
 """
   Test that a constant state -> functional value = 0
@@ -190,7 +217,7 @@ function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
   # use a spatially varying solution
   icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
-  #eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
+  eqn.q_vec .+= 0.01*rand(length(eqn.q_vec))
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   q_dot = rand(size(eqn.q))
@@ -349,4 +376,4 @@ function test_compositefunctional(mesh, sbp, eqn, opts,
   end
 end
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

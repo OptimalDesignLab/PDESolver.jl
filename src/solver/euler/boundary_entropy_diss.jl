@@ -145,7 +145,6 @@ function _calcBndryEntropyDiss(mesh::AbstractMesh{Tmsh},
         val_i += delta_w[k]*mesh.sbpface.wface[j]*flux[k]
       end
     end  # end loop j
-    println("contribution of boundary ", bndry_i, " = ", val_i)
     val += val_i
   end  # end loop i
 

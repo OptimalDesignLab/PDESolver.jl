@@ -158,6 +158,11 @@ function finishExchangeData_rev2(mesh, sbp, eqn, opts,
 
   end
 
+  # wait on all sends to complete.  This is not strictly necessary, but 
+  # avoids a problem with exchangeData_rev where it expects the sends
+  # to already have been waited on
+  waitAllSends(shared_data_bar)
+
   return nothing
 end
 

@@ -1006,6 +1006,75 @@ function (obj::HLLFlux)(params::ParamType,
   return nothing
 end
 
+"""
+  A special flux function for computing the face integral of (psi_L - psi_R),
+  where psi is the potential flux.  F[1] = psiL - psiR, all other components
+  zero.
+"""
+mutable struct PotentialFlux <: FluxType
+end
+
+function (obj::PotentialFlux)(params::ParamType{Tdim},
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tdim, Tsol, Tres}
+
+
+  # psi = rho*U_n
+  psiL = zero(Tres); psiR = zero(Tres)
+  for i=1:Tdim
+    psiL += uL[i+1]*nrm[i]
+    psiR += uR[i+1]*nrm[i]
+  end
+
+  fill!(F, 0)
+  F[1] = psiL - psiR
+
+  return nothing
+end
+
+
+mutable struct PotentialFlux_revq <: FluxType_revq
+end
+
+function (obj::PotentialFlux_revq)(params::ParamType{Tdim},
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tdim, Tmsh, Tsol, Tres}
+
+  psiL_bar = F_bar[1]; psiR_bar = -F_bar[1]
+
+  for i=1:Tdim
+    qL_bar[i+1] += psiL_bar*nrm[i]
+    qR_bar[i+1] += psiR_bar*nrm[i]
+  end
+
+  return nothing
+end
+
+mutable struct PotentialFlux_revm <: FluxType_revm
+end
+
+function (obj::PotentialFlux_revm)(params::ParamType{Tdim},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tdim, Tmsh, Tsol, Tres}
+
+  psiL_bar = F_bar[1]; psiR_bar = -F_bar[1]
+
+  for i=1:Tdim
+    nrm_bar[i] += qL[i+1]*psiL_bar + qR[i+1]*psiR_bar
+  end
+
+  return nothing
+end
+
+
+
 
 
 @doc """
@@ -1058,6 +1127,7 @@ global const FluxDict = Dict{String, FluxType}(
 "IRSLFFlux" => IRSLFFlux(),
 "LFPenalty" => LFPenalty(),
 "HLLFlux" => HLLFlux(),
+"PotentialFlux" => PotentialFlux(),
 )
 
 @doc """
@@ -1111,6 +1181,7 @@ global const FluxDict_revm = Dict{String, FluxType_revm}(
 "IRFlux" => IRFlux_revm(),
 "IRSLFFlux" => IRSLFFlux_revm(),
 "LFPenalty" => LFPenalty_revm(),
+"PotentialFlux" => PotentialFlux_revm(),
 )
 
 """
@@ -1166,6 +1237,7 @@ global const FluxDict_revq = Dict{String, FluxType_revq}(
 "IRFlux" => IRFlux_revq(),
 "IRSLFFlux" => IRSLFFlux_revq(),
 "LFPenalty" => LFPenalty_revq(),
+"PotentialFlux" => PotentialFlux_revq(),
 )
 
 """

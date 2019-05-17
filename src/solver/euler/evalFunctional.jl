@@ -114,6 +114,31 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+# method for EntropyDissipaiton2Data
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::EulerData{Tsol, Tres}, opts,
+                           func::EntropyDissipation2Data,
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
+
+
+  _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func.flux_functional,
+                        func_deriv_arr)
+
+  fill!(eqn.q_bar, 0)
+  flux_func = func.potential_flux_revq
+  val_bar = zeros(Tres, mesh.numDofPerNode); val_bar[1] = 1
+  integrateFaceQuantity_revq(mesh, sbp, eqn, opts, flux_func, val_bar)
+
+  for i=1:length(func_deriv_arr)
+    func_deriv_arr[i] += eqn.q_bar[i]
+  end
+
+  return nothing
+end
+
+
+
 #------------------------------------------------------------------------------
 # derivative wrt metrics
 
@@ -193,6 +218,29 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
   return nothing
 end
 
+
+# method for EntropyDissipaiton2Data
+function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::EulerData{Tsol, Tres}, opts,
+                           func::EntropyDissipation2Data,
+                           val_bar::Number=1) where {Tmsh, Tsol, Tres}
+
+
+  # back propigate val1 contribution
+  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func.flux_functional,
+                        val_bar)
+
+  # back propigate val2 contribution
+  flux_func = func.potential_flux_revm
+  vals_bar = zeros(Tres, mesh.numDofPerNode); vals_bar[1] = val_bar
+  integrateFaceQuantity_revm(mesh, sbp, eqn, opts, flux_func, vals_bar)
+
+  return nothing
+end
+
+
+
 #------------------------------------------------------------------------------
 # Implementation for each functional
 
@@ -230,18 +278,7 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor, mesh.interfaces)
 
     # parallel part
-
-    # figure out which parallel function to call
-    if opts["parallel_data"] == PARALLEL_DATA_FACE
-      pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, flux_functor)
-    elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
-      pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_elemen_inner(mesh, sbp, eqn, opts, data, flux_functor)
-    else
-      error("unregonized parallel data: $(opts["parallel_data"])")
-    end
-
-    # do shared face integrals
-    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, pfunc)
+    doSparseFaceSharedFaceIntegrals(mesh, sbp, eqn, opts, flux_functor)
   end
 
   if opts["addStabilization"]
@@ -274,3 +311,50 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   return -calcFunctional(mesh, sbp, eqn, opts, func.func)
 end
 
+
+function calcFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres}, opts,
+            func::EntropyDissipation2Data) where {Tmsh, Tsol, Tres}
+
+  # get -\int (wL - wR)^T * F(uL, uR)  (negative sign because the face term
+  # has a negative sign in the weak form.
+  val1 = calcFunctional(mesh, sbp, eqn, opts, func.flux_functional)
+  println("val1 = ", val1)
+
+  # now compute \int (psi_L - psi_R)
+  # We can't use the regular face integral machinery for this, because it
+  # is conservative: it computes resL += flux, resR -= flux, so the sum is
+  # always zero.  Instead we need to integral and sum a quantity at the
+  # face nodes
+  # this only need to work for diagonal E
+
+  flux_func = func.potential_flux
+  val = zeros(Tres, mesh.numDofPerNode)
+  integrateFaceQuantity(mesh, sbp, eqn, opts, flux_func, val)
+
+  val2 = val[1]
+  return val2 + val1
+end
+
+
+
+
+"""
+  Do the shared face integrals with the given flux function
+"""
+function doSparseFaceSharedFaceIntegrals(mesh, sbp, eqn, opts, flux_functor::FluxType)
+
+  # figure out which parallel function to call
+  if opts["parallel_data"] == PARALLEL_DATA_FACE
+    pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_inner(mesh, sbp, eqn, opts, data, flux_functor)
+  elseif opts["parallel_data"] == PARALLEL_DATA_ELEMENT
+    pfunc = (mesh, sbp, eqn, opts, data) -> calcSharedFaceIntegrals_nopre_element_inner(mesh, sbp, eqn, opts, data, flux_functor)
+  else
+    error("unregonized parallel data: $(opts["parallel_data"])")
+  end
+
+  # do shared face integrals
+  finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, pfunc)
+
+  return nothing
+end
