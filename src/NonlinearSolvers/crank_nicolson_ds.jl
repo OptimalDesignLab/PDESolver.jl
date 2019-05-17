@@ -473,6 +473,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(BSTDOUT, "   FAIL")
         end
         flush(BSTDOUT)
+        dRdM_norm_global = calcNorm(eqn, dRdM_vec)
+        println(BSTDOUT, " +++ dRdM_norm_global: ", dRdM_norm_global)
+        flush(BSTDOUT)
         ### end check
 
         # should I be collecting into q?
@@ -506,6 +509,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
+        dRdq_vn_prod_norm_global = calcNorm(eqn, dRdq_vn_prod)
+        println(BSTDOUT, " +++ dRdq_vn_prod_norm_global: ", dRdq_vn_prod_norm_global)
+        flush(BSTDOUT)
+        b_vec_norm_global = calcNorm(eqn, b_vec)
+        println(BSTDOUT, " +++ b_vec_norm_global: ", b_vec_norm_global)
+        flush(BSTDOUT)
+
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
         ### If parallel, get an "only local values currently supported"
@@ -599,6 +609,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # linearSolve: solves Ax=b for x. 
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
+
+        v_vec_norm_global = calcNorm(eqn, v_vec)
+        println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
+        flush(BSTDOUT)
 
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
