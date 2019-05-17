@@ -455,7 +455,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
         # obtain dR/dM using the complex step method
         for ix_dof = 1:mesh.numDof
-          dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
+          dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
         end
         eqn_nextstep.params.Ma -= pert
         println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
@@ -470,7 +470,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         eqn.params.Ma -= pert
 
         for ix_dof = 1:mesh.numDof
-          dRdM_vec_cnRhs_CS[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
+          dRdM_vec_cnRhs_CS[ix_dof] = imag(res_hat_vec_cnRhs_CS[ix_dof])/Ma_pert_mag
         end
         ### end cnRhs, complex-step
 
