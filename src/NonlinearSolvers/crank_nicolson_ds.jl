@@ -113,6 +113,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # old_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn
       # new_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn_nextstep
       res_hat_vec = zeros(eqn.res_vec)    # unsteady residual
+      res_hat_vec_cnRhs_CS = zeros(eqn.res_vec)    # unsteady residual
       res_hat_vec_nopert = zeros(eqn.res_vec)    # unsteady residual
       res_hat_vec_pospert = zeros(eqn.res_vec)    # unsteady residual
       # TODO: ensure all of these are being used when debugging complete; otherwise, cleanup
@@ -124,6 +125,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       dRdM_vec = zeros(eqn.res_vec)
       dRdM_vec_FD = zeros(eqn.res_vec)
+      dRdM_vec_cnRhs_CS = zeros(eqn.res_vec)
       b_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
       TEST_b_vec = zeros(b_vec)
       TEST_dRdq_vn_prod = zeros(b_vec)
@@ -458,6 +460,20 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         eqn_nextstep.params.Ma -= pert
         println(BSTDOUT, "  vecnorm(dRdM_vec): ", vecnorm(dRdM_vec))
 
+        ### using cnRhs, complex-step
+        eqn_nextstep.params.Ma += pert
+        eqn.params.Ma += pert
+        ctx = (f, eqn, h)
+
+        cnRhs(mesh, sbp, eqn_nextstep, opts, res_hat_vec_cnRhs_CS, ctx, t)
+        eqn_nextstep.params.Ma -= pert
+        eqn.params.Ma -= pert
+
+        for ix_dof = 1:mesh.numDof
+          dRdM_vec_cnRhs_CS[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag     # should this be res_hat_vec??
+        end
+        ### end cnRhs, complex-step
+
         ### check
         FD_pert = 1e-7      # looks like minimum of the v is 1e-7
         eqn_nextstep.params.Ma += FD_pert
@@ -474,13 +490,22 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           dRdM_vec_FD[ix_dof] = (res_hat_vec_pospert[ix_dof] - res_hat_vec_nopert[ix_dof])/FD_pert
         end
         println(BSTDOUT, "  vecnorm(dRdM_vec_FD): ", vecnorm(dRdM_vec_FD))
+        flush(BSTDOUT)
         check1 = vecnorm(dRdM_vec_FD - dRdM_vec)
+        check1b = vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec)
+        check1c = vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec_FD)
         print(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_FD - dRdM_vec): ", check1)
+        flush(BSTDOUT)
         if check1 < 10*FD_pert
           println(BSTDOUT, "   PASS")
         else
           println(BSTDOUT, "   FAIL")
         end
+        flush(BSTDOUT)
+        println(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec): ", check1b)
+        flush(BSTDOUT)
+        println(BSTDOUT, "  >>> dRdM verify: vecnorm(dRdM_vec_cnRhs_CS - dRdM_vec_FD): ", check1c)
+        flush(BSTDOUT)
         # println(f_check1, i, "  ", check1)
         ### end check
 
@@ -515,8 +540,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
-        ### Only for julia sparse
+        ### Only for serial julia sparse.
+        ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
+        ### If parallel, get an "only local values currently supported"
+        #=
         modifyCNJacForMatFreeCheck(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
+        if opts["jac_type"] == 3 error("jac_type is 3 but you're doing check 2") end
         A_mul_B!(TEST_dRdq_vn_prod, lo_ds_innermost.A, v_vec)
         modifyCNJacForMatFreeCheck_reverse(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
         check2 = vecnorm(dRdq_vn_prod - TEST_dRdq_vn_prod)
@@ -526,6 +555,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         else
           println(BSTDOUT, "   FAIL")
         end
+        =#
 
         #------------------------------------------------------------------------------
         # Now the calculation of v_ix at n+1
@@ -604,7 +634,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
 
-        ### Only for julia sparse
+        ### Only for serial julia sparse.
+        ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
+        ### If parallel, get an "only local values currently supported"
+        #=
+        if opts["jac_type"] == 3 error("jac_type is 3 but you're doing check 3") end
         A_mul_B!(TEST_b_vec, lo_ds_innermost.A, v_vec)
         # println(BSTDOUT, " cond(full(lo_ds_innermost.A)): ", cond(full(lo_ds_innermost.A)))
         println(BSTDOUT, " vecnorm(b_vec): ", vecnorm(b_vec))
@@ -617,6 +651,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(BSTDOUT, "   FAIL")
         end
         flush(BSTDOUT)
+        =#
 
         #### The above is all new CSR code
 
