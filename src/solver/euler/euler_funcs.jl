@@ -1982,7 +1982,6 @@ function calc2RWaveSpeeds(params::ParamType{Tdim}, qL::AbstractVector{Tsol},
   end
   u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
 
-
   num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
   den = aL/(pL^z) + aR/(pR^z)
 

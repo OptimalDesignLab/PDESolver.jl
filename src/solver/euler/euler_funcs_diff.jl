@@ -1770,4 +1770,109 @@ function calc2RWaveSpeeds_diff(params::ParamType{Tdim}, qL::AbstractVector{Tsol}
 end
 
 
+function calc2RWaveSpeeds_revq(params::ParamType{Tdim},
+                              qL::AbstractVector{Tsol}, qL_bar::AbstractVector,
+                              qR::AbstractVector, qR_bar::AbstractVector,
+                              nrm::AbstractVector{Tmsh},
+                              sL_bar::Number, sR_bar::Number,
+                              ) where {Tdim, Tsol, Tmsh}
+
+  Tres = promote_type(Tsol, Tmsh)
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  aL = sqrt(params.gamma*pL/qL[1]); aR = sqrt(params.gamma*pR/qR[1])
+  z = params.gamma_1/(2*params.gamma)
+
+  # compute velocity in face normal direction
+  u_nrmL = zero(Tres); u_nrmR = zero(Tres)
+  fac = calcLength(params, nrm)
+  for i=1:Tdim
+    u_nrmL += qL[i+1]*nrm[i]
+    u_nrmR += qR[i+1]*nrm[i]
+  end
+  u_nrmL_orig = u_nrmL; u_nrmR_orig = u_nrmR
+  u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+
+  num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
+  den = aL/(pL^z) + aR/(pR^z)
+
+  frac = num/den
+  p_tr = frac^(1/z)
+
+  # compute q values
+  if p_tr <= pL
+    qfL = Tres(1.0)
+  else
+    qfL = sqrt(1 + (params.gamma + 1)*(p_tr/pL - 1)/(2*params.gamma))
+  end
+
+  if p_tr <= pR
+    qfR = Tres(1.0)
+  else
+    qfR = sqrt(1 + (params.gamma + 1)*(p_tr/pR - 1)/(2*params.gamma))
+  end
+
+  sL = u_nrmL - aL*qfL
+  sR = u_nrmR + aR*qfR
+
+  #------------------------
+  # reverse sweep
+
+  u_nrmL_bar =  sL_bar
+  aL_bar     = -qfL*sL_bar
+  qfL_bar    = -aL*sL_bar
+
+  u_nrmR_bar = sR_bar
+  aR_bar     = qfR*sR_bar
+  qfR_bar    = aR*sR_bar
+
+  p_tr_bar = zero(Tres)
+  if p_tr <= pR
+    pR_bar   = zero(Tres)
+  else
+    p_tr_bar += Tres( qfR_bar*(params.gamma + 1)/(4*params.gamma*qfR*pR) )
+    pR_bar    = Tres( qfR_bar*( -(params.gamma + 1)*p_tr)/(4*qfR*params.gamma*pR*pR))
+  end
+
+  if p_tr <= pL
+    pL_bar = zero(Tres)
+  else
+    p_tr_bar += Tres( qfL_bar*(params.gamma + 1)/(4*params.gamma*qfL*pL) )
+    pL_bar    = Tres( qfL_bar*( -(params.gamma + 1)*p_tr)/(4*qfL*params.gamma*pL*pL))
+  end
+
+  #TODO: precompute things raised to fractional powers
+  # TODO: if p_tr_bar = 0, is any of this necessary?
+  num_bar = p_tr_bar*(1/(z*den))*(num/den)^(1/z - 1)
+  den_bar = p_tr_bar*(1/z)*(-num/(den*den))*(num/den)^(1/z - 1)
+
+  # compute num and den
+  aL_bar += den_bar/(pL^z); aR_bar += den_bar/(pR^z)
+  pL_bar += -den_bar*z*aL/(pL^(z+1)); pR_bar += -den_bar*z*aR/(pR^(z+1))
+
+  aL_bar += num_bar; aR_bar += num_bar
+  u_nrmL_bar += 0.5*params.gamma_1*num_bar
+  u_nrmR_bar -= 0.5*params.gamma_1*num_bar
+
+  # compute velocity in face normal direction
+  #qL_bar[1] += u_nrmL_bar*fac; qR_bar[1] += u_nrmR_bar*fac
+  #u_nrmL_bar = u_nrmL_bar*fac*qL[1]; u_nrmR_bar = u_nrmR_bar*fac*qR[1]
+  qL_bar[1] += -u_nrmL_bar*u_nrmL_orig/(fac*qL[1]*qL[1])
+  qR_bar[1] += -u_nrmR_bar*u_nrmR_orig/(fac*qR[1]*qR[1])
+  u_nrmL_bar = u_nrmL_bar/(fac*qL[1]); u_nrmR_bar = u_nrmR_bar/(fac*qR[1])
+  for i=1:Tdim
+    qL_bar[i+1] += u_nrmL_bar*nrm[i]
+    qR_bar[i+1] += u_nrmR_bar*nrm[i]
+  end
+
+
+  pL_bar += aL_bar*params.gamma/(2*aL*qL[1])
+  pR_bar += aR_bar*params.gamma/(2*aR*qR[1])
+  qL_bar[1] += aL_bar*(-params.gamma*pL/(qL[1]*qL[1]))/(2*aL)
+  qR_bar[1] += aR_bar*(-params.gamma*pR/(qR[1]*qR[1]))/(2*aR)
+
+  calcPressure_revq(params, qL, qL_bar, pL_bar)
+  calcPressure_revq(params, qR, qR_bar, pR_bar)
+end
+
 

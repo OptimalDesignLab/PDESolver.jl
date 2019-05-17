@@ -38,12 +38,13 @@ function test_jac_terms()
 
     nrm = [0.45, 0.55]
     nrm2 = -nrm
-#=
+
     q = Complex128[2.0, 3.0, 4.0, 7.0]
     qg = q + 0.1
 
-    test_2RWave(eqn.params, q, qg, nrm)
-=#
+    #test_2RWave(eqn.params, q, qg, nrm)
+    test_2RWave_revq(eqn.params, q, qg, nrm)
+#=
     
 #    q = Complex128[2.0, 3.0, 4.0, 7.0]
 #    qg = q + 0.1
@@ -304,14 +305,14 @@ function test_jac_terms()
    mesh, sbp, eqn, opts = run_solver(opts_sc)
 
    test_jac_homotopy(mesh, sbp, eqn, opts_sc)
-
+=#
   end
 
   return nothing
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -1658,8 +1659,53 @@ function test_2RWave(params::AbstractParamType{Tdim}, qL, qR, nrm) where Tdim
   @test maxdiffL < 1e-12
   @test maxdiffR < 1e-12
 
+
   return nothing
 end
+
+
+function test_2RWave_revq(params::AbstractParamType{Tdim}, qL, qR, nrm) where {Tdim}
+
+  numDofPerNode = length(qL)
+  h = 1e-20
+  pert = Complex128(0, h)
+  qL_dot = rand_realpart(length(qL))
+  #qL_dot = zeros(numDofPerNode); qL_dot[1] = 1
+  qR_dot = rand_realpart(length(qR))
+  #qR_dot = zeros(numDofPerNode)
+  qL_bar = zeros(Complex128, numDofPerNode)
+  qR_bar = zeros(Complex128, numDofPerNode)
+
+  sL_bar = rand()
+  sR_bar = rand()
+  #sR_bar = 0.0
+
+  # complex step
+  qL .+= pert*qL_dot
+  qR .+= pert*qR_dot
+  sL, sR = EulerEquationMod.calc2RWaveSpeeds(params, qL, qR, nrm)
+  qL .-= pert*qL_dot
+  qR .-= pert*qR_dot
+  sL_dot = imag(sL)./h
+  sR_dot = imag(sR)./h
+
+  val1 = sL_dot*sL_bar + sR_dot*sR_bar
+  # reverse mode
+  EulerEquationMod.calc2RWaveSpeeds_revq(params, qL, qL_bar, qR, qR_bar, nrm,
+                                         sL_bar, sR_bar)
+
+  println("qL_bar = ", real(qL_bar))
+  val2 = sum(qL_bar.*qL_dot) + sum(qR_bar .* qR_dot)
+
+  println("val1 = ", val1)
+  println("val2 = ", val2)
+  @test abs(val1 - val2) < 1e-13
+
+  return nothing
+
+end
+
+
 
 
 
