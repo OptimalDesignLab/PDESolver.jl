@@ -496,7 +496,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
         end
 
+        if opts["parallel_type"] == 2 && mesh.npeers > 0
+          startSolutionExchange(mesh, sbp, eqn, opts)
+        end
         f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec (confirmed w/ random test)
+        array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
         for ix_dof = 1:mesh.numDof
           
