@@ -194,7 +194,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       R_stab = zeros(eqn.q_vec)
       v_energy = zeros(eqn.q_vec)
 
-      @mpi_master f_v_energy = open("v_energy_data.dat", "w")
+      @mpi_master f_v_energy_norm = open("v_energy_norm.dat", "w")
+      @mpi_master f_v_vec_norm = open("v_vec_norm.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
       # @mpi_master f_check1 = open("check1.dat", "w")
     end
@@ -317,7 +318,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if (i % output_freq) == 0
       @mpi_master flush(BSTDOUT)
       @mpi_master if opts["perturb_Ma_CN"]
-        flush(f_v_energy)
+        flush(f_v_energy_norm)
+        flush(f_v_vec_norm)
       end
       @mpi_master flush(f_i_test)
       @mpi_master if opts["write_drag"]
@@ -696,6 +698,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # v_energy_max = MPI.Allreduce(v_energy_max_local, MPI.SUM, mesh.comm)
 
         v_energy_norm = calcNorm(eqn, v_energy)
+        v_vec_norm = calcNorm(eqn, v_vec)
 
       end   # end of if opts["write_L2vnorm"]
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -704,7 +707,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # This needs to be above the checkpoint write, in case the checkpoint is written before the 
     #   files are flushed. This would cause a gap in the data files.
-    @mpi_master println(f_v_energy, i, "  ", real(v_energy_norm))
+    @mpi_master println(f_v_energy_norm, i, "  ", real(v_energy_norm))
+    @mpi_master println(f_v_vec_norm, i, "  ", real(v_vec_norm))
     @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -843,7 +847,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       if opts["write_L2vnorm"]
         @mpi_master close(f_L2vnorm)
-        @mpi_master close(f_v_energy)
+        @mpi_master close(f_v_energy_norm)
+        @mpi_master close(f_v_vec_norm)
         @mpi_master close(f_i_test)
         # @mpi_master close(f_check1)
       end
