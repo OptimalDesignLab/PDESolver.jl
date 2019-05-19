@@ -28,13 +28,22 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   data = readdlm("drag.dat")
 
   itermax_fromdata = size(data, 1)
+
+  println(" ----- Reading drag.dat -----")
+  println("  itermax_fromdata: ", itermax_fromdata)
+  println("  itermax_fromnlsolver: ", itermax_fromnlsolver)
+  println(" ----------------------------")
+
   if itermax_fromdata > (itermax_fromnlsolver + 1)
     println(BSTDOUT, " itermax_fromdata: ", itermax_fromdata)
     println(BSTDOUT, " itermax_fromnlsolver + 1: ", itermax_fromnlsolver + 1)
     println(BSTDOUT, "--------------------------------")
     flush(BSTDOUT)
-    error("HELLOOOO You forgot to delete drag.dat, or there's some problem with finaliter")
+    println(BSTDOUT, "HELLOOOO You forgot to delete drag.dat, or there's some problem with finaliter")
+    flush(BSTDOUT)
   end
+
+  ## need to log clean here?
 
   itermax = itermax_fromdata
 

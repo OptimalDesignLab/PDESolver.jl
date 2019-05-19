@@ -923,11 +923,14 @@ function openLoggingFiles(mesh, opts)
 
       used_names[fname] = keyname  # record this fname as used
 
+      f = BufferedIO(opts[fname_key], "a")  # append to files (safe default)
+      #=
       if name == "drag"
         f = BufferedIO(opts[fname_key], "w")  # overwrite write files
       else
         f = BufferedIO(opts[fname_key], "a")  # append to files (safe default)
       end
+      =#
 
       file_dict[fname] = f
 
