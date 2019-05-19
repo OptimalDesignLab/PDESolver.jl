@@ -71,8 +71,10 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
     println(BSTDOUT, " itermax_fromnlsolver + 1: ", itermax_fromnlsolver + 1)
     println(BSTDOUT, "--------------------------------")
     flush(BSTDOUT)
-    println(BSTDOUT, "HELLOOOO You forgot to delete drag.dat, or there's some problem with finaliter")
-    println(BSTDOUT, "HELLOOOO Remember that we're appending to drag.dat now.")
+    println(BSTDOUT, "HELLOOOO Problem with length of drag data compared to what it should be.")
+    println(BSTDOUT, "         Could be that duplicate entries exist due to restarting,")
+    println(BSTDOUT, "         you forgot to delete drag.dat, or there's some problem with finaliter")
+    println(BSTDOUT, "         Remember that we're appending to drag.dat now.")
     flush(BSTDOUT)
   end
 

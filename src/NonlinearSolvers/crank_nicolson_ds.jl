@@ -647,6 +647,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # this accumulation occurs across all dofs and all time steps.
           term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
         end
+        println(BSTDOUT, "    |||||||||||||||||||||||||||||   i = $i  |||||||||||||")
+        println(BSTDOUT, "      term23: ", term23)
+        println(BSTDOUT, "      old_term23: ", old_term23)
+        println(BSTDOUT, "      term23 - old_term23: ", term23 - old_term23)
+        println(BSTDOUT, "      quad_weight: ", quad_weight, 
+                         "      vecnorm(dDdu_vec): ", vecnorm(dDdu_vec), 
+                         "      vecnorm(v_vec): ", vecnorm(v_vec))
+        println(BSTDOUT, "    |||||||||||||||||||||||||||||||||||||||||||||||||||||")
 
         #------------------------------------------------------------------------------
         # here is where we should be calculating the 'energy' to show that it is increasing over time
@@ -783,6 +791,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
 
         @mpi_master close(f_drag)
+        @mpi_master writedlm("drag_array.dat", drag_array)
 
         println(BSTDOUT, " size(drag_array): ", size(drag_array))
 
@@ -791,7 +800,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " Cd_file - Cd: ", Cd_file - Cd)
         println(BSTDOUT, " dCddM_file - dCddM: ", dCddM_file - dCddM)
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
+        println(BSTDOUT, " |||||||||||||||||   t: ", t)
+        println(BSTDOUT, " |||||||||||||||||   term23: ", term23)
         global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
+        println(BSTDOUT, " |||||||||||||||||   global_term23: ", global_term23)
         total_dCddM = dCddM + global_term23
 
         # Cd calculations
