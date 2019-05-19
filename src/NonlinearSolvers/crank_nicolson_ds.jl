@@ -93,6 +93,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
   t = 0.0
   t_steps = round(Int, t_max/h)
+  finaliter = calcFinalIter(t_steps, itermax)
+  println(BSTDOUT, "finaliter: ", finaliter)
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Start direct sensitivity setup    1111
@@ -106,9 +108,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       ###### CSR: This section is the only section that contains things that are 
       #           new to the CN version of the complex step method (CSR: 'complex step residual')
-      old_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn
-      new_res_vec_Maimag = zeros(eqn.res_vec)    # corresponds to eqn_nextstep
-      println(BSTDOUT, " typeof(new_res_vec_Maimag): ", typeof(new_res_vec_Maimag))
       # TODO: make sure we don't need old/new_q_vec_Ma_imag
       # old_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn
       # new_q_vec_Maimag = zeros(eqn.q_vec)    # corresponds to eqn_nextstep
@@ -138,12 +137,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       println(" typeof(lo_ds): ", typeof(lo_ds))
       println(" typeof(ls_ds): ", typeof(ls_ds))
 
-      #------------------------------------------------------------------------------
-      # debug linear solver
-      # pc_debug, lo_debug = getCNDSPCandLO(mesh, sbp, eqn, opts)
-      # ls_debug = StandardLinearSolver(pc_debug, lo_debug, eqn.comm, opts)
-
-
       # these are needed for direct manipulation of the Petsc Jac later
       lo_ds_innermost = getBaseLO(lo_ds)     # makes sure to return the innermost LO object (basically returning the Jac)
       # not needed?
@@ -158,16 +151,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 
     # setup all the checkpointing related data
-    chkpointer, chkpointdata, skip_checkpoint = CNDS_checkpoint_setup(mesh, opts, myrank)
+    chkpointer, chkpointdata, skip_checkpoint = CNDS_checkpoint_setup(mesh, opts, myrank, finaliter)
     istart = chkpointdata.i
     i_test = chkpointdata.i_test
     v_vec = chkpointdata.v_vec
-    new_res_vec_Maimag = chkpointdata.new_res_vec_Maimag
+    drag_array = chkpointdata.drag_array
     println(BSTDOUT, "\n >>>> Loaded checkpoint")
     println(BSTDOUT, " istart: ", istart)
     println(BSTDOUT, " i_test: ", i_test)
     println(BSTDOUT, " vecnorm(v_vec): ", vecnorm(v_vec))
-    println(BSTDOUT, " vecnorm(new_res_vec_Maimag): ", vecnorm(new_res_vec_Maimag))
 
     #------------------------------------------------------------------------------
     # capture direct sensitivity at the IC
@@ -183,6 +175,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if opts["write_drag"] && ! opts["is_restart"]
       @mpi_master println(f_drag, 1, " ", drag)
       println("i: ", 1, "  myrank: ", myrank,"  drag: ", drag)
+      drag_array = zeros(Float64, finaliter)
+      drag_array[1] = real(drag)
       @mpi_master flush(f_drag)
     end
     if opts["write_L2vnorm"]
@@ -227,7 +221,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       # this is the IC, so it gets the first time step's quad_weight
       i = 1       # note that timestep loop below starts at i = 2
-      finaliter = calcFinalIter(t_steps, itermax)
       quad_weight = calcQuadWeight(i, dt, finaliter)
 
       i_test = 10
@@ -338,7 +331,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         chkpointdata.i = i
         chkpointdata.i_test = i_test
         chkpointdata.v_vec = v_vec
-        chkpointdata.new_res_vec_Maimag = new_res_vec_Maimag
+        chkpointdata.drag_array = drag_array
 
         if countFreeCheckpoints(chkpointer) == 0
           freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
@@ -400,6 +393,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       drag = real(evalFunctional(mesh, sbp, eqn, opts, objective))
       @mpi_master f_drag = eqn.file_dict[opts["write_drag_fname"]]
       @mpi_master println(f_drag, i, " ", drag)
+      @mpi_master drag_array[i] = real(drag)
       @mpi_master if (i % opts["output_freq"]) == 0
         flush(f_drag)
       end
@@ -790,7 +784,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         @mpi_master close(f_drag)
 
-        Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter)   # will use eqn.params.Ma
+        println(BSTDOUT, " size(drag_array): ", size(drag_array))
+
+        Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=false)   # will use eqn.params.Ma
+        Cd_file, dCddM_file = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=true, drag_array=drag_array)   # will use eqn.params.Ma
+        println(BSTDOUT, " Cd_file - Cd: ", Cd_file - Cd)
+        println(BSTDOUT, " dCddM_file - dCddM: ", dCddM_file - dCddM)
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
         global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
         total_dCddM = dCddM + global_term23

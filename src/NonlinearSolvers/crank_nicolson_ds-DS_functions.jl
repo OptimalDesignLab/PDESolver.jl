@@ -124,7 +124,7 @@ mutable struct CNDSCheckpointData <: AbstractCheckpointData
   i_test::Int
   numDof::Int   # number of DOFs in the mesh, needed for v_vec sizing
   v_vec::Array{Float64,1}   # storing the direct sensitivity
-  new_res_vec_Maimag::Array{Complex{Float64},1}  # storing the last time step's new_res_vec_Maimag (needed in dRdM calcs)
+  drag_array::Array{Float64, 1}
 end
 
 """ 
@@ -136,7 +136,7 @@ function CNDSCheckpointData(chkpointer::Checkpointer, comm_rank::Integer)
   return chkpoint_data::CNDSCheckpointData
 end
 
-function CNDS_checkpoint_setup(mesh, opts, myrank)
+function CNDS_checkpoint_setup(mesh, opts, myrank, finaliter)
   is_restart = opts["is_restart"]
   ncheckpoints = opts["ncheckpoints"]
 
@@ -147,8 +147,8 @@ function CNDS_checkpoint_setup(mesh, opts, myrank)
     i_test = istart*10
     numDof = mesh.numDof
     v_vec = zeros(Float64, numDof)
-    new_res_vec_Maimag = zeros(Complex{Float64}, numDof)
-    chkpointdata = CNDSCheckpointData(istart, i_test, numDof, v_vec, new_res_vec_Maimag)
+    drag_array = zeros(Float64, finaliter)
+    chkpointdata = CNDSCheckpointData(istart, i_test, numDof, v_vec, drag_array)
     chkpointer = Checkpointer(myrank, ncheckpoints)
     skip_checkpoint = false
   else

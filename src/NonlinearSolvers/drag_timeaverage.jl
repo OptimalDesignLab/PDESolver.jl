@@ -1,4 +1,9 @@
 
+# function loadDragTimeAverage(mesh, sbp, eqn, opts, useArray::Bool, filename="drag.dat")
+
+  # if useArray == false
+  # if useArray == true
+
 
 """
   calcDragTimeAverage:
@@ -8,6 +13,9 @@
     mesh, sbp, eqn, opts: standard
     delta_t: Time step size
     itermax_fromnlsolver: The last iteration's number from the NL Solver
+    useArray: Bool. If true, calculate the drag data from an array of values. 
+              This array should be one element per time step's drag value.
+              If false, calculate the drag data from drag.dat.
 
   Outputs: (return values)
     Cd:     Coefficient of drag
@@ -17,7 +25,7 @@
             dCd/dM = (-2<D>)/(0.5*M^3)
 
 """
-function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver)
+function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver; useArray=false, drag_array=[0.0])
 
   # println(BSTDOUT, "------------------------------- in calcDragTimeAverage")
   myrank = mesh.myrank
@@ -25,14 +33,38 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   dt = delta_t
 
   Ma = eqn.params.Ma
-  data = readdlm("drag.dat")
+  # data = readdlm("drag.dat")
 
-  itermax_fromdata = size(data, 1)
+  #=
+  if opts["is_restart"]                 # if it's a restart, need to use log_cleaner, which saves the 
+                                        # cleaned output in filename_cleaned.dat
+    drag_filename = "drag_cleaned.dat"
+  else
+    drag_filename = "drag.dat"
+  end
+  =#
 
-  println(" ----- Reading drag.dat -----")
-  println("  itermax_fromdata: ", itermax_fromdata)
-  println("  itermax_fromnlsolver: ", itermax_fromnlsolver)
-  println(" ----------------------------")
+  if useArray == false
+    println(BSTDOUT, "calculating drag from file")
+    data = readdlm("drag.dat")
+    itermax_fromdata = size(data, 1)
+    itermax = itermax_fromdata
+    drag = data[1:itermax, 2]
+  else
+    println(BSTDOUT, "calculating drag from array")
+    if length(drag_array) == 1
+      error(" drag_array not specified")
+    end
+    drag = drag_array
+    itermax_fromdata = size(drag, 1)
+    itermax = itermax_fromdata
+  end
+
+
+  println(BSTDOUT, " ----- Reading drag.dat -----")
+  println(BSTDOUT, "  itermax_fromdata: ", itermax_fromdata)
+  println(BSTDOUT, "  itermax_fromnlsolver: ", itermax_fromnlsolver)
+  println(BSTDOUT, " ----------------------------")
 
   if itermax_fromdata > (itermax_fromnlsolver + 1)
     println(BSTDOUT, " itermax_fromdata: ", itermax_fromdata)
@@ -40,17 +72,9 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
     println(BSTDOUT, "--------------------------------")
     flush(BSTDOUT)
     println(BSTDOUT, "HELLOOOO You forgot to delete drag.dat, or there's some problem with finaliter")
+    println(BSTDOUT, "HELLOOOO Remember that we're appending to drag.dat now.")
     flush(BSTDOUT)
   end
-
-  ## need to log clean here?
-
-  itermax = itermax_fromdata
-
-  iter = round.(Int64, data[1:itermax, 1])
-  drag = data[1:itermax, 2]
-
-  # iter = iter - 1     # because iter starts at 2      ---- Now commented out bc of IC inclusion
 
   drag_timeavg = 0.0
   maxtime = dt*itermax - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
@@ -65,11 +89,11 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
 
   # Cd calculations
   Cd = drag_timeavg/(0.5*Ma^2)
-  @mpi_master println(" Cd = <D>/(0.5*M^2) = ", Cd)
+  @mpi_master println(" in drag_timeaverage: Cd = <D>/(0.5*M^2) = ", Cd)
 
   dCddM = (-4.0*drag_timeavg)/(Ma^3)
   # comes from dCd/dM = (-2<D>)/(0.5*M^3)
-  @mpi_master println(" dCddM = (-4<D>)/(M^3) = ", dCddM)
+  @mpi_master println(" in drag_timeaverage: dCddM = (-4<D>)/(M^3) = ", dCddM)
 
   return Cd, dCddM
 
