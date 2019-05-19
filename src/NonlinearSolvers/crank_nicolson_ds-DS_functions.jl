@@ -125,6 +125,7 @@ mutable struct CNDSCheckpointData <: AbstractCheckpointData
   numDof::Int   # number of DOFs in the mesh, needed for v_vec sizing
   v_vec::Array{Float64,1}   # storing the direct sensitivity
   drag_array::Array{Float64, 1}
+  term23::Float64
 end
 
 """ 
@@ -148,7 +149,8 @@ function CNDS_checkpoint_setup(mesh, opts, myrank, finaliter)
     numDof = mesh.numDof
     v_vec = zeros(Float64, numDof)
     drag_array = zeros(Float64, finaliter)
-    chkpointdata = CNDSCheckpointData(istart, i_test, numDof, v_vec, drag_array)
+    term23 = 0.0
+    chkpointdata = CNDSCheckpointData(istart, i_test, numDof, v_vec, drag_array, term23)
     chkpointer = Checkpointer(myrank, ncheckpoints)
     skip_checkpoint = false
   else

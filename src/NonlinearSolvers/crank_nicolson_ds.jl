@@ -101,7 +101,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     if opts["perturb_Ma_CN"]
-      term23 = zero(eqn.params.Ma)
+      # term23 = zero(eqn.params.Ma)
       dDdu = zeros(eqn.res)         # dDdu is of size eqn.q or eqn.res (dDdu is term2 in rk4_ds.jl)
       dDdu_vec = zeros(Complex128, mesh.numDofPerNode * mesh.numNodesPerElement * mesh.numEl,)
       v_vec = zeros(Float64, length(eqn.res_vec))   # needs to be Float64, even if res_vec is cplx
@@ -156,10 +156,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     i_test = chkpointdata.i_test
     v_vec = chkpointdata.v_vec
     drag_array = chkpointdata.drag_array
+    term23 = chkpointdata.term23
     println(BSTDOUT, "\n >>>> Loaded checkpoint")
     println(BSTDOUT, " istart: ", istart)
     println(BSTDOUT, " i_test: ", i_test)
     println(BSTDOUT, " vecnorm(v_vec): ", vecnorm(v_vec))
+    println(BSTDOUT, " vecnorm(drag_array): ", vecnorm(drag_array))
+    println(BSTDOUT, " term23: ", term23)
 
     #------------------------------------------------------------------------------
     # capture direct sensitivity at the IC
@@ -332,6 +335,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         chkpointdata.i_test = i_test
         chkpointdata.v_vec = v_vec
         chkpointdata.drag_array = drag_array
+        chkpointdata.term23 = term23
 
         if countFreeCheckpoints(chkpointer) == 0
           freeOldestCheckpoint(chkpointer)  # make room for a new checkpoint
