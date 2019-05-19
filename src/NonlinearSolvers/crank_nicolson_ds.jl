@@ -426,7 +426,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dM
-        println(BSTDOUT, "> Now solving dR/dM")
+        # println(BSTDOUT, "> Now solving dR/dM")
 
         Ma_pert_mag = opts["perturb_Ma_magnitude"]
         pert = complex(0, Ma_pert_mag)
@@ -447,7 +447,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
         ### end cnRhs, complex-step
 
-        ### check
+        ### FD check of dRdM
+        #=
         FD_pert = 1e-7      # looks like minimum of the v is 1e-7
         eqn_nextstep.params.Ma += FD_pert
         eqn.params.Ma += FD_pert
@@ -476,6 +477,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         dRdM_norm_global = calcNorm(eqn, dRdM_vec)
         println(BSTDOUT, " +++ dRdM_norm_global: ", dRdM_norm_global)
         flush(BSTDOUT)
+        =#
         ### end check
 
         # should I be collecting into q?
@@ -484,7 +486,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         #------------------------------------------------------------------------------
         # This section calculates dR/dq * v^(n)
-        println(BSTDOUT, "> Now solving dR/dq * v^(n)")
+        # println(BSTDOUT, "> Now solving dR/dq * v^(n)")
 
         # v_vec currently holds v at timestep n: v^(n)
 
@@ -513,12 +515,14 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
+        #=
+        # output of norms of quantities every time step (debugging only)
         dRdq_vn_prod_norm_global = calcNorm(eqn, dRdq_vn_prod)
         println(BSTDOUT, " +++ dRdq_vn_prod_norm_global: ", dRdq_vn_prod_norm_global)
-        flush(BSTDOUT)
         b_vec_norm_global = calcNorm(eqn, b_vec)
         println(BSTDOUT, " +++ b_vec_norm_global: ", b_vec_norm_global)
         flush(BSTDOUT)
+        =#
 
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
@@ -541,7 +545,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Now the calculation of v_ix at n+1
         # Solve: dR/dq^(n+1) v^(n+1) = b
         #--------
-        println(BSTDOUT, "> Now solving for v^(n+1)")
+        # println(BSTDOUT, "> Now solving for v^(n+1)")
 
         #------------------------------------------------------------------------------
         # Restore q_vec & res_vec for both eqn & eqn_nextstep, as they were
@@ -614,9 +618,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
 
-        v_vec_norm_global = calcNorm(eqn, v_vec)
-        println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
-        flush(BSTDOUT)
+        # v_vec_norm_global = calcNorm(eqn, v_vec)
+        # println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
 
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
@@ -651,14 +654,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           # this accumulation occurs across all dofs and all time steps.
           term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
         end
-        println(BSTDOUT, "    |||||||||||||||||||||||||||||   i = $i  |||||||||||||")
-        println(BSTDOUT, "      term23: ", term23)
-        println(BSTDOUT, "      old_term23: ", old_term23)
-        println(BSTDOUT, "      term23 - old_term23: ", term23 - old_term23)
-        println(BSTDOUT, "      quad_weight: ", quad_weight, 
-                         "      vecnorm(dDdu_vec): ", vecnorm(dDdu_vec), 
-                         "      vecnorm(v_vec): ", vecnorm(v_vec))
-        println(BSTDOUT, "    |||||||||||||||||||||||||||||||||||||||||||||||||||||")
 
         #------------------------------------------------------------------------------
         # here is where we should be calculating the 'energy' to show that it is increasing over time
@@ -804,10 +799,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " Cd_file - Cd: ", Cd_file - Cd)
         println(BSTDOUT, " dCddM_file - dCddM: ", dCddM_file - dCddM)
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
-        println(BSTDOUT, " |||||||||||||||||   t: ", t)
-        println(BSTDOUT, " |||||||||||||||||   term23: ", term23)
         global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
-        println(BSTDOUT, " |||||||||||||||||   global_term23: ", global_term23)
         total_dCddM = dCddM + global_term23
 
         # Cd calculations
