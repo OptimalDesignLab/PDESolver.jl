@@ -240,6 +240,7 @@ function test_utils2(mesh, sbp, eqn, opts)
     test_norms(mesh, sbp, eqn, opts)
     test_identityarray()
     test_sparsematrix()
+    test_binning()
 
     #TODO: test other things too
   end
@@ -398,6 +399,44 @@ function test_sparsematrix()
 end
 
 
+function test_binning()
+
+  @testset "UniformBinning" begin
+    obj = UniformBinning{Int, Float64}(1, 2, 3)
+
+    @test calcBin(obj, 1.1) == 1
+    @test calcBin(obj, 1.4) == 2
+    @test calcBin(obj, 1.9) == 3
+    @test calcBin(obj, 1) == 1
+    @test calcBin(obj, 2) == 3
+
+    push!(obj, 1, 1.1)
+    push!(obj, 1, 1.2)
+
+    push!(obj, 1, 1.4)
+    push!(obj, 1, 1.4)
+    push!(obj, 1, 1.5)
+
+    push!(obj, 1, 1.7)
+    push!(obj, 1, 1.8)
+    push!(obj, 1, 1.9)
+    push!(obj, 1, 2.0)
+
+    bin_keycount, val_sum = sumBins(obj)
+
+    @test bin_keycount[1] == 2
+    @test bin_keycount[2] == 3
+    @test bin_keycount[3] == 4
+
+    @test abs(val_sum[1] - (1.1 + 1.2)) < 1e-15
+    @test abs(val_sum[2] - (1.4 + 1.4 + 1.5)) < 1e-15
+    @test abs(val_sum[3] - (1.7 + 1.8 + 1.9 + 2.0)) < 1e-15
+  end
+
+  return nothing
+end
+
+
 add_func2!(AdvectionTests, test_utils3, test_3d_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])
 # it doesn't matter what mesh is loaded, so reuse the test_lowlevel one
-add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST])
+add_func2!(AdvectionTests, test_utils2, test_lowlevel_inputfile, [TAG_REVERSEMODE, TAG_SHORTTEST, TAG_TMP])

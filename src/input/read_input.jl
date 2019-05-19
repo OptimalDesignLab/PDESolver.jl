@@ -445,7 +445,7 @@ get!(arg_dict, "homotopy_psi_max", 10*pi/180)
 # pHomotopy options
 get!(arg_dict, "phomotopy_solve_homotopy", true)
 get!(arg_dict, "phomotopy_p_max", -1)
-get!(arg_dict, "phomotopy_flux_regular", arg_dict["Flux_name"])
+get!(arg_dict, "phomotopy_flux_regular", get(arg_dict, "Flux_name", "ErrorFlux"))
 get!(arg_dict, "phomotopy_shock_sensor_hard", arg_dict["shock_sensor_name"])
 if arg_dict["phomotopy_p_max"] > 0
   tmp = zeros(Int, arg_dict["phomotopy_p_max"])

@@ -26,6 +26,8 @@ include("area.jl")
 include("checkpoint.jl")
 include("interpolation.jl")
 include("identity_array.jl")
+include("abstract_binning.jl")
+include("uniform_binning.jl")
 
 export free
 export array1DTo3D, writeQ, array3DTo1D, removeComplex, assembleArray
@@ -93,6 +95,9 @@ export interpField
 
 # identity_array.jl
 export IdentityArray, FullFace
+
+# abstract_binning.jl and unifrom_binning.jl
+export AbstractBinning, calcBin, sumBins, UniformBinning
 
 """
   Generic function to free any memory belonging to other libraries
