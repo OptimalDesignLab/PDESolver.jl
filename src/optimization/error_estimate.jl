@@ -10,6 +10,9 @@
                 is complete, Only set this to false if you know what you
                 are doing.  Default true.
 
+   * fixed_fraction: a number between 0 and 1 that determines what fraction
+                     of the elements are refined for fixed-fraction based
+                     strategy.  Default 0.1
   **SolveAdaptive Options**
 
    * solve_itermax: maximum number of times h-adaptation/solve PDE cycles
@@ -19,11 +22,26 @@
                elements than this, so the returned mesh will have
                (possibly many) more elements than this.  Default no
                limit.
+
+  **Strategy**
+
+  The values for the strategy are:
+
+   * 1: attempt to equidistribute the error by refining or coarsening every
+        element.  This strategy attempts to reach the error tolerance in a
+        single iteration, which can lead to over-refinment
+   * 2: refine a fixed fraction of the elements each iteration, reducing
+        their size by half.  The elements with the greatest error are selected.
+        This strategy does not consider the error tolerance.  Uses the
+        `fixed_fraction` field.
 """
 mutable struct AdaptOpts
   strategy::Int
   #TODO: wrap more MeshAdapt options
   free_mesh::Bool
+
+  # options used by different strategies
+  fixed_fraction::Float64
 
   # solveAdaptive options
   solve_itermax::Int
@@ -41,6 +59,7 @@ function AdaptOpts()
   strategy = 1
   free_mesh = true
 
+  fixed_fraction = 0.1
   #TODO: need to figure out about load balancing post adaptation
 
   # solveAdapative options
@@ -50,8 +69,8 @@ function AdaptOpts()
   # private options
   free_ls = false
 
-  return AdaptOpts(strategy, free_mesh, solve_itermax, element_limit,
-                   free_ls)
+  return AdaptOpts(strategy, free_mesh, fixed_fraction, solve_itermax,
+                   element_limit, free_ls)
 end
 
 
@@ -256,12 +275,11 @@ function getTargetSizes(adapt_opts::AdaptOpts, mesh::AbstractMesh,
   rate::Int = convert(Int, opts["order"] + 1)  # theoretical convergence rate
 
   if adapt_opts.strategy == 1
-    for i=1:mesh.numEl
-      size_i = el_sizes[i]
-      err_i = el_error[i]
-
-      el_sizes[i] = size_i*(err_i/err_target_el)^(-1/rate)
-    end
+    getTargetSizes_1(adapt_opts, mesh, sbp, eqn, opts, el_error, err_target,
+                   el_sizes)
+  elseif adapt_opts.strategy == 2
+    getTargetSizes_2(adapt_opts, mesh, sbp, eqn, opts, el_error, err_target,
+                     el_sizes)
   else
     error("unrecognized sizing strategy: $strategy")
   end

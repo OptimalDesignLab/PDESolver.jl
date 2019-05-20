@@ -101,6 +101,7 @@ function test_functionals()
                            "entropydissipation",
                            "entropydissipation2",
                            "negentropydissipation",
+                           "negentropydissipation2",
                            "lift", "liftCoefficient",
                            "drag", "dragCoefficient"]
 
@@ -376,4 +377,4 @@ function test_compositefunctional(mesh, sbp, eqn, opts,
   end
 end
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

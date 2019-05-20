@@ -104,7 +104,7 @@ end
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::EulerData{Tsol, Tres}, opts,
-                           func::NegEntropyDissipationData,
+                           func::NegEntropyDissipations,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
 
   _evalFunctionalDeriv_q(mesh, sbp, eqn, opts, func.func, func_deriv_arr)
@@ -209,7 +209,7 @@ end
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           func::NegEntropyDissipationData,
+                           func::NegEntropyDissipations,
                            val_bar::Number=1,
                            ) where {Tmsh, Tsol}
 
@@ -303,10 +303,9 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   return val
 end
 
-
 function calcFunctional(mesh::AbstractMesh{Tmsh},
             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres}, opts,
-            func::NegEntropyDissipationData) where {Tmsh, Tsol, Tres}
+            func::NegEntropyDissipations) where {Tmsh, Tsol, Tres}
 
   return -calcFunctional(mesh, sbp, eqn, opts, func.func)
 end

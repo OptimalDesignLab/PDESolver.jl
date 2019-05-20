@@ -301,12 +301,26 @@ function EntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        potential_flux_revq, potential_flux_revm)
 end
 
+"""
+  Computes negative of EntropyDissipation2
+"""
+mutable struct NegEntropyDissipation2Data{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::EntropyDissipation2Data{Topt}
+end
 
+function NegEntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                           bcnums) where Topt
+  func = EntropyDissipation2Constructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipation2Data{Topt}(func)
+end
 
 
 function getParallelData(obj::EntropyPenaltyFunctional)
   return PARALLEL_DATA_ELEMENT
 end
+
+const NegEntropyDissipations = Union{NegEntropyDissipationData,
+                                     NegEntropyDissipation2Data}
 
 
 """
@@ -407,6 +421,7 @@ global const FunctionalDict = Dict{String, Function}(
 "entropydissipation" => EntropyDissipationConstructor,
 "entropydissipation2" => EntropyDissipation2Constructor,
 "negentropydissipation" => NegEntropyDissipationConstructor,
+"negentropydissipation2" => NegEntropyDissipation2Constructor,
 "entropyjump" => EntropyJumpConstructor,
 "boundaryentropydiss" => BoundaryEntropyDissConstructor,
 "negboundaryentropydiss" => NegBoundaryEntropyDissConstructor,
