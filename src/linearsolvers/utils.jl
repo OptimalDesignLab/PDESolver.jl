@@ -256,7 +256,7 @@ function writeSparsityPattern(mesh, sbp, eqn, opts, A::PetscMat, disc_type)
       iface_i = ifaces[i]
 
       if disc_type == INVISCID
-        assembleSharedFAce(assem, mesh.sbpface, mesh, iface_i, jac, jac)
+        assembleSharedFace(assem, mesh.sbpface, mesh, iface_i, jac, jac)
       elseif disc_type == VISCOUSTIGHT
         assembleSharedFaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac)
       elseif disc_type == COLORING
@@ -265,5 +265,7 @@ function writeSparsityPattern(mesh, sbp, eqn, opts, A::PetscMat, disc_type)
     end
   end
 
+  assembly_begin(A, MAT_FINAL_ASSEMBLY)
+  assembly_end(A, MAT_FINAL_ASSEMBLY)
   return nothing
 end
