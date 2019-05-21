@@ -552,6 +552,7 @@ get!(arg_dict, "force_mesh_complex", false)
 
 # error estimation/h-adaptation
 get!(arg_dict, "write_error_estimate", true)
+get!(arg_dict, "write_adapt_vis", false)
 
 
 # Options passed directly to Petsc

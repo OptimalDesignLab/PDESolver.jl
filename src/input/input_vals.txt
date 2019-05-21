@@ -503,3 +503,9 @@ Note that any values associated with these options are shared with the regular
                           degree p modes to compute the shock sensor, if false
                           use the energy of all modes greater than or equal
                           to p, (Bool), default false
+
+# h-adaptation options
+"write_error_estimate": write a Paraview file of the element-wise error
+                        estimate when it is computed, (Bool), default true
+"write_adapt_vis": write a Paraview file of the adapted mesh when adapting
+                   to a target error, (Bool), default false

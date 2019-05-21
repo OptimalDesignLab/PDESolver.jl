@@ -19,5 +19,6 @@ export doHAdaptation, solveAdaptive, calcErrorEstimate, AdaptOpts
 
 include("steady_adjoint.jl")
 include("error_estimate.jl")
+include("target_els.jl")
 
 end  # end module

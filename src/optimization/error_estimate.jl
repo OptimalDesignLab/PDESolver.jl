@@ -526,7 +526,11 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
     mesh, sbp, eqn, opts, err = doHAdaptation(adapt_opts, mesh, sbp, eqn,
                                               opts, func, err_target)
 
-    println("\n\nOn iteration ", i, ", error estimate = ", err, ", numEl = ", old_numEl)
+    println("\n\nOn iteration ", i, ", error estimate = ", err, ", numEl = ", old_numEl, ", avg mesh size = ", calcMeshH(mesh, sbp, eqn, opts))
+
+    if opts["write_adapt_vis"]
+      writeVisFiles(mesh, "adapt_$i")
+    end
 
     #TESTING
     J = evalFunctional(mesh, sbp, eqn, opts, func)
