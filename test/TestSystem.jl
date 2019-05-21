@@ -314,6 +314,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
         end
 
         println(ftiming, func_i, ": ", t_test, " seconds")
+        println("time for test function ", func_i, " = ", t_test)
 
         break  # don't run this test more than once even if it matches
                   # multiple tags
