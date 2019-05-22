@@ -30,8 +30,10 @@ then
   mpirun -np 2 julia ./runtests_parallel2.jl TAG_SHORTTEST
   err=$(( err + $?))
 
-  mpirun -np 4 julia ./runtests_parallel4.jl TAG_SHORTTEST
-  err=$(( err + $?))
+  # these run very slowly on travis because the VM's do not have dedicated
+  # CPUs
+  #mpirun -np 4 julia ./runtests_parallel4.jl TAG_SHORTTEST
+  #err=$(( err + $?))
 
   # do the viscous tests here because they are short and rely on Euler
   cd ../navier_stokes
