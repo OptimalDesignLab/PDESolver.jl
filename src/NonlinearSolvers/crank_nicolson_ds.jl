@@ -567,11 +567,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         if opts["stabilize_v"]
 
+          # TODO verify location:
+          # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
+          error("no evalJacobianStrong call. remove this error only when derivation vs implementation is complete.")
+
+
           # Recalculate dRdq
           filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="neg")
           # filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="pos")
 
-          # TODO TODO
           # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
           # Need to modify strong jacobian like we modify the CN Jac:
           # Modify
@@ -584,6 +588,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           block_to_add = zeros(PetscScalar, blocksize, blocksize)
           for block_ix = 1:nblocks
 
+            # TODO: no offsets present: this may not be correct in parallel
             for row_ix = 1:length(ix_petsc_row)
               # set the row indicies that we will insert into
               ix_petsc_row[row_ix] = blocksize*(block_ix-1)+row_ix
@@ -591,6 +596,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
             for col_ix = 1:length(ix_petsc_col)
               ix_petsc_col[col_ix] = blocksize*(block_ix-1)+col_ix
             end
+
+            # println(BSTDOUT, "\n ix_petsc_row: ", ix_petsc_row)
+            # println(BSTDOUT, " ix_petsc_col: ", ix_petsc_col)
 
             for row_ix = 1:length(ix_petsc_row)
               for col_ix = 1:length(ix_petsc_col)
