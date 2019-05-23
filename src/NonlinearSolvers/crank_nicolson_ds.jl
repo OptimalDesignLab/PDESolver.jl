@@ -562,6 +562,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
         calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
         # Note: this is properly modifying the Jac for CN.
+        flush(BSTDOUT)
 
         fill!(v_vec, 0.0)
 
@@ -886,6 +887,12 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
 end   # end of crank_nicolson_ds function
 
+DS_LO_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-LO.jl")
+include(DS_LO_file)
+
 DS_functions_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_functions.jl")
 include(DS_functions_file)
+
+DS_stab_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-stabilize.jl")
+include(DS_stab_file)
 

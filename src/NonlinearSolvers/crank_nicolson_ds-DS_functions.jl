@@ -1,38 +1,97 @@
-function getCNDSPCandLO(mesh, sbp, eqn, opts)
-  
-  jac_type = opts["jac_type"]
-
-  if jac_type <= 2
-    pc = PCNone(mesh, sbp, eqn, opts)
-  elseif opts["use_volume_preconditioner"]
-    pc = CNVolumePC(mesh, sbp, eqn, opts)
-  else
-    pc = CNMatPC(mesh, sbp, eqn, opts)
-  end
-
-  # if jac_type == 1    # Dense jac
-    # lo = CNDSDenseLO(pc, mesh, sbp, eqn, otps)
-  # elseif jac_type == 2    # Sparse jac, julia matrix
-    # lo = CNDSSparseDirectLO(pc, mesh, sbp, eqn, opts)
-  # elseif jac_type == 3
-    # lo = CNDSPetscMatLO(pc, mesh, sbp, eqn, opts)
-  # elseif jac_type == 4
-    # lo = CNDSPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
-  # end
-  if jac_type == 1    # Dense jac
-    lo = CNDenseLO(pc, mesh, sbp, eqn, otps)
-  elseif jac_type == 2    # Sparse jac, julia matrix
-    lo = CNSparseDirectLO(pc, mesh, sbp, eqn, opts)
-  elseif jac_type == 3
-    lo = CNPetscMatLO(pc, mesh, sbp, eqn, opts)
-  elseif jac_type == 4
-    lo = CNPetscMatFreeLO(pc, mesh, sbp, eqn, opts)
-  end
+#------------------------------------------------------------------------------------------------------------
+# important functions for crank_nicolson_ds
+# 
+# Sections:
+#   1. calcLinearOperator & modifyJacCN for CNDS LO's
+#   2. modifyCNJacForMatFreeCheck & modifyCNJacForMatFreeCheck_reverse, used for mat-free jac-vec prod verification
+#   3. checkpointing setup for CNDS
 
 
+"""
+  All CN LOs that have matrices
+"""
+const CNDSMatLO = Union{CNDSDenseLO, CNDSSparseDirectLO, CNDSPetscMatLO}
+const CNDSHasMat = Union{CNDSDenseLO, CNDSSparseDirectLO, CNDSPetscMatLO}
 
-  return pc, lo
+
+"""
+  calcLinearOperator function
+
+  Mostly a copy of calcLinearOperator(lo::CNMatLO...)
+  defined in crank_nicolson.jl.
+
+  Only difference is debugging output and the inclusion of the CNDS stabilization.
+"""
+function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
+                            sbp::AbstractSBP, eqn::AbstractSolutionData,
+                            opts::Dict, ctx_residual, t)
+
+  println(BSTDOUT, "    entered cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
+  println(BSTDOUT, "     typeof(lo): ", typeof(lo))
+
+  println(BSTDOUT, "     calling inner cLO in cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
+  calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  ########################################################################################
+  # Here is where we stabilize
+  ########################################################################################
+  stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+
+  println(BSTDOUT, "     calling modifyJacCN from cLO()")
+
+  lo_innermost = getBaseLO(lo)
+  # writedlm("lo_innermost_A-before_modifyJacCN.dat", lo_innermost.A)   # can't do this with Petsc matrices, will hang
+  modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  # writedlm("lo_innermost_A-after_modifyJacCN.dat", lo_innermost.A)    # can't do this with Petsc matrices, will hang
+
+  println(BSTDOUT, "    leaving cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
+
+  return nothing
 end
+
+"""
+  Takes the Jacobian of the physics and modifies it to be the Crank-Nicolson
+  Jacobian.
+
+  CN_Jac = I - dt/2 * physicsJac
+
+
+  **Inputs**
+
+   * lo: a CNHasMat
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * ctx_residual: delta_t must be the 3rd element
+   * t
+"""
+function modifyJacCN(lo::CNDSHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
+
+
+  println(BSTDOUT, "      modifyJacCN(lo::CNDSHasMat) called")
+
+
+  lo2 = getBaseLO(lo)
+  h = ctx_residual[3]
+
+  assembly_begin(lo2.A, MAT_FINAL_ASSEMBLY)
+  assembly_end(lo2.A, MAT_FINAL_ASSEMBLY)
+
+  # scale jac by -delta_t/2
+#  scale_factor = h*-0.5
+  petsc_scale_factor = PetscScalar(-h*0.5)
+  scale!(lo2.A, petsc_scale_factor)
+
+  # add the identity
+  diagonal_shift!(lo2.A, 1)
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# other functions: modifyCNJac functions for mat-free check
 
 """
   Takes a Crank-Nicolson Jacobian and modifies it to be of the form needed to 
@@ -54,7 +113,7 @@ end
    * ctx_residual: delta_t must be the 3rd element
    * t
 """
-function modifyCNJacForMatFreeCheck(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
+function modifyCNJacForMatFreeCheck(lo::CNDSHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
   println(BSTDOUT, " modifyCNJacForMatFreeCheck(lo::CNHasMat...) called")
 
@@ -91,7 +150,7 @@ end   # end function modifyCNJacForMatFreeCheck
    * ctx_residual: delta_t must be the 3rd element
    * t
 """
-function modifyCNJacForMatFreeCheck_reverse(lo::CNHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
+function modifyCNJacForMatFreeCheck_reverse(lo::CNDSHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
   println(BSTDOUT, " modifyCNJacForMatFreeCheck_reverse(lo::CNHasMat...) called")
 
@@ -163,66 +222,4 @@ function CNDS_checkpoint_setup(mesh, opts, myrank, finaliter)
 
   return chkpointer, chkpointdata, skip_checkpoint
 end
-
-
-
-# #------------------------------------------------------------------------------
-# # Linear operators
-
-# #TODO: make a macro to generate these definitions
-
-# mutable struct CNDSDenseLO <: AbstractDenseLO
-  # lo_inner::NewtonDenseLO
-# end
-
-# function CNDSDenseLO(pc::PCNone, mesh::AbstractMesh,
-                    # sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
-
-  # lo_inner = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
-
-  # return CNDSDenseLO(lo_inner)
-# end
-
-# mutable struct CNDSSparseDirectLO <: AbstractSparseDirectLO
-  # lo_inner::NewtonSparseDirectLO
-# end
-
-# function CNDSSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
-                    # sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
-
-  # lo_inner = NewtonSparseDirectLO(pc, mesh, sbp, eqn, opts)
-
-  # return CNDSSparseDirectLO(lo_inner)
-# end
-
-
-# mutable struct CNDSPetscMatLO <: AbstractPetscMatLO
-  # lo_inner::NewtonPetscMatLO
-# end
-
-# function CNDSPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
-                    # sbp::AbstractSBP, eqn::AbstractSolutionData, opts::Dict)
-
-  # lo_inner = NewtonPetscMatLO(pc, mesh, sbp, eqn, opts)
-
-  # return CNDSPetscMatLO(lo_inner)
-# end
-
-# """
-  # All CN LOs that have matrices
-# """
-# const CNDSMatLO = Union{CNDSDenseLO, CNDSSparseDirectLO, CNDSPetscMatLO}
-
-# function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
-                            # sbp::AbstractSBP, eqn::AbstractSolutionData,
-                            # opts::Dict, ctx_residual, t)
-
-  # calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  # modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
-
-  # return nothing
-# end
-
-# # applyLinearOperator & applyLinearOperatorTranspose --- needed?
 
