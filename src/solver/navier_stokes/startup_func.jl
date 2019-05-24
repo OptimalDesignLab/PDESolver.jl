@@ -165,7 +165,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::NSData, opts::
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
-  EulerEquationMod.cleanup(mesh, sbp, eqn.euler_eqn, opts)
+  EulerEquationMod.cleanup(eqn.euler_eqn, opts)
 
   MPI.Barrier(mesh.comm)
 

@@ -1696,6 +1696,8 @@ function calc2RWaveSpeeds_diff(params::ParamType{Tdim}, qL::AbstractVector{Tsol}
 
   u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
 
+  #qfL = 1.3
+  #qfR = 1.02
 
   # compute p_tr
   pLz = pL^z; pRz = pR^z
@@ -1766,6 +1768,15 @@ function calc2RWaveSpeeds_diff(params::ParamType{Tdim}, qL::AbstractVector{Tsol}
     sR_dot[i, 2] = u_nrmR_dot[i] + aR_dot[i]*qfR + aR*qfR_dot[2, i]
   end
 
+#=
+  # compute sL and sR
+  sL = u_nrmL - aL*qfL
+  sR = u_nrmR + aR*qfR
+  for i=1:numDofPerNode
+    sL_dot[i, 1] = u_nrmL_dot[i] - aL_dot[i]*qfL
+    sR_dot[i, 2] = u_nrmR_dot[i] + aR_dot[i]*qfR 
+  end
+=#
   return sL, sR
 end
 
@@ -1792,6 +1803,10 @@ function calc2RWaveSpeeds_revq(params::ParamType{Tdim},
   end
   u_nrmL_orig = u_nrmL; u_nrmR_orig = u_nrmR
   u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+
+  #qfL = 1.3
+  #qfR = 1.02
+
 
   num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
   pLz = pL^z; pRz = pR^z
@@ -1821,11 +1836,13 @@ function calc2RWaveSpeeds_revq(params::ParamType{Tdim},
 
   u_nrmL_bar =  sL_bar
   aL_bar     = -qfL*sL_bar
+  pL_bar     = zero(Tres)
   qfL_bar    = -aL*sL_bar
 
   u_nrmR_bar = sR_bar
   aR_bar     = qfR*sR_bar
   qfR_bar    = aR*sR_bar
+  pR_bar     = zero(Tres)
 
   p_tr_bar = zero(Tres)
   if p_tr <= pR
@@ -1896,6 +1913,9 @@ function calc2RWaveSpeeds_revm(params::ParamType{Tdim},
   end
   u_nrmL_orig = u_nrmL; u_nrmR_orig = u_nrmR
   u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+#  qfL = 1.3
+#  qfR = 1.02
+
 
   num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
   pLz = pL^z; pRz = pR^z

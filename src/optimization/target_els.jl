@@ -60,6 +60,7 @@ function getTargetSizes_2(adapt_opts::AdaptOpts, mesh::AbstractMesh,
 
   bin_elcount, bin_errsum, bins = getBins(el_error, eqn.comm)
   Nbins = length(bin_elcount)
+  el_sizes_orig = copy(el_sizes)
 
   # figure out how many bins
   el_target = Int(round(mesh.numGlobalEl*adapt_opts.fixed_fraction))
@@ -73,7 +74,15 @@ function getTargetSizes_2(adapt_opts::AdaptOpts, mesh::AbstractMesh,
       el_sizes[el_j] /= 2
     end
 
+
     if nel > el_target
+      println("intended to refine ", el_target, " elements, actually refined ", nel)
+      for i=1:length(el_sizes)
+        if el_sizes[i] < 0.99*el_sizes_orig[i]
+          println("element ", i, " refined by factor of ", el_sizes_orig[i]/el_sizes[i])
+        end
+      end
+        
       break
     end
   end  # end i

@@ -56,7 +56,7 @@ function test_3d_conversion(mesh, sbp, eqn, opts)
 end  # end function
 
 #test_3d_conversion(mesh, sbp, eqn, opts)
-add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_SHORTTEST, TAG_TMP])
+add_func2!(EulerTests, test_3d_conversion,  test_3d_inputfile, [TAG_ENTROPYVARS, TAG_SHORTTEST])
 
 
 function test_3d_eigensystem(mesh, sbp, eqn, opts)

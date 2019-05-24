@@ -192,7 +192,7 @@ function reinitNewtonData(newton_data::NewtonData, mesh, sbp, eqn, opts)
     if !(typeof(newton_data.ls.pc) <: PCNone)
       # no need to do anything for PCNone
       pc = getInnerPC(newton_data.ls.pc, NewtonPC)
-      reinitImplicitEuler(mesh, opts. lo.idata)
+      reinitImplicitEuler(mesh, opts, lo.idata)
     end
   end
 

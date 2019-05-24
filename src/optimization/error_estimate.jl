@@ -511,6 +511,10 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
                        func::AbstractFunctional,
                        err_target::Number)
   # we assume the PDE was *not* previously solved, unlike doHAdaptation
+  myrank = mesh.myrank
+  if opts["write_adapt_vis"]
+    writeVisFiles(mesh, "adapt_0")
+  end
 
 
   # keep solving until tolerance met or some other criteria
@@ -523,35 +527,34 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
     opts["IC_name"] = "ICPassThrough"
 
     old_numEl = mesh.numEl
+    h_old = calcMeshH(mesh, sbp, eqn, opts)
     mesh, sbp, eqn, opts, err = doHAdaptation(adapt_opts, mesh, sbp, eqn,
                                               opts, func, err_target)
 
-    println("\n\nOn iteration ", i, ", error estimate = ", err, ", numEl = ", old_numEl, ", avg mesh size = ", calcMeshH(mesh, sbp, eqn, opts))
+    println("\n\nOn iteration ", i, ", error estimate = ", err, ", numEl = ", old_numEl, ", avg mesh size = ", h_old)
 
     if opts["write_adapt_vis"]
       writeVisFiles(mesh, "adapt_$i")
     end
 
-    #TESTING
-    J = evalFunctional(mesh, sbp, eqn, opts, func)
-    J_exact = -1/1.4
-    println(BSTDOUT, "J = ", J, ", J_exact = ", J_exact, ", err = ", J - J_exact)
-
     numel_global = MPI.Allreduce(mesh.numEl, MPI.SUM, eqn.comm)
     if err < err_target
-      println(BSTDOUT, "solveAdaptive met error tolerance with final error estimate of ", err, " < ", err_target, " with ", numel_global, " elements")
+      @mpi_master println(BSTDOUT, "solveAdaptive met error tolerance with final error estimate of ", err, " < ", err_target, " with ", numel_global, " elements")
       exit_code = 0
       break
     end
 
     if numel_global > adapt_opts.el_limit
-      println(BSTDOUT, "solveAdaptive exiting due to element limit.  Number of elements = ", numel_global, " > ", adapt_opts.element_limit)
+      @mpi_master println(BSTDOUT, "solveAdaptive exiting due to element limit.  Number of elements = ", numel_global, " > ", adapt_opts.element_limit)
       exit_code = 0
       break
     end
 
   end  # end loop i
 
+  if exit_code == 0
+    @mpi_master println(BSTDOUT, "solveAdaptive exited due to itermax, number of elements = ", mesh.numGlobalEl)
+  end
   flush(BSTDOUT)
 
   opts["IC_name"] = ic_orig  # restore the initial condition

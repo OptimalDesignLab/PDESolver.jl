@@ -2000,6 +2000,9 @@ function calc2RWaveSpeeds(params::ParamType{Tdim}, qL::AbstractVector{Tsol},
     qfR = sqrt(1 + (params.gamma + 1)*(p_tr/pR - 1)/(2*params.gamma))
   end
 
+#  qfL = 1.3
+#  qfR = 1.02
+
   sL = u_nrmL - aL*qfL
   sR = u_nrmR + aR*qfR
 
