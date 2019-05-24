@@ -890,7 +890,7 @@ end   # end of crank_nicolson_ds function
 DS_LO_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-LO.jl")
 include(DS_LO_file)
 
-DS_functions_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-DS_functions.jl")
+DS_functions_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-functions.jl")
 include(DS_functions_file)
 
 DS_stab_file = string(Pkg.dir("PDESolver"),"/src/NonlinearSolvers/","crank_nicolson_ds-stabilize.jl")

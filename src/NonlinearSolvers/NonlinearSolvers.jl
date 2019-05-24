@@ -28,7 +28,7 @@ STAB_ctr_usmallandnotstabing = 0
 
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 
-include("stabilization.jl")
+include("stabilization_explicit.jl")
   export calcStabilizedQUpdate!
 
 include("clipJac.jl")
