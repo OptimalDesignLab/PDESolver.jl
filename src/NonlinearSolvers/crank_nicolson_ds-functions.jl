@@ -35,7 +35,9 @@ function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
   ########################################################################################
   # Here is where we stabilize
   ########################################################################################
-  stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  if opts["stabilize_v"]
+    stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+  end
 
   println(BSTDOUT, "     calling modifyJacCN from cLO()")
 

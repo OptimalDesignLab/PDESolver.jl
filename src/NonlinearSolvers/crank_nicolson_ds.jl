@@ -558,6 +558,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn_nextstep.res_vec[ix_dof] = beforeDS_eqn_nextstep_res_vec[ix_dof]
         end
 
+        # Contents of ctx_residual: f, eqn, h, newton_data
+        if opts["stabilize_v"]
+          ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData)
+        end
+        
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
         calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
@@ -566,66 +571,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         fill!(v_vec, 0.0)
 
-        if opts["stabilize_v"]
-
-          # TODO verify location:
-          # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
-          error("no evalJacobianStrong call. remove this error only when derivation vs implementation is complete.")
-
-
-          # Recalculate dRdq
-          filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="neg")
-          # filterDiagJac(mesh, opts, real(tmp_imag), clipJacData, stab_A, eigs_to_remove="pos")
-
-          # evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
-          # Need to modify strong jacobian like we modify the CN Jac:
-          # Modify
-
-          # loop over blocks
-          # blocksize is set above (during DiagJac init) as mesh.numDofPerNode*mesh.numNodesPerElement
-          nblocks = size(stab_A.A, 3)       # third dimension of our block diag Jac is the block index
-          ix_petsc_row = zeros(PetscInt, blocksize)
-          ix_petsc_col = zeros(PetscInt, blocksize)
-          block_to_add = zeros(PetscScalar, blocksize, blocksize)
-          for block_ix = 1:nblocks
-
-            # TODO: no offsets present: this may not be correct in parallel
-            for row_ix = 1:length(ix_petsc_row)
-              # set the row indicies that we will insert into
-              ix_petsc_row[row_ix] = blocksize*(block_ix-1)+row_ix
-            end
-            for col_ix = 1:length(ix_petsc_col)
-              ix_petsc_col[col_ix] = blocksize*(block_ix-1)+col_ix
-            end
-
-            # println(BSTDOUT, "\n ix_petsc_row: ", ix_petsc_row)
-            # println(BSTDOUT, " ix_petsc_col: ", ix_petsc_col)
-
-            for row_ix = 1:length(ix_petsc_row)
-              for col_ix = 1:length(ix_petsc_col)
-                block_to_add[row_ix, col_ix] = stab_A.A[row_ix, col_ix, block_ix]
-              end
-            end
-
-            # We should be subtracting, so we should scale block_to_add by -1.0
-            scale!(block_to_add, -1.0)
-
-            # now subtract the filtered DiagJac to the actual Jacobian, which will remove the positive eigenvalues of
-            #   the strong Jacobian from the actual Jacobian
-        
-            # Add the negated block to the existing Jac inside the ls_ds LO object
-            set_values1!(lo_ds_innermost.A, ix_petsc_row, ix_petsc_col, block_to_add, ADD_VALUES)
-
-          end
-
-          MatAssemblyBegin(lo_ds_innermost.A, MAT_FINAL_ASSEMBLY)
-          MatAssemblyEnd(lo_ds_innermost.A, MAT_FINAL_ASSEMBLY)
-
-        end   # end if opts["stabilize_v"]
-
         # linearSolve: solves Ax=b for x. 
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
+
+        error("stopping")
 
         # v_vec_norm_global = calcNorm(eqn, v_vec)
         # println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
