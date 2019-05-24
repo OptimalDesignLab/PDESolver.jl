@@ -485,7 +485,7 @@ end
 
    * `Jacpert`: matrix perturbation
 """
-function findStablePerturbation!(Jac::AbstractMatrix,
+function findStablePerturbation_explicit!(Jac::AbstractMatrix,
                                  u::AbstractVector,
                                  A::AbstractVector{T},
                                  eigs_to_remove::String) where T
@@ -499,7 +499,7 @@ function findStablePerturbation!(Jac::AbstractMatrix,
            # == length(u) )
   # println(":::::::::::: entering findStablePert")
 
-  # scale_u = 1e100
+  scale_u = 1e100
   # scale_u = 1e60
   # scale!(u, scale_u)
   
@@ -583,6 +583,6 @@ function findStablePerturbation!(Jac::AbstractMatrix,
                                       #   A = f(u^2)
                                       #   prod = f(u^2), and A scaled by prod
 
-  # scale!(u, 1/scale_u)
+  scale!(u, 1/scale_u)
 
 end

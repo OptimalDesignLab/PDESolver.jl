@@ -31,7 +31,86 @@ function stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
 end
 
+"""
+  returns matrix `Jacpert` such that `u.'*sym(Jac + Jacpert)*u` is strictly
+  positive
+
+  **Inputs**
+
+   * `u`: an given vector whose dimensions are consistent with `Jac`
+   * `Jac`: matrix that needs to be perturbed
+   * `A`: a work vector needed by this function (overwritten).  The
+          element type should be the "maximum" type of the element types
+          of `u` and `Jac`
+
+
+  **Inputs/Outputs**
+
+   * `Jacpert`: matrix perturbation
+"""
+function findStablePerturbation!(Jac::AbstractMatrix,
+                                 u::AbstractVector,
+                                 A::AbstractVector{T},
+                                 eigs_to_remove::String) where T
+
+  @assert( size(Jac,1) == size(Jac,2) == length(u) )
+  
+  n = size(Jac,1)
+  # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
+  prod = zero(T)
+  for i = 1:n
+    for j = 1:n
+      prod += 0.5*(Jac[i,j] + Jac[j,i])*u[i]*u[j]
+    end
+  end
+
+  #TODO TODO: prod < 0 for eigs_to_remove == "neg"???
+  if prod > 0
+    # nothing to do
+    # println("prod > 0 check hit, not stabilizing")
+    return
+  end
+
+  # println("prod <= 0, now stabilizing")
+
+  # array A stores the entries in the contraint Jacobian
+  # A = zeros(div(n*(n+1),2))
+  for i = 1:n
+    A[div(i*(i-1),2)+i] = u[i]*u[i]
+    for j = 1:(i-1)
+      A[div(i*(i-1),2)+j] = 2.0*u[i]*u[j]
+    end
+  end
+
+  # A *= -prod/dot(A,A)
+  scale!(A, -prod/dot(A, A))        # divide by zero! root of NaN.
+
+  # fill!(Jacpert, 0.0)
+
+  #=
+  for i = 1:n
+    Jacpert[i,i] += A[div(i*(i-1),2)+i]
+    for j = 1:(i-1)
+      Jacpert[i,j] += A[div(i*(i-1),2)+j]
+      Jacpert[j,i] += A[div(i*(i-1),2)+j]
+    end
+  end
+  =#
+
+  for i = 1:n
+    Jac[i,i] += A[div(i*(i-1),2)+i]
+    for j = 1:(i-1)
+      Jac[i,j] += A[div(i*(i-1),2)+j]
+      Jac[j,i] += A[div(i*(i-1),2)+j]
+    end
+  end
+
+end     # end function findStablePerturbation!
+
+
 #=
+# This is the old, incorrect way of applying the stabilization. 
+# It was in crank_nicolson_ds.jl.
         if opts["stabilize_v"]
 
           # NOTE: we are now stabilizing inside calcLinearOperator
