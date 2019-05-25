@@ -28,6 +28,14 @@ function test_direct_sensitivity()
       #------------------------------------------------------------------------------
       # DS
       cd("RK4_DS")
+
+      drag_file = "drag.dat"
+      drag_stat = stat(drag_file)
+      if drag_stat.inode != 0     # if the file exists
+        println("removing drag.dat")
+        rm(drag_file)
+      end
+
       fname = "input_naca0012_rk4_DS.jl"
       mesh, sbp, eqn, opts = PDESolver.run_solver(fname)
       @assert mesh.isDG == true
@@ -55,6 +63,14 @@ function test_direct_sensitivity()
       #------------------------------------------------------------------------------
       # FD
       cd("RK4_FDpos")
+
+      drag_file = "drag.dat"
+      drag_stat = stat(drag_file)
+      if drag_stat.inode != 0     # if the file exists
+        println("removing drag.dat")
+        rm(drag_file)
+      end
+
       fname = "input_naca0012_rk4_FDpos.jl"
       mesh, sbp, eqn, opts = PDESolver.run_solver(fname)
       @assert mesh.isDG == true
@@ -62,6 +78,14 @@ function test_direct_sensitivity()
       cd("..")
 
       cd("RK4_FDbase")
+
+      drag_file = "drag.dat"
+      drag_stat = stat(drag_file)
+      if drag_stat.inode != 0     # if the file exists
+        println("removing drag.dat")
+        rm(drag_file)
+      end
+
       fname = "input_naca0012_rk4_FDbase.jl"
       mesh, sbp, eqn, opts = PDESolver.run_solver(fname)
       @assert mesh.isDG == true

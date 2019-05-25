@@ -1,6 +1,6 @@
 
 # Note: passed in for the eqn argument is 'eqn_nextstep'
-function stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
+function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
   # ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData)
   f =               ctx_residual[1]
@@ -14,22 +14,65 @@ function stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
 
   println(BSTDOUT, "        stabilizeCNDSLO called")
 
+  # stores the strong Jacobian (volume Jacobian) into stab_assembler.A
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
 
   # filterDiagJac
   #   location: jacobian_diag.jl
   #
-  #   The third argument is q_vec.
+  #   The third argument is q_vec in the fn signature.
   #   It is used as part of computing the quadprog stabilization (findStablePerturbation!).
   #   It is not used when opts["stabilization_method"] is "clipJac" or "clipJacFast".
   #   For the explicit stabilization what was passed in was 'real(tmp_imag)'.
-  #   For implicit: I believe it should be v_vec! Of the last time step?
+  #   For implicit: It should be v_vec. Of the previous time step.
+  #     See the AFOSR report's section on quadprog; it uses the adjoint.
+  #     I suppose it could be the next time step, but that would require some implicit solving 
+  #     and KSP iterations? Maybe room for investigation later. (future work)
   #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
   filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="neg")
 
-  # TODO: here is where we then add the stabilizer to the LO
+  # Now add each block of the stabilized strong jacobian to the full Jacobian
+  # We are converting between the 2D element Jacobian in each block of the DiagJac
+  #   to the 4D form required by assembleElement.
+  # DiagJac dims: (blocksize, blocksize, numEl)
+  # res_jac dims: (numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
+  lo_ds_innermost = getBaseLO(lo_ds)
+  assembler = _AssembleElementData(lo_ds_innermost.A, mesh, sbp, eqn, opts)
+  blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
+  this_res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  for el_ix = 1:mesh.numEl
 
-  return numberOfEigchgs
+    for q = 1:mesh.numNodesPerElement
+      for p = 1:mesh.numNodesPerElement
+
+        @simd for j = 1:mesh.numDofPerNode
+          @simd for i = 1:mesh.numDofPerNode
+
+            # Within each DiagJac block, it is indexed along one dimension as:
+            #   all the dofs on node 1, all the dofs on node 2, etc. 
+            # This permits the following conversion:
+            i1 = i + (p-1)*mesh.numDofPerNode
+            j1 = j + (q-1)*mesh.numDofPerNode
+
+            this_res_jac[i, j, p, q] = stab_A.A[i1, j1, el_ix]
+          end
+        end
+
+      end   # end loop over p
+    end   # end loop over q
+
+
+    # this_res_jac should contain all the positive eigs, so if we subtract, 
+    #   we are left with only negative and zero eigenvalues.
+    scale!(this_res_jac, -1.0)
+
+    assembleElement(assembler, mesh, el_ix, this_res_jac)
+
+  end   # end loop over elements
+
+  return nothing
+  # return numberOfEigchgs    # TODO: returning the number of positive eigenvalues 
+                              #       that were changed would be a nice feature
 
 end
 

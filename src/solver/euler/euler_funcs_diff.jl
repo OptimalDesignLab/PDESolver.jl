@@ -103,7 +103,7 @@ function calcVolumeIntegralsStrong_nopre_diff(
                                    assembler::AssembleElementData) where {Tmsh, Tsol, Tres, Tdim}
 
 
-  @assert eqn.params.use_Minv != 1  # use_Minv not supported
+  # @assert eqn.params.use_Minv != 1  # use_Minv not supported
 
   # flux jacobian at every node in each direction
   flux_jac = eqn.params.flux_jac

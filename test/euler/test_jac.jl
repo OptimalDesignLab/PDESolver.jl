@@ -186,6 +186,7 @@ function test_jac_terms_long()
     opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2
     opts_tmp["operator_type"] = "SBPOmega"
+    # opts_tmp["use_Minv"] = true         # uncomment this to test Minv capability in calcVolumeIntegralsStrong_nopre_diff
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 

@@ -575,11 +575,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
 
-        println("==================================================================================")
-        println(BSTDOUT, " mesh.dofs: ", mesh.dofs)
-        println(BSTDOUT, " size(mesh.dofs): ", size(mesh.dofs))
-        error("stopping")
-
         # v_vec_norm_global = calcNorm(eqn, v_vec)
         # println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
 
