@@ -560,7 +560,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # Contents of ctx_residual: f, eqn, h, newton_data
         if opts["stabilize_v"]
-          ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData)
+          ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData, v_vec)
         end
         
         # Update linear operator:
@@ -575,6 +575,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
 
+        println("==================================================================================")
+        println(BSTDOUT, " mesh.dofs: ", mesh.dofs)
+        println(BSTDOUT, " size(mesh.dofs): ", size(mesh.dofs))
         error("stopping")
 
         # v_vec_norm_global = calcNorm(eqn, v_vec)

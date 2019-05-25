@@ -10,6 +10,7 @@ function stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
   stab_A =          ctx_residual[5]
   stab_assembler =  ctx_residual[6]
   clipJacData =     ctx_residual[7]
+  v_vec =           ctx_residual[8]
 
   println(BSTDOUT, "        stabilizeCNDSLO called")
 
@@ -22,8 +23,9 @@ function stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
   #   It is used as part of computing the quadprog stabilization (findStablePerturbation!).
   #   It is not used when opts["stabilization_method"] is "clipJac" or "clipJacFast".
   #   For the explicit stabilization what was passed in was 'real(tmp_imag)'.
-  #   TODO: figure out from derivation what should be passed in for this arg.
-  filterDiagJac(mesh, opts, eqn.q_vec, clipJacData, stab_A, eigs_to_remove="neg")
+  #   For implicit: I believe it should be v_vec! Of the last time step?
+  #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
+  filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="neg")
 
   # TODO: here is where we then add the stabilizer to the LO
 
