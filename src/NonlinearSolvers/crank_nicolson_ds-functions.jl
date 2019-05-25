@@ -26,10 +26,10 @@ function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
                             sbp::AbstractSBP, eqn::AbstractSolutionData,
                             opts::Dict, ctx_residual, t)
 
-  println(BSTDOUT, "    entered cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
-  println(BSTDOUT, "     typeof(lo): ", typeof(lo))
+  # println(BSTDOUT, "    entered cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "     typeof(lo): ", typeof(lo))
 
-  println(BSTDOUT, "     calling inner cLO in cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "     calling inner cLO in cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
   ########################################################################################
@@ -39,14 +39,14 @@ function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
     stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
   end
 
-  println(BSTDOUT, "     calling modifyJacCN from cLO()")
+  # println(BSTDOUT, "     calling modifyJacCN from cLO()")
 
   lo_innermost = getBaseLO(lo)
   # writedlm("lo_innermost_A-before_modifyJacCN.dat", lo_innermost.A)   # can't do this with Petsc matrices, will hang
   modifyJacCN(lo, mesh, sbp, eqn, opts, ctx_residual, t)
   # writedlm("lo_innermost_A-after_modifyJacCN.dat", lo_innermost.A)    # can't do this with Petsc matrices, will hang
 
-  println(BSTDOUT, "    leaving cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
+  # println(BSTDOUT, "    leaving cLO(lo::CNDSMatLO...) in crank_nicolson.jl")
 
   return nothing
 end
@@ -71,8 +71,7 @@ end
 function modifyJacCN(lo::CNDSHasMat, mesh, sbp, eqn, opts, ctx_residual, t)
 
 
-  println(BSTDOUT, "      modifyJacCN(lo::CNDSHasMat) called")
-
+  # println(BSTDOUT, "      modifyJacCN(lo::CNDSHasMat) called")
 
   lo2 = getBaseLO(lo)
   h = ctx_residual[3]

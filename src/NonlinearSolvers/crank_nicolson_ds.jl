@@ -753,14 +753,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=false)   # will use eqn.params.Ma
         Cd_file, dCddM_file = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=true, drag_array=drag_array)   # will use eqn.params.Ma
-        println(BSTDOUT, " Cd_file - Cd: ", Cd_file - Cd)
-        println(BSTDOUT, " dCddM_file - dCddM: ", dCddM_file - dCddM)
+        # println(BSTDOUT, " Cd_file - Cd: ", Cd_file - Cd)
+        # println(BSTDOUT, " dCddM_file - dCddM: ", dCddM_file - dCddM)
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
         global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
         total_dCddM = dCddM + global_term23
 
         # Cd calculations
         @mpi_master begin
+          println(BSTDOUT, " Drag calculations made from array, not file.")
           f_total_dCddM = open("total_dCddM.dat", "w")
           println(f_total_dCddM, " Cd: ", Cd)
           println(f_total_dCddM, " dCd/dM: ", dCddM)

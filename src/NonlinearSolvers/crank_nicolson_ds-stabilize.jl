@@ -12,7 +12,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   clipJacData =     ctx_residual[7]
   v_vec =           ctx_residual[8]
 
-  println(BSTDOUT, "        stabilizeCNDSLO called")
+  # println(BSTDOUT, "        stabilizeCNDSLO called")
 
   # stores the strong Jacobian (volume Jacobian) into stab_assembler.A
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
