@@ -109,7 +109,7 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
   return nothing
 end
 
-function clipJac!(Jac::AbstractMatrix)
+function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
                   # u::AbstractVector,
                   # A::AbstractVector{T}) where T
 
@@ -120,11 +120,22 @@ function clipJac!(Jac::AbstractMatrix)
 
   #------------------------------------------------------------------------------
   # Original clipping process
-  for i = 1:n
-    if λ[i] > 0.0
-      λ[i] = 0.0
+  if eigs_to_remove == "neg"
+    for i = 1:n
+      if λ[i] < 0.0
+        λ[i] = 0.0
+      end
     end
+  elseif eigs_to_remove == "pos"
+    for i = 1:n
+      if λ[i] > 0.0
+        λ[i] = 0.0
+      end
+    end
+  else
+    error("eigs_to_remove specified incorrectly.")
   end
+
   D = diagm(λ)
   Jac[:,:] -= E*D*E.'
 

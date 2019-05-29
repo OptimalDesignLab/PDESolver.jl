@@ -30,6 +30,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     and KSP iterations? Maybe room for investigation later. (future work)
   #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
   filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="neg")
+  # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
 
   # Now add each block of the stabilized strong jacobian to the full Jacobian
   # We are converting between the 2D element Jacobian in each block of the DiagJac
@@ -40,7 +41,10 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   assembler = _AssembleElementData(lo_ds_innermost.A, mesh, sbp, eqn, opts)
   blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
   this_res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+
   for el_ix = 1:mesh.numEl
+
+    # println(BSTDOUT, " el_ix: $el_ix   vecnorm(stab_A.A[:,:,el_ix]): ", vecnorm(stab_A.A[:,:,el_ix]))
 
     for q = 1:mesh.numNodesPerElement
       for p = 1:mesh.numNodesPerElement
@@ -67,6 +71,9 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     scale!(this_res_jac, -1.0)
 
     assembleElement(assembler, mesh, el_ix, this_res_jac)
+    # This is calling function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
+    #                                          elnum::Integer, jac::AbstractArray{T, 4}) where T
+    # in jacobian.jl. Line 888 or so
 
   end   # end loop over elements
 
@@ -99,6 +106,15 @@ function findStablePerturbation!(Jac::AbstractMatrix,
                                  eigs_to_remove::String) where T
 
   @assert( size(Jac,1) == size(Jac,2) == length(u) )
+
+  if eigs_to_remove == "neg"
+    scale!(Jac, -1.0)
+  elseif eigs_to_remove == "pos"
+    # do nothing
+  else
+    error("eigs_to_remove specified incorrectly.")
+  end
+
   
   n = size(Jac,1)
   # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
@@ -148,6 +164,10 @@ function findStablePerturbation!(Jac::AbstractMatrix,
       Jac[i,j] += A[div(i*(i-1),2)+j]
       Jac[j,i] += A[div(i*(i-1),2)+j]
     end
+  end
+
+  if eigs_to_remove == "neg"
+    scale!(Jac, -1.0)
   end
 
 end     # end function findStablePerturbation!

@@ -57,7 +57,7 @@ end
 
   **Inputs**
 
-   * A : DaigJac
+   * A : DiagJac
    * i: first index
    * j: second index
 

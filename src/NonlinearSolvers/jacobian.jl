@@ -545,7 +545,6 @@ function assembleElement(helper::AssembleData, mesh,
            el_res::Integer, el_pert::Integer, dof_pert::Integer,
            epsilon, jac::AbstractMatrix) where Tsol <: Real
 #
-
   # resize array
   # basically a no-op if array is already the right size
   local_size = PetscInt(mesh.numNodesPerElement*mesh.numDofPerNode)
