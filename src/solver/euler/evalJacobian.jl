@@ -6,6 +6,8 @@ import PDESolver: evalJacobian, evalJacobianStrong
 function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, 
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
+
+  println("\nEntered evalJacobian")
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
@@ -23,7 +25,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_volume_diff += @elapsed if opts["addVolumeIntegrals"]
     evalVolumeIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    #println("volume integral @time printed above")
+    #println("volume integral diff @time printed above")
   end
 
   if opts["use_GLS"]
@@ -32,7 +34,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 
   time.t_bndry_diff += @elapsed if opts["addBoundaryIntegrals"]
     evalBoundaryIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    #println("boundary integral @time printed above")
+    #println("boundary integral diff @time printed above")
   end
 
 
@@ -41,25 +43,23 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
 #    println("stabilizing @time printed above")
   end
 
-
-
   time.t_face_diff += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
-    #println("face integral @time printed above")
+    #println("face integral diff @time printed above")
   end
 
 
+  time.t_shock_diff += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing_diff(mesh, sbp, eqn, opts, assembler)
+  end
 
   time.t_sharedface_diff += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals_diff(mesh, sbp, eqn, opts, assembler)
 #    println("evalSharedFaceIntegrals @time printed above")
   end
 
-
-
   time.t_source_diff += @elapsed evalSourceTerm_diff(mesh, sbp, eqn, opts, assembler)
-
-#  println("source integral @time printed above")
+  #println("source integral diff @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   #TODO: this will have to be done at the element level
@@ -174,8 +174,9 @@ end # end function dataPrep
    * assembler
 """
 function evalVolumeIntegrals_diff(mesh::AbstractMesh{Tmsh},
-                             sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
-                             opts, assembler::AssembleElementData) where {Tmsh,  Tsol, Tres, Tdim}
+                       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                       opts, assembler::AssembleElementData
+                       ) where {Tmsh,  Tsol, Tres, Tdim}
 
   integral_type = opts["volume_integral_type"]
 
@@ -264,6 +265,9 @@ function addStabilization_diff(mesh::AbstractMesh{Tmsh},
 #    test_GLS(mesh, sbp, eqn, opts)
   end
 
+  if opts["use_lps"]
+    applyLPStab_diff(mesh, sbp, eqn, opts, assembler)
+  end
 #  println("==== end of addStabilization ====")
 
 
@@ -372,4 +376,26 @@ function evalSourceTerm_diff(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+
+"""
+  Differentiated version of [`evalShockCapturing`](@ref).
+
+ **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * assembler
+"""
+function evalShockCapturing_diff(mesh::AbstractMesh{Tmsh},
+                       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                       opts, assembler::AssembleElementData
+                       ) where {Tmsh,  Tsol, Tres, Tdim}
+
+  capture = eqn.shock_capturing
+  applyShockCapturing_diff(mesh, sbp, eqn, opts, capture, assembler)
+
+  return nothing
+end
 

@@ -94,7 +94,10 @@ function solvePDE(opts::Union{Dict, AbstractString})
 
   read_input(opts)
   mesh, sbp, eqn, opts, pmesh = createObjects(opts)
-  return solvePDE(mesh, sbp, eqn, opts, pmesh)
+  ls = solvePDE(mesh, sbp, eqn, opts, pmesh)
+#  @assert ls != nothing  # catch case where physics modules forgets to return
+                         # the LinearSolver
+  return ls
 end
 
 
@@ -210,7 +213,7 @@ end
 function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           func::AbstractFunctional;
+                           func::AbstractFunctional, val_bar::Number=1;
                            start_comm=true
                            ) where {Tmsh, Tsol}
 
@@ -219,7 +222,7 @@ function evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 
   # evaluate the functional derivative
   setupFunctional(mesh, sbp, eqn, opts, func)
-  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func)
+  _evalFunctionalDeriv_m(mesh, sbp, eqn, opts, func, val_bar)
 
   # verify implementation finished communication
   if start_comm_q
@@ -426,4 +429,179 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
 
   return nothing
 end
+
+"""
+  This function evaluates a matrix-free Jacobian vector product for any
+  physics.  The solution variables must be complex for this to work.
+
+  The derivative is evaluated at the state in `eqn.q_vec`.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * input_array: vector to multiply against
+   * t: current time value
+
+  **Inputs/Outputs**
+
+   * output_array: vector to store the result in
+
+  **Keyword Arguments**
+
+   * zero_output: if true, `output_array` is overwritten, otherwise it is added
+                  to, default true.
+"""
+function evaldRdqProduct(mesh::AbstractMesh, sbp::AbstractOperator,
+                        eqn::AbstractSolutionData,
+                        opts::Dict, input_array::AbstractVector, 
+                        output_array::AbstractVector,
+                        t::Number=0.0; zero_output=true)
+
+  @assert length(input_array) == length(output_array)
+  @assert length(input_array) == mesh.numDof
+
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:mesh.numDof
+    eqn.q_vec[i] += pert*input_array[i]
+  end
+
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+
+  # start parallel communication if needed
+  time = eqn.params.time
+  time.t_send += @elapsed if opts["parallel_type"] == 2
+    startSolutionExchange(mesh, sbp, eqn, opts)
+  end
+
+  evalResidual(mesh, sbp, eqn, opts, t)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+
+  if zero_output
+    @simd for i=1:mesh.numDof
+      output_array[i] = imag(eqn.res_vec[i])/h
+    end
+  else
+    @simd for i=1:mesh.numDof
+      output_array[i] += imag(eqn.res_vec[i])/h
+    end
+  end
+
+  removeComplex(eqn)
+
+  if eqn.commsize > 1
+    assertReceivesWaited(eqn.shared_data)
+  end
+
+  return nothing
+end
+ 
+"""
+  Returns an [`StandardLinarSolver`](@ref) that can be used to solve the system
+  `dR/dq * x = b`, where `R` is the spatial residual and `q` is the solution.
+  Users should call `free` on this object when they are finished with it.
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * jac_type: an integer specifying what kind of Jacobian to create.  See
+               the documentation for the input option `jac_type`.  Default
+               value `opts["jac_type"]`
+
+  **Outputs**
+
+   * ls: a `StandardLinaerSolver`
+"""
+function createLinearSolver
+  # this method is implemented with the Newton linear operators
+end
+
+
+"""
+  User-face function to get the sparsity pattern of the Jacobian.
+
+  **Inputs**
+
+   * mesh: `AbstractMesh` object
+   * sbp:  `AbstractOperator` object
+   * eqn: `AbstractSolutionData` object, full initialized.  Each physics
+          module should specialize this argument
+   * opts: options dictonary.
+
+  **Outputs**
+
+   * disc_type: one of the enums
+
+  **Options Keys**
+
+   * if `preallocate_jacobian_coloring` is true, this function returns
+     `COLORING`.  Otherwise is returns whatever the physics module specified.
+"""
+function getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
+                            eqn::AbstractSolutionData, opts)
+
+  
+  if opts["preallocate_jacobian_coloring"]
+    disctype = COLORING
+  else
+    disctype = _getSparsityPattern(mesh, sbp, eqn, opts)
+  end
+
+  return disctype
+end
+# functions declared here but defined elsewhere
+function createSBPOperator
+end
+
+
+"""
+  Construct objects of degree p + 1
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+
+  **Outputs**
+
+   * newmesh: new mesh, using the same underlying apf::Mesh as `mesh`
+   * newsbp: degree p + 1 SBP operator
+   * neweqn: new `eqn` object with solution interpolated from `eqn.q_vec`
+   * newopts: new options dictionary (copy of `opts`)
+"""
+function createEnrichedObjects(mesh::T, sbp, eqn, opts) where {T <: AbstractMesh}
+
+  opts_h = deepcopy(opts)
+  opts_h["order"] += 1
+
+  if opts_h["use_staggered_grid"]
+    error("staggered grids not supported for error estimation")
+  end
+
+  sbp_h, sbpface_h, shape_type, topo = createSBPOperator(opts_h, Float64, mesh.comm)
+
+  # call constructor for mesh
+  mesh_h = copy_mesh(mesh, sbp_h, opts_h, sbpface_h)
+
+  # construct eqn object
+  mesh_h, sbp_h, eqn_h, opts_h, pmesh_h = createObjects(mesh_h, sbp_h, opts_h)
+
+  # interpolate field
+  interpField(mesh, sbp, eqn.q_vec, mesh_h, sbp_h, eqn_h.q_vec)
+  array1DTo3D(mesh_h, sbp_h, eqn_h, opts_h, eqn_h.q_vec, eqn_h.q)
+
+  copyParameters(eqn, eqn_h)
+
+  return mesh_h, sbp_h, eqn_h, opts_h
+end
+
 

@@ -71,10 +71,11 @@ function absvalue_rev(x::Number, x_bar::Number)
   return x2, x2_bar
 end
 
+
 @doc """
 ###Utils.absvalue_deriv
 
-Computes the derivative of the absolute value of a variable w.r.t itself
+Computes the derivative of the absolute value of a variable w.r.t itself.
 
 **Inputs**
 
@@ -84,6 +85,8 @@ Computes the derivative of the absolute value of a variable w.r.t itself
 
 function absvalue_deriv(val::Tval) where Tval
 
+  Tval(sign_c(val))
+  #=
   if val > zero(Tval)
     return one(Tval)
   elseif val < zero(Tval)
@@ -91,8 +94,50 @@ function absvalue_deriv(val::Tval) where Tval
   else
     return zero(Tval)
   end
+  =#
 
 end # End function absvalue_deriv
+
+#------------------------------------------------------------------------------
+# replace abs with a cubic spline fit near 0, to make it differentiable
+
+"""
+  A replacement for absvalue() that is differentiable everywhere (C^1 continuous)
+
+  Unfortunately, it is somewhat more expensive than absvalue()
+"""
+function absvalue2(val::Number)
+
+  delta = 1e-13
+  if absvalue(val) > delta
+    return absvalue(val)
+  elseif real(val) < 0
+    tmp = val + 100e-15
+    return @evalpoly tmp 100e-15 -1.0 -10e12 100e24
+  else  # real(val) > 0
+    tmp = val
+    return @evalpoly tmp 0.0 0.0 20e12 -100e24
+  end
+end
+
+"""
+  Derivative of abs()
+"""
+function absvalue2_deriv(val::T) where {T <: Number}
+
+  delta = 1e-13
+  if absvalue(val) > delta
+    return sign_c(val)
+  elseif real(val) < 0
+    tmp = val + 100e-15
+     return @evalpoly tmp -1.0 -20e12 300e24
+  else  # real(val) > 0
+    tmp = val
+    return @evalpoly tmp 0.0 40e12 -300e24
+  end
+end
+
+
 
 function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
 
@@ -109,6 +154,44 @@ function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
 end # End function max_rev
 
 
+"""
+  Smooth abs() function based on Harten's second entropy fix
+"""
+function absvalue3(val::Number)
+
+  delta = -1
+  val1 = absvalue(val)
+  if val1 > delta
+    return val1
+  else
+    term1 = val*val/delta
+    term2 = delta
+    return ((val*val)/delta + delta)/2
+  end
+end
+
+function absvalue3_deriv(val::T) where {T <: Number}
+
+  delta = -1
+
+  val1 = absvalue(val)
+  if val1 > delta
+    return absvalue_deriv(val)
+  else 
+    return val/delta
+  end
+end
+
+
+
+
+"""
+  Complex-step safe version of the sign function
+"""
+function sign_c(a::Number)
+
+  return sign(real(a))
+end
 
 
 import Base.isless

@@ -5699,3 +5699,219 @@ function calcEulerFlux_IRSLF_diff(params::ParamType{Tdim, :conservative},
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# HLL Flux
+
+function calcHLLFlux_diff(params::ParamType{Tdim, :conservative},
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh, 1},
+                   FL_dot::AbstractArray{Tres, 2},
+                   FR_dot::AbstractArray{Tres, 2}) where {Tmsh, Tsol, Tres, Tdim}
+
+  numDofPerNode = length(qL)
+  @unpack params.hllfluxdata fL fR sL_dot sR_dot fL_jac fR_jac
+
+  sL, sR = calc2RWaveSpeeds_diff(params, qL, qR, nrm, sL_dot, sR_dot)
+
+  if sL >= 0
+    calcEulerFlux_diff(params, qL, aux_vars, nrm, FL_dot)
+  elseif sR <= 0
+    calcEulerFlux_diff(params, qR, aux_vars, nrm, FR_dot)
+  else
+    calcEulerFlux(params, qL, aux_vars, nrm, fL)
+    calcEulerFlux(params, qR, aux_vars, nrm, fR)
+
+    fill!(fL_jac, 0); fill!(fR_jac, 0)
+    calcEulerFlux_diff(params, qL, aux_vars, nrm, fL_jac)
+    calcEulerFlux_diff(params, qR, aux_vars, nrm, fR_jac)
+
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+
+    for i=1:numDofPerNode
+      num = sR*fL[i] - sL*fR[i] + fac2*(qR[i] - qL[i])
+      den = sR - sL
+      for j=1:numDofPerNode
+        fac2_dotL = fac*(sL*sR_dot[j, 1] + sR*sL_dot[j, 1])
+        fac2_dotR = fac*(sL*sR_dot[j, 2] + sR*sL_dot[j, 2])
+
+        num_dotL_j = sR*fL_jac[i, j] + sR_dot[j, 1]*fL[i] - sL_dot[j, 1]*fR[i] +
+                     fac2_dotL*(qR[i] - qL[i])
+        num_dotR_j = fL[i]*sR_dot[j, 2] - sL*fR_jac[i, j] - fR[i]*sL_dot[j, 2] +
+                     fac2_dotR*(qR[i] - qL[i])
+
+        den_dotL_j = sR_dot[j, 1] - sL_dot[j, 1]
+        den_dotR_j = sR_dot[j, 2] - sL_dot[j, 2]
+
+        if j == i
+          num_dotL_j -= fac2
+          num_dotR_j += fac2
+        end
+
+        FL_dot[i, j] += (num_dotL_j*den - den_dotL_j*num)/(den*den)
+        FR_dot[i, j] += (num_dotR_j*den - den_dotR_j*num)/(den*den)
+      end
+    end
+  end
+
+  return nothing
+end
+
+function calcHLLFlux_revq(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh, 1},  
+                      F_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+  @unpack params.hllfluxdata fL fR fL_bar fR_bar
+
+  numDofPerNode = length(qL)
+  sL, sR = calc2RWaveSpeeds(params, qL, qR, nrm)
+#=
+  if sL >= 0
+    calcEulerFlux(params, qL, aux_vars, nrm, flux)
+  elseif sR <= 0
+    calcEulerFlux(params, qg, aux_vars, nrm, flux)
+  else
+    calcEulerFlux(params, qL, aux_vars, nrm, fL)
+    calcEulerFlux(params, qR, aux_vars, nrm, fR)
+    
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+    for i=1:numDofPerNode
+      num = sR*fL[i] - sL*fR[i]  + fac2*(qg[i] - q[i])
+      den = sR - sL
+
+      flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
+    end
+  end
+=#
+  #--------------------------
+  # reverse sweep
+
+  if sL >= 0
+    calcEulerFlux_revq(params, qL, qL_bar, aux_vars, nrm, F_bar)
+  elseif sR <= 0
+    calcEulerFlux_revq(params, qR, qR_bar, aux_vars, nrm, F_bar)
+  else
+    fill!(fL_bar, 0); fill!(fR_bar, 0)
+
+    calcEulerFlux(params, qL, aux_vars, nrm, fL)
+    calcEulerFlux(params, qR, aux_vars, nrm, fR)
+
+
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+    sL_bar = zero(Tres)
+    sR_bar = zero(Tres)
+    fac2_bar = zero(Tres)
+
+    for i=1:numDofPerNode
+      num = sR*fL[i] - sL*fR[i] + fac2*(qR[i] - qL[i])
+      den = sR - sL
+      den2 = den*den
+
+      #flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
+      sL_bar   += F_bar[i]*(-fR[i]*den + num)/den2
+      sR_bar   += F_bar[i]*( fL[i]*den - num)/den2
+      fac2_bar += F_bar[i]*(qR[i] - qL[i])/den
+      qL_bar[i] -= F_bar[i]*fac2/den
+      qR_bar[i] += F_bar[i]*fac2/den
+      fL_bar[i] += F_bar[i]*sR/den
+      fR_bar[i] -= F_bar[i]*sL/den
+    end
+
+    sL_bar += fac*sR*fac2_bar
+    sR_bar += fac*sL*fac2_bar
+    calcEulerFlux_revq(params, qL, qL_bar, aux_vars, nrm, fL_bar)
+    calcEulerFlux_revq(params, qR, qR_bar, aux_vars, nrm, fR_bar)
+
+    calc2RWaveSpeeds_revq(params, qL, qL_bar, qR, qR_bar, nrm, sL_bar, sR_bar)
+  end # end if else
+
+  return nothing
+end
+
+
+function calcHLLFlux_revm(params::ParamType,
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   nrm::AbstractArray{Tmsh,1},
+                   nrm_bar::AbstractArray{Tmsh, 1},
+                   F_bar::AbstractArray{Tres, 1},
+                   ) where {Tmsh, Tsol, Tres}
+
+  @unpack params.hllfluxdata fL fR fL_bar fR_bar
+
+  numDofPerNode = length(qL)
+  sL, sR = calc2RWaveSpeeds(params, qL, qR, nrm)
+#=
+  if sL >= 0
+    calcEulerFlux(params, qL, aux_vars, nrm, flux)
+  elseif sR <= 0
+    calcEulerFlux(params, qg, aux_vars, nrm, flux)
+  else
+    calcEulerFlux(params, qL, aux_vars, nrm, fL)
+    calcEulerFlux(params, qR, aux_vars, nrm, fR)
+    
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+    for i=1:numDofPerNode
+      num = sR*fL[i] - sL*fR[i]  + fac2*(qg[i] - q[i])
+      den = sR - sL
+
+      flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
+    end
+  end
+=#
+  #--------------------------
+  # reverse sweep
+
+  if sL >= 0
+    calcEulerFlux_revm(params, qL, aux_vars, nrm, nrm_bar, F_bar)
+  elseif sR <= 0
+    calcEulerFlux_revm(params, qR, aux_vars, nrm, nrm_bar, F_bar)
+  else
+    fill!(fL_bar, 0); fill!(fR_bar, 0)
+
+    calcEulerFlux(params, qL, aux_vars, nrm, fL)
+    calcEulerFlux(params, qR, aux_vars, nrm, fR)
+
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+    sL_bar = zero(Tres)
+    sR_bar = zero(Tres)
+    fac2_bar = zero(Tres)
+
+    for i=1:numDofPerNode
+      num = sR*fL[i] - sL*fR[i] + fac2*(qR[i] - qL[i])
+      den = sR - sL
+      den2 = den*den
+
+      #flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
+      sL_bar   += F_bar[i]*(-fR[i]*den + num)/den2
+      sR_bar   += F_bar[i]*( fL[i]*den - num)/den2
+      fac2_bar += F_bar[i]*(qR[i] - qL[i])/den
+      fL_bar[i] += F_bar[i]*sR/den
+      fR_bar[i] -= F_bar[i]*sL/den
+    end
+
+    sL_bar += fac*sR*fac2_bar
+    sR_bar += fac*sL*fac2_bar
+    fac_bar = sL*sR*fac2_bar
+
+    calcLength_rev(params, nrm, nrm_bar, fac_bar)
+
+    calcEulerFlux_revm(params, qL, aux_vars, nrm, nrm_bar, fL_bar)
+    calcEulerFlux_revm(params, qR, aux_vars, nrm, nrm_bar, fR_bar)
+
+    calc2RWaveSpeeds_revm(params, qL, qR, nrm, nrm_bar, sL_bar, sR_bar)
+  end # end if else
+
+  return nothing
+end
+

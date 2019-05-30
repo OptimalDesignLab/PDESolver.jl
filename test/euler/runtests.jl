@@ -21,6 +21,7 @@ using Utils
 using MPI
 using Input
 using PETSc2
+using Jacobian
 
 #------------------------------------------------------------------------------
 # define tests and tags
@@ -59,6 +60,8 @@ include("test_homotopy.jl")
 include("test_staggered.jl")
 include("test_checkpoint.jl")
 include("test_coordsfd.jl")
+include("test_shock_capturing.jl")
+include("test_lps.jl")
 
 #------------------------------------------------------------------------------
 # run tests

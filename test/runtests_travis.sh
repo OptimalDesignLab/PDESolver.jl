@@ -9,13 +9,13 @@ err=0
 if [[ $TEST_ADVECTION == "1" ]];
 then
   cd ./advection
-  julia ./runtests.jl tag_shorttest
+  julia ./runtests.jl TAG_SHORTTEST
   err=$(( err + $?))
 
-  mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
+  mpirun -np 2 julia ./runtests_parallel2.jl TAG_SHORTTEST
   err=$(( err + $?))
 
-  mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
+  mpirun -np 4 julia ./runtests_parallel4.jl TAG_SHORTTEST
   err=$(( err + $?))
 
   cd ..
@@ -24,18 +24,20 @@ fi
 if [[ $TEST_EULER == "1" ]];
 then
   cd ./euler
-  julia ./runtests.jl tag_shorttest
+  julia ./runtests.jl TAG_SHORTTEST
   err=$(( err + $?))
 
-  mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
+  mpirun -np 2 julia ./runtests_parallel2.jl TAG_SHORTTEST
   err=$(( err + $?))
 
-  mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
-  err=$(( err + $?))
+  # these run very slowly on travis because the VM's do not have dedicated
+  # CPUs
+  #mpirun -np 4 julia ./runtests_parallel4.jl TAG_SHORTTEST
+  #err=$(( err + $?))
 
   # do the viscous tests here because they are short and rely on Euler
   cd ../navier_stokes
-  julia ./runtests.jl tag_shorttest
+  julia ./runtests.jl TAG_SHORTTEST
   err=$(( err + $?))
 
   cd ..
@@ -44,13 +46,13 @@ fi
 if [[ $TEST_ELLIPTIC == "1" ]];
 then
   cd ./elliptic
-  julia ./runtests.jl tag_shorttest
+  julia ./runtests.jl TAG_SHORTTEST
   err=$(( err + $?))
 
-  #mpirun -np 2 julia ./runtests_parallel2.jl tag_shorttest
+  #mpirun -np 2 julia ./runtests_parallel2.jl TAG_SHORTTEST
   #err=$(( err + $?))
 
-  #mpirun -np 4 julia ./runtests_parallel4.jl tag_shorttest
+  #mpirun -np 4 julia ./runtests_parallel4.jl TAG_SHORTTEST
   #err=$(( err + $?))
 
   cd ..
@@ -59,7 +61,7 @@ fi
 if [[ $TEST_SIMPLEODE == "1" ]];
 then
   cd ./simpleODE
-  julia ./runtests.jl tag_shorttest
+  julia ./runtests.jl TAG_SHORTTEST
   err=$(( err + $?))
 
   cd ..

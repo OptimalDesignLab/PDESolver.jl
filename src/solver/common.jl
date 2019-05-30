@@ -127,7 +127,7 @@ function getDataTypes(opts::Dict)
     Tsbp = Float64
     Tsol = Dual{Float64}
     Tres = Dual{Float64}
-  elseif flag == 5 || flag == 40 || flag == 41
+  elseif flag == 5 || flag == 40 || flag == 41 || flag == 50
     if jac_method == 1 # use Newton method using finite difference  (former flag 4)
       # println("========== utils/initialization: flag 5, jac_method 1")
       Tmsh = Float64
@@ -222,6 +222,9 @@ function getDataTypes(opts::Dict)
 
   return Tmsh, Tsbp, Tsol, Tres
 end
+
+
+import PDESolver.createSBPOperator
 
 """
   This function constructs the SBP operator and the associated SBP face
@@ -325,6 +328,13 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, comm::MPI.Comm=MPI.COMM_W
       else
         throw(ArgumentError("3D SBPOmega3 not supported"))
       end
+    elseif opts["operator_type$suffix"] == "SBPDiagonalEFrobenius"
+      shape_type = 8
+      if dim == 2
+        sbp = getTriSBPDiagE(degree=order, Tsbp=Tsbp, mincond=false)
+      else
+        throw(ArgumentError("3D SBPOmega3 not supported"))
+      end
     else
       op_type = opts["operator_type$suffix"]
       throw(ArgumentError("unrecognized operator type $op_type for DG mesh"))
@@ -344,7 +354,9 @@ function createSBPOperator(opts::Dict, Tsbp::DataType, comm::MPI.Comm=MPI.COMM_W
     if dim == 2
       # TODO: use sbp.vtx instead
       ref_verts = [-1. 1 -1; -1 -1 1]
-      if opts["operator_type$suffix"] == "SBPDiagonalE"
+      if opts["operator_type$suffix"] == "SBPDiagonalE" ||
+         opts["operator_type$suffix"] == "SBPDiagonalEFrobenius"
+
         sbpface = getTriFaceForDiagE(order, sbp.cub, ref_verts.')
       elseif opts["operator_type$suffix"] == "SBPDiagonalE2"
         println("getting TriFaceForDiagE2")
@@ -529,7 +541,6 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
 
       @time t = rk4(evalResidual, delta_t, t_max, mesh, sbp, eqn, opts, 
                     res_tol=opts["res_abstol"], real_time=opts["real_time"])
-      println("finish rk4")
       #    printSolution("rk4_solution.dat", eqn.res_vec)
 
     elseif flag == 2 # forward diff dR/du
@@ -596,11 +607,15 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
 
     elseif flag == 40  # predictor-corrector newton
 
-      predictorCorrectorHomotopy(evalResidual, evalHomotopy, mesh, sbp, eqn, opts, pmesh=pmesh)
+      predictorCorrectorHomotopy(evalResidual, evalHomotopy, mesh, sbp, eqn, opts)
 
     elseif flag == 41  # special mode: use regular Newton to solve homotopy
 
       @time newton(evalHomotopy, mesh, sbp, eqn, opts, pmesh)
+
+    elseif flag == 50  # pHomotopy
+
+      mesh, sbp, eqn, opts = pHomotopy(mesh, sbp, eqn, opts)
 
     elseif flag == 660    # Unsteady adjoint crank nicolson code. DOES NOT PRODUCE CORRECT RESULTS. See Anthony.
       # error("Unsteady adjoint Crank-Nicolson code called.\nThis code does run, but incorrect numerical results are obtained.\nTo run this, you must comment out this error message in initialization.jl.\n\n")
@@ -704,17 +719,15 @@ function call_nlsolver(mesh::AbstractMesh, sbp::AbstractOperator,
       # TODO: better way to update final time
       evalResidual(mesh, sbp, eqn, opts, t)
 
-      eqn.res_vec[:] = 0.0
       array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
     end
 
     if opts["write_finalsolution"]
-      println("writing final solution")
-      writedlm("solution_final_$myrank.dat", real(eqn.q_vec))
+      writeSolutionFiles(mesh, sbp, eqn, opts, "solution_final")
     end
 
     if opts["write_finalresidual"]
-      writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
+      writeSolutionFiles(mesh, sbp, eqn, opts, "residual_final", eqn.res_vec)
     end
 
     myrank = mesh.myrank

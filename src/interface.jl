@@ -249,11 +249,15 @@ end
    * eqn
    * opts
    * functionalData: the [`AbstractFunctional`](@ref)
+   * val_bar: seed value for back-propigation, default value 1.  This is
+              rarely used by the user-facing interface, but is useful for
+              functionals that are composed of other functionals.
 """
 function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::AbstractSolutionData{Tsol}, opts,
-                           functionalData::AbstractFunctional
+                           functionalData::AbstractFunctional,
+                           val_bar::Number=1,
                            ) where {Tmsh, Tsol}
 
 
@@ -459,4 +463,184 @@ function evalResidual_revq(mesh::AbstractMesh, sbp::AbstractOperator,
 
   error("Generic fallback for evalResidual_revq: did you forget to extend evalResidual_revq with a new method for your AbstractSolutionData")
 
+end
+
+
+"""
+  Function that returns one of the sparsity pattern enums from the Jacobian
+  module.  The sparsity pattern enum returned must be at least as wide as
+  the true sparsity pattern (it may be wider, but this will result in more
+  memory being allocated than necessary).
+
+  **Inputs**
+
+   * mesh: `AbstractMesh` object
+   * sbp:  `AbstractOperator` object
+   * eqn: `AbstractSolutionData` object, full initialized.  Each physics
+          module should specialize this argument
+   * opts: options dictonary.
+
+  **Outputs**
+
+   * disc_type: one of the enums
+"""
+function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
+                            eqn::AbstractSolutionData, opts)
+
+  error("Generic fallback for getSparsityPattern() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+end
+
+
+"""
+  This function returns the shock sensor currently in use by the `eqn`
+  object.  This function may error if shock capturing is not enabled.
+
+  This function is not required to be type-stable
+
+  **Inputs**
+
+   * eqn: an `AbstractSolutionData`
+
+
+  **Outputs**
+
+   * an `AbstractShockSensor`
+"""
+function getShockSensor(eqn::AbstractSolutionData)
+
+  error("Generic fallback for getShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  This function sets the shock sensor used by the `eqn`
+  object.  This function may error if shock capturing is not enabled.
+
+  **Inputs**
+
+   * eqn: an `AbstractSolutionData`
+   * an `AbstractShockSensor`
+"""
+function setShockSensor(eqn::AbstractSolutionData, sensor::AbstractShockSensor)
+
+  error("Generic fallback for setShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  This function sets the arbitrary constant in front of the shock capturing
+  term for the `AbstractShockSensor`.
+
+  **Inputs**
+
+   * sensor: an `AbstractShockSensor`
+   * alpha: number
+"""
+function setShockSensorAlpha(eqn::AbstractSolutionData, alpha::Number)
+
+  error("Generic fallback for setShockSensorAlpha() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  Create a new `AbstractShockSensor` object
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn: physics modules should specialize this object
+   * opts
+   * name: the name of the shock sensor to create, default
+           opts["shock_sensor_name"]
+
+
+"""
+function createShockSensor(mesh::AbstractMesh, sbp::AbstractOperator,
+                        eqn::AbstractSolutionData, opts,
+                        name=opts["shock_sensor_name"])
+
+
+  error("Generic fallback for createShockSensor() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+end
+
+
+
+"""
+  Copies parameters (Mach number, angle of attack, etc.) from one `eqn` object
+  to another`.  
+
+  **Inputs**
+
+   * eqn_old
+
+  **Inputs/Outputs**
+
+   * eqn_new
+"""
+function copyParameters(eqn_old::AbstractSolutionData, eqn_new::AbstractSolutionData)
+
+  error("Generic fallback for copyParameters() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
+
+end
+
+
+"""
+  Function for opening a new set of logging files.  This is useful for
+  doing several solves with the same `eqn` object in different directories.
+
+  It is an error to call this function without calling `closeLoggingFiles`
+  first.
+
+  This function must be implemented if the `eqn` object keeps file handles
+  open, but is optional if not.
+
+  **Inputs**
+
+   * eqn: `AbstractSolutionData`
+   * opts: options dictionary
+"""
+function openLoggingFiles(eqn::AbstractSolutionData, opts)
+
+
+  return nothing
+end
+
+
+"""
+  Closes any logging files the `eqn` object may have open.
+
+  This function must be implemented if the `eqn` object keeps file handles
+  open, but is optional if not.
+
+  **Inputs**
+
+   * eqn: `AbstractSolutionData`
+   * opts: options dictonary
+"""
+function closeLoggingFiles(eqn::AbstractSolutionData, opts)
+
+end
+
+
+"""
+  Sets a new flux function for DG-type methods
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * name: name of new flux function, defaults to opts["flux_name"]
+"""
+function setFluxFunction(mesh::AbstractDGMesh, sbp::AbstractOperator,
+                         eqn::AbstractSolutionData, opts,
+                         name::String=opts["Flux_name"])
+
+
+  error("Generic fallback for setFluxFunction() reached: did you forget to extend it with a new method for your AbstractSolutionData?")
 end

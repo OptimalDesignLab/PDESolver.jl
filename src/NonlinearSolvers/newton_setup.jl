@@ -125,9 +125,6 @@ function NewtonData(mesh, sbp,
                     delta_q_vec, fconv, verbose)
 end
 
-include("residual_evaluation.jl")  # some functions for residual evaluation
-include("jacobian.jl")
-
 @doc """
 ### NonlinearSolvers.setupNewton
   Performs setup work for [`newtonInner`](@ref), including creating a 
@@ -154,7 +151,7 @@ function setupNewton(mesh, pmesh, sbp,
 
   newton_data = NewtonData(mesh, sbp, eqn, opts, ls)
 
-  clearEulerConstants()
+  clearEulerConstants(ls)
   # For simple cases, especially for Newton's method as a steady solver,
   #   having rhs_vec and eqn.res_vec pointing to the same memory
   #   saves us from having to copy back and forth
@@ -163,9 +160,6 @@ function setupNewton(mesh, pmesh, sbp,
   else
     rhs_vec = eqn.res_vec
   end
-
-  # should be all zeros if alloc_rhs is true
-#   writedlm("rhs_initial.dat", rhs_vec)
 
   return newton_data, rhs_vec
 
@@ -177,9 +171,9 @@ end   # end of setupNewton
   Note that this does not reset the linear solver, which might be a problem
   if inexact newton-krylov was used for the previous solve
 """
-function reinitNewtonData(newton_data::NewtonData)
+function reinitNewtonData(newton_data::NewtonData, mesh, sbp, eqn, opts)
 
-  clearEulerConstants()
+  clearEulerConstants(newton_data.ls)
   newton_data.itr = 0
   newton_data.res_norm_i = 0
   newton_data.res_norm_i_1 = 0
@@ -187,6 +181,20 @@ function reinitNewtonData(newton_data::NewtonData)
   newton_data.step_norm_i_1 = 0
   newton_data.step_fac = 1.0
   resetRecalculationPolicy(newton_data.recalc_policy)
+
+  # if using globalization, reset it
+  if opts["newton_globalize_euler"]
+    lo = getInnerLO(newton_data.ls.lo, NewtonLO)
+
+    #TODO: it would be slightly better to update tau_vec inplace
+    reinitImplicitEuler(mesh, opts, lo.idata)
+
+    if !(typeof(newton_data.ls.pc) <: PCNone)
+      # no need to do anything for PCNone
+      pc = getInnerPC(newton_data.ls.pc, NewtonPC)
+      reinitImplicitEuler(mesh, opts, lo.idata)
+    end
+  end
 
   return nothing
 end
@@ -222,7 +230,7 @@ function recordResNorm(newton_data::NewtonData, res_norm::Number)
   newton_data.res_norm_i = res_norm
   
   # update implicit Euler globalization
-  recordEulerResidual(res_norm)
+  recordEulerResidual(newton_data.ls, res_norm)
 
   return nothing
 end
@@ -259,20 +267,20 @@ end
    * opts
    * rhs_func: rhs_func required by [`newtonInner`](@ref)
 """
-function getNewtonPCandLO(mesh, sbp, eqn, opts)
+function getNewtonPCandLO(mesh, sbp, eqn, opts,
+                          jactype::Integer=opts["jac_type"])
 
   # get PC
   if opts["jac_type"] <= 2
     pc = PCNone(mesh, sbp, eqn, opts)
   else
     if opts["use_volume_preconditioner"]
-      pc = NewtonVolumePC(mesh, sbp, eqn, opts)
+      pc = NewtonBDiagPC(mesh, sbp, eqn, opts)
     else
       pc = NewtonMatPC(mesh, sbp, eqn, opts)
     end
   end 
 
-  jactype = opts["jac_type"]
   if jactype == 1
     lo = NewtonDenseLO(pc, mesh, sbp, eqn, opts)
   elseif jactype == 2
@@ -286,31 +294,112 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts)
   return pc, lo
 end
 
+import PDESolver.createLinearSolver
+
+function createLinearSolver(mesh::AbstractMesh, sbp::AbstractOperator,
+                            eqn::AbstractSolutionData, opts,
+                            jac_type::Integer=opts["jac_type"])
+
+  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts, jac_type)
+  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+  
+  return ls
+end
+
+
 #------------------------------------------------------------------------------
 # preconditioner
 
+abstract type NewtonMatFreePC <: AbstractPetscMatFreePC end
+
 
 """
-  Adds fields required by all Newton PCs and LOs
+  This function initializes the data needed to do Psudo-Transient Continuation 
+  globalization (aka. Implicit Euler) of Newton's method, using a spatially 
+  varying pseudo-timestep.
+
+  Updates the jacobian with a diagonal term, as though the jac was the 
+  jacobian of this function:
+  (u - u_i_1)/delta_t + f(u)
+  where f is the original residual and u_i_1 is the previous step solution
+
+
+  This globalization is activated using the option `newton_globalize_euler`.
+  The initial value of the scaling factor tau is specified by the option 
+  `euler_tau`.
+
+
 """
-macro newtonfields()
-  # compute something c = f(a, b)
-  return esc(quote
+mutable struct ImplicitEulerData
     res_norm_i::Float64  # current step residual norm
     res_norm_i_1::Float64  # previous step residual norm
     # Pseudo-transient continuation Euler
     tau_l::Float64  # current pseudo-timestep
-    tau_vec::Array{Float64, 1}  # array of solution at previous pseudo-timestep
-  end)
+    tau_vec::Array{Float64, 1}  # array of element-local time steps
 end
+
+"""
+  Constructor for the case where implicit Euler will be used  
+
+  **Inputs**
+
+   * mesh
+   * opts
+   * tau_l: the reference timestep
+"""
+function ImplicitEulerData(mesh::AbstractMesh, opts, tau_l::Number)
+
+  res_norm_i = 0.0
+  res_norm_i_1 = 0.0
+
+  tau_vec = zeros(mesh.numDof)
+  calcTauVec(mesh, opts, tau_l, tau_vec)
+
+  return ImplicitEulerData(res_norm_i, res_norm_i_1, tau_l, tau_vec)
+end
+
+"""
+  Constructor for the case where implicit Euler will not be used.
+"""
+function ImplicitEulerData()
+
+  res_norm_i = 0.0
+  res_norm_i_1 = 0.0
+  tau_l = 0.0
+  tau_vec = Array{Float64}(0)
+
+  return ImplicitEulerData(res_norm_i, res_norm_i_1, tau_l, tau_vec)
+end
+
+
+"""
+  Constructor from options dictionary.  Uses opts["setup_globalize_euler"]
+  and opts["euler_tau"] to configure the returned object
+
+  **Inputs**
+
+   * mesh
+   * opts
+"""
+function ImplicitEulerData(mesh::AbstractMesh, opts)
+
+  if opts["setup_globalize_euler"]
+    obj = ImplicitEulerData(mesh, opts, opts["euler_tau"])
+  else
+    obj = ImplicitEulerData()
+  end
+
+  return obj
+end
+
+
 
 """
   Matrix-based Petsc preconditioner for Newton's method
 """
 mutable struct NewtonMatPC <: AbstractPetscMatPC
   pc_inner::PetscMatPC
-  @newtonfields
-
+  idata::ImplicitEulerData
 end
 
 """
@@ -321,17 +410,9 @@ function NewtonMatPC(mesh::AbstractMesh, sbp::AbstractOperator,
 
 
   pc_inner = PetscMatPC(mesh, sbp, eqn, opts)
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
+  idata = ImplicitEulerData(mesh, opts)
 
-
-  return NewtonMatPC(pc_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonMatPC(pc_inner, idata)
 end
 
 function calcPC(pc::NewtonMatPC, mesh::AbstractMesh, sbp::AbstractOperator,
@@ -364,7 +445,7 @@ end
 """
 mutable struct NewtonDenseLO <: AbstractDenseLO
   lo_inner::DenseLO
-  @newtonfields 
+  idata::ImplicitEulerData
 end
 
 """
@@ -374,17 +455,9 @@ function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
+  idata = ImplicitEulerData(mesh, opts)
 
-
-  return NewtonDenseLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonDenseLO(lo_inner, idata)
 end
 
 """
@@ -393,7 +466,7 @@ end
 """
 mutable struct NewtonSparseDirectLO <: AbstractSparseDirectLO
   lo_inner::SparseDirectLO
-  @newtonfields
+  idata::ImplicitEulerData
 end
 
 """
@@ -403,18 +476,9 @@ function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = SparseDirectLO(pc, mesh, sbp, eqn, opts)
+  idata = ImplicitEulerData(mesh, opts)
 
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
-
-
-  return NewtonSparseDirectLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonSparseDirectLO(lo_inner, idata)
 end
 
 """
@@ -424,7 +488,7 @@ end
 """
 mutable struct NewtonPetscMatLO <: AbstractPetscMatLO
   lo_inner::PetscMatLO
-  @newtonfields
+  idata::ImplicitEulerData
 end
 
 """
@@ -434,18 +498,9 @@ function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = PetscMatLO(pc, mesh, sbp, eqn, opts)
+  idata = ImplicitEulerData(mesh, opts)
 
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
-
-
-  return NewtonPetscMatLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonPetscMatLO(lo_inner, idata)
 end
 
 """
@@ -455,7 +510,7 @@ end
 """
 mutable struct NewtonPetscMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::PetscMatFreeLO
-  @newtonfields
+  idata::ImplicitEulerData
 end
 
 """
@@ -474,17 +529,9 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
                     sbp::AbstractOperator, eqn::AbstractSolutionData, opts::Dict)
 
   lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
-  res_norm_i = 0.0
-  res_norm_i_1 = 0.0
-  if opts["setup_globalize_euler"]
-    tau_l, tau_vec = initEuler(mesh, sbp, eqn, opts)
-  else
-    tau_l = opts["euler_tau"]
-    tau_vec = []
-  end
+  idata = ImplicitEulerData(mesh, opts)
 
-
-  return NewtonPetscMatFreeLO(lo_inner, res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return NewtonPetscMatFreeLO(lo_inner, idata)
 end
 
 """
@@ -507,6 +554,10 @@ const NewtonHasMat = Union{NewtonMatPC, NewtonDenseLO, NewtonSparseDirectLO, New
 """
 const NewtonLinearObject = Union{NewtonDenseLO, NewtonSparseDirectLO, NewtonPetscMatLO, NewtonPetscMatFreeLO, NewtonMatPC}
 
+"""
+  Any Newton PC
+"""
+const NewtonPC = Union{NewtonMatPC, NewtonMatFreePC}
 
 function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
                             sbp::AbstractOperator, eqn::AbstractSolutionData,

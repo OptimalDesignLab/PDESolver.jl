@@ -29,6 +29,7 @@ arg_dict = Dict{String,Any}(
 "jac_type" => 2,          # 1: dense matrix, 2: Julia sparse
 "simpleODE_eqn" => 4,
 "use_Minv" => false,
+"error_undefined_bc" => false,
 # "write_rhs" => true,
 # "write_qic" => true,
 # "write_res" => true,

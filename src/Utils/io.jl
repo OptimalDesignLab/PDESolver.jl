@@ -63,7 +63,7 @@ function BufferedIO(fname::AbstractString, mode::AbstractString="a")
   return BufferedIO(f)
 end
 # only provide write functionality, for now
-import Base.write, Base.flush, Base.close
+import Base.write, Base.flush, Base.close, Base.isopen
 
 # I think this is all that needs to be implemented, because it is the job of
 # functions like println and print to convert things to arrays of UInt8s
@@ -85,6 +85,13 @@ function close(io::BufferedIO)
     flush(io)
     close(io.fstream)
   end
+end
+
+"""
+  `Base` function `isopen` extended for BufferedIO
+"""
+function isopen(io::BufferedIO)
+  return isopen(io.fstream)
 end
 
 
@@ -156,4 +163,44 @@ function println(io::DebugFileIO, args...)
   println(io.fstream, @printf("%16e ", tval), args...)
 end
 =#
+
+
+#------------------------------------------------------------------------------
+# other random stuff
+
+"""
+  This function prints 2D arrays so they look like matrices (m x n format)
+"""
+function printArray(io::IO, A::AbstractMatrix)
+
+  m, n = size(A)
+  for i=1:m
+    if i == 1
+      print(io, "[")
+    else
+      print(io, " ")
+    end
+    for j=1:n
+      print(io, A[i, j])
+
+      if j == n
+        if i == m 
+          print(io, "]")
+        else
+          print(io, ";")
+        end
+        print(io, "\n")
+      else
+        print(io, ", ")
+      end  # end if
+    end  # end j
+  end  # end i
+
+  return io
+end
+
+function printArray(A::AbstractMatrix)
+  return printArray(STDOUT, A)
+end
+
 

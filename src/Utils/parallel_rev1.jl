@@ -191,6 +191,12 @@ function finishExchangeData_rev(mesh, sbp, eqn, opts,
     populate_buffer_rev(mesh, sbp, eqn, opts, data_idx)
   end
 
+  # wait on all receives to complete.  This is not strictly necessary, but 
+  # avoids a problem with exchangeData_rev2 where it expects the receives
+  # to already have been waited on
+  waitAllReceives(shared_data_bar)
+
+
   return nothing
 end
 
@@ -210,7 +216,6 @@ end
 function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractOperator,
                                    eqn::AbstractSolutionData, opts)
 
-  println(eqn.params.f, "entered finishSolutionBarExchange"); flush(eqn.params.f)
   if mesh.npeers == 0
     return nothing
   end
@@ -224,7 +229,6 @@ function finishSolutionBarExchange(mesh::AbstractMesh, sbp::AbstractOperator,
     throw(ErrorException("unsupported parallel_type = $(getParallelDataString(pdata))"))
   end
 
-  println(eqn.params.f, "pdata = ", pdata); flush(eqn.params.f)
   finishExchangeData_rev(mesh, sbp, eqn, opts, eqn.shared_data_bar, populate_buffer_rev)
 
   return nothing

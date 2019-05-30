@@ -1,0 +1,6 @@
+vortex_3x3_.smb: 3 x 3 polar vortex, linear mesh, each boundary on a
+                 different geometric part
+
+vortex_3x3_p_.smb: same as above but split into 4 parts.  Part 1 is
+                   not compact with respect to faces (two elements
+                   are connected only by a vertex).

@@ -32,6 +32,9 @@ function DiagJac(::Type{T}, blocksize::Integer, nblock::Integer) where T
   return DiagJac{T}(A)
 end
 
+const NullDiagJac = DiagJac(PetscScalar, 0, 0)
+
+
 import Base: length, size, getindex, setindex!, show
 
 """
@@ -142,42 +145,109 @@ end
   **Inputs/Outputs**
 
    * b: vector to be overwritten with the result
+
+  **Keyword Arguments**
+
+   * zero_output: if true, overwrite `b`, otherwise add to it, default true
+   * trans: if true, multiply by the transposed matrix, default false
+
+  Aliasing Restrictions: no aliasing allowed
 """
-function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::AbstractVector)
+function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::AbstractVector; zero_output=true, trans::Bool=false)
 
   blocksize, blocksize, nblock = size(A.A)
 
   @assert blocksize == mesh.numDofPerNode*mesh.numNodesPerElement
+  if zero_output
+    fill!(b, 0)
+  end
+
+  _trans::Bool = trans  # make type-stable
 
   # work arrays
   xblock = zeros(eltype(x), blocksize)
   bblock = zeros(eltype(b), blocksize)
   for i=1:nblock
-    
-    # gather dofs in x
-    idx = 1
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        xblock[idx] = x[mesh.dofs[k, j, i]]
-        idx += 1
-      end
-    end
+    getValues(mesh, x, i, xblock)
     Ablock = sview(A.A, :, :, i)
-    smallmatvec!(Ablock, xblock, bblock)
-
-    # scatter to b
-    idx = 1
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        b[mesh.dofs[k, j, i]] = bblock[idx]
-        idx += 1
-      end
+    if _trans
+      smallmatTvec!(Ablock, xblock, bblock)
+    else
+      smallmatvec!(Ablock, xblock, bblock)
     end
-
+    setValues(mesh, bblock, i, b)
   end  # end loop i
 
   return nothing
 end
+
+#------------------------------------------------------------------------------
+# utility functions
+"""
+  Gets the values out of a `eqn.q_vec` shaped vector for a given element.
+
+  **Inputs**
+
+   * mesh
+   * x: the vector
+   * elnum: element number
+
+  **Inputs/Outputs**
+
+   * workvec: vector of length `mesh.numDofPerNode*mesh.numNodesPerElement`
+              to overwrite with the solution.
+"""
+function getValues(mesh::AbstractMesh, x::AbstractVector, elnum::Integer,
+                   workvec::AbstractVector)
+
+  # get the x values
+  # this could be faster if we assume the dofs on each element are numbered
+  # sequentially
+  pos = 1
+  @simd for j=1:mesh.numNodesPerElement
+    @simd for k=1:mesh.numDofPerNode
+      dof_i = mesh.dofs[k, j, elnum]
+      workvec[pos] = x[dof_i]
+      pos += 1
+    end
+  end
+
+  return nothing
+end
+
+
+"""
+  Inverse of [`getValues`](@ref), puts values back into a vector
+
+  **Inputs**
+
+   * mesh
+   * workvec
+   * elnum
+  
+  **Inputs/Outputs**
+
+   * b: relevent entries are added to (not overwritten)
+"""
+function setValues(mesh::AbstractMesh, workvec::AbstractVector, elnum::Integer,
+                   b::AbstractVector)
+
+
+  # put entries back into b using mesh.dofs
+  pos = 1
+  for j=1:mesh.numNodesPerElement
+    for k=1:mesh.numDofPerNode
+      dof_i = mesh.dofs[k, j, elnum]
+      b[dof_i] += workvec[pos]
+      pos += 1
+    end
+  end
+
+  return nothing
+end
+
+
+
 #------------------------------------------------------------------------------
 # New AssembleElementData type for getting the diagonal only
 
@@ -188,6 +258,10 @@ end
 function AssembleDiagJacData(mesh, sbp, eqn, opts, jac::DiagJac{T}) where T
 
   return AssembleDiagJacData{T}(jac)
+end
+
+function NullAssembleDiagJacData(::Type{T}) where {T}
+  return AssembleDiagJacData{T}(DiagJac(T, 0, 0))
 end
 
 """
@@ -264,6 +338,51 @@ function assembleInterface(helper::AssembleDiagJacData,
   return nothing
 end
 
+
+function assembleInterface(helper::AssembleDiagJacData, 
+                           sbpface::SparseFace,
+                           mesh::AbstractMesh, iface::Interface,
+                           jacLL::AbstractArray{T, 4},
+                           jacLR::AbstractArray{T, 4},
+                           jacRL::AbstractArray{T, 4},
+                           jacRR::AbstractArray{T, 4}) where T
+
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
+  for p=1:sbpface.numnodes
+    # row indices
+    iR = sbpface.nbrperm[p, iface.orient]
+    pL = sbpface.perm[p, iface.faceL]
+    pR = sbpface.perm[iR, iface.faceR]
+
+    # column indices
+    # this matches the way SBP puts the data into the jac arrays,
+    # but its a little weird
+    qL = pL
+    qR = pR
+
+    # put values into 2 x 2 block matrix
+    @simd for j=1:numDofPerNode
+      @simd for i=1:numDofPerNode
+        i1 = i + (pL-1)*mesh.numDofPerNode
+        j1 = j + (qL-1)*mesh.numDofPerNode
+        i2 = i + (pR-1)*mesh.numDofPerNode
+        j2 = j + (qR-1)*mesh.numDofPerNode
+        helper.A.A[i1, j1, iface.elementL] +=  jacLL[i, j, pL, qL]
+        helper.A.A[i2, j2, iface.elementR] +=  jacRR[i, j, pR, qR]
+      end
+    end
+
+  end  # end loop p
+
+  return nothing
+end
+
+
+
+
 """
   Assembles contribution of the shared face terms into the element-block
   matrix.  `jacLR` is not used.
@@ -287,16 +406,49 @@ function assembleSharedFace(helper::AssembleDiagJacData, sbpface::DenseFace,
           i1 = i + (pL-1)*mesh.numDofPerNode
           j1 = j + (qL-1)*mesh.numDofPerNode
 
-          helper.A.A[i1, j1, face.elementL] += jacLL[i, j, pL, qL]
+          helper.A.A[i1, j1, iface.elementL] += real(jacLL[i, j, pL, qL])
         end
       end
 
     end  # end loop p
   end
 
-
   return nothing
 end
+
+
+
+function assembleSharedFace(helper::AssembleDiagJacData, sbpface::SparseFace,
+                            mesh::AbstractMesh,
+                            iface::Interface,
+                            jacLL::AbstractArray{T, 4},
+                            jacLR::AbstractArray{T, 4}) where T
+
+  numNodesPerElement = size(jacLL, 4)
+  numDofPerNode = size(jacLL, 1)
+
+  for p=1:sbpface.numnodes
+    iR = sbpface.nbrperm[p, iface.orient]
+    qL = sbpface.perm[p, iface.faceL]
+    qR = sbpface.perm[iR, iface.faceR]
+
+    pL = qL
+
+    for j=1:mesh.numDofPerNode
+      for i=1:mesh.numDofPerNode
+        i1 = i + (pL-1)*mesh.numDofPerNode
+        j1 = j + (qL-1)*mesh.numDofPerNode
+
+        helper.A.A[i1, j1, iface.elementL] += real(jacLL[i, j, pL, qL])
+      end
+    end
+
+  end  # end loop p
+
+   return nothing
+end
+
+
 
 """
   Assembles the boundary terms into an element-block matrix.
@@ -313,8 +465,8 @@ function assembleBoundary(helper::AssembleDiagJacData, sbpface::DenseFace,
       pL = sbpface.perm[p, bndry.face]
 
       # get dofs for node p
-      dof1 = mesh.dofs[1, pL, bndry.element]
-      blockidx = div(dof1 - 1, mesh.numDofPerNode) + 1
+      #dof1 = mesh.dofs[1, pL, bndry.element]
+      #blockidx = div(dof1 - 1, mesh.numDofPerNode) + 1
 
       # get values
       for j=1:mesh.numDofPerNode
@@ -331,6 +483,43 @@ function assembleBoundary(helper::AssembleDiagJacData, sbpface::DenseFace,
 
   return nothing
 end
+
+
+function assembleBoundary(helper::AssembleDiagJacData, sbpface::SparseFace,
+                            mesh::AbstractMesh,
+                            bndry::Boundary,
+                            jac::AbstractArray{T, 4}) where T
+
+  elnum = bndry.element
+  numNodesPerElement = size(jac, 4)
+  numDofPerNode = size(jac, 1)
+
+  for p=1:sbpface.numnodes
+    pL = sbpface.perm[p, bndry.face]
+    qL = pL
+
+    # get dofs for node p
+    #dof1 = mesh.dofs[1, pL, bndry.element]
+    #blockidx = div(dof1 - 1, mesh.numDofPerNode) + 1
+
+
+    # get values
+    for j=1:mesh.numDofPerNode
+      for i=1:mesh.numDofPerNode
+        i1 = i + (pL-1)*mesh.numDofPerNode
+        j1 = j + (qL-1)*mesh.numDofPerNode
+
+        helper.A.A[i1, j1, bndry.element] += jac[i, j, pL, qL]
+      end
+    end
+
+  end  # end loop p
+
+  return nothing
+end
+
+
+
 
 #------------------------------------------------------------------------------
 # apply the stabilization to the diagonal Jacobian

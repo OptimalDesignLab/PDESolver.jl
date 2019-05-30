@@ -102,8 +102,8 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::NSData, opts::
                       " compared to initial condition")
 
     # read in this processors portion of the solution
-    vals = readdlm(get_parallel_fname(opts["calc_error_infname"], myrank))
-    @assert length(vals) == mesh.numDof
+    vals = copy(eqn.q_vec)
+    readSolutionFiles(mesh, sbp, eqn, opts, opts["calc_error_infname"], vals)
 
     err_vec = abs.(vals - eqn.q_vec)
     err = calcNorm(eqn, err_vec)
@@ -143,11 +143,10 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::NSData, opts::
     end
   end
 
-  writedlm("IC_$myrank.dat", real(q_vec))
+  #writeSolutionFiles(mesh, sbp, eqn, opts, "IC")
   saveSolutionToMesh(mesh, q_vec)
 
   writeVisFiles(mesh, "solution_ic")
-  writedlm("solution_ic.dat", real(eqn.q_vec))
   if opts["calc_dt"]
     wave_speed = EulerEquationMod.calcMaxWaveSpeed(mesh, sbp, eqn, opts)
     @mpi_master println("max wave speed = ", wave_speed)
@@ -166,7 +165,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::NSData, opts::
   call_nlsolver(mesh, sbp, eqn, opts, pmesh)
   postproc(mesh, sbp, eqn, opts)
 
-  EulerEquationMod.cleanup(mesh, sbp, eqn.euler_eqn, opts)
+  EulerEquationMod.cleanup(eqn.euler_eqn, opts)
 
   MPI.Barrier(mesh.comm)
 

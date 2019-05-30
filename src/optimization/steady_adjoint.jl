@@ -18,7 +18,7 @@ using PETSc2
    
   **Inputs/Outputs**
 
-   * adjoint_vec: Array{Tsol, 1} of length mesh.numDof
+   * adjoint_vec: Array{Tsol, 1} of length mesh.numDof, (overwritten)
 
   **Keyword Arguments**
 

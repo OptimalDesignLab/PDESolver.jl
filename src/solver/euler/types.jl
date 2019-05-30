@@ -1,6 +1,14 @@
 # declare the concrete subtypes of AbstractParamType and AbstractSolutionData
 
+include("conversion_interface.jl")
 include("flux_types.jl")
+include("abstract_shock_sensor.jl")
+include("abstract_diffusion.jl")
+include("abstract_diffusion_penalty.jl")
+include("shock_mesh_types.jl")
+include("abstract_shock_capturing.jl")
+include("shock_capturing_types.jl")
+include("shock_sensor_types.jl")
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -68,6 +76,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   calcsatdata::CalcSatData{Tres}
   lffluxdata::LFFluxData{Tres}
   irfluxdata::IRFluxData{Tsol}
+  hllfluxdata::HLLFluxData{Tres}
+  tworwavespeeddata::TwoRWaveSpeedData{Tsol, Tres}
   apply_entropy_kernel_diagE_data::ApplyEntropyKernel_diagEData{Tsol, Tres}
   get_lambda_max_simple_data::GetLambdaMaxSimpleData{Tsol}
   get_lambda_max_data::GetLambdaMaxData{Tsol}
@@ -86,6 +96,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   face_element_integral_data::FaceElementIntegralData{Tsol, Tres}
   calc_face_integrals_data::CalcFaceIntegralsData{Tsol, Tres}
 
+  # stabilization functions
+  lps_data::LPSData{Tsol, Tres}
 
   # entropy kernels
   entropy_lf_kernel::LFKernel{Tsol, Tres, Tmsh}
@@ -93,6 +105,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   entropy_identity_kernel::IdentityKernel{Tsol, Tres, Tmsh}
 
   get_ira0data::GetIRA0Data{Tsol}
+
+  shockmesh::ShockedElements{Tres}
 
   h::Float64 # temporary: mesh size metric
   cv::Float64  # specific heat constant
@@ -158,7 +172,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
   =#
   time::Timings
 
-  function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer) where {Tdim, var_type, Tsol, Tres, Tmsh} 
+  function ParamType{Tdim, var_type, Tsol, Tres, Tmsh}(mesh, sbp, opts, order::Integer; open_file::Bool=true) where {Tdim, var_type, Tsol, Tres, Tmsh} 
   # create values, apply defaults
 
     # all the spatial computations happen on the *flux* grid when using
@@ -176,8 +190,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
 
     t = 0.0
     myrank = mesh.myrank
-    #TODO: don't open a file in non-debug mode
-    if DB_LEVEL >= 1
+    if DB_LEVEL >= 1 && open_file
       f = BufferedIO("log_$myrank.dat", "w")
     else
       f = BufferedIO(DevNull)
@@ -191,6 +204,9 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calcsatdata = CalcSatData{Tres}(mesh.numDofPerNode)
     lffluxdata = LFFluxData{Tres}(mesh.numDofPerNode, mesh.numDofPerNode)
     irfluxdata = IRFluxData{Tsol}(mesh.numDofPerNode)
+    hllfluxdata = HLLFluxData{Tres}(mesh.numDofPerNode)
+    tworwavespeeddata = TwoRWaveSpeedData{Tsol, Tres}(mesh.numDofPerNode)
+
     apply_entropy_kernel_diagE_data = ApplyEntropyKernel_diagEData{Tsol, Tres}(mesh.numDofPerNode, 2*mesh.numDofPerNode)
     get_lambda_max_simple_data = GetLambdaMaxSimpleData{Tsol}(mesh.numDofPerNode)
     get_lambda_max_data = GetLambdaMaxData{Tsol}(mesh.numDofPerNode)
@@ -212,11 +228,13 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     calc_face_integrals_data = CalcFaceIntegralsData{Tsol, Tres}(
                                mesh.numDofPerNode, mesh.numNodesPerFace,
                                mesh.numNodesPerElement)
+    lps_data = LPSData{Tsol, Tres}(mesh, sbp, opts)
     entropy_lf_kernel = LFKernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, nd)
     entropy_lw2_kernel = LW2Kernel{Tsol, Tres, Tmsh}(mesh.numDofPerNode, mesh.dim)
     entropy_identity_kernel = IdentityKernel{Tsol, Tres, Tmsh}()
     get_ira0data = GetIRA0Data{Tsol}(mesh.numDofPerNode)
 
+    shockmesh = ShockedElements{Tres}(mesh)
 
     h = maximum(mesh.jac)
 
@@ -296,7 +314,8 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                mesh.numNodesPerFace,
                # flux functions
                eulerfluxdata, bcdata,
-               roefluxdata, calcsatdata, lffluxdata, irfluxdata,
+               roefluxdata, calcsatdata, lffluxdata, irfluxdata, hllfluxdata,
+               tworwavespeeddata,
                apply_entropy_kernel_diagE_data, get_lambda_max_simple_data,
                get_lambda_max_data,
                calc_vorticity_data, contract_res_entropy_vars_data,
@@ -307,8 +326,10 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
                # entire mesh functions
                calc_volume_integrals_data,
                face_element_integral_data, calc_face_integrals_data,
+               lps_data,
                entropy_lf_kernel, entropy_lw2_kernel, entropy_identity_kernel,
                get_ira0data,
+               shockmesh,
                h, cv, R, R_ND, gamma, gamma_1, Ma, aoa, sideslip_angle,
                rho_free, p_free, T_free, E_free, a_free,
                edgestab_gamma, writeflux, writeboundary,
@@ -450,9 +471,9 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
   #   a square numnodes x numnodes matrix for every element
   dissipation_mat::Array{Tmsh, 3}
 
-  Minv3D::Array{Float64, 3}       # inverse mass matrix for application to res, not res_vec
-  Minv::Array{Float64, 1}         # inverse mass matrix
-  M::Array{Float64, 1}            # mass matrix
+  Minv3D::Array{Tmsh, 3}       # inverse mass matrix for application to res, not res_vec
+  Minv::Array{Tmsh, 1}         # inverse mass matrix
+  M::Array{Tmsh, 1}            # mass matrix
 
   # TODO: consider overloading getField instead of having function as
   #       fields
@@ -476,6 +497,7 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
                                                        # integrals that use
                                                        # volume data
 # minorIterationCallback::Function # called before every residual evaluation
+  shock_capturing::AbstractShockCapturing
 
   assembler::AssembleElementData  # temporary place to stash the assembler
 
@@ -507,7 +529,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
                                        mesh, sbp, opts, mesh.order)
     opts["variable_type"] = :entropy
     eqn.params_entropy = ParamType{Tdim, :entropy, Tsol, Tres, Tmsh}(
-                                       mesh, sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order;
+                                       open_file=false)
 
     opts["variable_type"] = vars_orig
     if vars_orig == :conservative
@@ -519,7 +542,8 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
     end
 
     eqn.params_complex = ParamType{Tdim, :conservative, Complex128, Complex128, Tmsh}(
-                                       mesh, sbp, opts, mesh.order)
+                                       mesh, sbp, opts, mesh.order;
+                                       open_file=false)
 
 
     eqn.multiplyA0inv = matVecA0inv
@@ -682,9 +706,12 @@ mutable struct EulerData_{Tsol, Tres, Tdim, Tmsh, var_type} <: EulerData{Tsol, T
       eqn.res_bar = zeros(Tres, 0, 0, 0)
    end
 
+   sensor = createShockSensor(mesh, sbp, eqn, opts)
+   getShockCapturing(mesh, sbp, eqn, opts, sensor)
    eqn.assembler = NullAssembleElementData
+
    if open_files
-     eqn.file_dict = openLoggingFiles(mesh, opts)
+     eqn.file_dict = openLoggingFiles(opts, mesh.myrank)
    else
      eqn.file_dict = Dict{String, IO}()
    end
@@ -706,6 +733,8 @@ const ParamType2 = ParamType{2}
 const ParamType3 = ParamType{3}
 
 
+import PDESolver: openLoggingFiles, closeLoggingFiles
+
 """
   This function opens all used for logging data.  In particular, every data
   file that has data appended to it in majorIterationCallback should be
@@ -722,8 +751,8 @@ const ParamType3 = ParamType{3}
 
   **Inputs**:
 
-   * mesh: an AbstractMesh (needed for MPI Communicator)
    * opts: options dictionary
+   * myrank: MPI rank
 
   **Outputs**:
 
@@ -737,10 +766,7 @@ const ParamType3 = ParamType{3}
     When restarting, all files must be appended to.  Currently, files
     are appended to in all cases.
 """
-function openLoggingFiles(mesh, opts)
-
-  # comm rank
-  myrank = mesh.myrank
+function openLoggingFiles(opts, myrank::Integer)
 
   # output dictionary
   file_dict = Dict{AbstractString, IO}()
@@ -774,6 +800,31 @@ function openLoggingFiles(mesh, opts)
   return file_dict
 end
 
+
+function openLoggingFiles(eqn::EulerData, opts)
+
+  # verify all existing files are closed
+  for f in values(eqn.file_dict)
+    @assert !isopen(f)
+  end
+
+  eqn.file_dict = openLoggingFiles(opts, eqn.myrank)
+
+  # make all params object use the same file
+  eqn.params_entropy.f = eqn.params_conservative.f
+  eqn.params_complex.f = eqn.param.f
+
+
+  return nothing
+end
+
+
+function closeLoggingFiles(eqn::EulerData, opts)
+
+  cleanup(eqn, opts)
+end
+
+
 """
   This function performs all cleanup activities before the run_physics()
   function returns.  The mesh, sbp, eqn, opts are returned by run_physics()
@@ -781,16 +832,16 @@ end
 
   **Inputs/Outputs**:
 
-   * mesh: an AbstractMesh object
-   * sbp: an SBP operator
    * eqn: the EulerData object
    * opts: the options dictionary
 
 """
-function cleanup(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts)
+function cleanup(eqn::EulerData, opts)
 
   for f in values(eqn.file_dict)
-    close(f)
+    if isopen(f)
+      close(f)
+    end
   end
 
   return nothing
@@ -857,5 +908,66 @@ function updateMetricDependents(mesh::AbstractMesh, sbp::AbstractOperator,
     calcEdgeStabAlpha(mesh, sbp, eqn)
   end
 
+  sensor = getShockSensor(eqn.shock_capturing)
+  updateMetrics(mesh, sbp, opts, sensor)
+
   return nothing
 end
+
+import PDESolver: copyParameters
+
+function copyParameters(eqn_old::EulerData, eqn_new::EulerData)
+
+  copyParameters(eqn_old.params, eqn_new.params)
+  copyParameters(eqn_old.params_complex, eqn_new.params_complex)
+  copyParameters(eqn_old.params_conservative, eqn_new.params_conservative)
+  copyParameters(eqn_old.params_entropy, eqn_new.params_entropy)
+end
+
+
+function copyParameters(params_old::ParamType, params_new::ParamType)
+
+   params_new.h = params_old.h
+  params_new.cv = params_old.cv
+  params_new.R = params_old.R
+  params_new.R_ND = params_old.R_ND
+  params_new.gamma = params_old.gamma
+  params_new.gamma_1 = params_old.gamma_1
+
+  params_new.Ma = params_old.Ma
+
+  params_new.aoa = params_old.aoa
+  params_new.sideslip_angle = params_old.aoa
+  params_new.rho_free = params_old.rho_free
+  params_new.p_free = params_old.p_free
+  params_new.T_free = params_old.T_free
+  params_new.E_free = params_old.E_free
+  params_new.a_free = params_old.a_free
+
+  params_new.edgestab_gamma = params_old.edgestab_gamma
+
+  # debugging options
+  params_new.writeflux = params_old.writeflux
+  params_new.writeboundary = params_old.writeboundary
+  params_new.writeq = params_old.writeq
+  params_new.use_edgestab = params_old.use_edgestab
+  params_new.use_filter = params_old.use_filter
+  params_new.use_res_filter = params_old.use_res_filter
+
+  params_new.use_dissipation = params_old.use_dissipation
+  params_new.dissipation_const = params_old.dissipation_const
+
+  params_new.tau_type = params_old.tau_type
+
+  params_new.use_Minv = params_old.use_Minv
+  params_new.vortex_x0 = params_old.vortex_x0
+  params_new.vortex_strength = params_old.vortex_strength
+
+  resize!(params_new.x_design, length(params_old.x_design))
+  copy!(params_new.x_design, params_old.x_design)
+
+
+  return nothing
+end
+
+

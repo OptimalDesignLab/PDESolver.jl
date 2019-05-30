@@ -48,7 +48,7 @@ function calcFaceIntegral_nopre_diff(
     end  # end loop j
 
     # compute dR/dq
-    interiorFaceIntegrate_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
+    interiorFaceCombined_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
 
@@ -444,8 +444,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
      end
 
      # this is excessive because we don't need jacRL, jacRR, but
-     # boundaryFaceIntegrate_jac can't handle jacLR
-     interiorFaceIntegrate_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
+     # boundaryFaceCombined_jac can't handle jacLR
+     interiorFaceCombined_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
 
@@ -1205,6 +1205,22 @@ function (obj::ErrorFlux_diff)(params::ParamType,
 end
 
 
+mutable struct HLLFlux_diff <: FluxType_diff
+end
+
+function (obj::HLLFlux_diff)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector{Tmsh},
+              F_dotL::AbstractArray{Tres},
+              F_dotR::AbstractArray{Tres}) where {Tsol, Tres, Tmsh}
+
+  calcHLLFlux_diff(params, uL, uR, aux_vars, nrm, F_dotL, F_dotR)
+end
+
+
+
 
 """
   Container for all differentiated flux functors.  Maps name to object.
@@ -1216,6 +1232,7 @@ global const FluxDict_diff = Dict{String, FluxType_diff}(
 "IRFlux" => IRFlux_diff(),
 "IRSLFFlux" => IRSLFFlux_diff(),
 "StandardFlux" => StandardFlux_diff(),
+"HLLFlux" => HLLFlux_diff(),
 "ErrorFlux" => ErrorFlux_diff(),
 )
 

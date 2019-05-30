@@ -2,9 +2,9 @@
 
 function getIRA0_diff(params::ParamType{2}, 
                       q::AbstractArray{Tsol,1},
-                      q_dot::AbstractArray{Tsol, 2},
-                      A0::AbstractArray{Tsol, 2},
-                      A0_dot::AbstractArray{Tsol, 3}) where Tsol
+                      q_dot::AbstractMatrix,
+                      A0::AbstractMatrix,
+                      A0_dot::Abstract3DArray) where Tsol
 
   nd = size(q_dot, 2)  # number of dot vectors
   numDofPerNode = size(q, 1)
@@ -104,9 +104,9 @@ end
 
 function getIRA0_diff(params::ParamType{3},
                       q::AbstractArray{Tsol,1},
-                      q_dot::AbstractArray{Tsol, 2},
-                      A0::AbstractArray{Tsol, 2},
-                      A0_dot::AbstractArray{Tsol, 3}) where Tsol
+                      q_dot::AbstractMatrix,
+                      A0::AbstractMatrix,
+                      A0_dot::Abstract3DArray) where Tsol
 
   nd = size(q_dot, 2)  # number of dot vectors
   numDofPerNode = size(q, 1)

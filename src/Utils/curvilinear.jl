@@ -127,6 +127,9 @@ function calcECurvilinear(sbp::AbstractOperator, dxidx::AbstractArray{Tmsh, 3}, 
 end
 
 """
+  TODO: this function appears to compute D in the xi directions, not the
+  cartesian directions.  Fix this
+
   Calculates the D matrices in the cartesian directions using the metric
   terms.  This is *not* the D used in the final curvilinear discretization.
 

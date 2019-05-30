@@ -15,7 +15,9 @@ function test_interp()
 
     mesh, sbp, eqn, opts = createObjects(opts)
     mesh2, sbp2, eqn2, opts2 = createObjects(opts2)
-    array1DTo3D(mesh2, sbp2, eqn2, opts2, eqn2.q_vec, eqn2.q)
+    #array1DTo3D(mesh2, sbp2, eqn2, opts2, eqn2.q_vec, eqn2.q)
+    q_vec = copy(eqn.q_vec)
+    q_vec2 = copy(eqn2.q_vec)
 
     # put degree p field into eqn
     for i=1:mesh.numEl
@@ -24,12 +26,15 @@ function test_interp()
         y = mesh.coords[2, j, i]
 
         for k=1:mesh.numDofPerNode
-          eqn.q[k, j, i] = x^degree + 2*y^degree + k
+          val = x^degree + 2*y^degree + k
+          eqn.q[k, j, i] = val
+          q_vec[mesh.dofs[k, j, i]] = val
         end
       end
     end
 
     interpField(sbp, eqn.q, sbp2, eqn2.q)
+    interpField(mesh, sbp, q_vec, mesh2, sbp2, q_vec2)
 
     for i=1:mesh2.numEl
       for j=1:mesh2.numNodesPerElement
@@ -41,9 +46,13 @@ function test_interp()
 
 
           @test isapprox( abs(eqn2.q[k, j, i] - val), 0.0) atol=1e-13
+          @test isapprox( abs(q_vec2[mesh2.dofs[k, j, i]] - val), 0.0) atol=1e-13
         end
       end
     end
+
+
+
 
   end  # end facts block
 

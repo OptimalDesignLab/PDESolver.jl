@@ -20,8 +20,10 @@ end
   is called by test functions
 
   if test_symmetry = false, then only consistency is tested
+  if test_antisymmetry = true, test that reversing qL and qR and the sign
+  of the normal vector produces the negative flux
 """
-function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler; test_symmetry=true)
+function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler; test_symmetry=true, test_antisymmetry=true)
 
   # test symmetry
   if test_symmetry
@@ -31,6 +33,16 @@ function test_symmetric_flux(functor, params, qL, qR, aux_vars, nrm, F_num, F_nu
       @test isapprox( F_num[i], F_num2[i]) atol=1e-12
     end
   end
+
+  # test anti-symmetry
+  if test_antisymmetry
+    functor(params, qL, qR, aux_vars, nrm, F_num)
+    functor(params, qR, qL, aux_vars, -nrm, F_num2)
+    for i=1:length(F_num)
+      @test isapprox( F_num[i], -F_num2[i]) atol=1e-12
+    end
+  end
+
 
   # test consistency
   functor(params, qL, qL, aux_vars, nrm, F_num)
@@ -139,7 +151,12 @@ function test_flux_2d()
     test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler)
     test_multiD_flux(functor, eqn.params, qL, qR, aux_vars, F_num, F_numD)
 
+
+    functor = EulerEquationMod.FluxDict["HLLFlux"]
+    test_symmetric_flux(functor, eqn.params, qL, qR, aux_vars, nrm, F_num, F_num2, F_euler; test_symmetry=false)
+
     # test against calculated solution
+    functor = EulerEquationMod.FluxDict["IRFlux"]
     nrm = [1., 2.0]
     flux_test = ir_flux(eqn.params, qL, qR, nrm)
 
@@ -279,7 +296,8 @@ function test_flux_2d()
     @test isapprox( norm(vec(eqn.res - res_orig)), 0.0) atol=1e-13
 
 
-    testRoe(mesh, sbp, eqn, opts)
+    testRoe(mesh, sbp, eqn, opts, "RoeFlux")
+    testRoe(mesh, sbp, eqn, opts, "HLLFlux")
 
   end  # end facts block
 
@@ -293,7 +311,7 @@ add_func1!(EulerTests, test_flux_2d, [TAG_VOLUMEINTEGRALS, TAG_FLUX, TAG_CURVILI
 """
   Test the Roe solver.  This function is called by test_flux_2d()
 """
-function testRoe(mesh, sbp, eqn, opts)
+function testRoe(mesh, sbp, eqn, opts, func_name)
 
   if mesh.numDofPerNode == 4
     qL = [1.0, 2.0, 3.0, 7.0]
@@ -313,7 +331,7 @@ function testRoe(mesh, sbp, eqn, opts)
   # qL and qR have all positive eigenvalues, so the Roe solver should use
   # the left state only
 
-  functor = EulerEquationMod.FluxDict["RoeFlux"]
+  functor = EulerEquationMod.FluxDict[func_name]
 
   functor(eqn.params, qL, qR, aux_vars, nrm, flux)
   EulerEquationMod.calcEulerFlux(eqn.params, qL, aux_vars, nrm, flux2)
@@ -346,6 +364,13 @@ function testRoe(mesh, sbp, eqn, opts)
 
 
   return nothing
+end
+
+function test_wave_speeds(params, qL, qR, nrm)
+
+  sL, sR = EulerEquationMod.calc2RWaveSpeeds(params, qL, qR, nrm)
+  lambdaL = EulerEquationMod.getLambdaMax(params, qL, nrm)
+
 end
 
 """
@@ -422,7 +447,7 @@ function test_flux_3d()
       end
     end
 
-    testRoe(mesh, sbp, eqn, opts)
+    testRoe(mesh, sbp, eqn, opts, "RoeFlux")
   end  # end facts block
 
   return nothing

@@ -111,8 +111,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP,
   saveSolutionToMesh(mesh, real(eqn.q_vec))
   writeVisFiles(mesh, "solution_ic")
 
-  writedlm("solution_ic.dat", real(eqn.q_vec))
-  writedlm("residual_ic_$myrank.dat", real(eqn.res_vec))
+  writeSolutionFiles(mesh, sbp, eqn, opts, "IC")
 
   # because simpleODE is different in how it calls rk4, it does not use
   # call_nlsolver
@@ -146,11 +145,6 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractSBP,
 
     eqn.res_vec[:] = 0.0
     array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
-
-    # printing solution and residual to file
-    writedlm("solution_final.dat", real(eqn.q_vec))
-    writedlm("residual_final_$myrank.dat", real(eqn.res_vec))
-   
 
     saveSolutionToMesh(mesh, real(eqn.q_vec))
     writeVisFiles(mesh, "solution_done")

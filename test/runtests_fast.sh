@@ -8,7 +8,7 @@ jj=julia
 
 jflags=$@  # take flags as command line arguments
 if [ $# == 0 ]; then
-  tags="tag_shorttest"
+  tags="TAG_SHORTTEST"
 else
   tags=$@
 fi
