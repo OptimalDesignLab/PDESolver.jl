@@ -13,9 +13,35 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   v_vec =           ctx_residual[8]
 
   # println(BSTDOUT, "        stabilizeCNDSLO called")
+  println(BSTDOUT, " fieldnames(stab_assembler): ", fieldnames(stab_assembler))
+  println(BSTDOUT, " typeof(stab_assembler): ", typeof(stab_assembler))
+  println(BSTDOUT, " fieldnames(stab_assembler.A): ", fieldnames(stab_assembler.A))
+  println(BSTDOUT, " typeof(stab_assembler.A): ", typeof(stab_assembler.A))
+  println(BSTDOUT, " typeof(stab_assembler.A.A): ", typeof(stab_assembler.A.A))
+  println(BSTDOUT, " typeof(stab_A): ", typeof(stab_A))
+  println(BSTDOUT, " typeof(stab_A.A): ", typeof(stab_A.A))
+
+  # We have to zero out the DiagJac, as assembleElement inside evalJacobianStrong accumulates.
+  MatZeroEntries(stab_assembler.A)
 
   # stores the strong Jacobian (volume Jacobian) into stab_assembler.A
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
+
+  #=
+  # x1_vec = ones(Float64, mesh.numDof)
+  # b1_vec = zeros(Float64, mesh.numDof)
+  # diagMatVec(stab_assembler.A, 
+  blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
+  sum_A = 0.0
+  for el_ix = 1:mesh.numEl
+    for i = 1:blocksize
+      for j = 1:blocksize
+        sum_A += stab_assembler.A.A[i, j, el_ix]
+      end
+    end
+  end
+  println(BSTDOUT, " +++ sum(stab_assembler.A): ", sum_A)
+  =#
 
   # filterDiagJac
   #   location: jacobian_diag.jl

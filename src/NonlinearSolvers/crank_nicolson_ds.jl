@@ -574,6 +574,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData, v_vec)
         end
         
+        ############### TODO: LOOK AT line 77, ls_standard: 
+        # do we need to startSolutionExchange????
+        # if start_comm
+          # startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
+        # end
+        if opts["parallel_type"] == 2 && mesh.npeers > 0
+          startSolutionExchange(mesh, sbp, eqn, opts)
+        end
+
         # Update linear operator:
         #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
         calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
@@ -583,9 +592,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " Sleeping for 5s...")
         flush(BSTDOUT)
         run(`sleep 5`)
-        lo_ds_innermost_A_norm_global = calcNorm(eqn, lo_ds_innermost.A)
+        # lo_ds_innermost_A_norm_global = calcNorm(eqn, lo_ds_innermost.A)
         println(BSTDOUT, " +++ vecnorm(lo_ds_innermost.A): ", vecnorm(lo_ds_innermost.A))
-        println(BSTDOUT, " +++ lo_ds_innermost_A_norm_global (after cLO & stab): ", lo_ds_innermost_A_norm_global)
+        # println(BSTDOUT, " +++ sum(lo_ds_innermost.A): ", sum(lo_ds_innermost.A))
+        # println(BSTDOUT, " +++ lo_ds_innermost_A_norm_global (after cLO & stab): ", lo_ds_innermost_A_norm_global)
+        flush(BSTDOUT)
 
         fill!(v_vec, 0.0)
 
