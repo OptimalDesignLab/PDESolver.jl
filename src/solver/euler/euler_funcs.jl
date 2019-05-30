@@ -1904,7 +1904,7 @@ function getLambdaMax(params::ParamType{Tdim},
 
   dA = sqrt(dA)
 
-  lambda_max = absvalue(Un) + dA*aL
+  lambda_max = absvalue3(Un) + dA*aL
 
   return lambda_max
 end

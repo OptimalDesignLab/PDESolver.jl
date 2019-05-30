@@ -50,7 +50,7 @@ export getProjectionMatrix, projectToXY, projectToNT, calcLength, normalize_vec,
 
 # complexify.jl functions
 export absvalue, absvalue_deriv, absvalue_rev, absvalue2, absvalue2_deriv, 
-       sign_c, atan2_rev
+       absvalue3, absvalue3_deriv, sign_c, atan2_rev
 
 # output.jl
 export printSolution, printCoordinates, printMatrix

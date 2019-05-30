@@ -1259,22 +1259,16 @@ function getLambdaMax_diff(params::ParamType{2},
 
   dA = sqrt(dA)
 
-  lambda_max = absvalue(Un) + dA*aL
+  lambda_max = absvalue3(Un) + dA*aL
   lambda_dot[1] = dA*aL_dotL1
   lambda_dot[2] = dA*aL_dotL2
   lambda_dot[3] = dA*aL_dotL3
   lambda_dot[4] = dA*aL_dotL4
 
-  if Un > 0
-    lambda_dot[1] += Un_dotL1
-    lambda_dot[2] += Un_dotL2
-    lambda_dot[3] += Un_dotL3
-  else
-    lambda_dot[1] -= Un_dotL1
-    lambda_dot[2] -= Un_dotL2
-    lambda_dot[3] -= Un_dotL3
-  end
-
+  fac = absvalue3_deriv(Un)
+  lambda_dot[1] += fac*Un_dotL1
+  lambda_dot[2] += fac*Un_dotL2
+  lambda_dot[3] += fac*Un_dotL3
 
   return lambda_max
 end
@@ -1330,18 +1324,11 @@ function getLambdaMax_diff(params::ParamType{3},
   lambda_dot[4] = dA*aL_dotL4
   lambda_dot[5] = dA*aL_dotL5
 
-  if Un > 0
-    lambda_dot[1] += Un_dotL1
-    lambda_dot[2] += Un_dotL2
-    lambda_dot[3] += Un_dotL3
-    lambda_dot[4] += Un_dotL4
-  else
-    lambda_dot[1] -= Un_dotL1
-    lambda_dot[2] -= Un_dotL2
-    lambda_dot[3] -= Un_dotL3
-    lambda_dot[4] -= Un_dotL4
-  end
-
+  fac = absvalue3_deriv(Un)
+  lambda_dot[1] += fac*Un_dotL1
+  lambda_dot[2] += fac*Un_dotL2
+  lambda_dot[3] += fac*Un_dotL3
+  lambda_dot[4] += fac*Un_dotL4
 
   return lambda_max
 end

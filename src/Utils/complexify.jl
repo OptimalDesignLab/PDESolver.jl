@@ -155,6 +155,37 @@ end # End function max_rev
 
 
 """
+  Smooth abs() function based on Harten's second entropy fix
+"""
+function absvalue3(val::Number)
+
+  delta = -1
+  val1 = absvalue(val)
+  if val1 > delta
+    return val1
+  else
+    term1 = val*val/delta
+    term2 = delta
+    return ((val*val)/delta + delta)/2
+  end
+end
+
+function absvalue3_deriv(val::T) where {T <: Number}
+
+  delta = -1
+
+  val1 = absvalue(val)
+  if val1 > delta
+    return absvalue_deriv(val)
+  else 
+    return val/delta
+  end
+end
+
+
+
+
+"""
   Complex-step safe version of the sign function
 """
 function sign_c(a::Number)

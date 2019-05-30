@@ -48,6 +48,15 @@ function test_complexify()
     @test isapprox( absvalue2(f), complex(1.0, -1.0)) atol=1e-15
     @test isapprox( absvalue2(g), complex(1.0, 1.0)) atol=1e-15
     @test isapprox( absvalue2(j), complex(0.0, 0.0)) atol=1e-15
+
+    # absvalue3
+    @test isapprox( absvalue3(c), complex(1.0, 1.0)) atol=1e-15
+    @test isapprox( absvalue3(d), complex(1.0, -1.0)) atol=1e-15
+    @test isapprox( absvalue3(f), complex(1.0, -1.0)) atol=1e-15
+    @test isapprox( absvalue3(g), complex(1.0, 1.0)) atol=1e-15
+    #@test isapprox( absvalue3(j), complex(0.0, 0.0)) atol=1e-15
+
+
     # the spline is always below the y=x line
     @test absvalue2(1e-14) < 1e-14
     @test absvalue2(1e-14) > 0
@@ -59,6 +68,10 @@ function test_complexify()
     vals = [2.0, 2e-13,  1e-14, -2e-13, -1e-14, 0.0, 0 + eps(), 0 - eps()]
     for val in vals
       @test isapprox(imag(absvalue2(val + pert))/h, absvalue2_deriv(val)) atol=2e-14
+      # this function is discontinuous at 0 when delta <= 0
+      if val != 0
+        @test isapprox(imag(absvalue3(val + pert))/h, absvalue3_deriv(val)) atol=2e-14
+      end
     end
     
     x = 1.0; y = 1.0
@@ -166,4 +179,4 @@ function check_atan2_rev(x::Real, y::Real)
 end
 
 #test_complexify()
-add_func1!(EulerTests, test_complexify, [TAG_COMPLEX, TAG_SHORTTEST])
+add_func1!(EulerTests, test_complexify, [TAG_COMPLEX, TAG_SHORTTEST, TAG_TMP])
