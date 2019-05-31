@@ -55,8 +55,12 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     I suppose it could be the next time step, but that would require some implicit solving 
   #     and KSP iterations? Maybe room for investigation later. (future work)
   #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
-  numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="neg")
-  # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
+  eigs_to_remove = opts["eigs_to_remove"]
+  println(BSTDOUT, " eigs_to_remove: ", eigs_to_remove)
+  println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
+  flush(BSTDOUT)
+  # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
+  numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="none")
   # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
   # numEigChgsAllEls = 0
   println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
@@ -138,6 +142,8 @@ function findStablePerturbation!(Jac::AbstractMatrix,
     scale!(Jac, -1.0)
   elseif eigs_to_remove == "pos"
     # do nothing
+  elseif eigs_to_remove == "none"
+    return
   else
     error("eigs_to_remove specified incorrectly.")
   end

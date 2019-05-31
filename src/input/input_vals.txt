@@ -450,6 +450,13 @@ Note that any values associated with these options are shared with the regular
                           "quadprog"
                           "clipJac"
                           "clipJacFast"
+"eigs_to_remove": Whether to remove positive, negative, or no eigenvalues. 
+                  Possible options are:
+                    "neg"
+                    "pos"
+                    "none"
+                  There is no default; it must be specified if "stabilize_v" is turned on.
+
 
 # SimpleODE equation selection
 "simpleODE_eqn" : integer to select the equation being solved

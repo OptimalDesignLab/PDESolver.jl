@@ -473,6 +473,7 @@ get!(arg_dict, "perturb_Ma_CN", false)
 get!(arg_dict, "perturb_Ma_magnitude", 0.0)
 get!(arg_dict, "stabilize_v", false)
 get!(arg_dict, "stabilization_method", "null")
+get!(arg_dict, "eigs_to_remove", "null")
 
 #   This is commented out because of the new method of assigning objective functions.
 #   They are set like this:
@@ -721,6 +722,10 @@ end
   end
   if arg_dict["stabilize_v"] == true && arg_dict["stabilization_method"] == "null"
     error("\n Direct sensitivity stabilization turned on, but no stabilization_method selected.")
+  end
+  eigs_to_remove_valid = ["neg", "pos", "none"]
+  if arg_dict["stabilize_v"] && !(arg_dict["eigs_to_remove"] in eigs_to_remove_valid)
+    error("\n Chaotic stabilization turned on, but eigs_to_remove not specified.")
   end
 
   # Same options for perturb_Ma_CN

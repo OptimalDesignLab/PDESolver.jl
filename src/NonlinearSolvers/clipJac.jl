@@ -35,11 +35,15 @@ end
 
 
 function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::String)
+  
+  numEigChgs = 0
+
+  if eigs_to_remove == "none"
+    return numEigChgs
+  end
 
   # compute the symmetric part of Jac
   m = size(Jac, 1)  # jac is square
-  
-  numEigChgs = 0
 
   jac_sym = data.jac_sym
   @simd for i=1:m
@@ -88,7 +92,7 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
     end
 
   else
-    error("eigs_to_remove set improperly. Must be string(pos) or string(neg)")
+    error("eigs_to_remove specified improperly. Must be string(pos), string(neg), or string(none).")
   end
 
   # reconstitute Jac = E*diagm(lambda)*D.'
@@ -118,12 +122,16 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
                   # u::AbstractVector,
                   # A::AbstractVector{T}) where T
 
+  numEigChgs = 0
+
+  if eigs_to_remove == "none"
+    return numEigChgs
+  end
+
   # scale_u = 1e100   # NOTE: We do _not_ need to scale anything here.
 
   λ, E = eig(0.5*(Jac+Jac.'))
   n = length(λ)
-
-  numEigChgs = 0
 
   #------------------------------------------------------------------------------
   # Original clipping process
