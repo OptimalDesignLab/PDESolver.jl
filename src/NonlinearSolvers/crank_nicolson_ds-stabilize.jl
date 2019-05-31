@@ -55,8 +55,11 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     I suppose it could be the next time step, but that would require some implicit solving 
   #     and KSP iterations? Maybe room for investigation later. (future work)
   #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
-  filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="neg")
+  numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="neg")
+  # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
   # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
+  # numEigChgsAllEls = 0
+  println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
 
   # Now add each block of the stabilized strong jacobian to the full Jacobian
   # We are converting between the 2D element Jacobian in each block of the DiagJac
@@ -104,8 +107,6 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   end   # end loop over elements
 
   return nothing
-  # return numberOfEigchgs    # TODO: returning the number of positive eigenvalues 
-                              #       that were changed would be a nice feature
 
 end
 

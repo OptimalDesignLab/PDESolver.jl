@@ -39,6 +39,8 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
   # compute the symmetric part of Jac
   m = size(Jac, 1)  # jac is square
   
+  numEigChgs = 0
+
   jac_sym = data.jac_sym
   @simd for i=1:m
     @simd for j=i:m  # lower triangle
@@ -72,6 +74,7 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
     for i=1:m
       if lambda[i] < 0      
         lambda[i] = 0
+        numEigChgs += 1
       end
     end
 
@@ -80,6 +83,7 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
     for i=1:m
       if lambda[i] > 0      
         lambda[i] = 0
+        numEigChgs += 1
       end
     end
 
@@ -106,7 +110,8 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
     Jac[i] = -1.0*Jac2[i]
   end
 
-  return nothing
+  # return nothing
+  return numEigChgs
 end
 
 function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
@@ -118,18 +123,22 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   λ, E = eig(0.5*(Jac+Jac.'))
   n = length(λ)
 
+  numEigChgs = 0
+
   #------------------------------------------------------------------------------
   # Original clipping process
   if eigs_to_remove == "neg"
     for i = 1:n
       if λ[i] < 0.0
         λ[i] = 0.0
+        numEigChgs += 1
       end
     end
   elseif eigs_to_remove == "pos"
     for i = 1:n
       if λ[i] > 0.0
         λ[i] = 0.0
+        numEigChgs += 1
       end
     end
   else
@@ -138,6 +147,8 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
 
   D = diagm(λ)
   Jac[:,:] -= E*D*E.'
+
+  return numEigChgs
 
 end
 

@@ -362,6 +362,9 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
   Ablock = zeros(T, blocksize, blocksize)  # copy array into this to negate it
   # Ablock2 = zeros(T, blocksize, blocksize)
   ublock = zeros(T2, blocksize)
+
+  numEigChgsAllEls = 0
+
   for k=1:nblock
     # because the inner function assumes the residual is defined as
     # du/dt + R(u) = 0, but Ticon writes it as du/dt = R(u), we have to
@@ -391,12 +394,13 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     if opts["stabilization_method"] == "quadprog"
       findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
     elseif opts["stabilization_method"] == "clipJac"
-      clipJac!(Ablock, eigs_to_remove)
+      numEigChgs = clipJac!(Ablock, eigs_to_remove)
     elseif opts["stabilization_method"] == "clipJacFast"
-      clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
+      numEigChgs = clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
     end
 #    removeUnstableModes!(Ablock, u_k)
 
+    numEigChgsAllEls += numEigChgs
     # println("++++++++++++")
 
     # copy back
@@ -411,9 +415,9 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     end
     =#
 
-  end  # end loop k
+  end  # end loop over blocks (for k = 1:nblock)
 
-  return nothing
+  return numEigChgsAllEls
 end
 
 

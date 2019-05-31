@@ -589,9 +589,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # Note: this is properly modifying the Jac for CN.
         flush(BSTDOUT)
 
-        println(BSTDOUT, " Sleeping for 5s...")
-        flush(BSTDOUT)
-        run(`sleep 5`)
+        # println(BSTDOUT, " Sleeping for 5s...")
+        # flush(BSTDOUT)
+        # run(`sleep 5`)
+
         # lo_ds_innermost_A_norm_global = calcNorm(eqn, lo_ds_innermost.A)
         println(BSTDOUT, " +++ vecnorm(lo_ds_innermost.A): ", vecnorm(lo_ds_innermost.A))
         # println(BSTDOUT, " +++ sum(lo_ds_innermost.A): ", sum(lo_ds_innermost.A))
