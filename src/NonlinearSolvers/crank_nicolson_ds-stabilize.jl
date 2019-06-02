@@ -21,27 +21,27 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   println(BSTDOUT, " typeof(stab_A): ", typeof(stab_A))
   println(BSTDOUT, " typeof(stab_A.A): ", typeof(stab_A.A))
 
+  # get i from t
+  i = round(Int, t/h + 2)
+  lo_ds_innermost = getBaseLO(lo_ds)
+
+  # eigenvalue plotting, full Jac, before any filtering TOO MUCH MEMORY & TIME
+  #=
+  eigs_fullJac_before_stab = eigvals(full(lo_ds_innermost.A))
+  filename = string("i", i,"_1-eigs_fullJac_before_stab.dat")
+  writedlm(filename, eigs_fullJac_before_stab)
+  =#
+
   # We have to zero out the DiagJac, as assembleElement inside evalJacobianStrong accumulates.
   MatZeroEntries(stab_assembler.A)
 
   # stores the strong Jacobian (volume Jacobian) into stab_assembler.A
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
 
-  #=
-  # x1_vec = ones(Float64, mesh.numDof)
-  # b1_vec = zeros(Float64, mesh.numDof)
-  # diagMatVec(stab_assembler.A, 
-  blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
-  sum_A = 0.0
-  for el_ix = 1:mesh.numEl
-    for i = 1:blocksize
-      for j = 1:blocksize
-        sum_A += stab_assembler.A.A[i, j, el_ix]
-      end
-    end
-  end
-  println(BSTDOUT, " +++ sum(stab_assembler.A): ", sum_A)
-  =#
+  # eigenvalue plotting, strong Jac, before any filtering
+  eigs_strongJac_before_stab = eigvals(stab_assembler.A)
+  filename = string("i", i,"_2-eigs_strongJac_before_stab.dat")
+  writedlm(filename, eigs_strongJac_before_stab)
 
   # filterDiagJac
   #   location: jacobian_diag.jl
@@ -60,17 +60,21 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
   flush(BSTDOUT)
   # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
-  numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="none")
+  numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
   # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
   # numEigChgsAllEls = 0
   println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
+
+  # eigenvalue plotting, strong Jac, after filtering
+  eigs_strongJac_after_stab = eigvals(stab_assembler.A)
+  filename = string("i", i,"_3-eigs_strongJac_after_stab.dat")
+  writedlm(filename, eigs_strongJac_after_stab)
 
   # Now add each block of the stabilized strong jacobian to the full Jacobian
   # We are converting between the 2D element Jacobian in each block of the DiagJac
   #   to the 4D form required by assembleElement.
   # DiagJac dims: (blocksize, blocksize, numEl)
   # res_jac dims: (numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
-  lo_ds_innermost = getBaseLO(lo_ds)
   assembler = _AssembleElementData(lo_ds_innermost.A, mesh, sbp, eqn, opts)
   blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
   this_res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
@@ -109,6 +113,13 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     # in jacobian.jl. Line 888 or so
 
   end   # end loop over elements
+  
+  # eigenvalue plotting, strong Jac, after filtering TOO MUCH MEMORY & TIME
+  #=
+  eigs_fullJac_after_stab = eigvals(full(lo_ds_innermost.A))
+  filename = string("i", i,"_4-eigs_fullJac_after_stab.dat")
+  writedlm(filename, eigs_fullJac_after_stab)
+  =#
 
   return nothing
 

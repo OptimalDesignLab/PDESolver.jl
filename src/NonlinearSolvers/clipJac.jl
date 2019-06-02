@@ -38,6 +38,8 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
   
   numEigChgs = 0
 
+  println(BSTDOUT, " in clipJacFast. eigs_to_remove: ", eigs_to_remove)
+
   if eigs_to_remove == "none"
     return numEigChgs
   end
@@ -133,6 +135,8 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   λ, E = eig(0.5*(Jac+Jac.'))
   n = length(λ)
 
+  println(BSTDOUT, "\nλ pre clip: ", λ)
+
   #------------------------------------------------------------------------------
   # Original clipping process
   if eigs_to_remove == "neg"
@@ -152,6 +156,8 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   else
     error("eigs_to_remove specified incorrectly.")
   end
+
+  println(BSTDOUT, "λ post clip: ", λ)
 
   D = diagm(λ)
   Jac[:,:] -= E*D*E.'

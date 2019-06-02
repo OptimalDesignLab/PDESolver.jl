@@ -178,6 +178,37 @@ function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::Abst
 
   return nothing
 end
+
+import Base.eigvals
+function eigvals(A::DiagJac)
+
+  blocksize, blocksize, nblock = size(A.A)
+
+  alleigvals = zeros(Complex{Float64}, blocksize*nblock)
+
+  for block_ix = 1:nblock
+
+    this_block_eigs = eigvals(A.A[:, :, block_ix])
+
+    # blocksize = 3, block/start_ix/end_ix:
+    #   1/1/3
+    #   2/4/6
+    #   3/7/9
+    start_ix = (block_ix-1)*blocksize + 1
+    end_ix = start_ix + (blocksize - 1)
+
+    this_block_eigs_ix = 1
+    for ix = start_ix:end_ix
+      alleigvals[ix] = this_block_eigs[this_block_eigs_ix]
+      this_block_eigs_ix += 1
+    end
+
+  end
+
+  return alleigvals
+
+end
+
 #------------------------------------------------------------------------------
 # New AssembleElementData type for getting the diagonal only
 
@@ -370,6 +401,7 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     # du/dt + R(u) = 0, but Ticon writes it as du/dt = R(u), we have to
     # multiply the Jacobian by -1 to make the unstable modes the negative
     # eigenvalues
+    #=
     for j=1:blocksize
       for i=1:blocksize
         # Ablock[i, j] = -A.A[i, j, k]
@@ -378,6 +410,8 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
         #     think it needs to be positive because we need to clip the positive eigenvalues
       end
     end
+    =#
+    Ablock = sview(A.A, :, :, k)
 
     # get the entries of q_vec
     idx = 1
@@ -399,6 +433,16 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
       numEigChgs = clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
     end
 #    removeUnstableModes!(Ablock, u_k)
+
+    eigvals_Ablock = eigvals(Ablock)
+    println(BSTDOUT, "\n eigvals_Ablock: ", eigvals_Ablock) 
+    eigvals_Ablock_sym = eigvals(0.5*(Ablock+Ablock.'))
+    println(BSTDOUT, " eigvals_Ablock_sym: ", eigvals_Ablock_sym) 
+    eigvals_A_A = eigvals(A.A[:,:,k])
+    println(BSTDOUT, " eigvals_A-A: ", eigvals_A_A) 
+    eigvals_A_A_sym = eigvals(0.5*(A.A[:,:,k]+A.A[:,:,k].'))
+    println(BSTDOUT, " eigvals_A_A_sym: ", eigvals_A_A_sym) 
+
 
     numEigChgsAllEls += numEigChgs
     # println("++++++++++++")
