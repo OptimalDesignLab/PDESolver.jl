@@ -104,9 +104,9 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
 
   # @assert eqn.params.use_Minv != 1  # use_Minv not supported
-  if eqn.params.use_Minv == 1
-    println(BSTDOUT, " Applying Minv in calcVolumeIntegralsStrong_nopre_diff")
-  end
+  # if eqn.params.use_Minv == 1
+    # println(BSTDOUT, " Applying Minv in calcVolumeIntegralsStrong_nopre_diff")
+  # end
 
   # flux jacobian at every node in each direction
   flux_jac = eqn.params.flux_jac

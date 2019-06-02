@@ -13,6 +13,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   v_vec =           ctx_residual[8]
 
   # println(BSTDOUT, "        stabilizeCNDSLO called")
+  #=
   println(BSTDOUT, " fieldnames(stab_assembler): ", fieldnames(stab_assembler))
   println(BSTDOUT, " typeof(stab_assembler): ", typeof(stab_assembler))
   println(BSTDOUT, " fieldnames(stab_assembler.A): ", fieldnames(stab_assembler.A))
@@ -20,6 +21,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   println(BSTDOUT, " typeof(stab_assembler.A.A): ", typeof(stab_assembler.A.A))
   println(BSTDOUT, " typeof(stab_A): ", typeof(stab_A))
   println(BSTDOUT, " typeof(stab_A.A): ", typeof(stab_A.A))
+  =#
 
   # get i from t
   i = round(Int, t/h + 2)
@@ -39,9 +41,11 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
 
   # eigenvalue plotting, strong Jac, before any filtering
+  #=
   eigs_strongJac_before_stab = eigvals(stab_assembler.A)
   filename = string("i", i,"_2-eigs_strongJac_before_stab.dat")
   writedlm(filename, eigs_strongJac_before_stab)
+  =#
 
   # filterDiagJac
   #   location: jacobian_diag.jl
@@ -56,9 +60,9 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     and KSP iterations? Maybe room for investigation later. (future work)
   #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
   eigs_to_remove = opts["eigs_to_remove"]
-  println(BSTDOUT, " eigs_to_remove: ", eigs_to_remove)
-  println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
-  flush(BSTDOUT)
+  # println(BSTDOUT, " eigs_to_remove: ", eigs_to_remove)
+  # println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
+  # flush(BSTDOUT)
   # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
   numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
   # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
@@ -66,9 +70,11 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
 
   # eigenvalue plotting, strong Jac, after filtering
+  #=
   eigs_strongJac_after_stab = eigvals(stab_assembler.A)
   filename = string("i", i,"_3-eigs_strongJac_after_stab.dat")
   writedlm(filename, eigs_strongJac_after_stab)
+  =#
 
   # Now add each block of the stabilized strong jacobian to the full Jacobian
   # We are converting between the 2D element Jacobian in each block of the DiagJac

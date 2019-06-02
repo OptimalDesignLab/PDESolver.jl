@@ -513,14 +513,14 @@ function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
                             opts::Dict, ctx_residual, t)
 
    
-  println(BSTDOUT, "    entered cLO(lo::NewtonMatLO...) in newton_setup.jl")
+  # println(BSTDOUT, "    entered cLO(lo::NewtonMatLO...) in newton_setup.jl")
   # printbacktrace()
 
-  println(BSTDOUT, "     calling inner cLO in cLO(lo::NewtonMatLO...) in newton_setup.jl")
+  # println(BSTDOUT, "     calling inner cLO in cLO(lo::NewtonMatLO...) in newton_setup.jl")
   calcLinearOperator(lo.lo_inner, mesh, sbp, eqn, opts, ctx_residual, t)
 
   lo2 = getBaseLO(lo)
-  println(BSTDOUT, "     calling physicsJac from cLO()")
+  # println(BSTDOUT, "     calling physicsJac from cLO()")
   physicsJac(mesh, sbp, eqn, opts, lo2.A, ctx_residual, t)
   # physicsJac: in Nonlinearsolvers/jacobian.jl
   #   if calc_jac_explicit set, calls evalJacobian(mesh, sbp, eqn, opts, assembler, t)
@@ -534,7 +534,7 @@ function calcLinearOperator(lo::NewtonMatLO, mesh::AbstractMesh,
     applyEuler(mesh, sbp, eqn, opts, lo)
   end
 
-  println(BSTDOUT, "    leaving cLO(lo::NewtonMatLO...) in newton_setup.jl")
+  # println(BSTDOUT, "    leaving cLO(lo::NewtonMatLO...) in newton_setup.jl")
 
   return nothing
 end

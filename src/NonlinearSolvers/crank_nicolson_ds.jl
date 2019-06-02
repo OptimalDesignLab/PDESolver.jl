@@ -427,11 +427,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           beforeDS_eqn_res_vec[ix_dof] = eqn.res_vec[ix_dof]
           beforeDS_eqn_nextstep_res_vec[ix_dof] = eqn_nextstep.res_vec[ix_dof]
         end
-        println(BSTDOUT, " +++ Storing beforeDS vecs +++")
-        println(BSTDOUT, " vecnorm(beforeDS_eqn_q_vec): ", vecnorm(beforeDS_eqn_q_vec))
-        println(BSTDOUT, " vecnorm(beforeDS_eqn_nextstep_q_vec): ", vecnorm(beforeDS_eqn_nextstep_q_vec))
-        println(BSTDOUT, " vecnorm(beforeDS_eqn_res_vec): ", vecnorm(beforeDS_eqn_res_vec))
-        println(BSTDOUT, " vecnorm(beforeDS_eqn_nextstep_res_vec): ", vecnorm(beforeDS_eqn_nextstep_res_vec), "\n")
+        # println(BSTDOUT, " +++ Storing beforeDS vecs +++")
+        # println(BSTDOUT, " vecnorm(beforeDS_eqn_q_vec): ", vecnorm(beforeDS_eqn_q_vec))
+        # println(BSTDOUT, " vecnorm(beforeDS_eqn_nextstep_q_vec): ", vecnorm(beforeDS_eqn_nextstep_q_vec))
+        # println(BSTDOUT, " vecnorm(beforeDS_eqn_res_vec): ", vecnorm(beforeDS_eqn_res_vec))
+        # println(BSTDOUT, " vecnorm(beforeDS_eqn_nextstep_res_vec): ", vecnorm(beforeDS_eqn_nextstep_res_vec), "\n")
         # println(BSTDOUT, " q_vec and res_vec, both eqn & eqn_nextstep saved")
 
 
@@ -486,9 +486,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
         flush(BSTDOUT)
         =#
-        dRdM_norm_global = calcNorm(eqn, dRdM_vec)
-        println(BSTDOUT, " +++ dRdM_norm_global: ", dRdM_norm_global)
-        flush(BSTDOUT)
+        # dRdM_norm_global = calcNorm(eqn, dRdM_vec)
+        # println(BSTDOUT, " +++ dRdM_norm_global: ", dRdM_norm_global)
+        # flush(BSTDOUT)
         ### end check
 
         # should I be collecting into q?
@@ -529,11 +529,11 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #=
         # output of norms of quantities every time step (debugging only)
         =#
-        dRdq_vn_prod_norm_global = calcNorm(eqn, dRdq_vn_prod)
-        println(BSTDOUT, " +++ dRdq_vn_prod_norm_global: ", dRdq_vn_prod_norm_global)
-        b_vec_norm_global = calcNorm(eqn, b_vec)
-        println(BSTDOUT, " +++ b_vec_norm_global: ", b_vec_norm_global)
-        flush(BSTDOUT)
+        # dRdq_vn_prod_norm_global = calcNorm(eqn, dRdq_vn_prod)
+        # println(BSTDOUT, " +++ dRdq_vn_prod_norm_global: ", dRdq_vn_prod_norm_global)
+        # b_vec_norm_global = calcNorm(eqn, b_vec)
+        # println(BSTDOUT, " +++ b_vec_norm_global: ", b_vec_norm_global)
+        # flush(BSTDOUT)
 
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
@@ -594,7 +594,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # run(`sleep 5`)
 
         # lo_ds_innermost_A_norm_global = calcNorm(eqn, lo_ds_innermost.A)
-        println(BSTDOUT, " +++ vecnorm(lo_ds_innermost.A): ", vecnorm(lo_ds_innermost.A))
+        # println(BSTDOUT, " +++ vecnorm(lo_ds_innermost.A): ", vecnorm(lo_ds_innermost.A))
         # println(BSTDOUT, " +++ sum(lo_ds_innermost.A): ", sum(lo_ds_innermost.A))
         # println(BSTDOUT, " +++ lo_ds_innermost_A_norm_global (after cLO & stab): ", lo_ds_innermost_A_norm_global)
         flush(BSTDOUT)
@@ -606,16 +606,16 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         eqn_res_vec_norm_global = calcNorm(eqn, eqn.res_vec)
         eqnnextstep_q_vec_norm_global = calcNorm(eqn, eqn_nextstep.res_vec)
 
-        println(BSTDOUT, " eqn_q_vec_norm_global: ", eqn_q_vec_norm_global)
-        println(BSTDOUT, " eqnnextstep_q_vec_norm_global: ", eqnnextstep_q_vec_norm_global)
-        println(BSTDOUT, " eqn_res_vec_norm_global: ", eqn_res_vec_norm_global)
-        println(BSTDOUT, " eqnnextstep_q_vec_norm_global: ", eqnnextstep_q_vec_norm_global)
+        # println(BSTDOUT, " eqn_q_vec_norm_global: ", eqn_q_vec_norm_global)
+        # println(BSTDOUT, " eqnnextstep_q_vec_norm_global: ", eqnnextstep_q_vec_norm_global)
+        # println(BSTDOUT, " eqn_res_vec_norm_global: ", eqn_res_vec_norm_global)
+        # println(BSTDOUT, " eqnnextstep_q_vec_norm_global: ", eqnnextstep_q_vec_norm_global)
         # linearSolve: solves Ax=b for x. 
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
 
-        v_vec_norm_global = calcNorm(eqn, v_vec)
-        println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
+        # v_vec_norm_global = calcNorm(eqn, v_vec)
+        # println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
 
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)

@@ -432,8 +432,9 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     elseif opts["stabilization_method"] == "clipJacFast"
       numEigChgs = clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
     end
-#    removeUnstableModes!(Ablock, u_k)
+    # removeUnstableModes!(Ablock, u_k)
 
+    #=
     eigvals_Ablock = eigvals(Ablock)
     println(BSTDOUT, "\n eigvals_Ablock: ", eigvals_Ablock) 
     eigvals_Ablock_sym = eigvals(0.5*(Ablock+Ablock.'))
@@ -442,6 +443,7 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     println(BSTDOUT, " eigvals_A-A: ", eigvals_A_A) 
     eigvals_A_A_sym = eigvals(0.5*(A.A[:,:,k]+A.A[:,:,k].'))
     println(BSTDOUT, " eigvals_A_A_sym: ", eigvals_A_A_sym) 
+    =#
 
 
     numEigChgsAllEls += numEigChgs
