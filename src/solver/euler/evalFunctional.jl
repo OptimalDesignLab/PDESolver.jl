@@ -145,6 +145,7 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
 
   fill!(eqn.res, 0)
+  bcs_orig = setZeroBCs(mesh, sbp, eqn, opts, func)
   evalResidual(mesh, sbp, eqn, opts)
 
   # compute reverse mode of the contraction, take val_bar = 1
@@ -184,6 +185,8 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
   assertReceivesWaited(eqn.shared_data_bar)
 
   copy!(func_deriv_arr, eqn.q_bar)
+
+  resetBCs(mesh, sbp, eqn, opts, bcs_orig)
 
   return nothing
 end
@@ -315,7 +318,9 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
     end
   end
 
+  bcs_orig = setZeroBCs(mesh, sbp, eqn, opts, func)
   evalResidual_revm(mesh, sbp, eqn, opts, 0.0)
+  resetBCs(mesh, sbp, eqn, opts, bcs_orig)
 
   return nothing
 end
@@ -421,7 +426,13 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
             func::TotalEntropyDissipationData) where {Tmsh, Tsol, Tres}
 
   fill!(eqn.res, 0)
+  # zero out all BCs except those specified
+  bcs_orig = setZeroBCs(mesh, sbp, eqn, opts, func)
+
   evalResidual(mesh, sbp, eqn, opts)
+
+  # reset original BCs
+  resetBCs(mesh, sbp, eqn, opts, bcs_orig)
 
   # compute the contraction
   val = zero(Tres)
@@ -439,6 +450,65 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
 
   return val
 end
+
+struct BCSet
+  bndry_funcs::Vector{BCType}
+  bndry_funcs_revm::Vector{BCType_revm}
+  bndry_funcs_revq::Vector{BCType_revq}
+end
+
+function BCSet(n::Integer)
+
+  bndry_funcs = Array{BCType}(n)
+  bndry_funcs_revm = Array{BCType_revm}(n)
+  bndry_funcs_revq = Array{BCType_revq}(n)
+
+  return BCSet(bndry_funcs, bndry_funcs_revm, bndry_funcs_revq)
+end
+
+"""
+  Sets the boundary flux functors to be ZeroFlux for all boundaries except
+  those in func.bcnums.  Also does the revq and revm ones.
+"""
+function setZeroBCs(mesh, sbp, eqn, opts, func::TotalEntropyDissipationData)
+
+  zfunc = ZeroFluxBC(mesh, eqn)
+  zfunc_revq = ZeroFluxBC_revq(mesh, eqn)
+  zfunc_revm = ZeroFluxBC_revm(mesh, eqn)
+
+  nbcs = length(mesh.bndry_funcs)
+  bcs_orig = BCSet(nbcs)
+
+
+  for i=1:nbcs
+    bcs_orig.bndry_funcs[i] = mesh.bndry_funcs[i]
+    bcs_orig.bndry_funcs_revm[i] = mesh.bndry_funcs_revm[i]
+    bcs_orig.bndry_funcs_revq[i] = mesh.bndry_funcs_revq[i]
+    if !(i in func.bcnums)
+      mesh.bndry_funcs[i] = zfunc
+      mesh.bndry_funcs_revm[i] = zfunc_revm
+      mesh.bndry_funcs_revq[i] = zfunc_revq
+    end
+  end
+
+  return bcs_orig
+end
+
+function resetBCs(mesh, sbp, eqn, opts, bcs_orig::BCSet)
+
+  nbcs = length(mesh.bndry_funcs)
+  for i=1:nbcs
+    mesh.bndry_funcs[i] = bcs_orig.bndry_funcs[i]
+    mesh.bndry_funcs_revm[i] = bcs_orig.bndry_funcs_revm[i]
+    mesh.bndry_funcs_revq[i] = bcs_orig.bndry_funcs_revq[i]
+  end
+
+  return nothing
+end
+
+
+
+
 
 
 """

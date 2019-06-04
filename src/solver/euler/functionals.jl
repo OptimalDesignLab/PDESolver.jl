@@ -323,18 +323,21 @@ function EntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 mutable struct TotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  bcnums::Vector{Int}
 end
 
 """
   Computes the entropy dissipation of the entire residual (not just face
-  terms):
+  terms), except for the boundaries sepcified by bcnums:
 
-  w^T R
+  w^T R - other boundary terms
+
+
 """
 function TotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        bcnums) where Topt
 
-  return TotalEntropyDissipationData{Topt}()
+  return TotalEntropyDissipationData{Topt}(copy(bcnums))
 end
 
 

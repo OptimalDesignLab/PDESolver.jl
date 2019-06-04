@@ -2137,6 +2137,53 @@ function (obj::LaplaceBC)(params::ParamType, q::AbstractArray{Tsol,1},
 end # end function
 
 
+@makeBC ZeroFluxBC """
+  Sets the boundary flux to be zero
+"""
+
+
+function (obj::ZeroFluxBC)(params::ParamType, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  fill!(bndryflux, 0)
+end
+
+
+@makeBC ZeroFluxBC_revm """
+Reverse mode of ZeroFluxBC
+"""
+
+function (obj::ZeroFluxBC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+
+@makeBC ZeroFluxBC_revq """
+Reverse mode of ZeroFluxBC
+"""
+
+
+function (obj::ZeroFluxBC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
 
 
 # every time a new boundary condition is created,
@@ -2168,6 +2215,7 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
 "reanalysisBC" => reanalysisBC,
 "zeroBC" => ZeroBC,
 "LaplaceBC" => LaplaceBC,
+"ZeroFluxBC" => ZeroFluxBC,
 "defaultBC" => defaultBC,
 )
 
@@ -2240,6 +2288,7 @@ global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
 "FreeStreamBC" => FreeStreamBC_revm,
 "ExpBC" => ExpBC_revm,
 "isentropicVortexBC" => isentropicVortexBC_revm,
+"ZeroFluxBC" => ZeroFluxBC_revm,
 )
 
 """
@@ -2306,6 +2355,7 @@ global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
 "FreeStreamBC" => FreeStreamBC_revq,
 "ExpBC" => ExpBC_revq,
 "isentropicVortexBC" => isentropicVortexBC_revq,
+"ZeroFluxBC" => ZeroFluxBC_revq,
 )
 
 

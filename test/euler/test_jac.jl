@@ -23,11 +23,11 @@ function test_jac_terms()
 
   # list of boundary conditions to test revm method in 2D
   bclist_revm_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC",
-                    "isentropicVortexBC", "noPenetrationESBC"]
+                    "isentropicVortexBC", "noPenetrationESBC", "ZeroFluxBC"]
   bclist_revm_3d = [                   "FreeStreamBC"]
   bclist_revq_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC",
-                    "isentropicVortexBC", "noPenetrationESBC"]
-  bclist_revq_3d = [                   "FreeStreamBC"]
+                    "isentropicVortexBC", "noPenetrationESBC", "ZeroFluxBC"]
+  bclist_revq_3d = [                   "FreeStreamBC",]
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
   Tmsh = eltype(mesh.jac)
