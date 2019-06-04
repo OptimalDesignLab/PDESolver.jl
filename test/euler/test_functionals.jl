@@ -65,11 +65,14 @@ function test_functionals()
 
   # test derivative of all functionals
 
-  funcs_diage = ["negboundaryentropydiss", "entropydissipation", "negentropydissipation"]
+  funcs_diage = ["negboundaryentropydiss", "entropydissipation", "negentropydissipation", "totalentropydissipation", "negtotalentropydissipation"]
+  funcs_skip_zero = ["totalentropydissipation", "negtotalentropydissipation"]
   for funcname in keys(EulerEquationMod.FunctionalDict)
     println("testing functional", funcname)
     obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
-    if typeof(obj) <: EulerEquationMod.EntropyPenaltyFunctional
+    if !(funcname in funcs_skip_zero) &&
+        typeof(obj) <: EulerEquationMod.EntropyPenaltyFunctional
+
       test_functional_zero(mesh, sbp, eqn, opts, obj)
     end
 
@@ -100,8 +103,10 @@ function test_functionals()
                            "negboundaryentropydiss",
                            "entropydissipation",
                            "entropydissipation2",
+                           "totalentropydissipation",
                            "negentropydissipation",
                            "negentropydissipation2",
+                           "negtotalentropydissipation",
                            "lift", "liftCoefficient",
                            "drag", "dragCoefficient"]
 
@@ -377,4 +382,4 @@ function test_compositefunctional(mesh, sbp, eqn, opts,
   end
 end
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

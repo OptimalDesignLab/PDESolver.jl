@@ -138,6 +138,57 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::EulerData{Tsol, Tres}, opts,
+                           func::TotalEntropyDissipationData,
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol, Tres}
+
+  fill!(eqn.res, 0)
+  evalResidual(mesh, sbp, eqn, opts)
+
+  # compute reverse mode of the contraction, take val_bar = 1
+  w_j = zeros(Tsol, mesh.numDofPerNode)
+  w_bar_j = zeros(Tres, mesh.numDofPerNode)
+  fill!(eqn.res_bar, 0); fill!(eqn.q_bar, 0)
+  A0inv = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      q_bar_j = sview(eqn.q_bar, :, j, i)
+      fill!(w_bar_j, 0)
+      convertToIR(eqn.params, q_j, w_j)
+      for k=1:mesh.numDofPerNode
+        #val += w_j[k]*eqn.res[k, j, i]
+        #-----------------------------
+        # reverse sweep
+        w_bar_j[k] += eqn.res[k, j, i]
+        eqn.res_bar[k, j, i] += w_j[k]
+      end
+
+      getIRA0inv(eqn.params, q_j, A0inv)
+
+      smallmatTvec_kernel!(A0inv, w_bar_j, q_bar_j, 1, 1)
+    end
+  end
+
+  # back propigate res_bar -> q_bar
+  # This partially duplicates evalResidual_revq, but that function
+  # produces a vector, whereas this function requires a 3D array as output.
+  # That was probably a bad design decision, but we are stuck with it now
+  setParallelData(eqn.shared_data_bar, PARALLEL_DATA_ELEMENT)
+  startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=false)
+
+  evalResidual_revq(mesh, sbp, eqn, opts, 0.0)
+  assertReceivesWaited(eqn.shared_data_bar)
+
+  copy!(func_deriv_arr, eqn.q_bar)
+
+  return nothing
+end
+
+
 
 #------------------------------------------------------------------------------
 # derivative wrt metrics
@@ -240,6 +291,36 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::AbstractSolutionData{Tsol}, opts,
+                           func::TotalEntropyDissipationData,
+                           val_bar::Number=1,
+                           ) where {Tmsh, Tsol}
+
+  # compute reverse mode of the contraction, take val_bar = 1
+  w_j = zeros(Tsol, mesh.numDofPerNode)
+  fill!(eqn.res_bar, 0);
+
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      convertToIR(eqn.params, q_j, w_j)
+      for k=1:mesh.numDofPerNode
+        #val += w_j[k]*eqn.res[k, j, i]
+        #-----------------------------
+        # reverse sweep
+        eqn.res_bar[k, j, i] += w_j[k]*val_bar
+      end
+    end
+  end
+
+  evalResidual_revm(mesh, sbp, eqn, opts, 0.0)
+
+  return nothing
+end
+
+
 
 #------------------------------------------------------------------------------
 # Implementation for each functional
@@ -318,7 +399,6 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   # get -\int (wL - wR)^T * F(uL, uR)  (negative sign because the face term
   # has a negative sign in the weak form.
   val1 = calcFunctional(mesh, sbp, eqn, opts, func.flux_functional)
-  println("val1 = ", val1)
 
   # now compute \int (psi_L - psi_R)
   # We can't use the regular face integral machinery for this, because it
@@ -336,6 +416,29 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
 end
 
 
+function calcFunctional(mesh::AbstractMesh{Tmsh},
+            sbp::AbstractOperator, eqn::EulerData{Tsol, Tres}, opts,
+            func::TotalEntropyDissipationData) where {Tmsh, Tsol, Tres}
+
+  fill!(eqn.res, 0)
+  evalResidual(mesh, sbp, eqn, opts)
+
+  # compute the contraction
+  val = zero(Tres)
+  w_j = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+    for j=1:mesh.numNodesPerElement
+      q_j = sview(eqn.q, :, j, i)
+      convertToIR(eqn.params, q_j, w_j)
+      for k=1:mesh.numDofPerNode
+        val += w_j[k]*eqn.res[k, j, i]
+
+      end
+    end
+  end
+
+  return val
+end
 
 
 """

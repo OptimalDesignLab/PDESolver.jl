@@ -321,23 +321,57 @@ function getLambdaMaxSimple(params::ParamType{Tdim},
     q_avg[i] = 0.5*(qL[i] + qR[i])
   end
 
-  Un = zero(Tres)
-  dA = zero(Tres)
-  rhoinv = 1/q_avg[1]
-  p = calcPressure(params, q_avg)
-  a = sqrt(gamma*p*rhoinv)  # speed of sound
+  return getLambdaMax(params, q_avg, dir)
+end
 
-  for i=1:Tdim
-    Un += dir[i]*q_avg[i+1]*rhoinv
-    dA += dir[i]*dir[i]
+
+function getLambdaMaxSimple_revm(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, qR::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh}, dir_bar::AbstractVector,
+                      lambda_max_bar::Number
+                     ) where {Tsol, Tmsh, Tdim}
+# calculate maximum eigenvalue at simple average state
+
+  gamma = params.gamma
+  Tres = promote_type(Tsol, Tmsh)
+
+  q_avg = params.get_lambda_max_simple_data.q_avg
+
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
   end
 
-  dA = sqrt(dA)
-
-  lambda_max = absvalue(Un) + dA*a
-
-  return lambda_max
+  return getLambdaMax_revm(params, q_avg, dir, dir_bar, lambda_max_bar)
 end
+
+
+function getLambdaMaxSimple_revq(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}, qL_bar::AbstractVector,
+                      qR::AbstractVector{Tsol}, qR_bar::AbstractVector,
+                      dir::AbstractVector{Tmsh}, lambda_max_bar) where {Tsol, Tmsh, Tdim}
+# calculate maximum eigenvalue at simple average state
+
+  gamma = params.gamma
+  @unpack params.get_lambda_max_simple_data q_avg q_avg_bar
+  fill!(q_avg_bar, 0)
+
+  for i=1:length(q_avg)
+    q_avg[i] = 0.5*(qL[i] + qR[i])
+  end
+
+  val = getLambdaMax_revq(params, q_avg, q_avg_bar, dir, lambda_max_bar)
+
+  for i=1:length(q_avg)
+    qL_bar[i] += 0.5*q_avg_bar[i]
+    qR_bar[i] += 0.5*q_avg_bar[i]
+  end
+
+  return val
+end
+
+
+
+
 
 
 function getLambdaMaxRoe(params::ParamType{Tdim}, 

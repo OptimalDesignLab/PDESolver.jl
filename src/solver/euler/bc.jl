@@ -773,7 +773,7 @@ end
 """
 
 # low level function
-function (obj::noPenetrationESBC)(params::ParamType2,
+function (obj::noPenetrationESBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
               aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
@@ -782,6 +782,87 @@ function (obj::noPenetrationESBC)(params::ParamType2,
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
+
+  qg = params.bcdata.qg
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+  #calcHLLFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+
+  return nothing
+end
+
+
+# revm
+@makeBC noPenetrationESBC_revm """
+Reverse mode for noPenetrationESBC.
+
+"""
+function (obj::noPenetrationESBC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  @unpack params.bcdata qg q_bar qg_bar
+  fill!(q_bar, 0); fill!(qg_bar, 0)
+
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+
+  # Reverse sweep
+  calcLFFlux_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+  calcLFFlux_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, 
+                  bndryflux_bar)
+
+  getDirichletState_revm(obj, params, q, aux_vars, coords, coords_bar, nrm_xy,
+                         nrm_bar, qg_bar, bndry)
+
+  return nothing
+end
+
+
+
+# revq
+
+@makeBC noPenetrationESBC_revq """
+  Reverse mode wrt q of `noPenetrationESBC`
+"""
+
+function (obj::noPenetrationESBC_revq)(params::ParamType{2, :conservative},
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  @unpack params.bcdata qg qg_bar
+  fill!(qg_bar, 0)
+
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+
+  # Reverse sweep
+  calcLFFlux_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, 
+                  bndryflux_bar)
+
+  getDirichletState_revq(obj, params, q, q_bar, aux_vars, coords, nrm_xy,
+                         qg_bar, bndry)
+
+  return nothing
+end
+
+
+# getDirichletState
+
+const noPenetrationESBCs = Union{noPenetrationESBC, noPenetrationESBC_revm,
+                                 noPenetrationESBC_revq}
+
+function getDirichletState(obj::noPenetrationESBCs, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # calculate normal vector in xy space
   nx = nrm_xy[1]
@@ -798,27 +879,21 @@ function (obj::noPenetrationESBC)(params::ParamType2,
   #   1. computing the normal and tangential components
   #   2. negating the normal component
   #   3. combining the negative normal and non-negated tangent component
-  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
   qg[4] = q[4]
 
-  #calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
-  calcHLLFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
-
   return nothing
 end
 
-function (obj::noPenetrationESBC)(params::ParamType3,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-# a clever optimizing compiler will clean this up
-# there might be a way to do this with fewer flops using the tangent vector
 
+function getDirichletState(obj::noPenetrationESBCs, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # calculate normal vector in xy space
   nx = nrm_xy[1]
@@ -833,14 +908,108 @@ function (obj::noPenetrationESBC)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
   qg[4] = -2*Unrm*nz + q[4]
   qg[5] = q[5]
 
-  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+  return nothing
+end
+
+
+function getDirichletState_revm(obj::noPenetrationESBC_revm, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractArray{Tres, 1},
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              qg_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  # this is equivalent to:
+  #   1. computing the normal and tangential components
+  #   2. negating the normal component
+  #   3. combining the negative normal and non-negated tangent component
+  #qg[1] = q[1]
+  #qg[2] = -2*Unrm*nx + q[2]
+  #qg[3] = -2*Unrm*ny + q[3]
+  #qg[4] = q[4]
+
+  #-----------------
+  # reverse sweep
+  nx_bar = -2*Unrm*qg_bar[2]
+  ny_bar = -2*Unrm*qg_bar[3]
+  Unrm_bar = -2*nx*qg_bar[2] + -2*ny*qg_bar[3]
+
+  nx_bar += q[2]*Unrm_bar
+  ny_bar += q[3]*Unrm_bar
+
+  # restore primal state
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac_bar = nx*nx_bar + ny*ny_bar
+  nx_bar *= fac
+  ny_bar *= fac
+
+  den = (nx*nx + ny*ny)^1.5
+  nx_bar -= fac_bar*nx/den
+  ny_bar -= fac_bar*ny/den
+
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+
+  return nothing
+end
+
+function getDirichletState_revq(obj::noPenetrationESBC_revq, 
+              params::ParamType{2, :conservative},
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  # this is equivalent to:
+  #   1. computing the normal and tangential components
+  #   2. negating the normal component
+  #   3. combining the negative normal and non-negated tangent component
+  #qg[1] = q[1]
+  #qg[2] = -2*Unrm*nx + q[2]
+  #qg[3] = -2*Unrm*ny + q[3]
+  #qg[4] = q[4]
+
+  #-----------------
+  # reverse sweep
+  q_bar[1] += qg_bar[1]
+  q_bar[2] += qg_bar[2]
+  q_bar[3] += qg_bar[3]
+  q_bar[4] += qg_bar[4]
+
+  Unrm_bar = -2*nx*qg_bar[2] + -2*ny*qg_bar[3]
+  q_bar[2] += nx*Unrm_bar
+  q_bar[3] += ny*Unrm_bar
 
   return nothing
 end
@@ -2065,6 +2234,7 @@ end # End function getBCFunctors
 
 global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
 "errorBC" => errorBC_revm,
+"noPenetrationESBC" => noPenetrationESBC_revm,
 "noPenetrationBC" => noPenetrationBC_revm,
 "Rho1E2U3BC" => Rho1E2U3BC_revm,
 "FreeStreamBC" => FreeStreamBC_revm,
@@ -2130,6 +2300,7 @@ end # End function getBCFunctors_revm
 
 global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
 "errorBC" => errorBC_revq,
+"noPenetrationESBC" => noPenetrationESBC_revq,
 "noPenetrationBC" => noPenetrationBC_revq,
 "Rho1E2U3BC" => Rho1E2U3BC_revq,
 "FreeStreamBC" => FreeStreamBC_revq,

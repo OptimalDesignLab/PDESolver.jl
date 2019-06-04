@@ -694,6 +694,49 @@ function (obj::ErrorFlux_revq)(params::ParamType,
 end
 
 
+mutable struct ZeroFlux <: FluxType
+end
+
+function (obj::ZeroFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres}) where {Tsol, Tres}
+
+  fill!(F, 0)
+
+  return nothing
+end
+
+
+mutable struct ZeroFlux_revm <: FluxType_revm
+end
+
+function (obj::ZeroFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+mutable struct ZeroFlux_revq <: FluxType_revq
+end
+
+function (obj::ZeroFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+
+
+
 
 """
   This flux function sets F = q.  Useful for testing
@@ -796,6 +839,40 @@ function (obj::LFFlux)(params::ParamType,
   calcLFFlux(params, uL, uR, aux_vars, nrm, F)
   return nothing
 end
+
+"""
+  calls [`calcEulerFlux_IR_revm`](@ref)
+"""
+mutable struct LFFlux_revm <: FluxType_revm
+end
+
+function (obj::LFFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcLFFlux_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+  return nothing
+end
+
+
+mutable struct LFFlux_revq <: FluxType_revq
+end
+
+function (obj::LFFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcLFFlux_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, dir,
+                        F_bar)
+
+  return nothing
+end
+
 
 
 mutable struct StandardFlux <: FluxType
@@ -1151,6 +1228,7 @@ end
 """->
 global const FluxDict = Dict{String, FluxType}(
 "ErrorFlux" => ErrorFlux(),
+"ZeroFlux" => ZeroFlux(),
 "IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
 "LFFlux" => LFFlux(),
@@ -1210,7 +1288,9 @@ end
 """
 global const FluxDict_revm = Dict{String, FluxType_revm}(
 "ErrorFlux" => ErrorFlux_revm(),
+"ZeroFlux" => ZeroFlux_revm(),
 "RoeFlux" => RoeFlux_revm(),
+"LFFlux" => LFFlux_revm(),
 "IRFlux" => IRFlux_revm(),
 "IRSLFFlux" => IRSLFFlux_revm(),
 "LFPenalty" => LFPenalty_revm(),
@@ -1267,7 +1347,9 @@ end # End function getFluxFunctors_revm
 """
 global const FluxDict_revq = Dict{String, FluxType_revq}(
 "ErrorFlux" => ErrorFlux_revq(),
+"ZeroFlux" => ZeroFlux_revq(),
 "RoeFlux" => RoeFlux_revq(),
+"LFFlux" => LFFlux_revq(),
 "IRFlux" => IRFlux_revq(),
 "IRSLFFlux" => IRSLFFlux_revq(),
 "LFPenalty" => LFPenalty_revq(),

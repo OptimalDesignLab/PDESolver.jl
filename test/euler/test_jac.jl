@@ -22,9 +22,11 @@ function test_jac_terms()
 =#
 
   # list of boundary conditions to test revm method in 2D
-  bclist_revm_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC", "isentropicVortexBC"]
+  bclist_revm_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC",
+                    "isentropicVortexBC", "noPenetrationESBC"]
   bclist_revm_3d = [                   "FreeStreamBC"]
-  bclist_revq_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC", "isentropicVortexBC"]
+  bclist_revq_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC",
+                    "isentropicVortexBC", "noPenetrationESBC"]
   bclist_revq_3d = [                   "FreeStreamBC"]
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
@@ -100,11 +102,11 @@ function test_jac_terms()
     func_revm = EulerEquationMod.FluxDict_revm["RoeFlux"]
     func_revq = EulerEquationMod.FluxDict_revq["RoeFlux"]
    
-
-
-    func2 = EulerEquationMod.calcLFFlux
-    func2_diff = EulerEquationMod.calcLFFlux_diff
-
+    func2 = EulerEquationMod.FluxDict["LFFlux"]
+    func2_diff = EulerEquationMod.FluxDict_diff["LFFlux"]
+    func2_revm = EulerEquationMod.FluxDict_revm["LFFlux"]
+    func2_revq = EulerEquationMod.FluxDict_revq["LFFlux"]
+ 
     func3 = EulerEquationMod.FluxDict["IRFlux"]
     func3_diff = EulerEquationMod.FluxDict_diff["IRFlux"]
     func3_revm = EulerEquationMod.FluxDict_revm["IRFlux"]
@@ -135,6 +137,10 @@ function test_jac_terms()
     test_lambda(eqn.params, q, nrm)
     test_lambdasimple(eqn.params, q, qg, nrm)
     test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
+    test_2flux_revm(eqn.params, q, qg, nrm, func2, func2_revm)
+    test_2flux_revq(eqn.params, q, qg, nrm, func2, func2_revq)
+
+
     # make sure arrays are zerod out
     test_ad_inner(eqn.params, q, qg, nrm, func2, func2_diff)
     test_ad_inner(eqn.params, q, qg, nrm, func3, func3_diff)
@@ -1041,7 +1047,6 @@ function test_lambda(params::AbstractParamType{Tdim}, qL::AbstractVector,
   EulerEquationMod.getLambdaMax_revm(params, qL, nrmc, nrm_bar, 1)
   @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
 
-
   return nothing
 end
 
@@ -1073,6 +1078,57 @@ function test_lambdasimple(params::AbstractParamType{Tdim}, qL::AbstractVector,
 
   @test isapprox( norm(lambda_dotL - lambda_dotL2), 0.0) atol=1e-13
   @test isapprox( norm(lambda_dotR - lambda_dotR2), 0.0) atol=1e-13
+
+  # revm
+  nrmc = zeros(Complex128, length(nrm)); copy!(nrmc, nrm)
+  nrm_bar = zeros(nrmc)
+  nrm_barc = zeros(nrmc)
+
+  for i=1:length(nrm)
+    nrmc[i] += pert
+    nrm_barc[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrmc))/h
+    nrmc[i] -= pert
+  end
+
+  EulerEquationMod.getLambdaMaxSimple_revm(params, qL, qR, nrmc, nrm_bar, 1)
+
+  @test maximum(abs.(nrm_bar - nrm_barc)) < 1e-14
+
+  nrm_bar_orig = copy(nrm_bar)
+  EulerEquationMod.getLambdaMaxSimple_revm(params, qL, qR, nrmc, nrm_bar, 1)
+  @test maximum(abs.(nrm_bar - 2*nrm_bar_orig)) < 1e-14
+
+
+  # revq
+  qL_bar = zeros(qL)
+  qR_bar = zeros(qR)
+  qL_barc = zeros(qL)
+  qR_barc = zeros(qR)
+
+  for i=1:length(qL)
+    qL[i] += pert
+    qL_barc[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrm))/h
+    qL[i] -= pert
+
+    qR[i] += pert
+    qR_barc[i] = imag(EulerEquationMod.getLambdaMaxSimple(params, qL, qR, nrm))/h
+    qR[i] -= pert
+  end
+
+  EulerEquationMod.getLambdaMaxSimple_revq(params, qL, qL_bar, qR, qR_bar,
+                                           nrm, 2)
+
+  @test maximum(abs.(qL_bar - 2*qL_barc)) < 1e-14
+  @test maximum(abs.(qR_bar - 2*qR_barc)) < 1e-14
+
+  #TODO: test accumulation
+
+  qL_bar_orig = copy(qL_bar); qR_bar_orig = copy(qR_bar)
+  EulerEquationMod.getLambdaMaxSimple_revq(params, qL, qL_bar, qR, qR_bar,
+                                           nrm, 2)
+  @test maximum(abs.(qL_bar - 2*qL_bar_orig)) < 1e-14
+  @test maximum(abs.(qR_bar - 2*qR_bar_orig)) < 1e-14
+
 
 
   return nothing

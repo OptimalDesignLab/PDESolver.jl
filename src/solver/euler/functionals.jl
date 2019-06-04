@@ -221,6 +221,18 @@ function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+function LPSDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                   bcnums) where Topt
+
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+  func_sparseface = ZeroFlux()
+  func_sparseface_revq = ZeroFlux_revq()
+  func_sparseface_revm = ZeroFlux_revm()
+
+  return EntropyDissipationData{Topt}(func, func_sparseface, func_sparseface_revq, func_sparseface_revm)
+end
+
+
 """
   Returns the negative of [`EntropyDissipationData`](@ref).  That functional
   is always negative, so this one is always positive.
@@ -239,6 +251,15 @@ function NegEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   func = EntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
   return NegEntropyDissipationData{Topt}(func)
 end
+
+
+function NegLPSDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = LPSDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
 
 
 """
@@ -301,6 +322,22 @@ function EntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        potential_flux_revq, potential_flux_revm)
 end
 
+mutable struct TotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+end
+
+"""
+  Computes the entropy dissipation of the entire residual (not just face
+  terms):
+
+  w^T R
+"""
+function TotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  return TotalEntropyDissipationData{Topt}()
+end
+
+
 """
   Computes negative of EntropyDissipation2
 """
@@ -315,12 +352,25 @@ function NegEntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+mutable struct NegTotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::TotalEntropyDissipationData{Topt}
+end
+
+function NegTotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                           bcnums) where Topt
+  func = TotalEntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegTotalEntropyDissipationData{Topt}(func)
+end
+
+
+
 function getParallelData(obj::EntropyPenaltyFunctional)
   return PARALLEL_DATA_ELEMENT
 end
 
 const NegEntropyDissipations = Union{NegEntropyDissipationData,
-                                     NegEntropyDissipation2Data}
+                                     NegEntropyDissipation2Data,
+                                     NegTotalEntropyDissipationData}
 
 
 """
@@ -351,6 +401,7 @@ function NegBoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   obj = BoundaryEntropyDissConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
   return NegBoundaryEntropyDiss{Topt}(obj)
 end
+
 
 
 
@@ -419,8 +470,12 @@ global const FunctionalDict = Dict{String, Function}(
 "massflow" => MassFlowDataConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
+"lpsdissipation" => LPSDissipationConstructor,
 "entropydissipation2" => EntropyDissipation2Constructor,
+"totalentropydissipation" => TotalEntropyDissipationConstructor,
 "negentropydissipation" => NegEntropyDissipationConstructor,
+"neglpsdissipation" => NegLPSDissipationConstructor,
+"negtotalentropydissipation" => NegTotalEntropyDissipationConstructor,
 "negentropydissipation2" => NegEntropyDissipation2Constructor,
 "entropyjump" => EntropyJumpConstructor,
 "boundaryentropydiss" => BoundaryEntropyDissConstructor,
