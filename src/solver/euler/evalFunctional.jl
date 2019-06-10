@@ -90,6 +90,9 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     addStabilization_revq(mesh, sbp, eqn, opts)
   end
 
+  if opts["addShockCapturing"]
+    evalShockCapturing_revq(mesh, sbp, eqn, opts)
+  end
 
   # do the parallel face calculations
   finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func)
@@ -250,6 +253,9 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
     addStabilization_revm(mesh, sbp, eqn, opts)
   end
 
+  if opts["addShockCapturing"]
+    evalShockCapturing_revm(mesh, sbp, eqn, opts)
+  end
 
 
   # do the parallel part of the computation
@@ -371,6 +377,9 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
     addStabilization(mesh, sbp, eqn, opts)
   end
 
+  if opts["addShockCapturing"]
+    evalShockCapturing(mesh, sbp, eqn, opts)
+  end
 
   # compute the contraction
   val = zero(Tres)

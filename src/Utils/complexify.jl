@@ -172,7 +172,7 @@ end
 
 function absvalue3_deriv(val::T) where {T <: Number}
 
-  delta = -1
+  delta = 1e-7
 
   val1 = absvalue(val)
   if val1 > delta

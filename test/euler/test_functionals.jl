@@ -76,7 +76,7 @@ function test_functionals()
       test_functional_zero(mesh, sbp, eqn, opts, obj)
     end
 
-    test_functional_deriv_q(mesh, sbp, eqn, opts, obj)
+    test_functional_deriv_q(mesh, sbp, eqn, opts, obj, shock=true)
 
     if funcname in funcs_diage
       obj = createFunctional(mesh2, sbp2, eqn2, opts2, funcname, [1, 3])
@@ -122,7 +122,7 @@ function test_functionals()
     end
 
     obj3 = createFunctional(mesh3, sbp3, eqn3, opts3, funcname, [1])
-    test_functional_deriv_m(mesh3, sbp3, eqn3, opts3, obj3)
+    test_functional_deriv_m(mesh3, sbp3, eqn3, opts3, obj3, shock=true)
   end
 
   end  # end testset
@@ -214,7 +214,7 @@ end
 
   The eqn object must have been created with Tsol = Complex128 for this to work
 """
-function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
+function test_functional_deriv_q(mesh, sbp, eqn, opts, func; shock=false)
 
   println("testing functional deriv q for functional ", typeof(func))
   h = 1e-20
@@ -224,6 +224,11 @@ function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
   icfunc = EulerEquationMod.ICDict["ICRho1E2U3"]
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   eqn.q_vec .+= 0.01*rand(length(eqn.q_vec))
+  if shock
+    for i=1:div(mesh.numEl, 2)
+      eqn.q[1, 1, i] += 1
+    end
+  end
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   q_dot = rand(size(eqn.q))
@@ -245,7 +250,7 @@ function test_functional_deriv_q(mesh, sbp, eqn, opts, func)
 end
 
 
-function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
+function test_functional_deriv_m(mesh, sbp, eqn, opts, func; shock=false)
 
   h = 1e-20
   pert = Complex128(0, h)
@@ -258,6 +263,11 @@ function test_functional_deriv_m(mesh, sbp, eqn, opts, func)
   end  
   icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   eqn.q_vec .+= 0.1*rand(length(eqn.q_vec))
+  if shock
+    for i=1:div(mesh.numEl, 2)
+      eqn.q[1, 1, i] += 1
+    end
+  end
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
 
   zeroBarArrays(mesh)
