@@ -64,10 +64,10 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   # println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
   # flush(BSTDOUT)
   # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
-  numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
+  numEigChgsAllEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
   # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
   # numEigChgsAllEls = 0
-  println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
+  # println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
 
   # eigenvalue plotting, strong Jac, after filtering
   #=

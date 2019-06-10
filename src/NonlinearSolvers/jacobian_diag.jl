@@ -184,7 +184,8 @@ function eigvals(A::DiagJac)
 
   blocksize, blocksize, nblock = size(A.A)
 
-  alleigvals = zeros(Complex{Float64}, blocksize*nblock)
+  # alleigvals = zeros(Complex{Float64}, blocksize*nblock)
+  alleigvals = Array{Complex{Float64}}(0)
 
   for block_ix = 1:nblock
 
@@ -194,14 +195,15 @@ function eigvals(A::DiagJac)
     #   1/1/3
     #   2/4/6
     #   3/7/9
-    start_ix = (block_ix-1)*blocksize + 1
-    end_ix = start_ix + (blocksize - 1)
+    # start_ix = (block_ix-1)*blocksize + 1
+    # end_ix = start_ix + (blocksize - 1)
 
-    this_block_eigs_ix = 1
-    for ix = start_ix:end_ix
-      alleigvals[ix] = this_block_eigs[this_block_eigs_ix]
-      this_block_eigs_ix += 1
-    end
+    alleigvals = vcat(alleigvals, this_block_eigs)
+    # this_block_eigs_ix = 1
+    # for ix = start_ix:end_ix
+      # alleigvals[ix] = this_block_eigs[this_block_eigs_ix]
+      # this_block_eigs_ix += 1
+    # end
 
   end
 
@@ -381,7 +383,7 @@ end
    * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
         have the unstable modes removed.
 """
-function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2}, 
+function filterDiagJac(mesh::AbstractDGMesh, eqn, opts, q_vec::AbstractVector{T2}, 
                        clipJacData, A::DiagJac{T}; eigs_to_remove="") where {T, T2}
 
   blocksize, blocksize, nblock = size(A.A)
@@ -423,7 +425,20 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
       end
     end
 
+
     # findStablePerturbation!(Ablock, ublock, workvec, Ablock2)
+
+    #=
+    println(BSTDOUT, "\n ***** BEFORE STAB ***** k = $k *****")
+    println(BSTDOUT, "  mesh.dofs[:, :, k]: ", mesh.dofs[:, :, k])
+    println(BSTDOUT, "  mesh.coords[:, :, k]: ", mesh.coords[:, :, k])
+    println(BSTDOUT, "Ablock (real):")      # no imag component; cleaner output
+    println(BSTDOUT, real(Ablock), "\n")
+    # writedlm(string("Ablock_before_k", k, ".dat"), real(Ablock))
+    println(BSTDOUT, "eigvals(Ablock):")
+    println(BSTDOUT, eigvals(Ablock), "\n")
+    println(BSTDOUT, " vecnorm(Ablock) pre: ", vecnorm(Ablock))
+    =#
 
     if opts["stabilization_method"] == "quadprog"
       findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
@@ -433,6 +448,15 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
       numEigChgs = clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
     end
     # removeUnstableModes!(Ablock, u_k)
+    #=
+    println(BSTDOUT, "\n ***** AFTER STAB ***** k = $k *****")
+    println(BSTDOUT, "Ablock (real):")      # no imag component; cleaner output
+    println(BSTDOUT, real(Ablock), "\n")
+    # writedlm(string("Ablock_after_k", k, ".dat"), real(Ablock))
+    println(BSTDOUT, "eigvals(Ablock):")
+    println(BSTDOUT, eigvals(Ablock), "\n")
+    println(BSTDOUT, " vecnorm(Ablock) post: ", vecnorm(Ablock))
+    =#
 
     #=
     eigvals_Ablock = eigvals(Ablock)
@@ -453,13 +477,15 @@ function filterDiagJac(mesh::AbstractDGMesh, opts, q_vec::AbstractVector{T2},
     #=
     for j=1:blocksize
       for i=1:blocksize
-        A.A[i, j, k] = Ablock2[i, j]
+        A.A[i, j, k] = Ablock[i, j]
         
-        println(" Ablock2[i,j]: ", Ablock2[i,j])
+        # println(" Ablock2[i,j]: ", Ablock2[i,j])
         # println(" A.A[i,j,k]: ", A.A[i,j,k])
       end
     end
     =#
+
+    # break       # TODO TODO remove !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   end  # end loop over blocks (for k = 1:nblock)
 

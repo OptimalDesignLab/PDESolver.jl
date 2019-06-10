@@ -298,7 +298,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #   this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1) ##################################################################################################
 
-    println(BSTDOUT, " ----- i = $i -----")
+    # println(BSTDOUT, " ----- i = $i -----")
     finaliter = calcFinalIter(t_steps, itermax)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -759,6 +759,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     i_test = i_test+10
 
+    # break   # TODO TODO remove !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end   # end of t step loop
 
   # final time update
@@ -839,6 +840,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "    mesh.coord_order: ", mesh.coord_order)
         println(BSTDOUT, " ")
         println(BSTDOUT, "    opts[stabilization_method]: ", opts["stabilization_method"])
+        println(BSTDOUT, "    opts[eigs_to_remove]: ", opts["eigs_to_remove"])
         println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
         println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])
         println(BSTDOUT, "    opts[itermax]: ", opts["itermax"])

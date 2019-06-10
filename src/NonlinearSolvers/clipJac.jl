@@ -38,7 +38,7 @@ function clipJacFast!(Jac::AbstractMatrix, data::ClipJacData, eigs_to_remove::St
   
   numEigChgs = 0
 
-  println(BSTDOUT, " in clipJacFast. eigs_to_remove: ", eigs_to_remove)
+  # println(BSTDOUT, " in clipJacFast. eigs_to_remove: ", eigs_to_remove)
 
   if eigs_to_remove == "none"
     return numEigChgs
@@ -129,11 +129,13 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   if eigs_to_remove == "none"
     return numEigChgs
   end
+  # println(BSTDOUT, "Entered clipJac")
 
   # scale_u = 1e100   # NOTE: We do _not_ need to scale anything here.
 
-  λ, E = eig(0.5*(Jac+Jac.'))
-  n = length(λ)
+  lam, E = eig(0.5*(Jac+Jac.'))
+  # λ_skew, E_skew = eig(0.5*(Jac-Jac.'))
+  n = length(lam)
 
   # println(BSTDOUT, "\nλ pre clip: ", λ)
 
@@ -141,26 +143,47 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   # Original clipping process
   if eigs_to_remove == "neg"
     for i = 1:n
-      if λ[i] < 0.0
-        λ[i] = 0.0
+      # if lam[i] < 0.0
+      if lam[i] < -1e-14
+        lam[i] = 0.0
         numEigChgs += 1
       end
     end
   elseif eigs_to_remove == "pos"
     for i = 1:n
-      if λ[i] > 0.0
-        λ[i] = 0.0
+      # if lam[i] > 0.0
+      if lam[i] > 1e-14
+        # println(BSTDOUT, " Clipping eig: ", lam[i])
+        lam[i] = 0.0
         numEigChgs += 1
       end
     end
   else
     error("eigs_to_remove specified incorrectly.")
   end
+  # println(BSTDOUT, " numEigChgs: ", numEigChgs)
 
   # println(BSTDOUT, "λ post clip: ", λ)
 
-  D = diagm(λ)
-  Jac[:,:] -= E*D*E.'
+  D = diagm(lam)
+  # println(BSTDOUT, " lam: ", lam)
+  # println(BSTDOUT, " E: ", E)
+
+  stabbed_a_sym = E*D*E.'   # this matches
+  # println(BSTDOUT, " stabbed_a_sym: ", real(stabbed_a_sym))
+  # writedlm("stabbed_a_sym.dat", real(stabbed_a_sym))
+
+  Jac[:,:] -= stabbed_a_sym
+
+  # writedlm("Ablock_Jac.dat", real(Jac))
+
+  # Jac[:,:] -= E*D*E.'
+  # Jac[:,:] = E*D*E.'
+  # D_skew = diagm(λ_skew)
+  # Jac[:,:] += E_skew*D_skew*inv(E_skew)
+  # I don't think we should be -='ing. That is leftover from 
+  # JEH code. 
+  # Actually, I think I'm wrong. need to work through derivation
 
   return numEigChgs
 
