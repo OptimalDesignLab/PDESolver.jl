@@ -456,6 +456,11 @@ Note that any values associated with these options are shared with the regular
                     "pos"
                     "none"
                   There is no default; it must be specified if "stabilize_v" is turned on.
+"stabilize_on_which_dFdq": Whether to stabilize on Minv*dFdq or dFdq. 
+                           Possible options are:
+                            "Minv"
+                            "noMinv"
+                           There is no default; it must be specified if "stabilize_v" is turned on.
 
 
 # SimpleODE equation selection

@@ -440,6 +440,18 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts, q_vec::AbstractVector{T2
     println(BSTDOUT, " vecnorm(Ablock) pre: ", vecnorm(Ablock))
     =#
 
+# TODO
+#=
+    if opts["stabilize_on_which_dFdq"] == "Minv"
+    elseif opts["stabilize_on_which_dFdq"] == "noMinv"
+      # left multiply by eqn.M
+      for j = 1:mesh.numNodesPerElement
+        for i = 1:mesh.numDofPerNode
+        end
+      end
+    end
+=#
+
     if opts["stabilization_method"] == "quadprog"
       findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
     elseif opts["stabilization_method"] == "clipJac"
@@ -447,6 +459,16 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts, q_vec::AbstractVector{T2
     elseif opts["stabilization_method"] == "clipJacFast"
       numEigChgs = clipJacFast!(Ablock, clipJacData, eigs_to_remove)    # fast eigenvalue clipping stabilization
     end
+
+# TODO
+#=
+    if opts["stabilize_on_which_dFdq"] == "Minv"
+    elseif opts["stabilize_on_which_dFdq"] == "noMinv"
+      # left multiply by eqn.Minv
+
+    end
+=#
+
     # removeUnstableModes!(Ablock, u_k)
     #=
     println(BSTDOUT, "\n ***** AFTER STAB ***** k = $k *****")

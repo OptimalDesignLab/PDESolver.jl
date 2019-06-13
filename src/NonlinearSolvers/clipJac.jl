@@ -173,7 +173,8 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   # println(BSTDOUT, " stabbed_a_sym: ", real(stabbed_a_sym))
   # writedlm("stabbed_a_sym.dat", real(stabbed_a_sym))
 
-  Jac[:,:] -= stabbed_a_sym
+  # Jac[:,:] -= stabbed_a_sym
+  Jac[:,:] = stabbed_a_sym
 
   # writedlm("Ablock_Jac.dat", real(Jac))
 

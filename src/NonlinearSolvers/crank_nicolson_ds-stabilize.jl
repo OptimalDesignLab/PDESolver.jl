@@ -37,6 +37,11 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   # We have to zero out the DiagJac, as assembleElement inside evalJacobianStrong accumulates.
   MatZeroEntries(stab_assembler.A)
 
+  if opts["stabilize_on_which_dFdq"] == "Minv"
+  elseif opts["stabilize_on_which_dFdq"] == "noMinv"
+    eqn.params.use_Minv = 0
+  end
+
   # stores the strong Jacobian (volume Jacobian) into stab_assembler.A
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
 
@@ -58,13 +63,15 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     See the AFOSR report's section on quadprog; it uses the adjoint.
   #     I suppose it could be the next time step, but that would require some implicit solving 
   #     and KSP iterations? Maybe room for investigation later. (future work)
-  #     Because right after this stabilizeCNDSLO is called, linearSolve is called to find v_vec^(n+1)
+  #     Because right after this stabilizeCNDSLO is called, 
+  #     linearSolve is called to find v_vec^(n+1)
   eigs_to_remove = opts["eigs_to_remove"]
   # println(BSTDOUT, " eigs_to_remove: ", eigs_to_remove)
   # println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
   # flush(BSTDOUT)
   # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
-  numEigChgsAllEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
+  numEigChgsAllEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, 
+                                   stab_A, eigs_to_remove=eigs_to_remove)
   # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
   # numEigChgsAllEls = 0
   # println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
@@ -83,7 +90,12 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   # res_jac dims: (numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
   assembler = _AssembleElementData(lo_ds_innermost.A, mesh, sbp, eqn, opts)
   blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
-  this_res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.numNodesPerElement)
+  this_res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, 
+                       mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+  if opts["stabilize_on_which_dFdq"] == "noMinv"
+    eqn.params.use_Minv = 1
+  end
 
   for el_ix = 1:mesh.numEl
 
@@ -92,6 +104,12 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     for q = 1:mesh.numNodesPerElement
       for p = 1:mesh.numNodesPerElement
 
+        if opts["stabilize_on_which_dFdq"] == "noMinv"
+          # Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
+          Minv_val = 1.0
+          # 20190612
+          # mistakenly using i (timestep index) instead of el_ix caused some stabilization
+        end
         @simd for j = 1:mesh.numDofPerNode
           @simd for i = 1:mesh.numDofPerNode
 
@@ -102,6 +120,11 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
             j1 = j + (q-1)*mesh.numDofPerNode
 
             this_res_jac[i, j, p, q] = stab_A.A[i1, j1, el_ix]
+
+            if opts["stabilize_on_which_dFdq"] == "noMinv"
+              this_res_jac[i, j, p, q] *= Minv_val
+            end
+
           end
         end
 
@@ -119,6 +142,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     # in jacobian.jl. Line 888 or so
 
   end   # end loop over elements
+  # println(BSTDOUT, "end of loop over els in stab routine")
   
   # eigenvalue plotting, strong Jac, after filtering TOO MUCH MEMORY & TIME
   #=
