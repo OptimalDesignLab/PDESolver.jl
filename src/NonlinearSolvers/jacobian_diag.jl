@@ -383,7 +383,8 @@ end
    * A: a DiagJac containing the block diagonal Jacobian.  On exit, it will
         have the unstable modes removed.
 """
-function filterDiagJac(mesh::AbstractDGMesh, eqn, opts, q_vec::AbstractVector{T2}, 
+function filterDiagJac(mesh::AbstractDGMesh, eqn, opts, 
+                       vec_to_stab_on::AbstractVector{T2}, 
                        clipJacData, A::DiagJac{T}; eigs_to_remove="") where {T, T2}
 
   blocksize, blocksize, nblock = size(A.A)
@@ -419,7 +420,8 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts, q_vec::AbstractVector{T2
     idx = 1
     for j=1:mesh.numNodesPerElement
       for i=1:mesh.numDofPerNode
-        ublock[idx] = q_vec[mesh.dofs[i, j, k]]
+        # ublock[idx] = q_vec[mesh.dofs[i, j, k]]   # q_vec was for explicit timesteppers
+        ublock[idx] = vec_to_stab_on[mesh.dofs[i, j, k]]
         # println(" dof: $i, node: $j, idx: $idx, ublock[idx]: ", ublock[idx])
         idx += 1
       end

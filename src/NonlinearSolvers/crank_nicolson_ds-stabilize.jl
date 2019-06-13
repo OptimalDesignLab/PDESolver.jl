@@ -105,8 +105,8 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
       for p = 1:mesh.numNodesPerElement
 
         if opts["stabilize_on_which_dFdq"] == "noMinv"
-          # Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
-          Minv_val = 1.0
+          Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
+          # Minv_val = 1.0        # TODO TODO why does this work, and not the proper Minv?
           # 20190612
           # mistakenly using i (timestep index) instead of el_ix caused some stabilization
         end
@@ -134,10 +134,13 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
     # this_res_jac should contain all the positive eigs, so if we subtract, 
     #   we are left with only negative and zero eigenvalues.
-    scale!(this_res_jac, -1.0)
+    if opts["stabilization_method"] != "quadprog"
+      scale!(this_res_jac, -1.0)
+    end
 
     assembleElement(assembler, mesh, el_ix, this_res_jac)
-    # This is calling function assembleElement(helper::_AssembleElementData{PetscMat}, mesh::AbstractMesh,
+    # This is calling function assembleElement(helper::_AssembleElementData{PetscMat}, 
+    #                                          mesh::AbstractMesh,
     #                                          elnum::Integer, jac::AbstractArray{T, 4}) where T
     # in jacobian.jl. Line 888 or so
 
@@ -201,6 +204,7 @@ function findStablePerturbation!(Jac::AbstractMatrix,
 
   #TODO TODO: prod < 0 for eigs_to_remove == "neg"???
   if prod > 0
+  # if prod < 0
     # nothing to do
     # println("prod > 0 check hit, not stabilizing")
     return
@@ -240,7 +244,7 @@ function findStablePerturbation!(Jac::AbstractMatrix,
     end
   end
 
-  if eigs_to_remove == "neg"
+  if eigs_to_remove == "neg"    # TODO ???
     scale!(Jac, -1.0)
   end
 

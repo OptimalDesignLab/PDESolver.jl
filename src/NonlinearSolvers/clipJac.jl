@@ -161,7 +161,7 @@ function clipJac!(Jac::AbstractMatrix, eigs_to_remove::String)
   else
     error("eigs_to_remove specified incorrectly.")
   end
-  # println(BSTDOUT, " numEigChgs: ", numEigChgs)
+  println(BSTDOUT, " numEigChgs: ", numEigChgs)
 
   # println(BSTDOUT, "λ post clip: ", λ)
 
