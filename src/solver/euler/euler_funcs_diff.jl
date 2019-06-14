@@ -139,7 +139,7 @@ function calcVolumeIntegralsStrong_nopre_diff(
 
     
     if eqn.params.use_Minv == 1
-      println(BSTDOUT, "use_Minv in evalJacobianStrong called")
+      # println(BSTDOUT, "use_Minv in evalJacobianStrong called")
       # multiply by Minv if needed
       for q=1:mesh.numNodesPerElement
         for p=1:mesh.numNodesPerElement

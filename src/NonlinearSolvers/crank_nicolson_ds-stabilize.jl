@@ -13,26 +13,13 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   v_vec =           ctx_residual[8]
 
   # println(BSTDOUT, "        stabilizeCNDSLO called")
-  #=
-  println(BSTDOUT, " fieldnames(stab_assembler): ", fieldnames(stab_assembler))
-  println(BSTDOUT, " typeof(stab_assembler): ", typeof(stab_assembler))
-  println(BSTDOUT, " fieldnames(stab_assembler.A): ", fieldnames(stab_assembler.A))
-  println(BSTDOUT, " typeof(stab_assembler.A): ", typeof(stab_assembler.A))
-  println(BSTDOUT, " typeof(stab_assembler.A.A): ", typeof(stab_assembler.A.A))
-  println(BSTDOUT, " typeof(stab_A): ", typeof(stab_A))
-  println(BSTDOUT, " typeof(stab_A.A): ", typeof(stab_A.A))
-  =#
 
   # get i from t
   i = round(Int, t/h + 2)
   lo_ds_innermost = getBaseLO(lo_ds)
 
-  # eigenvalue plotting, full Jac, before any filtering TOO MUCH MEMORY & TIME
-  #=
-  eigs_fullJac_before_stab = eigvals(full(lo_ds_innermost.A))
-  filename = string("i", i,"_1-eigs_fullJac_before_stab.dat")
-  writedlm(filename, eigs_fullJac_before_stab)
-  =#
+  # Note: attempting to print eigenvalues of lo_ds_innermost.A here 
+  #   with eigvals(full(lo_ds_innermost.A)) takes TOO MUCH MEMORY & TIME
 
   # We have to zero out the DiagJac, as assembleElement inside evalJacobianStrong accumulates.
   MatZeroEntries(stab_assembler.A)
@@ -66,15 +53,9 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     Because right after this stabilizeCNDSLO is called, 
   #     linearSolve is called to find v_vec^(n+1)
   eigs_to_remove = opts["eigs_to_remove"]
-  # println(BSTDOUT, " eigs_to_remove: ", eigs_to_remove)
-  # println(BSTDOUT, " typeof(eigs_to_remove): ", typeof(eigs_to_remove))
-  # flush(BSTDOUT)
-  # numEigChgsAllEls = filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove=eigs_to_remove)
   numEigChgsAllEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, 
                                    stab_A, eigs_to_remove=eigs_to_remove)
-  # filterDiagJac(mesh, opts, v_vec, clipJacData, stab_A, eigs_to_remove="pos")
-  # numEigChgsAllEls = 0
-  # println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
+  println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
 
   # eigenvalue plotting, strong Jac, after filtering
   #=
@@ -90,7 +71,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   # res_jac dims: (numDofPerNode, numDofPerNode, numNodesPerElement, numNodesPerElement)
   assembler = _AssembleElementData(lo_ds_innermost.A, mesh, sbp, eqn, opts)
   blocksize = mesh.numDofPerNode*mesh.numNodesPerElement
-  this_res_jac = zeros(mesh.numDofPerNode, mesh.numDofPerNode, 
+  this_res_jac = zeros(Complex{Float64}, mesh.numDofPerNode, mesh.numDofPerNode, 
                        mesh.numNodesPerElement, mesh.numNodesPerElement)
 
   if opts["stabilize_on_which_dFdq"] == "noMinv"
@@ -99,14 +80,12 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
   for el_ix = 1:mesh.numEl
 
-    # println(BSTDOUT, " el_ix: $el_ix   vecnorm(stab_A.A[:,:,el_ix]): ", vecnorm(stab_A.A[:,:,el_ix]))
-
     for q = 1:mesh.numNodesPerElement
       for p = 1:mesh.numNodesPerElement
 
         if opts["stabilize_on_which_dFdq"] == "noMinv"
-          Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
-          # Minv_val = 1.0        # TODO TODO why does this work, and not the proper Minv?
+          # Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
+          Minv_val = 1.0        # TODO TODO why does this work, and not the proper Minv?
           # 20190612
           # mistakenly using i (timestep index) instead of el_ix caused some stabilization
         end
@@ -119,7 +98,22 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
             i1 = i + (p-1)*mesh.numDofPerNode
             j1 = j + (q-1)*mesh.numDofPerNode
 
+            #=
+            println(BSTDOUT, "---\n el_ix: $el_ix  q: $q  p: $p  i: $i  j: $j")
+            println(BSTDOUT, " i1: $i1  j1: $j1")
+            println(BSTDOUT, " this_res_jac[i, j, p, q]: ", this_res_jac[i, j, p, q])
+            println(BSTDOUT, " stab_A.A[i1, j1, el_ix]: ", stab_A.A[i1, j1, el_ix])
+            println(BSTDOUT, " typeof(stab_A.A[i1,j1,el_ix]): ", typeof(stab_A.A[i1,j1,el_ix]))
+            println(BSTDOUT, " typeof(this_res_jac[i,j,p,q]): ", typeof(this_res_jac[i,j,p,q]))
+            =#
             this_res_jac[i, j, p, q] = stab_A.A[i1, j1, el_ix]
+            #=
+            println(BSTDOUT, " after this_res_jac assign")
+            println(BSTDOUT, " this_res_jac[i, j, p, q]: ", this_res_jac[i, j, p, q])
+            println(BSTDOUT, " stab_A.A[i1, j1, el_ix]: ", stab_A.A[i1, j1, el_ix])
+            println(BSTDOUT, " typeof(stab_A.A[i1,j1,el_ix]): ", typeof(stab_A.A[i1,j1,el_ix]))
+            println(BSTDOUT, " typeof(this_res_jac[i,j,p,q]): ", typeof(this_res_jac[i,j,p,q]))
+            =#
 
             if opts["stabilize_on_which_dFdq"] == "noMinv"
               this_res_jac[i, j, p, q] *= Minv_val
@@ -145,14 +139,9 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     # in jacobian.jl. Line 888 or so
 
   end   # end loop over elements
-  # println(BSTDOUT, "end of loop over els in stab routine")
   
-  # eigenvalue plotting, strong Jac, after filtering TOO MUCH MEMORY & TIME
-  #=
-  eigs_fullJac_after_stab = eigvals(full(lo_ds_innermost.A))
-  filename = string("i", i,"_4-eigs_fullJac_after_stab.dat")
-  writedlm(filename, eigs_fullJac_after_stab)
-  =#
+  # Note: attempting to print eigenvalues of lo_ds_innermost.A here 
+  #   with eigvals(full(lo_ds_innermost.A)) takes TOO MUCH MEMORY & TIME
 
   return nothing
 
