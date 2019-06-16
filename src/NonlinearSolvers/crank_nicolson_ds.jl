@@ -191,6 +191,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       R_stab = zeros(eqn.q_vec)
       v_L2_norm_part1 = zeros(eqn.q_vec)
 
+      @mpi_master f_dDdu_norm = open("dDdu_norm.dat", "w")
       @mpi_master f_v_L2_norm = open("v_L2_norm.dat", "w")
       @mpi_master f_v_sbp_norm = open("v_sbp_norm.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
@@ -257,6 +258,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         # this accumulation occurs across all dofs and all time steps.
         term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
       end
+
+      dDdu_norm = calcNorm(eqn, dDdu_vec)
+      @mpi_master println(f_dDdu_norm, dDdu_norm)
 
       if opts["write_L2vnorm"]
         L2_v_norm = calcNorm(eqn, v_vec)
@@ -501,52 +505,58 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # v_vec currently holds v at timestep n: v^(n)
 
-        #=
-        ################### This is the old mat-free Jac-vec product way of calc'ing dR/dq * v^(n)
-        # need to add epsilon*v_vec*im (evi) to q_vec, then re-evaluate res_hat at the updated q
-        for ix_dof = 1:mesh.numDof
-          eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
-          # TODO: commented this eqn_nextstep application out. Verify with formulation.
-          #       Do I need to save and restore eqn_nextstep??? Could save cycles
-          # eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
-        end
+        if opts["stab_vn_Jac"] == "no"
+        # Old mat-free Jac-vec product way of calc'ing dR/dq * v^(n).
+        # This does not stabilize the Jac-vec product on the RHS of the CNDS eqn.
 
-        if opts["parallel_type"] == 2 && mesh.npeers > 0
-          startSolutionExchange(mesh, sbp, eqn, opts)
-        end
-        f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec (confirmed w/ random test)
-        array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+          # need to add epsilon*v_vec*im (evi) to q_vec, then re-evaluate res_hat at the updated q
+          for ix_dof = 1:mesh.numDof
+            eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
+            # TODO: commented this eqn_nextstep application out. Verify with formulation.
+            #       Do I need to save and restore eqn_nextstep??? Could save cycles
+            # eqn_nextstep.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
+          end
 
-        for ix_dof = 1:mesh.numDof
-          
-          # This calculation:
-          #   dR_hat^(n)/dq^(n) * v^(n) = -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
-          # Note that Minv is applied inside evalResidual already.
-          dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
+          if opts["parallel_type"] == 2 && mesh.npeers > 0
+            startSolutionExchange(mesh, sbp, eqn, opts)
+          end
+          f(mesh, sbp, eqn, opts)             # F(q^(n) + evi) now in eqn.res_vec (confirmed w/ random test)
+          array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
 
-          # combine (-dRdM - dRdq * v^(n)) into b
-          b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
+          for ix_dof = 1:mesh.numDof
+            
+            # This calculation:
+            #   dR_hat^(n)/dq^(n) * v^(n) = -v^(n) - 0.5*Minv*dt* Im[F(q^(n) + epsilon*v^(n)*im)]/epsilon
+            # Note that Minv is applied inside evalResidual already.
+            dRdq_vn_prod[ix_dof] = - v_vec[ix_dof] - 0.5*dt*imag(eqn.res_vec[ix_dof])/Ma_pert_mag
 
-        end
-        ################### End of the old mat-free Jac-vec product way of calc'ing dR/dq * v^(n)
-        =#
+            # combine (-dRdM - dRdq * v^(n)) into b
+            b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
-        # At this time step, lo_ds_innermost.A holds ∂R_hat^(n-1)/∂q^(n)
-        #   1. ∂R_hat^(n-1)/∂q^(n) is last time step's ∂R_hat^(n)/∂q^(n+1)
-        #   2. ∂R_hat^(n-1)/∂q^(n) = I - Minv*0.5*dt*∂F^(n)/∂q^(n)
-        #   3. We need ∂R_hat^(n)/∂q^(n)
-        #   4. ∂R_hat^(n)/∂q^(n) = -I - Minv*0.5*dt*∂F^(n)/∂q^(n)
-        #   5. So ∂R_hat^(n)/∂q^(n) = ∂R_hat^(n-1)/∂q^(n) - 2*I
+          end
 
-        # lo_ds_innermost.A -= 2.0*eye(mesh.numDof)
-        diagonal_shift!(lo_ds_innermost.A, -2.0)
+        elseif opts["stab_vn_Jac"] == "yes"      # stabilize the Jac-vec product on the RHS of the CNDS eqn
 
-        # A_mul_B!(dRdq_vn_prod, lo_ds_innermost.A, v_vec)
-        applyLinearOperator(lo_ds_innermost, mesh, sbp, eqn, opts, ctx_residual, t, v_vec, dRdq_vn_prod)
+          # At this time step, lo_ds_innermost.A holds ∂R_hat^(n-1)/∂q^(n)
+          #   1. ∂R_hat^(n-1)/∂q^(n) is last time step's ∂R_hat^(n)/∂q^(n+1)
+          #   2. ∂R_hat^(n-1)/∂q^(n) = I - Minv*0.5*dt*∂F^(n)/∂q^(n)
+          #   3. We need ∂R_hat^(n)/∂q^(n)
+          #   4. ∂R_hat^(n)/∂q^(n) = -I - Minv*0.5*dt*∂F^(n)/∂q^(n)
+          #   5. So ∂R_hat^(n)/∂q^(n) = ∂R_hat^(n-1)/∂q^(n) - 2*I
 
-        for ix_dof = 1:mesh.numDof
-          # combine (-dRdM - dRdq * v^(n)) into b
-          b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
+          # lo_ds_innermost.A -= 2.0*eye(mesh.numDof)
+          diagonal_shift!(lo_ds_innermost.A, -2.0)
+
+          # A_mul_B!(dRdq_vn_prod, lo_ds_innermost.A, v_vec)
+          applyLinearOperator(lo_ds_innermost, mesh, sbp, eqn, opts, ctx_residual, t, v_vec, dRdq_vn_prod)
+
+          for ix_dof = 1:mesh.numDof
+            # combine (-dRdM - dRdq * v^(n)) into b
+            b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
+          end
+
+        else
+          error("stab_vn_Jac specified incorrectly.")
         end
 
 
@@ -622,6 +632,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         fill!(v_vec, 0.0)
 
+        # TODO: remove for speed
         eqn_q_vec_norm_global = calcNorm(eqn, eqn.q_vec)
         eqnnextstep_q_vec_norm_global = calcNorm(eqn, eqn_nextstep.q_vec)
         eqn_res_vec_norm_global = calcNorm(eqn, eqn.res_vec)
@@ -656,8 +667,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
         flush(BSTDOUT)
         =#
-
-        #### The above is all new CSR code
 
         #------------------------------------------------------------------------------
         # getting from v_vec to term23
@@ -869,6 +878,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "    opts[zeroout_this_res_jac]: ", opts["zeroout_this_res_jac"])
         println(BSTDOUT, "    opts[stabilize_on_which_dFdq]: ", opts["stabilize_on_which_dFdq"])
         println(BSTDOUT, "    opts[stab_Minv_val]: ", opts["stab_Minv_val"])
+        println(BSTDOUT, "    opts[stab_vn_Jac]: ", opts["stab_vn_Jac"])
         println(BSTDOUT, " ")
         println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
         println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])
@@ -882,6 +892,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       if opts["write_L2vnorm"]
         @mpi_master close(f_L2vnorm)      # old, retaining for how to use the file_dict for writing
+        @mpi_master close(f_dDdu_norm)
         @mpi_master close(f_v_L2_norm)
         @mpi_master close(f_v_sbp_norm)
         @mpi_master close(f_i_test)

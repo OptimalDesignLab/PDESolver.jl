@@ -469,6 +469,12 @@ Note that any values associated with these options are shared with the regular
                   "one"
                   "actual"
                  There is no default; it must be specified if "stabilize_on_which_dFdq" is "noMinv".
+"stab_vn_Jac": Whether or not to stabilize the Jac-vec product in the RHS of the CNDS eqn.
+               Possible options are:
+                "yes"
+                "no"
+               There is no default; it must be specified if "stabilize_v" is true.
+
 
 
 

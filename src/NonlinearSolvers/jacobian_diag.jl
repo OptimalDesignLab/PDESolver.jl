@@ -399,7 +399,7 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
 
   numEigChgsAllEls = 0
 
-  for k=1:nblock
+  for k=1:nblock      # loop over element blocks
     # because the inner function assumes the residual is defined as
     # du/dt + R(u) = 0, but Ticon writes it as du/dt = R(u), we have to
     # multiply the Jacobian by -1 to make the unstable modes the negative
