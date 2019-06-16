@@ -189,10 +189,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       # for visualization of element level DS energy
       old_q_vec = zeros(eqn.q_vec)
       R_stab = zeros(eqn.q_vec)
-      v_energy = zeros(eqn.q_vec)
+      v_L2_norm_part1 = zeros(eqn.q_vec)
 
-      @mpi_master f_v_energy_norm = open("v_energy_norm.dat", "w")
-      @mpi_master f_v_vec_norm = open("v_vec_norm.dat", "w")
+      @mpi_master f_v_L2_norm = open("v_L2_norm.dat", "w")
+      @mpi_master f_v_sbp_norm = open("v_sbp_norm.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
       # @mpi_master f_check1 = open("check1.dat", "w")
     end
@@ -315,8 +315,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     if (i % output_freq) == 0
       @mpi_master flush(BSTDOUT)
       @mpi_master if opts["perturb_Ma_CN"]
-        flush(f_v_energy_norm)
-        flush(f_v_vec_norm)
+        flush(f_v_L2_norm)
+        flush(f_v_sbp_norm)
       end
       @mpi_master flush(f_i_test)
       @mpi_master if opts["write_drag"]
@@ -501,6 +501,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         # v_vec currently holds v at timestep n: v^(n)
 
+        #=
+        ################### This is the old mat-free Jac-vec product way of calc'ing dR/dq * v^(n)
         # need to add epsilon*v_vec*im (evi) to q_vec, then re-evaluate res_hat at the updated q
         for ix_dof = 1:mesh.numDof
           eqn.q_vec[ix_dof]          += Ma_pert_mag*im*v_vec[ix_dof]
@@ -526,6 +528,29 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
 
         end
+        ################### End of the old mat-free Jac-vec product way of calc'ing dR/dq * v^(n)
+        =#
+
+        # At this time step, lo_ds_innermost.A holds ∂R_hat^(n-1)/∂q^(n)
+        #   1. ∂R_hat^(n-1)/∂q^(n) is last time step's ∂R_hat^(n)/∂q^(n+1)
+        #   2. ∂R_hat^(n-1)/∂q^(n) = I - Minv*0.5*dt*∂F^(n)/∂q^(n)
+        #   3. We need ∂R_hat^(n)/∂q^(n)
+        #   4. ∂R_hat^(n)/∂q^(n) = -I - Minv*0.5*dt*∂F^(n)/∂q^(n)
+        #   5. So ∂R_hat^(n)/∂q^(n) = ∂R_hat^(n-1)/∂q^(n) - 2*I
+
+        # lo_ds_innermost.A -= 2.0*eye(mesh.numDof)
+        diagonal_shift!(lo_ds_innermost.A, -2.0)
+
+        # A_mul_B!(dRdq_vn_prod, lo_ds_innermost.A, v_vec)
+        applyLinearOperator(lo_ds_innermost, mesh, sbp, eqn, opts, ctx_residual, t, v_vec, dRdq_vn_prod)
+
+        for ix_dof = 1:mesh.numDof
+          # combine (-dRdM - dRdq * v^(n)) into b
+          b_vec[ix_dof] = - dRdq_vn_prod[ix_dof] - dRdM_vec[ix_dof] 
+        end
+
+
+
         #=
         # output of norms of quantities every time step (debugging only)
         =#
@@ -574,17 +599,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData, v_vec)
         end
         
-        ############### TODO: LOOK AT line 77, ls_standard: 
-        # do we need to startSolutionExchange????
-        # if start_comm
-          # startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
-        # end
+        # Must startSolutionExchange before calculating any of Jac
         if opts["parallel_type"] == 2 && mesh.npeers > 0
           startSolutionExchange(mesh, sbp, eqn, opts)
         end
 
         # Update linear operator:
-        #   The Jacobian ∂R_hat/∂q^(n+1) is lo_ds_innermost.A
+        #   The Jacobian ∂R_hat^(n)/∂q^(n+1) is lo_ds_innermost.A
         calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
         # Note: this is properly modifying the Jac for CN.
         flush(BSTDOUT)
@@ -614,8 +635,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         #   ls::StandardLinearSolver, b::AbstractVector (RHS), x::AbstractVector  (what is solved for)
         linearSolve(ls_ds, b_vec, v_vec)
 
-        # v_vec_norm_global = calcNorm(eqn, v_vec)
-        # println(BSTDOUT, " +++ v_vec_norm_global: ", v_vec_norm_global)
+        # v_sbp_norm_global = calcNorm(eqn, v_vec)
+        # println(BSTDOUT, " +++ v_sbp_norm_global: ", v_sbp_norm_global)
 
         ### Only for serial julia sparse.
         ### If serial Petsc Jac, A_mul_B is very slow (bc of mixing PetscMat & Julia vecs, improper method called)
@@ -671,9 +692,13 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       # for visualization of element level DS energy: end of all stages
       if opts["write_L2vnorm"]
+        # for ix_dof = 1:mesh.numDof
+          # v_energy[ix_dof] = v_vec[ix_dof] * eqn.M[ix_dof] * v_vec[ix_dof]
+        # end
         for ix_dof = 1:mesh.numDof
-          v_energy[ix_dof] = v_vec[ix_dof] * eqn.M[ix_dof] * v_vec[ix_dof]
+          v_L2_norm_part1[ix_dof] = eqn.M[ix_dof] * v_vec[ix_dof]
         end
+        v_L2_norm = dot(v_vec, v_L2_norm_part1)
 
         if (i % output_freq) == 0
           # saveSolutionToMesh(mesh, v_energy)
@@ -686,16 +711,16 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         end
 
         # i  calcNorm    avg   min   max
-        v_energy_mean_local = mean(v_energy)
+        v_vec_mean_local = mean(v_vec)
         # v_energy_min_local = minimum(v_energy)      # not doing abs on purpose
         # v_energy_max_local = maximum(v_energy)
 
-        v_energy_mean = MPI.Allreduce(v_energy_mean_local, MPI.SUM, mesh.comm)
+        v_vec_mean = MPI.Allreduce(v_vec_mean_local, MPI.SUM, mesh.comm)
         # v_energy_min = MPI.Allreduce(v_energy_min_local, MPI.SUM, mesh.comm)
         # v_energy_max = MPI.Allreduce(v_energy_max_local, MPI.SUM, mesh.comm)
 
-        v_energy_norm = calcNorm(eqn, v_energy)
-        v_vec_norm = calcNorm(eqn, v_vec)
+        # v_L2_norm = calcNorm(eqn, v_energy)
+        v_sbp_norm = calcNorm(eqn, v_vec)
 
       end   # end of if opts["write_L2vnorm"]
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -704,8 +729,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # This needs to be above the checkpoint write, in case the checkpoint is written before the 
     #   files are flushed. This would cause a gap in the data files.
-    @mpi_master println(f_v_energy_norm, i, "  ", real(v_energy_norm))
-    @mpi_master println(f_v_vec_norm, i, "  ", real(v_vec_norm))
+    @mpi_master println(f_v_L2_norm, i, "  ", real(v_L2_norm))
+    @mpi_master println(f_v_sbp_norm, i, "  ", real(v_sbp_norm))
     @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -841,6 +866,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, " ")
         println(BSTDOUT, "    opts[stabilization_method]: ", opts["stabilization_method"])
         println(BSTDOUT, "    opts[eigs_to_remove]: ", opts["eigs_to_remove"])
+        println(BSTDOUT, "    opts[zeroout_this_res_jac]: ", opts["zeroout_this_res_jac"])
+        println(BSTDOUT, "    opts[stabilize_on_which_dFdq]: ", opts["stabilize_on_which_dFdq"])
+        println(BSTDOUT, "    opts[stab_Minv_val]: ", opts["stab_Minv_val"])
+        println(BSTDOUT, " ")
         println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
         println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])
         println(BSTDOUT, "    opts[itermax]: ", opts["itermax"])
@@ -852,9 +881,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end
 
       if opts["write_L2vnorm"]
-        @mpi_master close(f_L2vnorm)
-        @mpi_master close(f_v_energy_norm)
-        @mpi_master close(f_v_vec_norm)
+        @mpi_master close(f_L2vnorm)      # old, retaining for how to use the file_dict for writing
+        @mpi_master close(f_v_L2_norm)
+        @mpi_master close(f_v_sbp_norm)
         @mpi_master close(f_i_test)
         # @mpi_master close(f_check1)
       end

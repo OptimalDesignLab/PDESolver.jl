@@ -461,6 +461,15 @@ Note that any values associated with these options are shared with the regular
                             "Minv"
                             "noMinv"
                            There is no default; it must be specified if "stabilize_v" is turned on.
+"zeroout_this_res_jac": Whether to zero out this_res_jac in stabilizeCNDSLO.
+                        Possible options are: "yes" and "no". No default; will error out if not specified.
+"stab_Minv_val": What to use for the values of Minv to be applied 
+                 to the stabilized terms to be added to the full Jac.
+                 Possible options are:
+                  "one"
+                  "actual"
+                 There is no default; it must be specified if "stabilize_on_which_dFdq" is "noMinv".
+
 
 
 # SimpleODE equation selection

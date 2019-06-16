@@ -475,6 +475,8 @@ get!(arg_dict, "stabilize_v", false)
 get!(arg_dict, "stabilization_method", "null")
 get!(arg_dict, "eigs_to_remove", "null")
 get!(arg_dict, "stabilize_on_which_dFdq", "null")
+get!(arg_dict, "zeroout_this_res_jac", "null")
+get!(arg_dict, "stab_Minv_val", "null")
 
 #   This is commented out because of the new method of assigning objective functions.
 #   They are set like this:
@@ -731,6 +733,15 @@ end
   stabilize_on_which_dFdq_valid = ["Minv", "noMinv"]
   if arg_dict["stabilize_v"] && !(arg_dict["stabilize_on_which_dFdq"] in stabilize_on_which_dFdq_valid)
     error("\n Chaotic stabilization turned on, but stabilize_on_which_dFdq not specified correctly.")
+  end
+  zeroout_this_res_jac_valid = ["yes", "no"]
+  if arg_dict["stabilize_v"] && !(arg_dict["zeroout_this_res_jac"] in zeroout_this_res_jac_valid)
+    error("\n Chaotic stabilization turned on, but zeroout_this_res_jac not specified correctly.")
+  end
+  stab_Minv_val_valid = ["one", "actual"]
+  if arg_dict["stabilize_on_which_dFdq"] == "noMinv" && !(arg_dict["stab_Minv_val"] in stab_Minv_val_valid)
+    error("\n Chaotic stabilization turned on, and stabilize_on_which_dFdq set to noMinv, but
+              stab_Minv_val set incorrectly.")
   end
 
   # Same options for perturb_Ma_CN

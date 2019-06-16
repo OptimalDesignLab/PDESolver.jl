@@ -80,12 +80,22 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
   for el_ix = 1:mesh.numEl
 
+    # This does not make a difference.
+    if opts["zeroout_this_res_jac"] == true
+      fill!(this_res_jac, 0.0)
+    end
+
     for q = 1:mesh.numNodesPerElement
       for p = 1:mesh.numNodesPerElement
 
         if opts["stabilize_on_which_dFdq"] == "noMinv"
-          # Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
-          Minv_val = 1.0        # TODO TODO why does this work, and not the proper Minv?
+          if opts["stab_Minv_val"] == "one"
+            Minv_val = 1.0        # TODO TODO why does this work, and not the proper Minv?
+          elseif opts["stab_Minv_val"] == "actual"
+            Minv_val = mesh.jac[p, el_ix]/sbp.w[p]  # entry in Minv
+          else
+            error("Minv_val option set improperly.")
+          end
           # 20190612
           # mistakenly using i (timestep index) instead of el_ix caused some stabilization
         end
@@ -124,6 +134,9 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
       end   # end loop over p
     end   # end loop over q
+
+    # println(BSTDOUT, " el_ix: ", el_ix)
+    # println(BSTDOUT, " this_res_jac: ", this_res_jac)
 
 
     # this_res_jac should contain all the positive eigs, so if we subtract, 
