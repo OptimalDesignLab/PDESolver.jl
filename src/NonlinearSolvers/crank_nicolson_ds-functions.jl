@@ -171,6 +171,42 @@ function modifyCNJacForMatFreeCheck_reverse(lo::CNDSHasMat, mesh, sbp, eqn, opts
 end   # end function modifyCNJacForMatFreeCheck_reverse
 
 #------------------------------------------------------------------------------
+# Auxiliary functions
+#------------------------------------------------------------------------------
+
+"""
+  Converts an array of size numEl to one of size numDofs.
+  It does this by simply assigning the value corresponding
+  to each element to all the dofs in the element.
+
+  Inputs:
+    mesh: usual
+    array: array of length mesh.numEl to populate a mesh.numDof length array
+
+  Input/Output:
+    vec: array of length mesh.numDof that will be overwritten with the spread-out
+         data from 'array'
+"""
+function convertArrayOfElsToDofs(mesh, array::Array, vec::Array)
+
+  @assert length(array) == mesh.numEl
+  @assert length(vec) == mesh.numDof
+
+  dofsPerEl = div(mesh.numDof, mesh.numEl)    # == numDofPerNode*numNodesPerEl
+
+  ctr = 1
+
+  for el_ix = 1:length(array)
+    for dof_ix = 1:dofsPerEl
+      vec[ctr] = array[el_ix]
+      ctr += 1
+    end
+  end
+
+  return nothing
+end
+
+#------------------------------------------------------------------------------
 # Checkpointing functions
 #------------------------------------------------------------------------------
 

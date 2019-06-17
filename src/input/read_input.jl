@@ -478,6 +478,8 @@ get!(arg_dict, "stabilize_on_which_dFdq", "null")
 get!(arg_dict, "zeroout_this_res_jac", "null")
 get!(arg_dict, "stab_Minv_val", "null")
 get!(arg_dict, "stab_vn_Jac", "null")
+get!(arg_dict, "write_strongJac_eigvals", false)
+get!(arg_dict, "write_numEigChgs_arrayEls", false)
 
 #   This is commented out because of the new method of assigning objective functions.
 #   They are set like this:

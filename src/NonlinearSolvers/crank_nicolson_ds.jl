@@ -879,6 +879,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "    opts[stabilize_on_which_dFdq]: ", opts["stabilize_on_which_dFdq"])
         println(BSTDOUT, "    opts[stab_Minv_val]: ", opts["stab_Minv_val"])
         println(BSTDOUT, "    opts[stab_vn_Jac]: ", opts["stab_vn_Jac"])
+        println(BSTDOUT, "    opts[write_strongJac_eigvals]: ", opts["write_strongJac_eigvals"])
+        println(BSTDOUT, "    opts[write_numEigChgs_arrayEls]: ", opts["write_numEigChgs_arrayEls"])
         println(BSTDOUT, " ")
         println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
         println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])

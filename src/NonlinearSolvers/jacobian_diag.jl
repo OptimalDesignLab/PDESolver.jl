@@ -180,6 +180,9 @@ function diagMatVec(A::DiagJac, mesh::AbstractDGMesh, x::AbstractVector, b::Abst
 end
 
 import Base.eigvals
+"""
+  eigvals extended to a DiagJac type
+"""
 function eigvals(A::DiagJac)
 
   blocksize, blocksize, nblock = size(A.A)
@@ -190,6 +193,40 @@ function eigvals(A::DiagJac)
   for block_ix = 1:nblock
 
     this_block_eigs = eigvals(A.A[:, :, block_ix])
+
+    # blocksize = 3, block/start_ix/end_ix:
+    #   1/1/3
+    #   2/4/6
+    #   3/7/9
+    # start_ix = (block_ix-1)*blocksize + 1
+    # end_ix = start_ix + (blocksize - 1)
+
+    alleigvals = vcat(alleigvals, this_block_eigs)
+    # this_block_eigs_ix = 1
+    # for ix = start_ix:end_ix
+      # alleigvals[ix] = this_block_eigs[this_block_eigs_ix]
+      # this_block_eigs_ix += 1
+    # end
+
+  end
+
+  return alleigvals
+
+end
+
+"""
+  eigvals extended to a 3D Array type (inner type in a DiagJac)
+"""
+function eigvals(A::Array{Complex{Float64},3})
+
+  blocksize, blocksize, nblock = size(A)
+
+  # alleigvals = zeros(Complex{Float64}, blocksize*nblock)
+  alleigvals = Array{Complex{Float64}}(0)
+
+  for block_ix = 1:nblock
+
+    this_block_eigs = eigvals(A[:, :, block_ix])
 
     # blocksize = 3, block/start_ix/end_ix:
     #   1/1/3
@@ -398,6 +435,7 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
   ublock = zeros(T2, blocksize)
 
   numEigChgsAllEls = 0
+  numEigChgs_arrayEls = zeros(mesh.numEl)     # mesh.numEl == nblock
 
   for k=1:nblock      # loop over element blocks
     # because the inner function assumes the residual is defined as
@@ -442,17 +480,6 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
     println(BSTDOUT, " vecnorm(Ablock) pre: ", vecnorm(Ablock))
     =#
 
-# TODO
-#=
-    if opts["stabilize_on_which_dFdq"] == "Minv"
-    elseif opts["stabilize_on_which_dFdq"] == "noMinv"
-      # left multiply by eqn.M
-      for j = 1:mesh.numNodesPerElement
-        for i = 1:mesh.numDofPerNode
-        end
-      end
-    end
-=#
 
     if opts["stabilization_method"] == "quadprog"
       findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
@@ -465,14 +492,7 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
       numEigChgsAllEls += numEigChgs
     end
 
-# TODO
-#=
-    if opts["stabilize_on_which_dFdq"] == "Minv"
-    elseif opts["stabilize_on_which_dFdq"] == "noMinv"
-      # left multiply by eqn.Minv
-
-    end
-=#
+    numEigChgs_arrayEls[k] = numEigChgs
 
     # removeUnstableModes!(Ablock, u_k)
     #=
@@ -515,7 +535,7 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
 
   end  # end loop over blocks (for k = 1:nblock)
 
-  return numEigChgsAllEls
+  return numEigChgsAllEls, numEigChgs_arrayEls
 end
 
 

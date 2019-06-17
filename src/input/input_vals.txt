@@ -474,6 +474,13 @@ Note that any values associated with these options are shared with the regular
                 "yes"
                 "no"
                There is no default; it must be specified if "stabilize_v" is true.
+"write_strongJac_eigvals": Whether or not to write the strongJac's eigvals to disk. 
+                           Bool. Happens before and after stabilization routine, on intervals
+                           specified by opts["output_freq"]. Default is false.
+"write_numEigChgs_arrayEls": Whether or not to write the number of eigenvalue changes per element,
+                             saved to mesh and written as vtu, to disk.
+                             Bool. Happens on intervals specified by opts["output_freq"]. 
+                             Default is false.
 
 
 

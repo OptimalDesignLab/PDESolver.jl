@@ -13,6 +13,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   v_vec =           ctx_residual[8]
 
   # println(BSTDOUT, "        stabilizeCNDSLO called")
+  myrank = eqn.myrank
 
   # get i from t
   i = round(Int, t/h + 2)
@@ -32,12 +33,25 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   # stores the strong Jacobian (volume Jacobian) into stab_assembler.A
   evalJacobianStrong(mesh, sbp, eqn, opts, stab_assembler, t)
 
-  # eigenvalue plotting, strong Jac, before any filtering
-  #=
-  eigs_strongJac_before_stab = eigvals(stab_assembler.A)
-  filename = string("i", i,"_2-eigs_strongJac_before_stab.dat")
-  writedlm(filename, eigs_strongJac_before_stab)
-  =#
+  @mpi_master if (i % opts["output_freq"]) == 0
+    if opts["write_strongJac_eigvals"]
+      # eigenvalue plotting, strong Jac, before any filtering
+      eigs_strongJac_before_stab = eigvals(stab_assembler.A)
+      filename = string("i", i,"-eigs_strongJac_before_stab.dat")
+      writedlm(filename, eigs_strongJac_before_stab)
+
+      # copy it into a separate DiagJac so the stabilization can be analyzed
+      # diagJac_for_comparison = DiagJac(Complex128, 
+                                       # mesh.numDofPerNode*mesh.numNodesPerElement,
+                                       # mesh.numEl)
+      # copyDiagJac(stab_assembler.A, diagJac_for_comparison)
+      # type notes:
+      #   typeof(stab_assembler): NonlinearSolvers.AssembleDiagJacData{Complex{Float64}}
+      #   typeof(stab_assembler.A): NonlinearSolvers.DiagJac{Complex{Float64}}
+      #   typeof(stab_assembler.A.A): Array{Complex{Float64},3}
+      diagJac_for_comparison = deepcopy(stab_assembler.A.A)
+    end
+  end
 
   # filterDiagJac
   #   location: jacobian_diag.jl
@@ -53,16 +67,36 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   #     Because right after this stabilizeCNDSLO is called, 
   #     linearSolve is called to find v_vec^(n+1)
   eigs_to_remove = opts["eigs_to_remove"]
-  numEigChgsAllEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, 
-                                   stab_A, eigs_to_remove=eigs_to_remove)
-  println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
+  numEigChgsAllEls, numEigChgs_arrayEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, 
+                                                        stab_A, eigs_to_remove=eigs_to_remove)
+  @mpi_master println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
 
-  # eigenvalue plotting, strong Jac, after filtering
-  #=
-  eigs_strongJac_after_stab = eigvals(stab_assembler.A)
-  filename = string("i", i,"_3-eigs_strongJac_after_stab.dat")
-  writedlm(filename, eigs_strongJac_after_stab)
-  =#
+  @mpi_master if (i % opts["output_freq"]) == 0
+
+    if opts["write_numEigChgs_arrayEls"]
+      numEigChgs_vec = zeros(mesh.numDof)
+      convertArrayOfElsToDofs(mesh, numEigChgs_arrayEls, numEigChgs_vec)
+      saveSolutionToMesh(mesh, numEigChgs_vec)
+      fname = string("numEigChgs_arrayEls_", i)
+      writeVisFiles(mesh, fname)
+    end
+
+    if opts["write_strongJac_eigvals"]
+      # eigenvalue plotting, strong Jac, after filtering
+      eigs_whatisremovedfromJac = eigvals(stab_assembler.A)
+      filename = string("i", i,"-eigs_whatisremovedfromJac.dat")
+      writedlm(filename, eigs_whatisremovedfromJac)
+
+      # subtract the stabilization term from the diagJac_for_comparison
+      # This is done for eigcluster analysis only.
+      # The stabilization term is intended to be subtracted from the full Jac below.
+      diagJac_for_comparison = diagJac_for_comparison - stab_assembler.A.A
+      eigs_strongJac_after_stab = eigvals(diagJac_for_comparison)
+      filename = string("i", i,"-eigs_strongJac_after_stab.dat")
+      writedlm(filename, eigs_strongJac_after_stab)
+    end
+
+  end
 
   # Now add each block of the stabilized strong jacobian to the full Jacobian
   # We are converting between the 2D element Jacobian in each block of the DiagJac
