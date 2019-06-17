@@ -632,11 +632,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         fill!(v_vec, 0.0)
 
-        # TODO: remove for speed
-        eqn_q_vec_norm_global = calcNorm(eqn, eqn.q_vec)
-        eqnnextstep_q_vec_norm_global = calcNorm(eqn, eqn_nextstep.q_vec)
-        eqn_res_vec_norm_global = calcNorm(eqn, eqn.res_vec)
-        eqnnextstep_q_vec_norm_global = calcNorm(eqn, eqn_nextstep.res_vec)
+        # eqn_q_vec_norm_global = calcNorm(eqn, eqn.q_vec)
+        # eqnnextstep_q_vec_norm_global = calcNorm(eqn, eqn_nextstep.q_vec)
+        # eqn_res_vec_norm_global = calcNorm(eqn, eqn.res_vec)
+        # eqnnextstep_q_vec_norm_global = calcNorm(eqn, eqn_nextstep.res_vec)
 
         # println(BSTDOUT, " eqn_q_vec_norm_global: ", eqn_q_vec_norm_global)
         # println(BSTDOUT, " eqnnextstep_q_vec_norm_global: ", eqnnextstep_q_vec_norm_global)

@@ -34,6 +34,9 @@ include("stabilization_explicit.jl")
 include("clipJac.jl")
   export clipJac!, clipJacFast!
 
+include("quadprog.jl")
+  export findStablePerturbation!
+
 include("rk4.jl")
 include("rk4_ds.jl")
   export rk4_ds
