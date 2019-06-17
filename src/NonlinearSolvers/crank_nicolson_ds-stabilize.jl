@@ -12,7 +12,6 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   clipJacData =     ctx_residual[7]
   v_vec =           ctx_residual[8]
 
-  # println(BSTDOUT, "        stabilizeCNDSLO called")
   myrank = eqn.myrank
 
   # get i from t
@@ -41,10 +40,6 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
       writedlm(filename, eigs_strongJac_before_stab)
 
       # copy it into a separate DiagJac so the stabilization can be analyzed
-      # diagJac_for_comparison = DiagJac(Complex128, 
-                                       # mesh.numDofPerNode*mesh.numNodesPerElement,
-                                       # mesh.numEl)
-      # copyDiagJac(stab_assembler.A, diagJac_for_comparison)
       # type notes:
       #   typeof(stab_assembler): NonlinearSolvers.AssembleDiagJacData{Complex{Float64}}
       #   typeof(stab_assembler.A): NonlinearSolvers.DiagJac{Complex{Float64}}
@@ -142,22 +137,7 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
             i1 = i + (p-1)*mesh.numDofPerNode
             j1 = j + (q-1)*mesh.numDofPerNode
 
-            #=
-            println(BSTDOUT, "---\n el_ix: $el_ix  q: $q  p: $p  i: $i  j: $j")
-            println(BSTDOUT, " i1: $i1  j1: $j1")
-            println(BSTDOUT, " this_res_jac[i, j, p, q]: ", this_res_jac[i, j, p, q])
-            println(BSTDOUT, " stab_A.A[i1, j1, el_ix]: ", stab_A.A[i1, j1, el_ix])
-            println(BSTDOUT, " typeof(stab_A.A[i1,j1,el_ix]): ", typeof(stab_A.A[i1,j1,el_ix]))
-            println(BSTDOUT, " typeof(this_res_jac[i,j,p,q]): ", typeof(this_res_jac[i,j,p,q]))
-            =#
             this_res_jac[i, j, p, q] = stab_A.A[i1, j1, el_ix]
-            #=
-            println(BSTDOUT, " after this_res_jac assign")
-            println(BSTDOUT, " this_res_jac[i, j, p, q]: ", this_res_jac[i, j, p, q])
-            println(BSTDOUT, " stab_A.A[i1, j1, el_ix]: ", stab_A.A[i1, j1, el_ix])
-            println(BSTDOUT, " typeof(stab_A.A[i1,j1,el_ix]): ", typeof(stab_A.A[i1,j1,el_ix]))
-            println(BSTDOUT, " typeof(this_res_jac[i,j,p,q]): ", typeof(this_res_jac[i,j,p,q]))
-            =#
 
             if opts["stabilize_on_which_dFdq"] == "noMinv"
               this_res_jac[i, j, p, q] *= Minv_val
@@ -168,10 +148,6 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
       end   # end loop over p
     end   # end loop over q
-
-    # println(BSTDOUT, " el_ix: ", el_ix)
-    # println(BSTDOUT, " this_res_jac: ", this_res_jac)
-
 
     # this_res_jac should contain all the positive eigs, so if we subtract, 
     #   we are left with only negative and zero eigenvalues.
