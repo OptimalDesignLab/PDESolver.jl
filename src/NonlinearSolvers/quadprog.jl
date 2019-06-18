@@ -23,15 +23,15 @@ function findStablePerturbation!(Jac::AbstractMatrix,
 
   @assert( size(Jac,1) == size(Jac,2) == length(u) )
 
-  if eigs_to_remove == "neg"
-    scale!(Jac, -1.0)
-  elseif eigs_to_remove == "pos"
+  # if eigs_to_remove == "neg"
+    # scale!(Jac, -1.0)
+  # elseif eigs_to_remove == "pos"
     # do nothing
-  elseif eigs_to_remove == "none"
-    return
-  else
-    error("eigs_to_remove specified incorrectly.")
-  end
+  # elseif eigs_to_remove == "none"
+    # return
+  # else
+    # error("eigs_to_remove specified incorrectly.")
+  # end
 
   
   n = size(Jac,1)
@@ -77,17 +77,24 @@ function findStablePerturbation!(Jac::AbstractMatrix,
   end
   =#
 
-  for i = 1:n
-    Jac[i,i] += A[div(i*(i-1),2)+i]
+  # for i = 1:n
+    # Jac[i,i] += A[div(i*(i-1),2)+i]
+    # for j = 1:(i-1)
+      # Jac[i,j] += A[div(i*(i-1),2)+j]
+      # Jac[j,i] += A[div(i*(i-1),2)+j]
+    # end
+  # end
+  for i = 1:n   # TODO figure out which one
+    Jac[i,i] = A[div(i*(i-1),2)+i]
     for j = 1:(i-1)
-      Jac[i,j] += A[div(i*(i-1),2)+j]
-      Jac[j,i] += A[div(i*(i-1),2)+j]
+      Jac[i,j] = A[div(i*(i-1),2)+j]
+      Jac[j,i] = A[div(i*(i-1),2)+j]
     end
   end
 
-  if eigs_to_remove == "neg"    # TODO ???
-    scale!(Jac, -1.0)
-  end
+  # if eigs_to_remove == "neg"    # TODO ???
+    # scale!(Jac, -1.0)
+  # end
 
 end     # end function findStablePerturbation!
 

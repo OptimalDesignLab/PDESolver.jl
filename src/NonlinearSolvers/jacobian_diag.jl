@@ -484,7 +484,7 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
     if opts["stabilization_method"] == "quadprog"
       findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
       numEigChgsAllEls = 0
-      numEigChgs= 0
+      numEigChgs = 0
     elseif opts["stabilization_method"] == "clipJac"
       numEigChgs = clipJac!(Ablock, eigs_to_remove)
       numEigChgsAllEls += numEigChgs

@@ -64,7 +64,18 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
   eigs_to_remove = opts["eigs_to_remove"]
   # TODO: make sure the fourth argument is v_vec!!    TODO
   # eqn.q_vec allows it to proceed past a SingularException, but it is incorrect.
-  numEigChgsAllEls, numEigChgs_arrayEls = filterDiagJac(mesh, eqn, opts, eqn.q_vec, clipJacData, 
+
+  # v_vec is zeros at i == 2; causes a SingularException
+  if i == 2 && opts["stabilization_method"] == "quadprog"
+    println(BSTDOUT, " breaking from stabilizeCNDSLO; i == 2 and quadprog selected but v_vec is zeros")
+    # need to reset eqn.params.use_Minv! or else it'll be wrong for the next primal evalResidual
+    if opts["stabilize_on_which_dFdq"] == "noMinv"
+      eqn.params.use_Minv = 1
+    end
+    return
+  end
+
+  numEigChgsAllEls, numEigChgs_arrayEls = filterDiagJac(mesh, eqn, opts, v_vec, clipJacData, 
                                                         stab_A, eigs_to_remove=eigs_to_remove)
   @mpi_master println(BSTDOUT, " numEigChgsAllEls: ", numEigChgsAllEls)
 
@@ -153,9 +164,10 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
     # this_res_jac should contain all the positive eigs, so if we subtract, 
     #   we are left with only negative and zero eigenvalues.
-    if opts["stabilization_method"] != "quadprog"
+    # MUST scale this_res_jac by -1.0 for clipJac
+    # if opts["stabilization_method"] != "quadprog"     # TODO: figure out if this is necessary
       scale!(this_res_jac, -1.0)
-    end
+    # end
 
     assembleElement(assembler, mesh, el_ix, this_res_jac)
     # This is calling function assembleElement(helper::_AssembleElementData{PetscMat}, 
