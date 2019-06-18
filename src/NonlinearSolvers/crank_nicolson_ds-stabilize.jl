@@ -92,13 +92,24 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     if opts["write_strongJac_eigvals"]
       # eigenvalue plotting, strong Jac, after filtering
       eigs_whatisremovedfromJac = eigvals(stab_assembler.A)
-      filename = string("i", i,"-eigs_whatisremovedfromJac.dat")
+
+      if opts["stabilization_method"] == "clipJac"
+        filename = string("i", i,"-eigs_whatisremovedfromJac.dat")
+      elseif opts["stabilization_method"] == "quadprog"
+        filename = string("i", i,"-eigs_stabtermaddedtoJac.dat")
+      end
       writedlm(filename, eigs_whatisremovedfromJac)
 
       # subtract the stabilization term from the diagJac_for_comparison
       # This is done for eigcluster analysis only.
-      # The stabilization term is intended to be subtracted from the full Jac below.
-      diagJac_for_comparison = diagJac_for_comparison - stab_assembler.A.A
+      # The stabilization term is intended to be subtracted (for clipJac) 
+      #   from the full Jac below.
+      if opts["stabilization_method"] == "clipJac"
+        diagJac_for_comparison = diagJac_for_comparison - stab_assembler.A.A
+      elseif opts["stabilization_method"] == "quadprog"
+        # if it's quadprog, we add below, so this reflects that
+        diagJac_for_comparison = diagJac_for_comparison + stab_assembler.A.A
+      end
       eigs_strongJac_after_stab = eigvals(diagJac_for_comparison)
       filename = string("i", i,"-eigs_strongJac_after_stab.dat")
       writedlm(filename, eigs_strongJac_after_stab)
@@ -165,9 +176,9 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     # this_res_jac should contain all the positive eigs, so if we subtract, 
     #   we are left with only negative and zero eigenvalues.
     # MUST scale this_res_jac by -1.0 for clipJac
-    # if opts["stabilization_method"] != "quadprog"     # TODO: figure out if this is necessary
+    if opts["stabilization_method"] != "quadprog"     # TODO: figure out if this is necessary
       scale!(this_res_jac, -1.0)
-    # end
+    end
 
     assembleElement(assembler, mesh, el_ix, this_res_jac)
     # This is calling function assembleElement(helper::_AssembleElementData{PetscMat}, 

@@ -23,19 +23,9 @@ function findStablePerturbation!(Jac::AbstractMatrix,
 
   @assert( size(Jac,1) == size(Jac,2) == length(u) )
 
-  # if eigs_to_remove == "neg"
-    # scale!(Jac, -1.0)
-  # elseif eigs_to_remove == "pos"
-    # do nothing
-  # elseif eigs_to_remove == "none"
-    # return
-  # else
-    # error("eigs_to_remove specified incorrectly.")
-  # end
-
-  
   n = size(Jac,1)
   # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
+  # This is b in the derivation (without the negative sign)
   prod = zero(T)
   for i = 1:n
     for j = 1:n
@@ -43,18 +33,22 @@ function findStablePerturbation!(Jac::AbstractMatrix,
     end
   end
 
-  #TODO TODO: prod < 0 for eigs_to_remove == "neg"???
-  if prod > 0
-  # if prod < 0
+  if prod < 0
     # nothing to do
     # println("prod > 0 check hit, not stabilizing")
-    return
+    stab_term_vecnorm = 0.0
+    return stab_term_vecnorm
   end
 
   # println("prod <= 0, now stabilizing")
 
-  # array A stores the entries in the contraint Jacobian
-  # A = zeros(div(n*(n+1),2))
+  # Form the KKT constraint Jacobian in A
+  # size: A = zeros(div(n*(n+1),2))
+  # A is a row matrix. It looks like this:
+  #   [u1^2, 2*u2*u1, u2^2, 2*u3*u1, 2*u3*u2, u3^2, ...]
+  # This comes from the fact that we are doing a u^T*Jac*u product,
+  #   resulting in a scalar. Since Jac is symmetric, the off-diagonal
+  #   entries are multiplied by 2.
   for i = 1:n
     A[div(i*(i-1),2)+i] = u[i]*u[i]
     for j = 1:(i-1)
@@ -62,39 +56,39 @@ function findStablePerturbation!(Jac::AbstractMatrix,
     end
   end
 
-  # A *= -prod/dot(A,A)
+  # The stabilization matrix is symmetric. So we only need to consider
+  #   one triangle of it (here, lower triangle w/ diagonal).
+  # This lower triangle, in vector form, is given by
+  #   s = -((u^T*Jac*u)/(A*A^T)) * A^T.
+  # The term inside the parentheses is a scalar. In other words, one entry is
+  #   s_1 = -((u^T*Jac*u)/(A*A^T)) * A^T_1.
+  # Here, we are scaling A by that scalar factor so that it becomes s.
+  # old: A *= -prod/dot(A,A)
   scale!(A, -prod/dot(A, A))        # divide by zero! root of NaN.
 
-  # fill!(Jacpert, 0.0)
-
-  #=
+  # Form the stabilization matrix from its entries on the lower triangle,
+  #   now stored in A. This stabilization matrix is what needs to be returned.
+  # We are reusing the Jac matrix that was passed in (element strong volume Jacobian),
+  #   because that is what the assembly routine in stabilizeCNDSLO assembles into the
+  #   full Jacobian.
+  # It is to be ADDED to the full Jacobian, unlike the clipJac method, which is subtracted
+  #   by scaling the stabilization contribution.
+  # Historical note: We used to have '+='s below, not '='s. This was because this function
+  #   performed the assembly into the Lorenz Jacobian. 
+  #   Now it is handled in the calling function.
   for i = 1:n
-    Jacpert[i,i] += A[div(i*(i-1),2)+i]
-    for j = 1:(i-1)
-      Jacpert[i,j] += A[div(i*(i-1),2)+j]
-      Jacpert[j,i] += A[div(i*(i-1),2)+j]
-    end
-  end
-  =#
-
-  # for i = 1:n
-    # Jac[i,i] += A[div(i*(i-1),2)+i]
-    # for j = 1:(i-1)
-      # Jac[i,j] += A[div(i*(i-1),2)+j]
-      # Jac[j,i] += A[div(i*(i-1),2)+j]
-    # end
-  # end
-  for i = 1:n   # TODO figure out which one
+    # diagonal elements of the stab matrix
     Jac[i,i] = A[div(i*(i-1),2)+i]
     for j = 1:(i-1)
+      # off diagonal elements of the stab matrix
       Jac[i,j] = A[div(i*(i-1),2)+j]
       Jac[j,i] = A[div(i*(i-1),2)+j]
     end
   end
 
-  # if eigs_to_remove == "neg"    # TODO ???
-    # scale!(Jac, -1.0)
-  # end
+  stab_term_vecnorm = vecnorm(Jac)
+
+  return stab_term_vecnorm
 
 end     # end function findStablePerturbation!
 

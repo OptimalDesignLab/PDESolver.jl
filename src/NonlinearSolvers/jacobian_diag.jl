@@ -436,6 +436,7 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
 
   numEigChgsAllEls = 0
   numEigChgs_arrayEls = zeros(mesh.numEl)     # mesh.numEl == nblock
+  stab_term_vecnorm = 0.0
 
   for k=1:nblock      # loop over element blocks
     # because the inner function assumes the residual is defined as
@@ -482,9 +483,15 @@ function filterDiagJac(mesh::AbstractDGMesh, eqn, opts,
 
 
     if opts["stabilization_method"] == "quadprog"
-      findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
-      numEigChgsAllEls = 0
-      numEigChgs = 0
+      stab_term_vecnorm = findStablePerturbation!(Ablock, ublock, workvec, eigs_to_remove)
+      # Little hacky, but we're using numEigChgs to store each element's 
+      #   stabilization term's vecnorm so we can plot it on the mesh
+      #   using the same infrastructure used by the numEigs per El tool.
+      # println(BSTDOUT, " stab_term_vecnorm: ", stab_term_vecnorm)
+      numEigChgs = stab_term_vecnorm
+      numEigChgsAllEls += stab_term_vecnorm   # kinda nonsense to add them, 
+                                              #   but gives some measure
+      # println(BSTDOUT, " numEigChgs: ", numEigChgs)
     elseif opts["stabilization_method"] == "clipJac"
       numEigChgs = clipJac!(Ablock, eigs_to_remove)
       numEigChgsAllEls += numEigChgs
