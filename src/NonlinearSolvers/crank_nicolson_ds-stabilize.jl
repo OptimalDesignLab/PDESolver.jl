@@ -176,7 +176,10 @@ function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
     # this_res_jac should contain all the positive eigs, so if we subtract, 
     #   we are left with only negative and zero eigenvalues.
     # MUST scale this_res_jac by -1.0 for clipJac
-    if opts["stabilization_method"] != "quadprog"     # TODO: figure out if this is necessary
+    if opts["stabilization_method"] == "quadprog"
+      # just here to make it clear that quadprog is adding the stab term
+      scale!(this_res_jac, 1.0)
+    elseif opts["stabilization_method"] == "clipJac" || opts["stabilization_method"] == "clipJacFast"
       scale!(this_res_jac, -1.0)
     end
 

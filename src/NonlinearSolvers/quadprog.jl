@@ -26,6 +26,7 @@ function findStablePerturbation!(Jac::AbstractMatrix,
   n = size(Jac,1)
   # compute baseline product, 0.5*u.'*(Jac^T + Jac)*u
   # This is b in the derivation (without the negative sign)
+  # Note that 0.5*(Jac^T + Jac) is J_sym.
   prod = zero(T)
   for i = 1:n
     for j = 1:n
@@ -63,6 +64,8 @@ function findStablePerturbation!(Jac::AbstractMatrix,
   # The term inside the parentheses is a scalar. In other words, one entry is
   #   s_1 = -((u^T*Jac*u)/(A*A^T)) * A^T_1.
   # Here, we are scaling A by that scalar factor so that it becomes s.
+  # Note: dot(A, A) == A*A^T
+
   # old: A *= -prod/dot(A,A)
   scale!(A, -prod/dot(A, A))        # divide by zero! root of NaN.
 
@@ -75,7 +78,7 @@ function findStablePerturbation!(Jac::AbstractMatrix,
   #   by scaling the stabilization contribution.
   # Historical note: We used to have '+='s below, not '='s. This was because this function
   #   performed the assembly into the Lorenz Jacobian. 
-  #   Now it is handled in the calling function.
+  #   Now assembly is handled in the calling function.
   for i = 1:n
     # diagonal elements of the stab matrix
     Jac[i,i] = A[div(i*(i-1),2)+i]
