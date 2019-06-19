@@ -192,6 +192,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       v_L2_norm_part1 = zeros(eqn.q_vec)
 
       @mpi_master f_dDdu_norm = open("dDdu_norm.dat", "w")
+      @mpi_master f_term23 = open("term23.dat", "w")
       @mpi_master f_v_L2_norm = open("v_L2_norm.dat", "w")
       @mpi_master f_v_sbp_norm = open("v_sbp_norm.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
@@ -356,11 +357,6 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       end   # end of if skip_checkpoint check
     end   # end of if use_checkpointing check
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    FAC = 1.0       # for making stabilization +=    (now that explicit fix has been implemented: no fac needed)
-    # FAC = -1.0       # for making stabilization -=  (needed for eig clipping?)
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
     t_nextstep = t + h
 
     # allow for user to select CN's internal Newton's method. Only supports dense FD Jacs, so only for debugging
@@ -379,15 +375,17 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
                   # The calcResidual call is buried inside newtonInner.
                   #   newtonInner -> rhs_func -> physicsRhs (residual_evaluation.jl)
-                  # TODO: need to save the complex part of R inside physicsRhs
     end
 
     # do the callback using the current eqn object at time t
     eqn.majorIterationCallback(i, mesh, sbp, eqn, opts, BSTDOUT)
 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # TODO: stabilization in newtonInner
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # write solution to disk every output_freq
+    if (i % output_freq) == 0
+      @mpi_master println("writing solution to disk")
+      solution_fname = string("solution_i", i, "_", myrank, ".dat")
+      writedlm(solution_fname, real(eqn.q_vec))
+    end
 
     # need to assemble solution into res_vec?
     res_norm = calcNorm(eqn, eqn.res_vec)
@@ -737,6 +735,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # This needs to be above the checkpoint write, in case the checkpoint is written before the 
     #   files are flushed. This would cause a gap in the data files.
+    @mpi_master println(f_term23, i, "  ", real(term23))
     @mpi_master println(f_v_L2_norm, i, "  ", real(v_L2_norm))
     @mpi_master println(f_v_sbp_norm, i, "  ", real(v_sbp_norm))
     @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
@@ -893,6 +892,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       if opts["write_L2vnorm"]
         @mpi_master close(f_L2vnorm)      # old, retaining for how to use the file_dict for writing
+        @mpi_master close(f_term23)
         @mpi_master close(f_dDdu_norm)
         @mpi_master close(f_v_L2_norm)
         @mpi_master close(f_v_sbp_norm)
