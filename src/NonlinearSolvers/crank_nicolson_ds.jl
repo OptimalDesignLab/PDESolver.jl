@@ -382,7 +382,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # write solution to disk every output_freq
     if (i % output_freq) == 0
-      @mpi_master println("writing solution to disk")
+      @mpi_master println(" writing solution to disk")
       solution_fname = string("solution_i", i, "_", myrank, ".dat")
       writedlm(solution_fname, real(eqn.q_vec))
     end
@@ -879,6 +879,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         println(BSTDOUT, "    opts[stab_vn_Jac]: ", opts["stab_vn_Jac"])
         println(BSTDOUT, "    opts[write_strongJac_eigvals]: ", opts["write_strongJac_eigvals"])
         println(BSTDOUT, "    opts[write_numEigChgs_arrayEls]: ", opts["write_numEigChgs_arrayEls"])
+        println(BSTDOUT, "    opts[statistics_start_iter]: ", opts["statistics_start_iter"])
+        println(BSTDOUT, "    opts[statistics_end_iter]: ", opts["statistics_end_iter"])
         println(BSTDOUT, " ")
         println(BSTDOUT, "    opts[output_freq]: ", opts["output_freq"])
         println(BSTDOUT, "    opts[use_itermax]: ", opts["use_itermax"])

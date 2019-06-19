@@ -481,7 +481,10 @@ Note that any values associated with these options are shared with the regular
                              saved to mesh and written as vtu, to disk.
                              Bool. Happens on intervals specified by opts["output_freq"]. 
                              Default is false.
-
+"statistics_start_iter": Iteration at which to start gathering tangent-sensitivity statistics.
+                         Default 0.
+"statistics_end_iter": Iteration at which to end gathering tangent-sensitivity statistics.
+                       Default arg_dict["itermax"] + 1.
 
 
 

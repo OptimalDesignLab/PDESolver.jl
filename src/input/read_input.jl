@@ -480,6 +480,8 @@ get!(arg_dict, "stab_Minv_val", "null")
 get!(arg_dict, "stab_vn_Jac", "null")
 get!(arg_dict, "write_strongJac_eigvals", false)
 get!(arg_dict, "write_numEigChgs_arrayEls", false)
+get!(arg_dict, "statistics_start_iter", 0)
+get!(arg_dict, "statistics_end_iter", arg_dict["itermax"] + 1)
 
 #   This is commented out because of the new method of assigning objective functions.
 #   They are set like this:
@@ -749,6 +751,16 @@ end
   stab_vn_Jac_valid = ["yes", "no"]
   if arg_dict["stabilize_v"] && !(arg_dict["stab_vn_Jac"] in stab_vn_Jac_valid)
     error("\n Chaotic stabilization turned on, but stab_vn_Jac not specified correctly.")
+  end
+  if ! isinteger(arg_dict["statistics_start_iter"])
+    error("\n statistics_start_iter specified incorrectly; must be integer.\n",
+           "Type: ", typeof(arg_dict["statistics_start_iter"]), "\n",
+           "Value: ", arg_dict["statistics_start_iter"])
+  end
+  if ! isinteger(arg_dict["statistics_end_iter"])
+    error("\n statistics_end_iter specified incorrectly; must be integer.\n",
+           "Type: ", typeof(arg_dict["statistics_end_iter"]), "\n",
+           "Value: ", arg_dict["statistics_end_iter"])
   end
 
   # Same options for perturb_Ma_CN
