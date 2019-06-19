@@ -481,7 +481,7 @@ get!(arg_dict, "stab_vn_Jac", "null")
 get!(arg_dict, "write_strongJac_eigvals", false)
 get!(arg_dict, "write_numEigChgs_arrayEls", false)
 get!(arg_dict, "statistics_start_iter", 0)
-get!(arg_dict, "statistics_end_iter", arg_dict["itermax"] + 1)
+get!(arg_dict, "statistics_end_iter", arg_dict["itermax"])
 
 #   This is commented out because of the new method of assigning objective functions.
 #   They are set like this:
@@ -761,6 +761,9 @@ end
     error("\n statistics_end_iter specified incorrectly; must be integer.\n",
            "Type: ", typeof(arg_dict["statistics_end_iter"]), "\n",
            "Value: ", arg_dict["statistics_end_iter"])
+  end
+  if arg_dict["statistics_end_iter"] > arg_dict["itermax"]
+    error("\n statistics_end_iter is after itermax")
   end
 
   # Same options for perturb_Ma_CN

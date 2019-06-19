@@ -25,9 +25,19 @@
             dCd/dM = (-2<D>)/(0.5*M^3)
 
 """
-function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver; useArray=false, drag_array=[0.0])
+function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver; 
+                             useArray=false, drag_array=[0.0], 
+                             statistics_period=false, statistics_start_iter=0, statistics_end_iter=0)
 
-  # println(BSTDOUT, "------------------------------- in calcDragTimeAverage")
+  if statistics_period == true
+    println(BSTDOUT, "calculating drag using statistics period")
+    @assert(isinteger(statistics_start_iter))
+    @assert(isinteger(statistics_end_iter))
+    @assert(statistics_start_iter < statistics_end_iter)
+    @assert(useArray == true)
+  end
+
+  println(BSTDOUT, " entered calcDragTimeAverage")
   myrank = mesh.myrank
 
   dt = delta_t
@@ -81,13 +91,30 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   drag_timeavg = 0.0
   maxtime = dt*itermax - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
 
+  f_drag_calcs = open("drag_calcs.dat")
+
   # trapezoid rule
   for i = 1:itermax
-    quad_weight = calcQuadWeight(i, delta_t, itermax)
+    if statistics_period == true
+      # accounts for statistics period by setting quad_weight to zero outside of gathering period
+      quad_weight = calcQuadWeight(i, delta_t, itermax, statistics_period=statistics_period,
+                                   statistics_start_iter=statistics_start_iter, statistics_end_iter=statistics_end_iter)
+    else
+      quad_weight = calcQuadWeight(i, delta_t, itermax)
+    end
+    println(f_drag_calcs, " i: $i  quad_weight: $quad_weight  drag: ", drag[i])
     drag_timeavg += quad_weight * drag[i]
   end
 
-  drag_timeavg = drag_timeavg * 1.0/maxtime
+  if statistics_period == true
+    time_statistics = calcStatisticsPeriodTime(dt, statistics_start_iter, statistics_end_iter)
+    drag_timeavg = drag_timeavg * 1.0/time_statistics
+  elseif statistics_period == false
+    drag_timeavg = drag_timeavg * 1.0/maxtime
+  end
+  close(f_drag_calcs)
+
+  @mpi_master println(" in drag_timeaverage: <D> = ", drag_timeavg)
 
   # Cd calculations
   Cd = drag_timeavg/(0.5*Ma^2)
@@ -143,12 +170,32 @@ end     # end function calcFinalIter
                  factor if, for example, you are forming a sum over all time steps
                  and adding into a field each time step.
 """
-function calcQuadWeight(i, delta_t, finaliter)
+function calcQuadWeight(i, delta_t, finaliter; statistics_period=false, statistics_start_iter=0, statistics_end_iter=0)
 
-  if (i == 1 || i == finaliter)
-    quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+  if statistics_period == true
+    @assert(isinteger(statistics_start_iter))
+    @assert(isinteger(statistics_end_iter))
+    @assert(statistics_start_iter < statistics_end_iter)
+  end
+
+  if statistics_period == false
+    if (i == 1 || i == finaliter)
+      quad_weight = delta_t/2.0             # first & last time step, trapezoid rule quadrature weight
+    else
+      quad_weight = delta_t                 # all other timesteps
+    end
+  elseif statistics_period == true
+    if (i == statistics_start_iter || i == statistics_end_iter)
+      quad_weight = delta_t/2.0
+    elseif (i < statistics_start_iter)
+      quad_weight = 0.0
+    elseif (i > statistics_end_iter)
+      quad_weight = 0.0
+    else
+      quad_weight = delta_t
+    end
   else
-    quad_weight = delta_t                 # all other timesteps
+    error("statistics_period specified incorrectly")
   end
 
   if finaliter < 2        # if 1 or 2 timesteps, shift to regular rectangular rule. 
@@ -159,3 +206,30 @@ function calcQuadWeight(i, delta_t, finaliter)
   return quad_weight
 end     # end function calcQuadWeight
 
+"""
+  function calcStatisticsPeriodTime: calculates the length in time of the statistics averaging window
+
+  Inputs:
+    delta_t
+    statistics_start_iter
+    statistics_end_iter
+
+  Output: (return value)
+    time_statistics: length in time of the statistics averaging window
+
+"""
+function calcStatisticsPeriodTime(delta_t, statistics_start_iter, statistics_end_iter)
+
+  @assert(isinteger(statistics_start_iter))
+  @assert(isinteger(statistics_end_iter))
+  @assert(statistics_start_iter < statistics_end_iter)
+
+  iters_in_statistics_period = statistics_end_iter - statistics_start_iter + 1
+
+  time_statistics = iters_in_statistics_period * delta_t
+
+  println(BSTDOUT, " iters_in_statistics_period: ", iters_in_statistics_period)
+  println(BSTDOUT, " time_statistics: ", time_statistics)
+
+  return time_statistics
+end

@@ -149,6 +149,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     end   # end if opts["perturb_Ma_CN"]
 
+    term23_statistics = 0.0
 
     # setup all the checkpointing related data
     chkpointer, chkpointdata, skip_checkpoint = CNDS_checkpoint_setup(mesh, opts, myrank, finaliter)
@@ -193,6 +194,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
       @mpi_master f_dDdu_norm = open("dDdu_norm.dat", "w")
       @mpi_master f_term23 = open("term23.dat", "w")
+      @mpi_master f_term23_statistics = open("term23_statistics.dat", "w")
       @mpi_master f_v_L2_norm = open("v_L2_norm.dat", "w")
       @mpi_master f_v_sbp_norm = open("v_sbp_norm.dat", "w")
       @mpi_master f_i_test = open("i_test.dat", "w")
@@ -303,7 +305,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
   #   this loop is 2:(t_steps+1) when not restarting
   for i = istart:(t_steps + 1) ##################################################################################################
 
-    # println(BSTDOUT, " ----- i = $i -----")
+    # println(BSTDOUT, " ----- i = $i , t = $t -----")
     finaliter = calcFinalIter(t_steps, itermax)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -672,10 +674,29 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         fill!(dDdu_vec, 0.0)     # not sure this is necessary
         array3DTo1D(mesh, sbp, eqn, opts, dDdu, dDdu_vec)      # dDdu -> dDdu_vec
 
-        old_term23 = term23
+        # Statistics gathering: reset term23 the iteration before the desired start
+        if i == (opts["statistics_start_iter"] - 1)
+          println(" >>>> zeroing out term23_statistics")
+          term23_statistics = 0.0
+        end
+
+        if (i >= opts["statistics_start_iter"]) && (i <= opts["statistics_end_iter"])
+          statistics_quad_weight = calcQuadWeight(i, delta_t, finaliter, statistics_period=true, 
+                                                  statistics_start_iter=opts["statistics_start_iter"],
+                                                  statistics_end_iter=opts["statistics_end_iter"])
+          # println(BSTDOUT, " statistics_quad_weight: ", statistics_quad_weight)
+        end
+        # println(BSTDOUT, " quad_weight: ", quad_weight)
+
+
         for v_ix = 1:length(v_vec)
           # this accumulation occurs across all dofs and all time steps.
           term23 += quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
+
+          if (i >= opts["statistics_start_iter"]) && (i <= opts["statistics_end_iter"])
+            term23_statistics += statistics_quad_weight * dDdu_vec[v_ix] * v_vec[v_ix]
+          end
+
         end
 
         #------------------------------------------------------------------------------
@@ -736,6 +757,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
     # This needs to be above the checkpoint write, in case the checkpoint is written before the 
     #   files are flushed. This would cause a gap in the data files.
     @mpi_master println(f_term23, i, "  ", real(term23))
+    if (i >= opts["statistics_start_iter"]) && (i <= opts["statistics_end_iter"])
+      @mpi_master println(f_term23_statistics, i, "  ", real(term23_statistics))
+    end
     @mpi_master println(f_v_L2_norm, i, "  ", real(v_L2_norm))
     @mpi_master println(f_v_sbp_norm, i, "  ", real(v_sbp_norm))
     @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
@@ -823,13 +847,23 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
         println(BSTDOUT, " size(drag_array): ", size(drag_array))
 
-        Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=false)   # will use eqn.params.Ma
-        Cd_file, dCddM_file = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=true, drag_array=drag_array)   # will use eqn.params.Ma
+        Cd_file, dCddM_file = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=false)   # will use eqn.params.Ma
+        Cd, dCddM = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, useArray=true, drag_array=drag_array)   # will use eqn.params.Ma
         # println(BSTDOUT, " Cd_file - Cd: ", Cd_file - Cd)
         # println(BSTDOUT, " dCddM_file - dCddM: ", dCddM_file - dCddM)
         term23 = term23 * 1.0/t     # final step of time average: divide by total time
         global_term23 = MPI.Allreduce(term23, MPI.SUM, mesh.comm)
         total_dCddM = dCddM + global_term23
+
+        Cd_statistics, dCddM_statistics = calcDragTimeAverage(mesh, sbp, eqn, opts, dt, finaliter, 
+                                                              useArray=true, drag_array=drag_array,
+                                                              statistics_period=true, 
+                                                              statistics_start_iter=opts["statistics_start_iter"],
+                                                              statistics_end_iter=opts["statistics_end_iter"])
+        time_statistics = calcStatisticsPeriodTime(delta_t, opts["statistics_start_iter"], opts["statistics_end_iter"])
+        term23_statistics = term23_statistics * 1.0/time_statistics     # final step of time average: divide by total time
+        global_term23_statistics = MPI.Allreduce(term23_statistics, MPI.SUM, mesh.comm)
+        total_dCddM_statistics = dCddM_statistics + global_term23_statistics
 
         # Cd calculations
         @mpi_master begin
@@ -845,6 +879,21 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           println(BSTDOUT, " dCd/dM: ", dCddM)
           println(BSTDOUT, " global_term23: ", global_term23)
           println(BSTDOUT, " total dCd/dM: ", total_dCddM)
+        end
+
+        @mpi_master begin
+          println(BSTDOUT, " Statistics period data: (calculations made from array, not file.)")
+          f_total_dCddM_statistics = open("total_dCddM_statistics.dat", "w")
+          println(f_total_dCddM_statistics, " Cd: ", Cd_statistics)
+          println(f_total_dCddM_statistics, " dCd/dM: ", dCddM_statistics)
+          println(f_total_dCddM_statistics, " global_term23: ", global_term23_statistics)
+          println(f_total_dCddM_statistics, " total dCd/dM: ", total_dCddM_statistics)
+          flush(f_total_dCddM_statistics)
+          close(f_total_dCddM_statistics)
+          println(BSTDOUT, " Cd: ", Cd_statistics)
+          println(BSTDOUT, " dCd/dM: ", dCddM_statistics)
+          println(BSTDOUT, " global_term23: ", global_term23_statistics)
+          println(BSTDOUT, " total dCd/dM: ", total_dCddM_statistics)
         end
 
       end   # end if opts["perturb_Ma_CN"]
@@ -895,6 +944,7 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
       if opts["write_L2vnorm"]
         @mpi_master close(f_L2vnorm)      # old, retaining for how to use the file_dict for writing
         @mpi_master close(f_term23)
+        @mpi_master close(f_term23_statistics)
         @mpi_master close(f_dDdu_norm)
         @mpi_master close(f_v_L2_norm)
         @mpi_master close(f_v_sbp_norm)
