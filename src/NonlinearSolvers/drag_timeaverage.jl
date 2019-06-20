@@ -91,7 +91,7 @@ function calcDragTimeAverage(mesh, sbp, eqn, opts, delta_t, itermax_fromnlsolver
   drag_timeavg = 0.0
   maxtime = dt*itermax - dt        # needs to have the minus dt here, because the IC doesn't count as its own time step
 
-  f_drag_calcs = open("drag_calcs.dat")
+  f_drag_calcs = open("drag_calcs.dat", "w")
 
   # trapezoid rule
   for i = 1:itermax
