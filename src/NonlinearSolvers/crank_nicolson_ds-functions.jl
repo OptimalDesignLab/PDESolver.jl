@@ -28,6 +28,9 @@ function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
 
   # println(BSTDOUT, "    entered cLO(lo::CNDSMatLO...) in crank_nicolson_ds-functions.jl")
 
+  stabilize_this_LOupdate = ctx_residual[9]
+  # println(BSTDOUT, " stabilize_this_LOupdate: ", stabilize_this_LOupdate)
+
   # println(BSTDOUT, "     typeof(lo): ", typeof(lo))
   # println(BSTDOUT, "     typeof(lo.lo_inner): ", typeof(lo.lo_inner))
   # println(BSTDOUT, "     calling inner cLO in cLO(lo::CNDSMatLO...) in crank_nicolson_ds-functions.jl")
@@ -36,7 +39,7 @@ function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
   ########################################################################################
   # Here is where we stabilize
   ########################################################################################
-  if opts["stabilize_v"]
+  if opts["stabilize_v"] && stabilize_this_LOupdate == true
     stabilizeCNDSLO(lo, mesh, sbp, eqn, opts, ctx_residual, t)
   end
 

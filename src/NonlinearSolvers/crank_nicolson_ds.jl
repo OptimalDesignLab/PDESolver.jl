@@ -604,25 +604,39 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           eqn_nextstep.res_vec[ix_dof] = beforeDS_eqn_nextstep_res_vec[ix_dof]
         end
 
-        # Contents of ctx_residual: f, eqn, h, newton_data
-        if opts["stabilize_v"]
-          ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData, v_vec)
-        end
-        
         # Must startSolutionExchange before calculating any of Jac
         if opts["parallel_type"] == 2 && mesh.npeers > 0
           startSolutionExchange(mesh, sbp, eqn, opts)
         end
 
+        # The quadprog routine needs a v_vec to calculate its proper stabilization contribution.
+        # Previously, v^(n) (v_vec at the last timestep) was passed in. This didn't produce good results.
+        # Now, the below block solves for v^(n+1) -- without the stabilization contribution to the 
+        #   linear operator. This unstabilized v^(n+1) is what needs to be used by the quadprog
+        #   routine to calculate the proper stabilization contribution.
+        if opts["stabilize_v"] && opts["stabilization_method"] == "quadprog"
+          stabilize_this_LOupdate = false
+          ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData, v_vec, stabilize_this_LOupdate)
+          # println(BSTDOUT, "solving for v^(n+1), unstabilized")
+          calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
+          fill!(v_vec, 0.0)
+          linearSolve(ls_ds, b_vec, v_vec)
+        end
+        # Now, v_vec contains the unstabilized v^(n+1). This is what needs to be used,
+        #   not v^(n), by the quadprog routine to calculate the stabilization contribution.
+
+        # Contents of ctx_residual previously: f, eqn, h, newton_data
+        if opts["stabilize_v"]
+          stabilize_this_LOupdate = true
+          ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData, v_vec, stabilize_this_LOupdate)
+        end
+
         # Update linear operator:
         #   The Jacobian ∂R_hat^(n)/∂q^(n+1) is lo_ds_innermost.A
+        # println(BSTDOUT, "solving for v^(n+1), stabilized")
         calcLinearOperator(ls_ds, mesh, sbp, eqn_nextstep, opts, ctx_residual, t)
         # Note: this is properly modifying the Jac for CN.
         flush(BSTDOUT)
-
-        # println(BSTDOUT, " Sleeping for 5s...")
-        # flush(BSTDOUT)
-        # run(`sleep 5`)
 
         # lo_ds_innermost_A_norm_global = calcNorm(eqn, lo_ds_innermost.A)
         # println(BSTDOUT, " +++ vecnorm(lo_ds_innermost.A): ", vecnorm(lo_ds_innermost.A))

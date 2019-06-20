@@ -2,6 +2,8 @@
 # Note: passed in for the eqn argument is 'eqn_nextstep'
 function stabilizeCNDSLO(lo_ds, mesh, sbp, eqn, opts, ctx_residual, t)
 
+  # println(BSTDOUT, " entered stabilizeCNDSLO")
+
   # ctx_residual = (f, eqn, h, newton_data, stab_A, stab_assembler, clipJacData)
   f =               ctx_residual[1]
   eqn_old =         ctx_residual[2]
