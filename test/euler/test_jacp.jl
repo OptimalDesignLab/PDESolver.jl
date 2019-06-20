@@ -86,7 +86,7 @@ function test_jac_parallel_long()
     mesh8, sbp8, eqn8, opts8 = run_solver(fname2)
 
 
-
+#=
     opts4_tmp = copy(opts4)
     test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
     test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
@@ -110,11 +110,12 @@ function test_jac_parallel_long()
     
     test_revq_product(mesh7, sbp7, eqn7, opts7)
 
-
+=#
     # test functional that require parallel communication
-    for func_ctor in values(EulerEquationMod.FunctionalDict)
-      func = func_ctor(Complex128, mesh4, sbp4, eqn4, opts4, [1, 2, 3])
-      if getParallelData(func) != PARALLEL_DATA_NONE
+    func_test = ["lpsdissipation", "neglpsdissipation"]
+    for (name, func_ctor) in EulerEquationMod.FunctionalDict
+      func = func_ctor(Complex128, mesh4, sbp4, eqn4, opts4, [1])
+      if getParallelData(func) != PARALLEL_DATA_NONE || name in func_test
         if mesh4.myrank == 0
           println("testing functional ", func_ctor)
         end

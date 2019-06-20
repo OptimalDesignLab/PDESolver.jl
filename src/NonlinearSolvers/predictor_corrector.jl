@@ -393,7 +393,7 @@ function updateTolerances(hdata::HomotopyData, opts)
     changed_tols = true
     homotopy_tol = res_reltol
 
-    reltol = res_reltol*1e-3  # smaller than newton tolerance
+    reltol = krylov_reltol0 # smaller than newton tolerance
     abstol = res_abstol*1e-3  # smaller than newton tolerance
 
     # enable globalization if required

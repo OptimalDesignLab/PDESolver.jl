@@ -179,4 +179,4 @@ function check_atan2_rev(x::Real, y::Real)
 end
 
 #test_complexify()
-add_func1!(EulerTests, test_complexify, [TAG_COMPLEX, TAG_SHORTTEST])
+add_func1!(EulerTests, test_complexify, [TAG_COMPLEX, TAG_SHORTTEST, TAG_TMP])

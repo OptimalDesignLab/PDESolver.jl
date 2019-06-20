@@ -215,23 +215,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # recalculate PC and Jacobian if needed
     doRecalculation(newton_data.recalc_policy, i,
                     ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    #=             
-    recalc_type = decideRecalculation(newton_data.recalc_policy, i)
-    if recalc_type == RECALC_BOTH
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_PC
-      calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_LO
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =# 
-    #=
-    if ((i % recalc_prec_freq)) == 0 || i == 1
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    else  # only recalculate the linear operator
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =#
 
     # compute eigs, condition number, etc.
     doMatrixCalculations(newton_data, opts)

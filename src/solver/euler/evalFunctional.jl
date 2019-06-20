@@ -22,6 +22,7 @@ end
 #------------------------------------------------------------------------------
 # derivative wrt q
 
+#TODO: EntropyPenaltyFunctional should be EntropyDissipationData?
 # derivative of functional wrt q
 function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
@@ -58,44 +59,48 @@ function _evalFunctionalDeriv_q(mesh::AbstractDGMesh{Tmsh},
     end
   end
     
-  setParallelData(eqn.shared_data_bar, PARALLEL_DATA_ELEMENT)
-  startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=false)
+  if func.do_face_term
+    setParallelData(eqn.shared_data_bar, PARALLEL_DATA_ELEMENT)
+    startSolutionExchange_rev2(mesh, sbp, eqn, opts, send_q=false)
 
 
-  # do reverse mode of the face integrals
-  if typeof(mesh.sbpface) <: DenseFace
-    @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
+    # do reverse mode of the face integrals
+    if typeof(mesh.sbpface) <: DenseFace
+      @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
-    # local part
-    face_integral_functor = func.func
-    flux_functor = ErrorFlux_revq()  # not used, but required by the interface
-    getFaceElementIntegral_revq(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+      # local part
+      face_integral_functor = func.func
+      flux_functor = ErrorFlux_revq()  # not used, but required by the interface
+      getFaceElementIntegral_revq(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 
-    # define anonymous function for parallel faces
-    calc_func = (mesh, sbp, eqn, opts, data, data_bar) ->
-      calcSharedFaceElementIntegrals_element_inner_revq(mesh, sbp, eqn, opts,
-                            data, data_bar, face_integral_functor, flux_functor)
-  else # SparseFace
-    flux_functor_revq = func.func_sparseface_revq
-    calcFaceIntegral_nopre_revq(mesh, sbp, eqn, opts, flux_functor_revq,
-                                mesh.interfaces)
-    # define anonymous functions for parallel faces
-    calc_func = (mesh, sbp, eqn, opts, data, data_bar) ->
-      calcSharedFaceIntegrals_nopre_element_inner_revq(mesh, sbp, eqn, opts,
-        data, data_bar, flux_functor_revq)
+      # define anonymous function for parallel faces
+      calc_func = (mesh, sbp, eqn, opts, data, data_bar) ->
+        calcSharedFaceElementIntegrals_element_inner_revq(mesh, sbp, eqn, opts,
+                              data, data_bar, face_integral_functor, flux_functor)
+    else # SparseFace
+      flux_functor_revq = func.func_sparseface_revq
+      calcFaceIntegral_nopre_revq(mesh, sbp, eqn, opts, flux_functor_revq,
+                                  mesh.interfaces)
+      # define anonymous functions for parallel faces
+      calc_func = (mesh, sbp, eqn, opts, data, data_bar) ->
+        calcSharedFaceIntegrals_nopre_element_inner_revq(mesh, sbp, eqn, opts,
+          data, data_bar, flux_functor_revq)
 
+    end
   end
 
-  if opts["addStabilization"]
+  if func.do_lps && opts["addStabilization"]
     addStabilization_revq(mesh, sbp, eqn, opts)
   end
 
-#  if opts["addShockCapturing"]
-#    evalShockCapturing_revq(mesh, sbp, eqn, opts)
-#  end
+  if func.do_sc && opts["addShockCapturing"]
+    evalShockCapturing_revq(mesh, sbp, eqn, opts)
+  end
 
   # do the parallel face calculations
-  finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func)
+  if func.do_face_term
+    finishExchangeData_rev2(mesh, sbp, eqn, opts, eqn.shared_data, eqn.shared_data_bar, calc_func)
+  end
 
   copy!(func_deriv_arr, eqn.q_bar)
 
@@ -225,41 +230,45 @@ function _evalFunctionalDeriv_m(mesh::AbstractDGMesh{Tmsh},
 
 
   # do reverse mode of the face integrals
-  if typeof(mesh.sbpface) <: DenseFace
-    @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
+  if func.do_face_term
+    if typeof(mesh.sbpface) <: DenseFace
+      @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
-    face_integral_functor = func.func
-    flux_functor = ErrorFlux()  # not used, but required by the interface
+      face_integral_functor = func.func
+      flux_functor = ErrorFlux()  # not used, but required by the interface
 
-    # local part
-    getFaceElementIntegral_revm(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
- 
-    # define anonymous function for shared faces
-    calc_func = (mesh, sbp, eqn, opts, data) ->
-      calcSharedFaceElementIntegrals_element_inner_revm(mesh, sbp, eqn, opts,
-                            data, face_integral_functor, flux_functor)
-  else # SparseFace
-    flux_functor_revm = func.func_sparseface_revm
-    calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, flux_functor_revm,
-                                mesh.interfaces)
+      # local part
+      getFaceElementIntegral_revm(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+   
+      # define anonymous function for shared faces
+      calc_func = (mesh, sbp, eqn, opts, data) ->
+        calcSharedFaceElementIntegrals_element_inner_revm(mesh, sbp, eqn, opts,
+                              data, face_integral_functor, flux_functor)
+    else # SparseFace
+      flux_functor_revm = func.func_sparseface_revm
+      calcFaceIntegral_nopre_revm(mesh, sbp, eqn, opts, flux_functor_revm,
+                                  mesh.interfaces)
 
-    # anonymous function for shared faces
-    calc_func = (mesh, sbp, eqn, opts, data) ->
-      calcSharedFaceIntegrals_nopre_element_inner_revm(mesh, sbp, eqn, opts,
-        data, flux_functor_revm)
+      # anonymous function for shared faces
+      calc_func = (mesh, sbp, eqn, opts, data) ->
+        calcSharedFaceIntegrals_nopre_element_inner_revm(mesh, sbp, eqn, opts,
+          data, flux_functor_revm)
+    end
   end
 
-  if opts["addStabilization"]
+  if func.do_lps && opts["addStabilization"]
     addStabilization_revm(mesh, sbp, eqn, opts)
   end
 
-#  if opts["addShockCapturing"]
-#    evalShockCapturing_revm(mesh, sbp, eqn, opts)
-#  end
+  if func.do_sc && opts["addShockCapturing"]
+    evalShockCapturing_revm(mesh, sbp, eqn, opts)
+  end
 
 
   # do the parallel part of the computation
-  finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calc_func)
+  if func.do_face_term
+    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calc_func)
+  end
 
   return nothing
 end
@@ -345,41 +354,43 @@ function calcFunctional(mesh::AbstractMesh{Tmsh},
   # use functions called from evalResidual to compute the dissipation, then
   # contract it with the entropy variables afterwards
 
-  if typeof(mesh.sbpface) <: DenseFace
-    @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
+  if func.do_face_term
+    if typeof(mesh.sbpface) <: DenseFace
+      @assert opts["parallel_data"] == PARALLEL_DATA_ELEMENT
 
-    # local part
-    face_integral_functor = func.func
-    flux_functor = ErrorFlux()  # not used, but required by the interface
-    getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
+      # local part
+      face_integral_functor = func.func
+      flux_functor = ErrorFlux()  # not used, but required by the interface
+      getFaceElementIntegral(mesh, sbp, eqn, face_integral_functor, flux_functor, mesh.sbpface, mesh.interfaces)
 
-    # parallel part
+      # parallel part
 
-    # temporarily change the face integral functor
-    face_integral_functor_orig = eqn.face_element_integral_func
-    eqn.face_element_integral_func = face_integral_functor
+      # temporarily change the face integral functor
+      face_integral_functor_orig = eqn.face_element_integral_func
+      eqn.face_element_integral_func = face_integral_functor
 
-    # finish data exchange/do the shared face integrals
-    # this works even if the receives have already been waited on
-    finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
+      # finish data exchange/do the shared face integrals
+      # this works even if the receives have already been waited on
+      finishExchangeData(mesh, sbp, eqn, opts, eqn.shared_data, calcSharedFaceElementIntegrals_element)
 
-    # restore eqn object to original state
-    eqn.face_element_integral_func = face_integral_functor_orig
-  else  # SparseFace
-    flux_functor = func.func_sparseface
-    calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor, mesh.interfaces)
+      # restore eqn object to original state
+      eqn.face_element_integral_func = face_integral_functor_orig
+    else  # SparseFace
+      flux_functor = func.func_sparseface
+      calcFaceIntegral_nopre(mesh, sbp, eqn, opts, flux_functor, mesh.interfaces)
 
-    # parallel part
-    doSparseFaceSharedFaceIntegrals(mesh, sbp, eqn, opts, flux_functor)
+      # parallel part
+      doSparseFaceSharedFaceIntegrals(mesh, sbp, eqn, opts, flux_functor)
+    end
   end
 
-  if opts["addStabilization"]
+  if func.do_lps && opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
   end
 
-#  if opts["addShockCapturing"]
-#    evalShockCapturing(mesh, sbp, eqn, opts)
-#  end
+  if func.do_sc && opts["addShockCapturing"]
+    evalShockCapturing(mesh, sbp, eqn, opts)
+  end
 
   # compute the contraction
   val = zero(Tres)

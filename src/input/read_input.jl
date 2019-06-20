@@ -730,9 +730,9 @@ end
     error("cannot precondition non-iterative method")
   end
 
-  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
-    error("cannot use volume preconditioner with any method except CN")
-  end
+#  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
+#    error("cannot use volume preconditioner with any method except CN")
+#  end
 
   if arg_dict["isViscous"] && commsize > 1
     error("Viscous terms not working in parallel.")

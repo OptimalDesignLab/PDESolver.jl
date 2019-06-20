@@ -18,13 +18,17 @@
 """->
 function updateKrylov(newton_data::NewtonData)
 
+  # this function provides the opportunity to update the krylov tolerances.
+  # Currently we don't change the tolerances, because leaving the relative
+  # tolerance in place seems to work ok
   if newton_data.use_inexact_nk
     norm_i = newton_data.res_norm_i
     norm_i_1 = newton_data.res_norm_i_1
     gamma = newton_data.krylov_gamma
-    reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    #reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    reltol = newton_data.ls.reltol
     setTolerances(newton_data.ls, reltol, -1, -1, -1)
-    #println("updating krylov reltol to ", reltol)
+    println(BSTDOUT, "updating krylov reltol to ", reltol)
   end
 
   return nothing
@@ -116,7 +120,7 @@ end
 """
 function useEulerConstants(pc::AbstractPC)
   pc2 = getInnerPC(pc, NewtonLinearObject)
-  t1 = pc2.data.res_norm_i_1
+  t1 = pc2.idata.res_norm_i_1
   t2 = pc2.idata.res_norm_i
   pc2.idata.res_norm_i_1 = t2
   return t1, t2
