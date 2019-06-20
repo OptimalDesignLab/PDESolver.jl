@@ -28,7 +28,9 @@ function calcLinearOperator(lo::CNDSMatLO, mesh::AbstractMesh,
 
   # println(BSTDOUT, "    entered cLO(lo::CNDSMatLO...) in crank_nicolson_ds-functions.jl")
 
-  stabilize_this_LOupdate = ctx_residual[9]
+  if opts["stabilize_v"]
+    stabilize_this_LOupdate = ctx_residual[9]
+  end
   # println(BSTDOUT, " stabilize_this_LOupdate: ", stabilize_this_LOupdate)
 
   # println(BSTDOUT, "     typeof(lo): ", typeof(lo))
