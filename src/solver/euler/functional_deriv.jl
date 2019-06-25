@@ -115,6 +115,7 @@ function calcFunctionalDeriv{Tmsh, Tsol}(mesh::AbstractDGMesh{Tmsh},
   #---------------------------------------------------------------------------
   # won't run in finite difference of Ma, but that's ok since that doesn't need dJdu
   if (opts["perturb_Ma"] == true || opts["perturb_Ma_CN"] == true)
+    # println(BSTDOUT, " > evalFunctionalDeriv: calculating dc_d/dq, not dd/dq")
     fac = (2.0/(eqn.params.Ma)^2)
     for i = 1:length(func_deriv_arr)
       func_deriv_arr[i] = fac*func_deriv_arr[i]

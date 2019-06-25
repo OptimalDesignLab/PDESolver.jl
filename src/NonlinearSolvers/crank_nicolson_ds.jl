@@ -712,6 +712,8 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
           end
 
         end
+        dDdu_norm = calcNorm(eqn, dDdu_vec)
+        @mpi_master println(f_dDdu_norm, dDdu_norm)
 
         #------------------------------------------------------------------------------
         # here is where we should be calculating the 'energy' to show that it is increasing over time
