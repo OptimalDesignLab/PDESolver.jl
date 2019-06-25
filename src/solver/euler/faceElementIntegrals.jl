@@ -459,14 +459,12 @@ function applyEntropyKernel(obj::LFKernel, params::ParamType,
 
   A0 = obj.A0
   getIRA0(params, q_avg, A0)
-  #for j=1:size(A0, 1)
-  #  A0[j, j] = 1
-  #end
 
   lambda_max = getLambdaMax(params, q_avg, nrm)
   # lambda_max * A0 * delta w
   smallmatvec!(A0, delta_w, flux)
   fastscale!(flux, lambda_max)
+
 end
 
 

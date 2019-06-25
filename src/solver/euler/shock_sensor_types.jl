@@ -538,6 +538,68 @@ end
 
 
 #------------------------------------------------------------------------------
+# SensorHApprox
+
+"""
+  This shock sensor computes an approximation to the viscosity that does not
+  depend on the solution.  The approximation is
+
+  alpha * h * lambda_max/(p + 1)
+
+  where `lambda_max` is an approximation to the maximum wave speed in
+  the element, `h` is the element size, anad `p` is the degree of the
+  SBP operator.  This approximation is used for elements that have a non-zero
+  viscosity with the "real" shock sensor.  The viscosity is zero for all
+  other elements.
+
+  This shock sensor should never be used as the primary shock sensor
+  because it can not determine where the shock it.  It relies on the
+  function `setElementCounts` to know which elements should have zero
+  viscosity.
+"""
+mutable struct ShockSensorHApprox{Tsol, Tres} <: AbstractShockSensor
+  _alpha::Float64  # arbitrary scaling
+  alpha::Float64  # alpha including _alpha and user defined scaling
+  lambda_max::Float64
+  numShock::Int  # elements 1:numShock have non-zero viscosity
+  numEl::Int     # element (numShock + 1):numEl have zero viscosity
+
+  function ShockSensorHApprox{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+    _alpha = 0.01
+    alpha = _alpha
+    # make lambda_max proportional to free stream Mach number
+    # The idea is that, at a given Mach number, the max wave speed is
+    # Ma + 1.  The factor 1.5 is an estimated acceleration factor for
+    # external flow over a body (and has no theoretical foundation)
+    lambda_max = 1.5*(max(opts["Ma"], 0.5) + 1)
+    numShock = 0
+    numEl = 0
+
+    return new(_alpha, alpha, lambda_max, numShock, numEl)
+  end
+end
+
+function setAlpha(obj::ShockSensorHApprox, alpha::Number)
+
+  obj.alpha = alpha*obj._alpha
+end
+
+
+"""
+  Sets the number of elements with a shock in them, and the total number of
+  elements in the shock mesh.
+"""
+function setElementCounts(sensor::ShockSensorHApprox, numShock::Integer,
+                          numEl::Integer)
+
+  sensor.numShock = numShock
+  sensor.numEl = numEl
+end
+
+
+
+#------------------------------------------------------------------------------
 # Creating shock sensors
 
 global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSensor}(

@@ -18,12 +18,13 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                   capture.penalty)
 
   #println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
+#=
   if shockmesh.isNeumann
     computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   else
     computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   end
-
+=#
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
 
@@ -159,7 +160,7 @@ end
    * capture: [`SBPParbaolicSC`](@ref)
    * shockmesh
 """
-function computeVolumeTerm(mesh, sbp, eqn, opts,
+@noinline function computeVolumeTerm(mesh, sbp, eqn, opts,
                            capture::SBPParabolicSC{Tsol, Tres},
                            shockmesh::ShockedElements) where {Tsol, Tres}
 
@@ -201,7 +202,7 @@ end
    * penalty: [`AbstractDiffusionPenalty`](@ref) specifying which scheme to use
 
 """
-function computeFaceTerm(mesh, sbp, eqn, opts,
+@noinline function computeFaceTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements, diffusion::AbstractDiffusion,
                       penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
@@ -287,7 +288,7 @@ end
   Does the same thing as `compuateFaceTerm`, but for the shared faces, updating
   the residual on the local element only
 """
-function computeSharedFaceTerm(mesh, sbp, eqn, opts,
+@noinline function computeSharedFaceTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements, diffusion::AbstractDiffusion,
                       penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
@@ -388,7 +389,7 @@ end
    * capture: an [`SBPParabolic`](@ref) object
    * shockmesh
 """
-function computeNeumannBoundaryTerm(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
+@noinline function computeNeumannBoundaryTerm(mesh::AbstractMesh{Tmsh}, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements,
                       ) where {Tsol, Tres, Tmsh}
@@ -451,7 +452,7 @@ end
 """
   Computes a Dirichlet BC that is consistent with the inviscid one
 """
-function computeDirichletBoundaryTerm(mesh, sbp, eqn, opts,
+@noinline function computeDirichletBoundaryTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicSC{Tsol, Tres},
                       shockmesh::ShockedElements,
                       ) where {Tsol, Tres}
@@ -468,7 +469,7 @@ function computeDirichletBoundaryTerm(mesh, sbp, eqn, opts,
   return nothing
 end
 
-function calcBoundaryFlux(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
+@noinline function calcBoundaryFlux(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
                       shockmesh::ShockedElements,
                       capture::SBPParabolicSC{Tsol, Tres},
                       penalty::AbstractDiffusionPenalty,

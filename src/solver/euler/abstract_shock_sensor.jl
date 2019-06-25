@@ -67,6 +67,7 @@ function isShockElement(params::AbstractParamType{Tdim}, sbp::AbstractOperator,
                         ee)
 end
 
+
 """
   Computes the shock sensor value and the associated viscoscity.  The
   viscoscity can be different in each Cartesian and at each node of the

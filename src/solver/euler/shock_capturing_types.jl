@@ -519,6 +519,153 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
 end
 
 
+
+
+#------------------------------------------------------------------------------
+# SBPParabolicReducedSC
+
+"""
+  Computes a reduced form of the scheme from the SBPParabolic paper.
+
+  Note that the sizes for the arrays are the *minimum* sizes.  In practice
+  they may be larger.  Do not call `size()` on these arrays, use the appropriate
+  integer field of `mesh` or `shockmesh`.
+
+  **Fields**
+
+   * w_el: entropy variables at each volume node of each element,
+           `numDofPerNode` x `numNodesPerElement` x `shockmesh.numEl`
+   * entropy_vars: an [`AbstractVariables`](@ref) specifying which entropy
+                   variables to use.
+   * diffusion: an [`AbstractDiffusion`](@ref) object that specifies the
+               diffusion tensor. Defaults to `ShockDiffusion`
+   * penalty: an [`AbstractDiffusionPenalty`](@ref) object that specifies which
+             scheme to use.  Defaults to opts["DiffusionPenalty"]
+   * alpha: a 2 x `shockmesh.numInterfaces` array containing alpha_gk and
+           alpha_gn for each interface.
+
+  Note that `convert_entropy`, `diffusion` and `penalty` are abstract types
+  and should only be accessed through a function barrier in performance
+  critical functions.  The user is allowed to change these fields at any
+  time to customize the behavior of the scheme.
+
+  Note that this function is not fully constructed by the constructor,
+  see the `allocateArrays` function.
+
+"""
+mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
+  w_el::Array{Tsol, 3}
+  entropy_vars::AbstractVariables
+  diffusion::AbstractDiffusion
+  penalty::AbstractDiffusionPenalty
+  sensor::AbstractShockSensor
+  sensor_const::ShockSensorHApprox{Tsol, Tres}  # shock sensor used for
+                                                   # face terms
+  alpha::Array{Float64, 2}  # 2 x numInterfaces
+  alpha_b::Array{Float64, 1}  # numBoundaryFaces
+  alpha_parallel::Array{Array{Float64, 2}, 1}  # one array for each peer
+
+  #------------------
+  # temporary arrays
+  
+  # getFaceVariables
+  w_faceL::Matrix{Tsol}
+  w_faceR::Matrix{Tsol}
+
+  # getFaceVariables_diff
+  wL_dot::Array{Tsol, 3}
+  wR_dot::Array{Tsol, 3}
+
+  # computeBoundaryTerm_diff
+  w_dot::Array{Tsol, 3}
+  t2_dot::Array{Tres, 5}
+  t3_dot::Array{Tres, 5}
+  t4_dot::Array{Tres, 4}
+
+  alpha_comm::AlphaComm # MPI communications for alpha
+
+  function SBPParabolicReducedSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator,
+                                      eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerFace dim numNodesPerElement
+
+    # we don't know the right sizes yet, so make them zero size
+    w_el = Array{Tsol}(0, 0, 0)
+
+    # default values
+    entropy_vars = getSCVariables(opts)
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
+    penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
+    sensor_const = ShockSensorHApprox{Tsol, Tres}(mesh, sbp, opts)
+    alpha = zeros(Float64, 0, 0)
+    alpha_b = zeros(Float64, 0)
+    alpha_parallel = Array{Array{Float64, 2}}(0)
+
+
+    # temporary arrays
+
+    # getFaceVariables
+    w_faceL = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    w_faceR = zeros(Tsol, numDofPerNode, numNodesPerFace)
+
+    # getFaceVariables_diff
+    wL_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    wR_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+
+    # computeBoundaryTerm_diff
+    w_dot = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode,
+                        mesh.numNodesPerElement)
+    #t1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    #t1_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+    #                     mesh.numNodesPerElement, mesh.numNodesPerElement)
+    t2_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    t3_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+    t4_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+
+    alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
+
+    return new(w_el, entropy_vars, diffusion, penalty, sensor, sensor_const,
+               alpha,
+               alpha_b, alpha_parallel, w_faceL, w_faceR,
+               wL_dot, wR_dot,
+               w_dot, t2_dot, t3_dot, t4_dot,
+               alpha_comm)
+  end
+end
+
+
+"""
+  Sets up the shock capturing object for use, using the fully initialized
+  `shockmesh`.  Also does some other misc. setup stuff that needs `shockmesh`.
+"""
+function allocateArrays(capture::SBPParabolicReducedSC{Tsol, Tres},
+                        mesh::AbstractMesh,
+                        shockmesh::ShockedElements) where {Tsol, Tres}
+
+  if size(capture.w_el, 3) < shockmesh.numEl
+    capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
+                               shockmesh.numEl)
+  end
+
+  allocateArrays(capture.alpha_comm, shockmesh)
+  computeAlpha(capture, mesh, shockmesh)
+
+  return nothing
+end
+
+function getSparsityPattern(capture::SBPParabolicReducedSC)
+
+  return INVISCID
+end
+
+
+
 #------------------------------------------------------------------------------
 # VolumeShockCapturing
 
@@ -563,6 +710,7 @@ global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockC
 "ElementProjection" => ProjectionShockCapturing,
 "LDG" => LDGShockCapturing,
 "SBPParabolic" => SBPParabolicSC,
+"SBPParabolicReduced" => SBPParabolicReducedSC,
 "Volume" => VolumeShockCapturing,
 )
 

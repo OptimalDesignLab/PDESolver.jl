@@ -77,11 +77,7 @@ function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
   if !opts["addShockCapturing"]
     return INVISCID
   else
-    if typeof(eqn.shock_capturing) <: AbstractVolumeShockCapturing
-      return INVISCID
-    else # AbstractElementShockCapturing
-      return VISCOUSTIGHT
-    end
+    return getSparsityPattern(eqn.shock_capturing)
   end
 
 end

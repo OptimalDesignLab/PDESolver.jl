@@ -371,33 +371,33 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-#=
+
     #TESTING
     # SBPOmega, SparseMatrixCSC
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
-    opts_tmp["jac_type"] =2  # was 2
+    opts_tmp["jac_type"] = 2  # was 2
     opts_tmp["operator_type"] = "SBPDiagonalE"
-    opts_tmp["order"] = 2
+    opts_tmp["order"] = 1
     opts_tmp["use_lps"] = true
     #opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
-    test_revm_product(mesh9, sbp9, eqn9, opts9)
+    #test_revm_product(mesh9, sbp9, eqn9, opts9)
     #test_revq_product(mesh9, sbp9, eqn9, opts9)
 
     Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
-    sc = "Volume"
+    sc = "SBPParabolicReduced"
     sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh9, sbp9, opts9)
     capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
                                                     sbp9, eqn9, opts9, sensor)
 
     test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, freeze=true)
     #test_jac_general(mesh9, sbp9, eqn9, opts9)
-=#
 
 
+#=
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -714,13 +714,13 @@ function test_jac_terms_long()
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    println("\nTesting revq frozen")
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
-
+=#
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -3466,6 +3466,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
   opts["addVolumeIntegrals"] = false
   opts["addFaceIntegrals"] = false
   opts["addBoundaryIntegrals"] = false
+  opts["addStabilization"] = false
 
   setShockSensorAlpha(eqn, 2)
   h = 1e-20
@@ -3517,7 +3518,7 @@ function test_shock_capturing_jac(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts,
   # complex step
 
   q_dot = rand_realpart(size(eqn.q_vec))
-  #q_dot = zeros(length(eqn.q_vec)); q_dot[1] = 1
+#  q_dot = zeros(length(eqn.q_vec)); q_dot[1] = 1
   res_dot = zeros(eqn.res_vec)
   evaldRdqProduct(mesh, sbp, eqn, opts, q_dot, res_dot)
 

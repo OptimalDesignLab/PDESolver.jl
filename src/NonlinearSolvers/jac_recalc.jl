@@ -66,10 +66,13 @@ function doRecalculation(policy::RecalculationPolicy, itr::Integer,
 
   recalc_type = decideRecalculation(policy, itr)
   if recalc_type == RECALC_BOTH
+    println(BSTDOUT, "recalculating both")
     calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif recalc_type == RECALC_PC
+    println(BSTDOUT, "recalculating PC")
     calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, t)
   elseif recalc_type == RECALC_LO
+    printn(BSTDOUT, "recalculating LO")
     calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
   end
 

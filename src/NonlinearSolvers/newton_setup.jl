@@ -271,7 +271,7 @@ function getNewtonPCandLO(mesh, sbp, eqn, opts,
                           jactype::Integer=opts["jac_type"])
 
   # get PC
-  if opts["jac_type"] <= 2
+  if jactype <= 2
     pc = PCNone(mesh, sbp, eqn, opts)
   else
     if opts["use_volume_preconditioner"]

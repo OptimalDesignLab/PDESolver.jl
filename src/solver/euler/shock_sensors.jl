@@ -422,6 +422,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   fill!(Se_mat, lambda_max)
   fill!(ee_mat, sensor.alpha*lambda_max*h_avg/sbp.degree)
+#  println("element ", elnum, " SensorBO value = ", real(ee_mat[1, 1]))
 
   return true
 end
@@ -646,7 +647,47 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
 end
 
 
+#------------------------------------------------------------------------------
+# SensorHApprox
+
+# even though this shared the name with all the other getShockSensor methods,
+# it signature and outputs are different.  This is sort-of ok because this
+# is a special shock sensor and should never be used as the main shock sensor.
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHApprox{Tsol, Tres},
+                        elnum::Integer, jac::AbstractVector{Tmsh},
+                       ) where {Tsol, Tres, Tmsh, Tdim}
 
 
+  numNodesPerElement = length(jac)
+
+  if elnum <= sensor.numShock
+    # compute element size h for both elements
+    h = zero(Tmsh)
+    @simd for i=1:numNodesPerElement
+      h += sbp.w[i]/jac[i]
+    end
+
+    # compute estimates viscosity
+    lambda_max = sensor.lambda_max
+    eps_L = sensor.alpha*lambda_max*(h^(1/Tdim))/sbp.degree
+
+#    println("element ", elnum, " HApprox value = ", real(eps_L), ", with h = ")
+    return Tres(eps_L)
+  else
+    return zero(Tres)
+  end
+
+end
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                          sensor::ShockSensorHApprox,
+                          q::AbstractMatrix{Tsol}, elnum::Integer,
+                          coords::AbstractMatrix,
+                          dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tmsh}
+
+  error("ShockSensorHApprox does not know which elements are shocked or not, don't ask it that.")
+end
 
 

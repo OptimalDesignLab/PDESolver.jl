@@ -520,10 +520,15 @@ function test_ldg()
     "addBoundaryIntegrals" => false,
     )
 
+  opts2 = copy(opts)
+  opts2["operator_type"] = "SBPDiagonalE"
+  opts2["face_integral_type"] = 1
 
-  @testset "Local DG shock capturing" begin
+
+  @testset "DG shock capturing" begin
 
     mesh, sbp, eqn, opts = solvePDE(opts)
+    mesh2, sbp2, eqn2, opts2 = solvePDE(opts2)
 
     testQx(mesh, sbp, eqn, opts)
 
@@ -545,14 +550,20 @@ function test_ldg()
     test_br2_face(mesh, sbp, eqn, opts)
     test_br2_Dgk(mesh, sbp, eqn, opts)
 
+    ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     for i=1:10
-      ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=true)
       
-      ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
+      
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=true)
+      
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=false)
+
     end
 
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
@@ -565,7 +576,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
 
 
 """
@@ -1814,6 +1825,35 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
+  test_sc_ESS(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  return nothing
+end
+
+function test_br2reduced_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
+                             fullmesh=false) where {Tsol, Tres}
+
+  # construct the shock mesh with all elements in it that are fully interior
+  if fullmesh
+    iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
+  else
+    iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+  end
+
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReducedSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+  EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
+
+  test_sc_ESS(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+  test_sc_conservation(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  return nothing
+end
+
+
+function test_sc_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                     sensor, capture, shockmesh) where {Tsol, Tres}
+
   # add random component to q
   # test entropy stability
   q_pert = 0.1*rand(size(eqn.q_vec))
@@ -1832,6 +1872,32 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
+
+
+  return nothing
+end
+
+function test_sc_conservation(mesh, sbp, eqn::EulerData{Tsol, Tres},
+                              _opts, sensor, capture, shockmesh) where {Tsol, Tres}
+
+  opts = copy(_opts)
+  opts["addVolumeIntegrals"] = false
+  opts["addBoundaryIntegrals"] = false
+  opts["addFaceIntegrals"] = false
+  opts["addStabilization"] = false
+
+  # add random component to q
+  # test entropy stability
+  q_pert = 0.1*rand(size(eqn.q_vec))
+  eqn.q_vec .+= q_pert
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  fill!(eqn.res, 0)
+
+  EulerEquationMod.calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val = abs(sum(eqn.res_vec))
+  @test val < 1e-13
 
   return nothing
 end

@@ -242,7 +242,7 @@ function writeSparsityPattern(mesh, sbp, eqn, opts, A::PetscMat, disc_type)
     if disc_type == INVISCID
       assembleInterface(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
     elseif disc_type == VISCOUSTIGHT
-      assembleIinterfaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
+      assembleInterfaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
     elseif disc_type == COLORING
       assembleInterfaceFull(assem, mesh, iface_i, jac, jac, jac, jac)
     end  # else disc_type == VISCOUS: don't currently have assembly functions

@@ -17,7 +17,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
-
+#=
   if shockmesh.isNeumann
     println("computing Neumann boundary condition")
     computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
@@ -27,7 +27,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                                       assem)
   end
-
+=#
   #@time computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
   #                                 capture.diffusion, capture.penalty)
 
@@ -420,9 +420,10 @@ function calcBoundaryFlux_diff(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
                           bc_func, entropy_vars, w_i, q_i, coords_i,
                           nrm_i, delta_w, delta_w_dot)
 
-    applyDirichletPenalty_diff(penalty, sbp, mesh.sbpface, diffusion,
-                          bndry_i, delta_w, delta_w_dot, w_i, nrm_i, alpha,
-                          jacL, res1_dot)
+    applyDirichletPenalty_diff(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
+                          bndry_i, delta_w, delta_w_dot, q_i, w_i, coords_i,
+                          nrm_i, alpha,
+                          dxidxL, jacL, res1_dot)
 
     # apply R^T to T_D * delta_w
     fill!(res_dot, 0)
