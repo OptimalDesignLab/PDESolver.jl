@@ -120,7 +120,6 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
   data = eqn.params.calc_volume_integrals_data
   res_jac = data.res_jac
-  fill!(res_jac, 0)
 
   for i=1:mesh.numEl
     q_i = ro_sview(eqn.q, :, :, i)
@@ -128,6 +127,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
     dxidx_i = ro_sview(mesh.dxidx, :, :, :, i)
     jac_i = ro_sview(mesh.jac, :, i)
 
+    fill!(res_jac, 0)
     nonzero_jac = projectionShockCapturing_diff(eqn.params, sbp, sensor,
                               capture, q_i, i, coords_i, dxidx_i, jac_i, res_jac)
   
@@ -140,9 +140,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
       # assemble element level jacobian into the residual
       assembleElement(assem, mesh, i, res_jac)
-      fill!(res_jac, 0)
     end  # if nonzero_jac
-  
   end  # end i
 
   return nothing

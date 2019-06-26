@@ -178,6 +178,7 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
       end  # end loop k
     end  # end looop j
 
+    fill!(res_jac, 0.0)
     boundaryFaceCombined_jac!(mesh.sbpface, bndry_i.face, flux_jac, res_jac,
                                SummationByParts.Subtract())
 
@@ -199,7 +200,6 @@ function calcBoundaryFlux_nopre_diff(mesh::AbstractDGMesh{Tmsh},
 
 
     assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
-    fill!(res_jac, 0.0)
 
   end  # end loop i
 

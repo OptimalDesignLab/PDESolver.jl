@@ -561,8 +561,15 @@ mutable struct ShockSensorHApprox{Tsol, Tres} <: AbstractShockSensor
   _alpha::Float64  # arbitrary scaling
   alpha::Float64  # alpha including _alpha and user defined scaling
   lambda_max::Float64
-  numShock::Int  # elements 1:numShock have non-zero viscosity
-  numEl::Int     # element (numShock + 1):numEl have zero viscosity
+  local_els::UnitRange{Int}  # local elements that have a shock in them
+  neighbor_els::UnitRange{Int}  # local elements that do not have a shock in
+                                # them, but are neighbors with an one that does
+  shared_els::UnitRange{Int}  # the local numbers of elements that live on
+                              # other processes that are neighbors with a
+                              # shocked element
+  shared_isShocked::Vector{Bool}  # vector with same length as shared_els,
+                                  # true if the shared element has a shock in
+                                  # it, false otherwise.
 
   function ShockSensorHApprox{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
                                        opts) where {Tsol, Tres}
@@ -573,10 +580,14 @@ mutable struct ShockSensorHApprox{Tsol, Tres} <: AbstractShockSensor
     # Ma + 1.  The factor 1.5 is an estimated acceleration factor for
     # external flow over a body (and has no theoretical foundation)
     lambda_max = 1.5*(max(opts["Ma"], 0.5) + 1)
-    numShock = 0
-    numEl = 0
 
-    return new(_alpha, alpha, lambda_max, numShock, numEl)
+    local_els = 0:0
+    neighbor_els = 0:0
+    shared_els = 0:0
+    shared_isShocked = Vector{Bool}(0)
+
+    return new(_alpha, alpha, lambda_max, local_els, neighbor_els, shared_els,
+               shared_isShocked)
   end
 end
 
@@ -587,15 +598,62 @@ end
 
 
 """
-  Sets the number of elements with a shock in them, and the total number of
-  elements in the shock mesh.
-"""
-function setElementCounts(sensor::ShockSensorHApprox, numShock::Integer,
-                          numEl::Integer)
+  Saves information into the shock sensor so it knows which elements have
+  non-zero viscosity
 
-  sensor.numShock = numShock
-  sensor.numEl = numEl
+  **Inputs**
+
+   * sensor: the `ShockSensorHApprox`
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * sensor_real: the real shock sensor
+   * shockmesh: the `ShockedElements`
+"""
+function setShockedElements(sensor::ShockSensorHApprox, mesh, sbp, eqn, opts,
+                            sensor_real::AbstractShockSensor,
+                            shockmesh::ShockedElements)
+
+  sensor.local_els = shockmesh.local_els
+  sensor.neighbor_els = shockmesh.neighbor_els
+  # the neighbor elements are numbered consecutively, compute the overall range
+  first_shared_el = typemax(Int)
+  last_shared_el = 0
+  for peer=1:shockmesh.npeers
+    first_shared_el = min(first_shared_el, first(shockmesh.shared_els[peer]))
+    last_shared_el = max(last_shared_el, last(shockmesh.shared_els[peer]))
+  end
+
+  sensor.shared_els = first_shared_el:last_shared_el
+  nshared = length(sensor.shared_els)
+  sensor.shared_isShocked = Vector{Bool}(nshared);
+
+  for peer=1:shockmesh.npeers
+
+    peer_full = shockmesh.peer_indices[peer]
+    metrics = mesh.remote_metrics[peer_full]
+    data = eqn.shared_data[peer_full]
+
+    for i in shockmesh.shared_els[peer]
+    
+      elnum = getSharedElementIndex(shockmesh, mesh, peer, i)
+
+      q = sview(data.q_recv, :, :, elnum)
+      coords = ro_sview(metrics.coords, :, :, elnum)
+      dxidx = ro_sview(metrics.dxidx, :, :, :, elnum)
+      jac = ro_sview(metrics.jac, :, elnum)
+
+      is_shock = isShockElement(eqn.params, sbp, sensor_real, q, elnum, coords,
+                                dxidx, jac)
+
+      sensor.shared_isShocked[i - first(sensor.shared_els) + 1] = is_shock
+    end
+  end
+
+  return nothing
 end
+
 
 
 

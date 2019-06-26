@@ -191,9 +191,6 @@ function computeFaceTerm_diff(mesh, sbp, eqn, opts,
     resL = sview(eqn.res, :, :, elnumL)
     resR = sview(eqn.res, :, :, elnumR)
 
-    fill!(res_jacLL, 0); fill!(res_jacLR, 0)
-    fill!(res_jacRL, 0); fill!(res_jacRR, 0)
-
     # compute delta w tilde and theta_bar = Dgk w_k + Dgn w_n
     getFaceVariables_diff(eqn.params, capture, diffusion, entropy_vars,
                           sbp, mesh.sbpface,

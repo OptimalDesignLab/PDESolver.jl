@@ -561,10 +561,6 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
   sensor::AbstractShockSensor
   sensor_const::ShockSensorHApprox{Tsol, Tres}  # shock sensor used for
                                                    # face terms
-  alpha::Array{Float64, 2}  # 2 x numInterfaces
-  alpha_b::Array{Float64, 1}  # numBoundaryFaces
-  alpha_parallel::Array{Array{Float64, 2}, 1}  # one array for each peer
-
   #------------------
   # temporary arrays
   
@@ -582,8 +578,6 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
   t3_dot::Array{Tres, 5}
   t4_dot::Array{Tres, 4}
 
-  alpha_comm::AlphaComm # MPI communications for alpha
-
   function SBPParabolicReducedSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator,
                                       eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
 
@@ -597,10 +591,6 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
     diffusion = ShockDiffusion{Tres}(mesh, sensor)
     penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
     sensor_const = ShockSensorHApprox{Tsol, Tres}(mesh, sbp, opts)
-    alpha = zeros(Float64, 0, 0)
-    alpha_b = zeros(Float64, 0)
-    alpha_parallel = Array{Array{Float64, 2}}(0)
-
 
     # temporary arrays
 
@@ -628,14 +618,10 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
                          mesh.numNodesPerFace, mesh.numNodesPerElement)
 
 
-    alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
-
     return new(w_el, entropy_vars, diffusion, penalty, sensor, sensor_const,
-               alpha,
-               alpha_b, alpha_parallel, w_faceL, w_faceR,
+               w_faceL, w_faceR,
                wL_dot, wR_dot,
-               w_dot, t2_dot, t3_dot, t4_dot,
-               alpha_comm)
+               w_dot, t2_dot, t3_dot, t4_dot)
   end
 end
 
@@ -652,9 +638,6 @@ function allocateArrays(capture::SBPParabolicReducedSC{Tsol, Tres},
     capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
                                shockmesh.numEl)
   end
-
-  allocateArrays(capture.alpha_comm, shockmesh)
-  computeAlpha(capture, mesh, shockmesh)
 
   return nothing
 end

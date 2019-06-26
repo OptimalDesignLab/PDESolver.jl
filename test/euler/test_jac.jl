@@ -357,7 +357,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -380,6 +380,10 @@ function test_jac_terms_long()
     opts_tmp["operator_type"] = "SBPDiagonalE"
     opts_tmp["order"] = 1
     opts_tmp["use_lps"] = true
+    opts_tmp["addShockCapturing"] = true
+    opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
+    opts_tmp["shock_sensor_name"] = "SensorVelocity"
+
     #opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
@@ -394,10 +398,10 @@ function test_jac_terms_long()
                                                     sbp9, eqn9, opts9, sensor)
 
     test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, freeze=true)
-    #test_jac_general(mesh9, sbp9, eqn9, opts9)
+    test_jac_general(mesh9, sbp9, eqn9, opts9)
 
 
-#=
+
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -714,7 +718,7 @@ function test_jac_terms_long()
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    println("\nTesting revq frozen")
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
-=#
+
   end
 
   return nothing
@@ -2341,6 +2345,12 @@ end
                 if false, use the value currently in the dictionary
 """
 function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prealloc=true)
+
+  #opts["addVolumeIntegrals"] = false
+  #opts["addFaceIntegrals"] = false
+  #opts["addBoundaryIntegrals"] = false
+  #opts["addStabilization"] = false
+
 
   # use a spatially varying solution
   srand(1234)

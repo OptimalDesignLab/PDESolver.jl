@@ -661,7 +661,10 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   numNodesPerElement = length(jac)
 
-  if elnum <= sensor.numShock
+  shared_idx = elnum - first(sensor.shared_els) + 1  # index of shared element
+  if (elnum in sensor.local_els) ||
+     (elnum in sensor.shared_els && sensor.shared_isShocked[shared_idx])
+
     # compute element size h for both elements
     h = zero(Tmsh)
     @simd for i=1:numNodesPerElement

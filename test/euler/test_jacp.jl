@@ -30,7 +30,7 @@ function test_jac_parallel_long()
     fname2 = "input_vals_jac_tmp.jl"
 
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-
+#=
     # SBPGamma
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -84,7 +84,24 @@ function test_jac_parallel_long()
     end
     MPI.Barrier(MPI.COMM_WORLD)
     mesh8, sbp8, eqn8, opts8 = run_solver(fname2)
+=#
 
+    # SBPDiagonalE ES shock capturing
+    if myrank == 0
+      opts_tmp = read_input_file(fname)
+      opts_tmp["operator_type"] = "SBPDiagonalE"
+      opts_tmp["volume_integral_type"] = 2
+      opts_tmp["Volume_flux_name"] = "IRFlux"
+      opts_tmp["Flux_name"] = "IRSLFFlux"
+      opts_tmp["addShockCapturing"] = true
+      opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
+      opts_tmp["shock_sensor_name"] = "SensorVelocity"
+      make_input(opts_tmp, fname2)
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    mesh9, sbp9, eqn9, opts9 = run_solver(fname2)
+
+    test_jac_parallel_inner(mesh9, sbp9, eqn9, opts9)
 
 #=
     opts4_tmp = copy(opts4)
@@ -110,7 +127,7 @@ function test_jac_parallel_long()
     
     test_revq_product(mesh7, sbp7, eqn7, opts7)
 
-=#
+
     # test functional that require parallel communication
     func_test = ["lpsdissipation", "neglpsdissipation"]
     for (name, func_ctor) in EulerEquationMod.FunctionalDict
@@ -129,7 +146,7 @@ function test_jac_parallel_long()
     end
 
     testEntropyDissFunctional2(mesh8, sbp8, eqn8, opts8)
-    
+=#
   end
 
   return nothing
@@ -183,21 +200,31 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
   assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   # compute jacobian via coloring
+  println("\n\nComputing Jacobian via coloring")
   opts["calc_jac_explicit"] = false
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
+  println("\n\nComputing Jacobian explicitly")
   opts["calc_jac_explicit"] = true
   evalJacobian(mesh, sbp, eqn, opts, assembler)
-
+  println("finished computing jacobian explicitly")
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
   assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
 
+  assembly_end(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_end(jac2, MAT_FINAL_ASSEMBLY)
+
+
   # multiply against a random vector to make sure the jacobian is
   # the same
-  for i=1:10
-    x = rand(PetscScalar, mesh.numDof)
+  for i=1:1
+#    x = rand(PetscScalar, mesh.numDof)
+    x = zeros(PetscScalar, mesh.numDof)
+    if mesh.myrank == 0
+      x[111] = 1
+    end
     b1 = zeros(PetscScalar, mesh.numDof)
     b2 = zeros(PetscScalar, mesh.numDof)
     b3 = zeros(PetscScalar, mesh.numDof)
@@ -209,6 +236,7 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
 
     @test isapprox( norm(b1 - b2), 0.0) atol=1e-12
     @test isapprox( norm(b1 - b3), 0.0) atol=1e-12
+    println("norm(b1 - b2) = ", norm(b1 - b2))
   end
 
   A = getBaseLO(lo2).A

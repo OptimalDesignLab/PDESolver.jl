@@ -1082,7 +1082,10 @@ function assembleInterface(helper::_AssembleElementData,
   numNodesPerElement = size(jacLL, 4)
   numDofPerNode = size(jacLL, 1)
 
+#  vals_before = copy(helper.vals_i)
+#  vals_after = copy(helper.vals_i)
   for p=1:sbpface.numnodes
+#    println("face node ", p)
     # row indices
     iR = sbpface.nbrperm[p, iface.orient]
     pL = sbpface.perm[p, iface.faceL]
@@ -1113,7 +1116,12 @@ function assembleInterface(helper::_AssembleElementData,
       end
     end
 
+#    get_values1!(helper.A, helper.idx_i, helper.idy_i, vals_before)
     set_values1!(helper.A, helper.idx_i, helper.idy_i, helper.vals_i, ADD_VALUES)
+#    get_values1!(helper.A, helper.idx_i, helper.idy_i, vals_after)
+#    println("vals_before = \n", vals_before)
+#    println("new values = \n", helper.vals_i)
+#    println("vals after = \n", vals_after)
   end  # end loop p
 
   return nothing
