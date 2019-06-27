@@ -18,16 +18,15 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                   capture.penalty)
 
   #println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
-#=
+
   if shockmesh.isNeumann
     computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   else
     computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   end
-=#
+
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)
-
 
 
   return nothing
@@ -63,6 +62,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
   grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
   # do local elements
+  println("converting to entropy for elements ", shockmesh.local_els)
   @simd for i in shockmesh.local_els
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
@@ -91,6 +91,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
 
   # the diffusion is zero in the neighboring elements, so convert to entropy
   # but zero out grad_w
+  println("converting to entropy for elements ", shockmesh.neighbor_els)
   @simd for i in shockmesh.neighbor_els
     i_full = shockmesh.elnums_all[i]
     @simd for j=1:mesh.numNodesPerElement
@@ -109,6 +110,7 @@ function computeGradW(mesh, sbp, eqn, opts, capture::SBPParabolicSC{Tsol, Tres},
     data = eqn.shared_data[peer_full]
     metrics = mesh.remote_metrics[peer_full]
 
+    println("converting to entropy for elements ", shockmesh.shared_els[peer])
     for i in shockmesh.shared_els[peer]
       i_full = getSharedElementIndex(shockmesh, mesh, peer, i)
 
@@ -464,6 +466,8 @@ end
     calcBoundaryFlux(mesh, sbp, eqn, opts, shockmesh, capture,
                      capture.penalty, capture.diffusion, 
                      capture.entropy_vars, bc_func, bc_range)
+
+    println("after bc ", i, ", isnan eqn.res = ", any(isnan.(eqn.res)))
   end
 
   return nothing
@@ -505,6 +509,7 @@ end
                           bndry_i, delta_w, q_i, w_i, coords_i, nrm_i, alpha,
                           dxidxL, jacL, res1)
 
+#    println("after pnealty, res1 = ", res1)
     # apply R^T to T_D * delta_w
     scale!(res1, -1)  # SAT has a - sign in front of it
 
@@ -521,6 +526,7 @@ end
                       diffusion, delta_w, q_i, w_i, coords_i, nrm_i, dxidxL,
                       jacL, res_i, op)
 
+#    println("after Dgk^T, res = ", res_i)
   end
 
   return nothing

@@ -101,6 +101,8 @@ function test_jac_parallel_long()
     MPI.Barrier(MPI.COMM_WORLD)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname2)
 
+    test_revm_product2(mesh9, sbp9, eqn9, opts9)
+    test_revq_product(mesh9, sbp9, eqn9, opts9)
     test_jac_parallel_inner(mesh9, sbp9, eqn9, opts9)
 
 #=
@@ -152,7 +154,7 @@ function test_jac_parallel_long()
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
 
 #------------------------------------------------------------------------------
 # functions that run individual tests
@@ -444,6 +446,70 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+"""
+  Tests the reverse mode product by perturbing mesh.vert_coords and
+  recalculating the metrics from that.  This has the benefit of testing
+  the `mesh.remote_metrics_bar`
+"""
+function test_revm_product2(mesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+                                     # interfaces non-zero
+  
+  vert_coords_dot = rand_realpart(size(mesh.vert_coords))
+
+  res_bar = rand_realpart(mesh.numDof)
+
+  # complex step  
+  mesh.vert_coords .+= pert*vert_coords_dot
+  recalcCoordinatesAndMetrics(mesh, sbp, opts)
+  println("after recalculating metrics:")
+  println("has nan dxidx = ", any(isnan.(mesh.dxidx)))
+  println("has nan jac = ", any(isnan.(mesh.jac)))
+  for peer=1:mesh.npeers
+    println("  peer ", peer)
+    obj = mesh.remote_metrics[peer]
+    println("  has nan dxidx = ", any(isnan.(obj.dxidx)))
+    println("  has nan jac = ", any(isnan.(obj.jac)))
+  end
+
+  startSolutionExchange(mesh, sbp, eqn, opts)
+  evalResidual(mesh, sbp, eqn, opts)
+  println("after evalResidual, isnan eqn.res = ", any(isnan.(eqn.res)))
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val1 = sum(imag(eqn.res_vec)/h .* res_bar)
+
+  # undo perturbation
+  for i=1:length(mesh.vert_coords)
+    mesh.vert_coords[i] = real(mesh.vert_coords[i])
+  end
+  recalcCoordinatesAndMetrics(mesh, sbp, opts)
+
+  # reverse mode
+
+  zeroBarArrays(mesh)
+  evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
+  getAllCoordinatesAndMetrics_rev(mesh, sbp, opts)
+
+  val2 = sum(mesh.vert_coords_bar .* vert_coords_dot)
+
+  val1 = MPI.Allreduce(val1, MPI.SUM, eqn.comm)
+  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
+  println("val1 = ", val1)
+  println("val2 = ", val2)
+
+  @test abs(val1 - val2) < max( min(abs(val1), abs(val2))*1e-12, 1e-12)
+
+  return nothing
+end
+
 
 
 function test_revq_product(mesh, sbp, eqn, opts)

@@ -30,15 +30,35 @@ function applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              capture::AbstractFaceShockCapturing)
 
   sensor = getShockSensor(capture)
-  _applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+  shockmesh = eqn.params.shockmesh
+  setupShockCapturing(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  # call shock capturing scheme
+  calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+
 
   return nothing
 end
 
-@noinline function _applyShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
+"""
+  This function sets up the `ShockedElements` object and calls `allocateArrays`
+  on the `AbstractFaceShockCapturing` object afterwards.  This completes
+  the preparations required before the shock capturing term can be calculated
+
+  **Inputs**
+
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * sensor
+   * capture
+"""
+@noinline function setupShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
                              eqn::EulerData, opts,
                              sensor::AbstractShockSensor,
-                             capture::AbstractFaceShockCapturing)
+                             capture::AbstractFaceShockCapturing,
+                             shockmesh::ShockedElements)
 
   if mesh.commsize > 1 && 
     getParallelData(eqn.shared_data) != PARALLEL_DATA_ELEMENT
@@ -54,7 +74,6 @@ end
   # re-using the shockmesh from one iteration to the next makes allows
   # the algorithm to re-use existing arrays that depend on the number of
   # elements with the shock in it.
-  shockmesh = eqn.params.shockmesh
   reset(shockmesh)
   numEl_shock = 0
   for i=1:mesh.numEl
@@ -78,9 +97,6 @@ end
   @assert shockmesh.numShock == numEl_shock
 
   allocateArrays(capture, mesh, shockmesh)
-
-  # call shock capturing scheme
-  calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
 
   return nothing
 end

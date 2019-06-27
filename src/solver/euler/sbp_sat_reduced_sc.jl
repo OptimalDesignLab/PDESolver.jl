@@ -1,7 +1,11 @@
-# shock capturing using any the SBP-SAT discretization of the second derivative
-# term
+# shock capturing using a reduced from of the SBP-SAT 2nd derivative penalty
+# Only works for diagonal E
 
 import SummationByParts: UnaryFunctor, Add, Subtract
+
+
+#------------------------------------------------------------------------------
+# main functions
 
 """
   Applies [`SBPParabolic`](@ref) shock capturing.
@@ -23,6 +27,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.sensor_const,
                   capture.penalty)
+
 
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                         capture.sensor_const, capture.penalty)
@@ -54,11 +59,63 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                                    capture.sensor_const, capture.entropy_vars,
                                    capture.penalty, assem)
+  return nothing
+end
 
+
+function calcShockCapturing_revq(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::SBPParabolicReducedSC{Tsol, Tres},
+                             shockmesh::ShockedElements) where {Tsol, Tres}
+
+  computeVolumeTerm_revq(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+                    capture.diffusion, shockmesh)
+
+  #TODO: unneeded?
+  finishConvertEntropy(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+                       shockmesh)
+
+  # set up the approximate shock sensor
+  setShockedElements(capture.sensor_const, mesh, sbp, eqn, opts,
+                     getShockSensor(capture), shockmesh)
+
+  computeFaceTerm_revq(mesh, sbp, eqn, opts, capture, shockmesh,
+                       capture.sensor_const, capture.entropy_vars,
+                       capture.penalty)
+
+  computeSharedFaceTerm_revq(mesh, sbp, eqn, opts, capture, shockmesh,
+                             capture.sensor_const, capture.entropy_vars,
+                             capture.penalty)
 
 
   return nothing
 end
+
+
+function calcShockCapturing_revm(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::SBPParabolicReducedSC{Tsol, Tres},
+                             shockmesh::ShockedElements) where {Tsol, Tres}
+
+  computeVolumeTerm_revm(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+                    capture.diffusion, shockmesh)
+
+  finishConvertEntropy(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+                       shockmesh)
+
+  # set up the approximate shock sensor
+  setShockedElements(capture.sensor_const, mesh, sbp, eqn, opts,
+                     getShockSensor(capture), shockmesh)
+
+  computeFaceTerm_revm(mesh, sbp, eqn, opts, capture, shockmesh,
+                       capture.sensor_const, capture.penalty)
+
+  computeSharedFaceTerm_revm(mesh, sbp, eqn, opts, capture, shockmesh,
+                             capture.sensor_const, capture.penalty)
+
+  return nothing
+end
+
 
 
 """
@@ -101,6 +158,9 @@ end
   return nothing
 end
 
+
+#-----------------------------------------------------------------------------
+# Volume terms
 
 """
   Does the volume term Q^T * Lambda D * w.  Also saves the entropy variables
@@ -221,6 +281,167 @@ end
   return nothing
 end
 
+@noinline function computeVolumeTerm_revq(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      entropy_vars::AbstractVariables,
+                      diffusion::AbstractDiffusion,
+                      shockmesh::ShockedElements,
+                     ) where {Tsol, Tres}
+
+  @assert eqn.params.use_Minv != 1
+
+  work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  lambda_gradw = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                             mesh.dim)
+  #w_i = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  op = SummationByParts.Subtract()
+
+  w_bar_i = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  grad_w_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  lambda_gradw_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                             mesh.dim)
+
+  A0inv = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+
+  #TODO: verify usage of i_full
+  # do local elements
+  @simd for i=1:shockmesh.numShock
+    i_full = shockmesh.elnums_all[i]
+    w_i = sview(capture.w_el, :, :, i)
+    @simd for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j,i_full)  
+      w_j = sview(w_i, :, j)
+
+      # convert to entropy variables
+      convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
+    end
+
+    # apply D operator
+    q_i = ro_sview(eqn.q, :, :, i_full)
+    coords = ro_sview(mesh.coords, :, :, i_full)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
+    jac_i = ro_sview(mesh.jac, :, i_full)
+
+    fill!(grad_w, 0)
+    applyDx(sbp, w_i, dxidx_i, jac_i, work, grad_w)
+
+    # apply diffusion tensor
+#    applyDiffusionTensor(diffusion, sbp, eqn.params, q_i, w_i, coords, dxidx_i,
+#                         jac_i, i, grad_w, lambda_gradw)
+
+    # apply Q^T
+#    res_i = sview(eqn.res, :, :, i)
+#    applyQxTransposed(sbp, lambda_gradw, dxidx_i, work, res_i, op)
+
+
+    # reverse sweep
+    res_bar_i = ro_sview(eqn.res_bar, :, :, i_full)
+    q_bar_i = sview(eqn.q_bar, :, :, i_full)
+    fill!(w_bar_i, 0); fill!(lambda_gradw_bar, 0); fill!(grad_w_bar, 0)
+
+    applyQxTransposed_revq(sbp, lambda_gradw_bar, dxidx_i, work, res_bar_i, op)
+
+    applyDiffusionTensor_revq(diffusion, sbp, eqn.params, q_i, q_bar_i, w_i, w_bar_i,
+                         coords, dxidx_i, jac_i, i, grad_w, grad_w_bar,
+                         lambda_gradw, lambda_gradw_bar)
+
+    applyDx_revq(sbp, w_bar_i, dxidx_i, jac_i, work, grad_w_bar)
+
+    # convertToEntropy reverse mode
+    for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i_full)
+      q_bar_j = sview(eqn.q_bar, :, j, i_full)
+      w_bar_j = ro_sview(w_bar_i, :, j)
+
+      getA0inv(entropy_vars, eqn.params, q_j, A0inv)
+      smallmatvec_kernel!(A0inv, w_bar_j, q_bar_j, 1, 1)
+    end
+
+  end  # end i
+
+  return nothing
+end
+
+@noinline function computeVolumeTerm_revm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      entropy_vars::AbstractVariables,
+                      diffusion::AbstractDiffusion,
+                      shockmesh::ShockedElements,
+                     ) where {Tsol, Tres}
+
+  @assert eqn.params.use_Minv != 1
+
+  work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  lambda_gradw = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                             mesh.dim)
+  op = SummationByParts.Subtract()
+
+  w_bar_i = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  grad_w_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  lambda_gradw_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                             mesh.dim)
+
+  # do local elements
+  @simd for i=1:shockmesh.numShock
+    i_full = shockmesh.elnums_all[i]
+    w_i = sview(capture.w_el, :, :, i)
+    @simd for j=1:mesh.numNodesPerElement
+      q_j = ro_sview(eqn.q, :, j, i_full)
+      w_j = sview(w_i, :, j)
+
+      # convert to entropy variables
+      convertToEntropy(entropy_vars, eqn.params, q_j, w_j)
+    end
+
+    # apply D operator
+    q_i = ro_sview(eqn.q, :, :, i_full)
+    coords = ro_sview(mesh.coords, :, :, i_full)
+    dxidx_i = ro_sview(mesh.dxidx, :, :, :, i_full)
+    jac_i = ro_sview(mesh.jac, :, i_full)
+
+    fill!(grad_w, 0)
+    applyDx(sbp, w_i, dxidx_i, jac_i, work, grad_w)
+
+    # apply diffusion tensor
+    applyDiffusionTensor(diffusion, sbp, eqn.params, q_i, w_i, coords, dxidx_i,
+                         jac_i, i, grad_w, lambda_gradw)
+
+    # apply Q^T
+#    res_i = sview(eqn.res, :, :, i)
+#    applyQxTransposed(sbp, lambda_gradw, dxidx_i, work, res_i, op)
+
+
+    # reverse sweep
+    res_bar_i = ro_sview(eqn.res_bar, :, :, i_full)
+    dxidx_bar_i = sview(mesh.dxidx_bar, :, :, :, i_full)
+    jac_bar_i = sview(mesh.jac_bar, :, i_full)
+    fill!(w_bar_i, 0); fill!(lambda_gradw_bar, 0); fill!(grad_w_bar, 0)
+
+    applyQxTransposed_revm(sbp, lambda_gradw, lambda_gradw_bar, dxidx_i,
+                           dxidx_bar_i, work, res_bar_i, op)
+
+    applyDiffusionTensor_revm(diffusion, sbp, eqn.params, q_i, w_i,
+                         coords, dxidx_i, dxidx_bar_i, jac_i, jac_bar_i,
+                         i, grad_w, grad_w_bar, lambda_gradw, lambda_gradw_bar)
+
+    applyDx_revm(sbp, w_i, w_bar_i, dxidx_i, dxidx_bar_i, jac_i, jac_bar_i,
+                 work, grad_w_bar)
+
+    # no metrics involved in convert to entropy variables, don't need to 
+    # compute reverse mode.
+  end  # end i
+
+  return nothing
+end
+
+
+
+
+
+#------------------------------------------------------------------------------
+# Face terms
 
 """
   Computes the interior face term for any [`SBPParabolic`](@ref) shock
@@ -314,6 +535,103 @@ end
 end
 
 
+@noinline function computeFaceTerm_revq(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      shockmesh::ShockedElements, sensor::ShockSensorHApprox,
+                      entropy_vars::AbstractVariables,
+                      penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
+
+  op = SummationByParts.Subtract()
+
+  A0invL = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  A0invR = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  wL_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  wR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  for i=1:shockmesh.numInterfaces
+    iface_red = shockmesh.ifaces[i].iface
+    iface_idx = shockmesh.ifaces[i].idx_orig
+    elnumL = shockmesh.elnums_all[iface_red.elementL]
+    elnumR = shockmesh.elnums_all[iface_red.elementR]
+
+    # get data needed for next steps
+    #wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
+    #wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+
+    nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
+    jacL = ro_sview(mesh.jac, :, elnumL)
+    jacR = ro_sview(mesh.jac, :, elnumR)
+    resL_bar = sview(eqn.res_bar, :, :, elnumL)
+    resR_bar = sview(eqn.res_bar, :, :, elnumR)
+
+    # applyReducedPenalty is linear wrt q and symmetric, so we don't need to
+    # write a separate applyReducedPenalty_revq, just call it with w and res
+    # reversed and replaced with the _bar version
+    fill!(wL_bar, 0); fill!(wR_bar, 0)
+    applyReducedPenalty(penalty, sbp, eqn.params, mesh.sbpface, sensor,
+                        iface_red, resL_bar, resR_bar, nrm_face, jacL, jacR,
+                        wL_bar, wR_bar, op)
+
+    # convertToEntropy reverse mode
+    for j=1:mesh.numNodesPerFace
+      permL = mesh.sbpface.perm[j, iface_red.faceL]
+      permR = mesh.sbpface.perm[j, iface_red.faceR]
+
+      qL_j = ro_sview(eqn.q, :, permL, elnumL)
+      qR_j = ro_sview(eqn.q, :, permR, elnumR)
+      qL_bar_j = sview(eqn.q_bar, :, permL, elnumL)
+      qR_bar_j = sview(eqn.q_bar, :, permR, elnumR)
+      wL_bar_j = ro_sview(wL_bar, :, permL)
+      wR_bar_j = ro_sview(wR_bar, :, permR)
+
+      getA0inv(entropy_vars, eqn.params, qL_j, A0invL)
+      getA0inv(entropy_vars, eqn.params, qR_j, A0invR)
+
+      smallmatvec_kernel!(A0invL, wL_bar_j, qL_bar_j, 1, 1)
+      smallmatvec_kernel!(A0invR, wR_bar_j, qR_bar_j, 1, 1)
+    end
+  end  # end loop i
+
+  return nothing
+end
+
+
+@noinline function computeFaceTerm_revm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      shockmesh::ShockedElements, sensor::ShockSensorHApprox,
+                      penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
+
+  op = SummationByParts.Subtract()
+
+  for i=1:shockmesh.numInterfaces
+    iface_red = shockmesh.ifaces[i].iface
+    iface_idx = shockmesh.ifaces[i].idx_orig
+    elnumL = shockmesh.elnums_all[iface_red.elementL]
+    elnumR = shockmesh.elnums_all[iface_red.elementR]
+
+    # get data needed for next steps
+    wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
+    wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+
+    nrm_face = ro_sview(mesh.nrm_face, :, :, iface_idx)
+    nrm_face_bar = sview(mesh.nrm_face_bar, :, :, iface_idx)
+    jacL = ro_sview(mesh.jac, :, elnumL)
+    jacL_bar = sview(mesh.jac_bar, :, elnumL)
+    jacR = ro_sview(mesh.jac, :, elnumR)
+    jacR_bar = sview(mesh.jac_bar, :, elnumR)
+    resL_bar = sview(eqn.res_bar, :, :, elnumL)
+    resR_bar = sview(eqn.res_bar, :, :, elnumR)
+
+    applyReducedPenalty_revm(penalty, sbp, eqn.params, mesh.sbpface, sensor,
+                        iface_red, wL, wR, nrm_face, nrm_face_bar, 
+                        jacL, jacL_bar, jacR, jacR_bar, resL_bar, resR_bar, op)
+  end  # end loop i
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# Shared face terms
 
 """
   Does the same thing as `compuateFaceTerm`, but for the shared faces, updating
@@ -349,8 +667,6 @@ end
       jacL = ro_sview(mesh.jac,    :, elnumL)
       jacR = ro_sview(metrics.jac, :, elnumR)
       resL = sview(eqn.res, :, :, elnumL)
-
-      resL_orig = eqn.res[:, :, elnumL]
 
       applyReducedPenalty(penalty, sbp, eqn.params, mesh.sbpface, sensor,
                         iface_red, wL, wR, nrm_face, jacL, jacR, resL, resR,
@@ -417,6 +733,114 @@ end
 
   return nothing
 end
+
+
+@noinline function computeSharedFaceTerm_revq(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      shockmesh::ShockedElements, sensor::ShockSensorHApprox,
+                      entropy_vars::AbstractVariables,
+                      penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
+
+
+  op = SummationByParts.Subtract()
+
+  # don't care about resR for shared faces
+  A0invL = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode)
+  wL_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  wR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  for peer=1:shockmesh.npeers
+
+    peer_full = shockmesh.peer_indices[peer]
+    metrics = mesh.remote_metrics[peer_full]
+    data = eqn.shared_data[peer_full]
+    data_bar = eqn.shared_data_bar[peer_full]
+
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_red = shockmesh.shared_interfaces[peer][i].iface
+      iface_idx = shockmesh.shared_interfaces[peer][i].idx_orig
+      elnumL = shockmesh.elnums_all[iface_red.elementL]
+      elnumR = getSharedElementIndex(shockmesh, mesh, peer, iface_red.elementR)
+
+      # get data needed for next steps
+      wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
+      wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+
+      nrm_face = ro_sview(mesh.nrm_sharedface[peer_full], :, :, iface_idx)
+      jacL = ro_sview(mesh.jac,    :, elnumL)
+      jacR = ro_sview(metrics.jac, :, elnumR)
+      resL_bar = ro_sview(eqn.res_bar, :, :, elnumL)
+      resR_bar = ro_sview(data_bar.q_recv, :, :, elnumR)
+
+      fill!(wL_bar, 0); fill!(wR_bar, 0)
+      applyReducedPenalty(penalty, sbp, eqn.params, mesh.sbpface, sensor,
+                        iface_red, resL_bar, resR_bar, nrm_face, jacL, jacR,
+                        wL_bar, wR_bar, op)
+
+      # convertToEntropy reverse mode
+      for j=1:mesh.numNodesPerFace
+        permL = mesh.sbpface.perm[j, iface_red.faceL]
+
+        qL_j = ro_sview(eqn.q, :, permL, elnumL)
+        qL_bar_j = sview(eqn.q_bar, :, permL, elnumL)
+        wL_bar_j = ro_sview(wL_bar, :, permL)
+
+        getA0inv(entropy_vars, eqn.params, qL_j, A0invL)
+        smallmatvec_kernel!(A0invL, wL_bar_j, qL_bar_j, 1, 1)
+      end
+    end  # end i
+  end  # end peer
+
+  return nothing
+end
+
+
+@noinline function computeSharedFaceTerm_revm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      shockmesh::ShockedElements, sensor::ShockSensorHApprox,
+                      penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
+
+
+  op = SummationByParts.Subtract()
+
+  # the primal function does (metricsL, metricsR) -> resL, so the
+  # reverse mode is resL -> (metricsL, metricsR)
+  resR_bar = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement)
+  for peer=1:shockmesh.npeers
+    peer_full = shockmesh.peer_indices[peer]
+    metrics = mesh.remote_metrics[peer_full]
+    metrics_bar = mesh.remote_metrics_bar[peer_full]
+    data = eqn.shared_data[peer_full]
+    #data_bar = eqn.shared_data_bar[peer_full]
+
+    for i=1:shockmesh.numSharedInterfaces[peer]
+      iface_red = shockmesh.shared_interfaces[peer][i].iface
+      iface_idx = shockmesh.shared_interfaces[peer][i].idx_orig
+      elnumL = shockmesh.elnums_all[iface_red.elementL]
+      elnumR = getSharedElementIndex(shockmesh, mesh, peer, iface_red.elementR)
+
+      # get data needed for next steps
+      wL = ro_sview(capture.w_el, :, :, iface_red.elementL)
+      wR = ro_sview(capture.w_el, :, :, iface_red.elementR)
+
+      nrm_face = ro_sview(mesh.nrm_sharedface[peer_full], :, :, iface_idx)
+      nrm_face_bar = sview(mesh.nrm_sharedface_bar[peer_full], :, :, iface_idx)
+      jacL     = ro_sview(mesh.jac, :, elnumL)
+      jacL_bar = sview(mesh.jac_bar, :, elnumL) 
+      jacR     = ro_sview(metrics.jac, :, elnumR)
+      jacR_bar = sview(metrics_bar.jac, :, elnumR)
+      resL_bar = ro_sview(eqn.res_bar, :, :, elnumL)
+#      resR_bar = ro_sview(data_bar.q_recv, :, :, elnumR)
+
+      applyReducedPenalty_revm(penalty, sbp, eqn.params, mesh.sbpface, sensor,
+                        iface_red, wL, wR, nrm_face, nrm_face_bar, 
+                        jacL, jacL_bar, jacR, jacR_bar, resL_bar, resR_bar, op)
+    end  # end i
+  end  # end peer
+
+  return nothing
+end
+
+
 
 
 
@@ -540,4 +964,90 @@ function applyReducedPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp,
 
   return nothing
 end
+
+
+function applyReducedPenalty_revm(penalty::BR2Penalty{Tsol, Tres}, sbp,
+                      params::AbstractParamType{Tdim}, sbpface::SparseFace,
+                      sensor::ShockSensorHApprox, iface::Interface,
+                      wL::AbstractMatrix, wR::AbstractMatrix,
+                      nrm_face::AbstractMatrix,
+                      nrm_face_bar::AbstractMatrix,
+                      jacL::AbstractVector{Tmsh}, jacL_bar::AbstractVector,
+                      jacR::AbstractVector, jacR_bar::AbstractVector,
+                      resL_bar::AbstractMatrix, resR_bar::AbstractMatrix,
+                      op::UnaryFunctor=Add()
+                     ) where {Tsol, Tres, Tmsh, Tdim}
+
+  numDofPerNode = size(wL, 1)
+  numNodesPerFace = size(nrm_face, 2)
+  numNodesPerElement = length(jacL)
+
+  eps_L = getShockSensor(params, sbp, sensor, iface.elementL, jacL)
+  eps_R = getShockSensor(params, sbp, sensor, iface.elementR, jacR)
+
+
+  alphaL = eps_L/4; alphaL_bar = zero(Tres)
+  alphaR = eps_R/4; alphaR_bar = zero(Tres)
+  for i=1:numNodesPerFace
+    # figure out the volume node index
+    # This is basically what interiorFaceInterpolate does
+    nperm = sbpface.nbrperm[i, iface.orient]
+    iL = sbpface.perm[i, iface.faceL]; iR = sbpface.perm[nperm, iface.faceR]
+
+    # the term to compute is:
+    # [ B * Nx * Rgk * H^-1 * Rgk^T * Nx * B * delta_w
+    #   B * Ny * Rgk * H^-1 * Rgk^T * Ny * B * delta_w] 
+    # and this has to be done for both elements kappa and nu.
+    # This term is applied to all mesh.numDofPerNode components of delta_w
+
+    B2_i = sbpface.wface[i]*sbpface.wface[i]
+    HinvL = jacL[iL]/sbp.w[iL]; HinvR = jacR[iR]/sbp.w[iR]
+    facL = zero(Tres); facR = zero(Tres)
+    @simd for d=1:Tdim
+      N2_d = nrm_face[d, i]*nrm_face[d, i]
+      facL += B2_i*N2_d*HinvL
+      facR += B2_i*N2_d*HinvR
+    end
+    #fac = op(alphaL*facL + alphaR*facR)
+
+    #-------------------------------------------
+    # reverse sweep
+
+    fac_bar = zero(Tres)
+    @simd for j=1:numDofPerNode
+      delta_w_j = wL[j, iL] - wR[j, iR]
+      #res1L[j, iL] += fac*delta_w_j
+      #res1R[j, iR] -= fac*delta_w_j  # delta_w is reversed for elementR
+      fac_bar += delta_w_j*(resL_bar[j, iL] - resR_bar[j, iR])
+    end  # end j
+
+    alphaL_bar += op(facL*fac_bar); alphaR_bar += op(facR*fac_bar)
+    facL_bar    = op(alphaL*fac_bar); facR_bar  = op(alphaR*fac_bar)
+
+    HinvL_bar = zero(Tres); HinvR_bar = zero(Tres)
+    @simd for d=1:Tdim
+      n_d = nrm_face[d, i]
+      N2_d = n_d*n_d
+      nrm_face_bar[d, i] += 2*B2_i*n_d*HinvL*facL_bar
+      nrm_face_bar[d, i] += 2*B2_i*n_d*HinvR*facR_bar
+      HinvL_bar += B2_i*N2_d*facL_bar
+      HinvR_bar += B2_i*N2_d*facR_bar
+    end  # end d
+
+    jacL_bar[iL] += HinvL_bar/sbp.w[iL]
+    jacR_bar[iR] += HinvR_bar/sbp.w[iR]
+
+  end  # end i
+
+  epsL_bar = alphaL_bar/4
+  epsR_bar = alphaR_bar/4
+
+  getShockSensor_revm(params, sbp, sensor, iface.elementL, jacL, jacL_bar,
+                      epsL_bar)
+  getShockSensor_revm(params, sbp, sensor, iface.elementR, jacR, jacR_bar,
+                      epsR_bar)
+
+  return nothing
+end
+
 

@@ -21,7 +21,7 @@ function test_shockcapturing_parallel()
     "BC2" => [2],
     "BC2_name" => "isentropicVortexBC", # inlet
     "BC3" => [1, 3],
-    "BC3_name" => "noPenetrationBC",
+    "BC3_name" => "isentropicVortexBC",
     "aoa" => 0.0,
     "smb_name" => "SRCMESHES/vortex_3x3_p_.smb",
     "dmg_name" => ".null",
@@ -33,12 +33,21 @@ function test_shockcapturing_parallel()
     "solve" => false,
     )
 
+  opts2 = copy(opts)
+  opts2["operator_type"] = "SBPDiagonalE"
+  opts2["face_integral_type"] = 1
+  opts2["flux_name"] = "IRSLFFlux"
+  opts2["use_lps"] = true
+
+
 
   mesh, sbp, eqn, opts = solvePDE(opts)
+  mesh2, sbp2, eqn2, opts2 = solvePDE(opts2)
 
   @testset "Shock Capturing" begin
     test_shockmesh(mesh, sbp, eqn, opts)
     test_br2_parallelpart(mesh, sbp, eqn, opts)
+    test_br2reduced_parallelpart(mesh2, sbp2, eqn2, opts2)
   end
 
 end
@@ -81,7 +90,8 @@ function test_shockmesh(mesh, sbp, eqn, opts)
 end
 
 
-function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where {Tsol, Tres}
+function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres},
+                               _opts) where {Tsol, Tres}
 # test consistency with the serial version
 
   opts = copy(_opts)
@@ -99,6 +109,34 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) whe
   end
   EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
+  test_sc_parallelpart(mesh, sbp, eqn, opts, capture, "br2")
+
+  return nothing
+end
+
+function test_br2reduced_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres},
+                                      _opts) where {Tsol, Tres}
+# test consistency with the serial version
+
+  opts = copy(_opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReducedSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+
+  # solve the PDE to get a solution with non-zero jump between elements
+  # that can be reproduced in parallel
+  opts["solve"] = true
+  solvePDE(mesh, sbp, eqn, opts)
+
+  test_sc_parallelpart(mesh, sbp, eqn, opts, capture, "br2reduced")
+
+  return nothing
+end
+
+
+
+
+function test_sc_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres},
+                              opts, capture, prefix::String) where {Tsol, Tres}
   # need to communicate the final solution
   startSolutionExchange(mesh, sbp, eqn, opts, wait=true)
 
@@ -116,18 +154,18 @@ function test_br2_parallelpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) whe
   @test val < 0
 
   # save this for parallel tests
-  val2 = readdlm("br2_entropy_serial.dat")
+  val2 = readdlm("$(prefix)_entropy_serial.dat")
   println("val2 = ", val2[1])
   println("diff = ", val - val2[1])
 
   @test abs(val - val2[1]) < 1e-8  # test the entropy dissipation is the same,
-                                    # to the tolerance of the nonlinear solve
+                                   # to the tolerance of the nonlinear solve
 
   saveSolutionToMesh(mesh, eqn.q_vec)
-  writeVisFiles(mesh, "br2_parallel")
+  writeVisFiles(mesh, "$(prefix)_parallel")
 
   return nothing
 end
 
 
-add_func1!(EulerTests, test_shockcapturing_parallel, [TAG_SHORTTEST]) 
+add_func1!(EulerTests, test_shockcapturing_parallel, [TAG_SHORTTEST, TAG_TMP]) 

@@ -357,7 +357,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
 
 
 """
@@ -383,6 +383,7 @@ function test_jac_terms_long()
     opts_tmp["addShockCapturing"] = true
     opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
     opts_tmp["shock_sensor_name"] = "SensorVelocity"
+    opts_tmp["need_adjoint"] = true
 
     #opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
@@ -397,11 +398,13 @@ function test_jac_terms_long()
     capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
                                                     sbp9, eqn9, opts9, sensor)
 
+    test_revm_product2(mesh9, sbp9, eqn9, opts9)
+    test_revq_product(mesh9, sbp9, eqn9, opts9)
     test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, freeze=true)
     test_jac_general(mesh9, sbp9, eqn9, opts9)
 
 
-
+#=
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -718,13 +721,13 @@ function test_jac_terms_long()
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    println("\nTesting revq frozen")
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
-
+=#
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
 
 
 #------------------------------------------------------------------------------
@@ -2866,6 +2869,54 @@ function test_revm_product(mesh, sbp, eqn, opts; freeze=false)
   return nothing
 end
 
+
+"""
+  Tests the reverse mode product by perturbing mesh.vert_coords and
+  recalculating the metrics from that
+"""
+function test_revm_product2(mesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+                                     # interfaces non-zero
+  
+  vert_coords_dot = rand_realpart(size(mesh.vert_coords))
+
+  res_bar = rand_realpart(mesh.numDof)
+
+  # complex step
+  mesh.vert_coords .+= pert*vert_coords_dot
+  recalcCoordinatesAndMetrics(mesh, sbp, opts)
+  evalResidual(mesh, sbp, eqn, opts)
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val1 = sum(imag(eqn.res_vec)/h .* res_bar)
+
+  # undo perturbation
+  for i=1:length(mesh.vert_coords)
+    mesh.vert_coords[i] = real(mesh.vert_coords[i])
+  end
+  recalcCoordinatesAndMetrics(mesh, sbp, opts)
+
+  # reverse mode
+
+  zeroBarArrays(mesh)
+  evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
+  getAllCoordinatesAndMetrics_rev(mesh, sbp, opts)
+
+  val2 = sum(mesh.vert_coords_bar .* vert_coords_dot)
+
+  println("val1 = ", val1)
+  println("val2 = ", val2)
+
+  @test abs(val1 - val2) < max( min(abs(val1), abs(val2))*1e-12, 1e-12)
+
+  return nothing
+end
 
 
 """

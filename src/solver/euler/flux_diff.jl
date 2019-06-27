@@ -391,7 +391,6 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
                             opts, data::SharedFaceData, functor::FluxType_diff,
                             assembler::AssembleElementData) where {Tmsh, Tsol, Tres}
 
-  println("\ndoing shared face integrals")
   params = eqn.params
   fdata = params.calc_face_integrals_data
   @unpack fdata q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
@@ -464,10 +463,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
       end
     end
     
-
-
-     println("assembling peer ", idx, " iface = ", iface_j) 
-     assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
+    assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
    end  # end loop over interfaces
 
   return nothing

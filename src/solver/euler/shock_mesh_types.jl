@@ -152,7 +152,7 @@ mutable struct ShockedElements{Tres}
     npeers = 0
     peer_indices = Vector{Int}(0)
     numEl = 0
-    isNeumann = true
+    isNeumann = true  # was true
     local_els = 0:0
     neighbor_els = 0:0
     shared_els = Vector{UnitRange{Int}}(0)

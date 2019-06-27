@@ -139,20 +139,24 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("boundary integral @time printed above")
   end
 
+
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
     #println("stabilizing @time printed above")
   end
+
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
     #println("face integral @time printed above")
   end
 
+
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
     #println("evalSharedFaceIntegrals @time printed above")
   end
+
 
   time.t_shock += @elapsed if opts["addShockCapturing"]
     evalShockCapturing(mesh, sbp, eqn, opts)

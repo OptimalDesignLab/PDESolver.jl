@@ -503,7 +503,7 @@ function test_ldg()
     "BC2" => [2],
     "BC2_name" => "isentropicVortexBC", # inlet
     "BC3" => [1, 3],
-    "BC3_name" => "noPenetrationBC",  # was noPenetrationBC
+    "BC3_name" => "isentropicVortexBC",  # was noPenetrationBC
     "aoa" => 0.0,
     "smb_name" => "SRCMESHES/vortex_3x3_.smb",
     "dmg_name" => ".null",
@@ -523,6 +523,8 @@ function test_ldg()
   opts2 = copy(opts)
   opts2["operator_type"] = "SBPDiagonalE"
   opts2["face_integral_type"] = 1
+  opts2["flux_name"] = "IRSLFFlux"
+  opts2["use_lps"] = true
 
 
   @testset "DG shock capturing" begin
@@ -569,6 +571,10 @@ function test_ldg()
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_br2_serialpart(mesh, sbp, eqn, opts)
+      
+    
+    ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+    test_br2reduced_serialpart(mesh2, sbp2, eqn2, opts2)
 
   end
 
@@ -576,7 +582,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
 
 
 """
@@ -1925,24 +1931,58 @@ function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where
   end
   EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
+  test_serialpart(mesh, sbp, eqn, opts, capture, "br2")
+
+  return nothing
+end
+
+
+function test_br2reduced_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where {Tsol, Tres}
+
+
+  opts = copy(_opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReducedSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+
+  # solve the PDE to get a solution with non-zero jump between elements
+  # that can be reproduced in parallel
+  opts["solve"] = true
+  opts["addVolumeIntegrals"] = true
+  opts["addFaceIntegrals"] = true
+  opts["addBoundaryIntegrals"] = true
+
+  solvePDE(mesh, sbp, eqn, opts)
+
+  test_serialpart(mesh, sbp, eqn, opts, capture, "br2reduced")
+
+  return nothing
+end
+
+
+
+function test_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                         capture, prefix::String) where {Tsol, Tres}
+
   w_vec = zeros(Tsol, mesh.numDof)
   copy!(w_vec, eqn.q_vec)
   EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)
 
   fill!(eqn.res, 0)
   EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture)
+  println("isnan eqn.q = ", any(isnan.(eqn.q)))
+  println("isnan eqn.res_vec = ", any(isnan.(eqn.res_vec)))
 
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
 
   # save this for parallel tests
-  f = open("br2_entropy_serial.dat", "w")
+  f = open("$(prefix)_entropy_serial.dat", "w")
   println(f, real(val))
   close(f)
 
   saveSolutionToMesh(mesh, eqn.q_vec)
-  writeVisFiles(mesh, "br2_serial")
+  writeVisFiles(mesh, "$(prefix)_serial")
 
   return nothing
 end

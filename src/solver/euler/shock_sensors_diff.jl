@@ -573,6 +573,22 @@ function getShockSensor_revq(params::ParamType, sbp::AbstractOperator,
 end
 
 
+function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorVelocity{Tsol, Tres},
+                        q::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix, coords_bar::AbstractMatrix,
+                        dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                        jac::AbstractVector{Tmsh}, jac_bar::AbstractVector,
+                        ee_bar::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  # nothing to do here
+
+  return nothing
+end
+
 #------------------------------------------------------------------------------
 # ShockSensorHIso
 
@@ -1555,5 +1571,50 @@ function calcAnisoFactors_revm(mesh::AbstractMesh, sbp, opts,
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# SensorHApprox
+
+# this shock sensor is not a function of q, so the _diff and _revq methods
+# are not required
+
+# even though this shared the name with all the other getShockSensor methods,
+# it signature and outputs are different.  This is sort-of ok because this
+# is a special shock sensor and should never be used as the main shock sensor.
+function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHApprox{Tsol, Tres},
+                        elnum::Integer, jac::AbstractVector{Tmsh},
+                        jac_bar::AbstractVector, epsL_bar::Number
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  numNodesPerElement = length(jac)
+
+  shared_idx = elnum - first(sensor.shared_els) + 1  # index of shared element
+  if (elnum in sensor.local_els) ||
+     (elnum in sensor.shared_els && sensor.shared_isShocked[shared_idx])
+
+    # compute element size h for both elements
+    h = zero(Tmsh)
+    @simd for i=1:numNodesPerElement
+      h += sbp.w[i]/jac[i]
+    end
+
+    # compute estimates viscosity
+    lambda_max = sensor.lambda_max
+    fac = sensor.alpha*lambda_max/sbp.degree
+    #eps_L = fac*(h^(1/Tdim))
+
+    #----------------------------------------
+    # reverse sweep
+    
+    h_bar = fac*epsL_bar*(h^(1/Tdim - 1))/Tdim
+
+    @simd for i=1:numNodesPerElement
+      jac_bar[i] += -sbp.w[i]*h_bar/(jac[i]*jac[i])
+    end
+  end
+
+end
 
 

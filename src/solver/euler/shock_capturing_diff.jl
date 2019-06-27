@@ -112,6 +112,21 @@ function applyShockCapturing_revq(mesh::AbstractMesh, sbp::AbstractOperator,
 end
 
 
+# Face shock capturing version
+function applyShockCapturing_revq(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::AbstractFaceShockCapturing)
+
+  sensor = getShockSensor(capture)
+  shockmesh = eqn.params.shockmesh
+  setupShockCapturing(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  # call shock capturing scheme
+  calcShockCapturing_revq(mesh, sbp, eqn, opts, capture, shockmesh)
+
+
+  return nothing
+end
 
 
 #------------------------------------------------------------------------------
@@ -137,6 +152,22 @@ function applyShockCapturing_revm(mesh::AbstractMesh, sbp::AbstractOperator,
   sensor = getShockSensor(capture)
   initForRevm(sensor)
   calcShockCapturing_revm(mesh, sbp, eqn, opts, sensor, capture)
+  finishRevm(mesh, sbp, eqn, opts, sensor)
+
+  return nothing
+end
+
+function applyShockCapturing_revm(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts,
+                             capture::AbstractFaceShockCapturing)
+
+  # unlike AbstractFaceShockCapturing, nothing to do here
+
+  sensor = getShockSensor(capture)
+  shockmesh = eqn.params.shockmesh
+  initForRevm(sensor)
+  setupShockCapturing(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+  calcShockCapturing_revm(mesh, sbp, eqn, opts, capture, shockmesh)
   finishRevm(mesh, sbp, eqn, opts, sensor)
 
   return nothing
