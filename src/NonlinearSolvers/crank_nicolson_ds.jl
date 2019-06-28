@@ -325,7 +325,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         flush(f_v_L2_norm)
         flush(f_v_sbp_norm)
       end
-      @mpi_master flush(f_i_test)
+      if opts["write_L2vnorm"]
+        @mpi_master flush(f_i_test)
+      end
       @mpi_master if opts["write_drag"]
         flush(f_drag)
       end
@@ -449,6 +451,10 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         ### using cnRhs, complex-step
         eqn_nextstep.params.Ma += pert
         eqn.params.Ma += pert
+        ############################## PERTAOA instead of Ma
+        # eqn_nextstep.params.aoa += pert
+        # eqn.params.aoa += pert
+
         ctx = (f, eqn, h)
 
         # Form unsteady residual (res_hat) with F(q^(n)) and F(q^(n+1))
@@ -456,6 +462,9 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
         cnRhs(mesh, sbp, eqn_nextstep, opts, res_hat_vec, ctx, t)
         eqn_nextstep.params.Ma -= pert
         eqn.params.Ma -= pert
+        ############################## PERTAOA instead of Ma
+        # eqn_nextstep.params.aoa -= pert
+        # eqn.params.aoa -= pert
 
         for ix_dof = 1:mesh.numDof
           dRdM_vec[ix_dof] = imag(res_hat_vec[ix_dof])/Ma_pert_mag
@@ -772,13 +781,15 @@ function crank_nicolson_ds(f::Function, h::AbstractFloat, t_max::AbstractFloat,
 
     # This needs to be above the checkpoint write, in case the checkpoint is written before the 
     #   files are flushed. This would cause a gap in the data files.
-    @mpi_master println(f_term23, i, "  ", real(term23))
-    if (i >= opts["statistics_start_iter"]) && (i <= opts["statistics_end_iter"])
-      @mpi_master println(f_term23_statistics, i, "  ", real(term23_statistics))
+    if opts["write_L2vnorm"]
+      @mpi_master println(f_term23, i, "  ", real(term23))
+      if (i >= opts["statistics_start_iter"]) && (i <= opts["statistics_end_iter"])
+        @mpi_master println(f_term23_statistics, i, "  ", real(term23_statistics))
+      end
+      @mpi_master println(f_v_L2_norm, i, "  ", real(v_L2_norm))
+      @mpi_master println(f_v_sbp_norm, i, "  ", real(v_sbp_norm))
+      @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
     end
-    @mpi_master println(f_v_L2_norm, i, "  ", real(v_L2_norm))
-    @mpi_master println(f_v_sbp_norm, i, "  ", real(v_sbp_norm))
-    @mpi_master println(f_i_test, i, "  ", i_test, "  ", t)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # End direct sensitivity calc's for each time step
