@@ -25,8 +25,12 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   setShockedElements(capture.sensor_const, mesh, sbp, eqn, opts,
                      getShockSensor(capture), shockmesh)
 
-  computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.sensor_const,
-                  capture.penalty)
+#  computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.sensor_const,
+#                  capture.penalty)
+
+  computeFaceTerm(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+                  shockmesh, capture.sensor_const, capture.penalty)
+
 
 
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
@@ -45,6 +49,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeVolumeTerm_diff(mesh, sbp, eqn, opts, capture,
                                capture.diffusion, capture.entropy_vars,
                                shockmesh, assem)
+
   finishConvertEntropy(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
                        shockmesh)
 
@@ -59,6 +64,7 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                                    capture.sensor_const, capture.entropy_vars,
                                    capture.penalty, assem)
+
   return nothing
 end
 
@@ -185,7 +191,7 @@ end
     i_full = shockmesh.elnums_all[i]
     w_i = sview(capture.w_el, :, :, i)  # save for use in face integrals
     @simd for j=1:mesh.numNodesPerElement
-      q_j = ro_sview(eqn.q, :, j, i)
+      q_j = ro_sview(eqn.q, :, j, i_full)
       w_j = sview(w_i, :, j)
 
       # convert to entropy variables
@@ -206,7 +212,7 @@ end
                          jac_i, i, grad_w, lambda_gradw)
 
     # apply Q^T
-    res_i = sview(eqn.res, :, :, i)
+    res_i = sview(eqn.res, :, :, i_full)
     applyQxTransposed(sbp, lambda_gradw, dxidx_i, work, res_i, op)
 
   end  # end i
@@ -442,7 +448,7 @@ end
 
 #------------------------------------------------------------------------------
 # Face terms
-
+#=
 """
   Computes the interior face term for any [`SBPParabolic`](@ref) shock
   capturing scheme.
@@ -489,8 +495,49 @@ end
 
   return nothing
 end
+=#
+@noinline function computeFaceTerm(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      entropy_vars::AbstractVariables,
+                      shockmesh::ShockedElements, sensor::ShockSensorHApprox,
+                      penalty::AbstractDiffusionPenalty) where {Tsol, Tres}
+
+  op = SummationByParts.Subtract()
+
+  wL = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+  wR = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerElement)
+
+  for i=1:mesh.numInterfaces
+    iface = mesh.interfaces[i]
+    elnumL = iface.elementL
+    elnumR = iface.elementR
+
+    for j=1:mesh.numNodesPerElement
+      qL_j = ro_sview(eqn.q, :, j, elnumL)
+      qR_j = ro_sview(eqn.q, :, j, elnumR)
+      wL_j = sview(wL, :, j)
+      wR_j = sview(wR, :, j)
+      convertToEntropy(entropy_vars, eqn.params, qL_j, wL_j)
+      convertToEntropy(entropy_vars, eqn.params, qR_j, wR_j)
+    end
+
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    jacL = ro_sview(mesh.jac, :, elnumL)
+    jacR = ro_sview(mesh.jac, :, elnumR)
+    resL = sview(eqn.res, :, :, elnumL)
+    resR = sview(eqn.res, :, :, elnumR)
+
+    applyReducedPenalty(penalty, sbp, eqn.params, mesh.sbpface, sensor,
+                        iface, wL, wR, nrm_face, jacL, jacR, resL, resR,
+                        op)
+  end  # end loop i
+
+  return nothing
+end
 
 
+
+#=
 @noinline function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                       capture::SBPParabolicReducedSC{Tsol, Tres},
                       shockmesh::ShockedElements, sensor::ShockSensorHApprox,
@@ -533,6 +580,49 @@ end
 
   return nothing
 end
+=#
+
+@noinline function computeFaceTerm_diff(mesh, sbp, eqn, opts,
+                      capture::SBPParabolicReducedSC{Tsol, Tres},
+                      shockmesh::ShockedElements, sensor::ShockSensorHApprox,
+                      entropy_vars::AbstractVariables,
+                      penalty::AbstractDiffusionPenalty,
+                      assem::AssembleElementData) where {Tsol, Tres}
+
+#  println("\n\nDoing shock capturing face integrals")
+
+  data = eqn.params.calc_face_integrals_data
+  @unpack data res_jacLL res_jacLR res_jacRL res_jacRR
+
+  op = Subtract()
+
+  for i=1:mesh.numInterfaces
+    iface = mesh.interfaces[i]
+    elnumL = iface.elementL
+    elnumR = iface.elementR
+
+    # get data needed for next steps
+    qL = ro_sview(eqn.q, :, :, elnumL)
+    qR = ro_sview(eqn.q, :, :, elnumR)
+
+    nrm_face = ro_sview(mesh.nrm_face, :, :, i)
+    jacL = ro_sview(mesh.jac, :, elnumL)
+    jacR = ro_sview(mesh.jac, :, elnumR)
+
+    # apply the penalty coefficient matrix
+    applyReducedPenalty_diff(penalty, sbp, eqn.params,  mesh.sbpface,
+                      sensor, entropy_vars, iface, qL, qR,  nrm_face,
+                      jacL, jacR,
+                      res_jacLL, res_jacLR, res_jacRL, res_jacRR, op)
+
+#    println("assembling shock capturing interface ", iface_full)
+    assembleInterface(assem, mesh.sbpface, mesh, iface, res_jacLL,
+                      res_jacLR, res_jacRL, res_jacRR)
+  end  # end loop i
+
+  return nothing
+end
+
 
 
 @noinline function computeFaceTerm_revq(mesh, sbp, eqn, opts,

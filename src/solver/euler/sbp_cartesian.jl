@@ -26,25 +26,25 @@ function applyQxTransposed(sbp, w::AbstractMatrix, dxidx::Abstract3DArray,
                              wxi::Abstract3DArray, wx::Abstract3DArray,
                              op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
-  # The idea is to compute dw/dxi first, and then use dxi/dx to rotate those
-  # arrays to be d/dx
-
   # compute dw/dxi
   numDofPerNode, numNodesPerElement, dim = size(wx)
-  for d=1:dim
-    smallmatmat!(w, sview(sbp.Q, :, :, d), sview(wxi, :, :, d))
-  end
+  
+  wxi_d = sview(wxi, :, :, 1)
+  for d1=1:dim  # cartesian direction
 
-  # dw/dx = dw/dxi * dxi/dx + dw/dy * dy/dxi
-  @simd for d1=1:dim
-    @simd for i=1:numNodesPerElement
-      @simd for d2=1:dim
-        @simd for j=1:numDofPerNode
-          wx[j, i, d1] += op(wxi[j, i, d2]*dxidx[d2, d1, i])
+    for d2=1:dim  # parametric dimension (summed)
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          wxi_d[k, j] = op(dxidx[d2, d1, j]*w[k, j])
         end
       end
+
+      Q_d = sview(sbp.Q, :, :, d2)
+      wx_d = sview(wx, :, :, d1)
+      smallmatmat_kernel!(wxi_d, Q_d, wx_d, 1, 1)
     end
   end
+
 
   return nothing
 end
@@ -186,20 +186,22 @@ function applyQxTransposed(sbp, w::Abstract3DArray, dxidx::Abstract3DArray,
 
 
   numDofPerNode, numNodesPerElement, dim = size(wxi)
-  for d1=1:dim  # compute Q_d * w_d
-    for d2=1:dim
-      smallmatmat!(ro_sview(w, :, :, d1), ro_sview(sbp.Q, :, :, d2), sview(wxi, :, :, d2))
-    end
 
-    @simd for d2=1:dim
-      @simd for j=1:numNodesPerElement
-        @simd for k=1:numDofPerNode
-          wx[k, j] += op(dxidx[d2, d1, j]*wxi[k, j, d2])
+  wxi_d = sview(wxi, :, :, 1)
+  for d1=1:dim  # cartesian direction
+    for d2=1:dim  # parametric dimension (summed)
+
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          wxi_d[k, j] = op(dxidx[d2, d1, j]*w[k, j, d1])
         end
       end
-    end
 
-  end  # end d1
+      Q_d = sview(sbp.Q, :, :, d2)
+      smallmatmat_kernel!(wxi_d, Q_d, wx, 1, 1)
+    end
+  end
+
 
   return nothing
 end

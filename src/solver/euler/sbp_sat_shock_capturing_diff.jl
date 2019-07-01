@@ -17,17 +17,17 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
   computeFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
-#=
-  if shockmesh.isNeumann
-    println("computing Neumann boundary condition")
-    computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
-                              capture.diffusion, capture.entropy_vars, assem)
-  else
-    println("computing Dirichlet boundary condition")
-    computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
-                                      assem)
-  end
-=#
+
+#  if shockmesh.isNeumann
+#    println("computing Neumann boundary condition")
+#    computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+#                              capture.diffusion, capture.entropy_vars, assem)
+#  else
+#    println("computing Dirichlet boundary condition")
+#    computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+#                                      assem)
+#  end
+
   #@time computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
   #                                 capture.diffusion, capture.penalty)
 

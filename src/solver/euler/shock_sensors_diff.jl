@@ -883,6 +883,105 @@ function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
 end
 
 
+function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorBO{Tsol, Tres},
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ee_mat::AbstractMatrix, ee_mat_bar::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh, Tdim}
+
+
+  numDofPerNode, numNodesPerElement = size(q)
+
+#  lambda_max = zero(Tsol)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+#    lambda_max += getLambdaMax(params, q_i)
+    h_avg += sbp.w[i]/jac[i]
+  end
+
+#  lambda_max /= numNodesPerElement
+  h_avg = h_avg^(1/Tdim)
+
+#  ee = sensor.alpha*lambda_max*h_avg/sbp.degree
+#  fill!(Se_mat, lambda_max)
+#  fill!(ee_mat, sensor.alpha*lambda_max*h_avg/sbp.degree)
+
+  #---------------------
+  # reverse sweep
+  ee_bar = zero(Tres)
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      ee_bar += ee_mat_bar[d, i]
+    end
+  end
+
+  lambda_max_bar = zero(Tres)
+  lambda_max_bar += ee_bar*sensor.alpha*h_avg/sbp.degree
+
+  lambda_max_bar /= numNodesPerElement
+  for i=1:numNodesPerElement
+    q_i = ro_sview(q, :, i)
+    q_bar_i = sview(q_bar, :, i)
+    getLambdaMax_revq(params, q_i, q_bar_i, lambda_max_bar)
+  end
+
+  return nothing
+end
+
+function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorBO{Tsol, Tres},
+                        q::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix, coords_bar::AbstractMatrix,
+                        dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                        jac::AbstractVector{Tmsh}, jac_bar::AbstractVector,
+                        ee_mat_bar::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+ numDofPerNode, numNodesPerElement = size(q)
+
+  lambda_max = zero(Tsol)
+  h_avg = zero(Tmsh)
+  for i=1:numNodesPerElement
+    q_i = sview(q, :, i)
+    lambda_max += getLambdaMax(params, q_i)
+    h_avg += sbp.w[i]/jac[i]
+  end
+
+  lambda_max /= numNodesPerElement
+  #h_avg2 = h_avg^(1/Tdim)
+
+#  ee = sensor.alpha*lambda_max*h_avg/sbp.degree
+#  fill!(Se_mat, lambda_max)
+#  fill!(ee_mat, sensor.alpha*lambda_max*h_avg/sbp.degree)
+
+  #---------------------
+  # reverse sweep
+  ee_bar = zero(Tres)
+  for i=1:numNodesPerElement
+    for d=1:Tdim
+      ee_bar += ee_mat_bar[d, i]
+    end
+  end
+
+
+  h_avg2_bar = zero(Tres)
+  h_avg2_bar += sensor.alpha*lambda_max*ee_bar/sbp.degree
+
+  h_avg_bar = (1/Tdim)*h_avg2_bar*h_avg^((1/Tdim) - 1)
+
+  for i=1:numNodesPerElement
+    jac_bar[i] += -sbp.w[i]*h_avg_bar/(jac[i]*jac[i])
+  end
+
+  return nothing
+end
+
+
 #------------------------------------------------------------------------------
 # ShockSensorHHO
 
@@ -1617,4 +1716,63 @@ function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
 
 end
 
+#------------------------------------------------------------------------------
+# ShockSensorOddBO
+
+function getShockSensor_diff(params::ParamType{Tdim}, sbp::AbstractOperator,
+                      sensor::ShockSensorOddBO,
+                      q_el::AbstractMatrix{Tsol}, elnum::Integer,
+                      coords::AbstractMatrix, dxidx::Abstract3DArray,
+                      jac::AbstractVector{Tmsh},
+                      Se_jac::Abstract4DArray{Tres},
+                      ee_jac::Abstract4DArray{Tres}) where {Tsol, Tmsh, Tres, Tdim}
+
+
+  if elnum % 2 == 1
+    val = getShockSensor_diff(params, sbp, sensor.sensor, q_el, elnum, coords,
+                              dxidx, jac, Se_jac, ee_jac)
+  else
+    fill!(Se_jac, 0)
+    fill!(ee_jac, 0)
+    val = true
+  end
+
+  return val
+end
+
+
+function getShockSensor_revq(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorOddBO{Tsol, Tres},
+                        q::AbstractMatrix, q_bar::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ee_mat::AbstractMatrix, ee_mat_bar::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh, Tdim}
+
+  if elnum % 2 == 1
+    getShockSensor_revq(params, sbp, sensor.sensor, q, q_bar, elnum, coords, dxidx,
+                        jac, ee_mat, ee_mat_bar)
+  end
+
+  return nothing
+end
+
+function getShockSensor_revm(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorOddBO{Tsol, Tres},
+                        q::AbstractMatrix,
+                        elnum::Integer,
+                        coords::AbstractMatrix, coords_bar::AbstractMatrix,
+                        dxidx::Abstract3DArray, dxidx_bar::Abstract3DArray,
+                        jac::AbstractVector{Tmsh}, jac_bar::AbstractVector,
+                        ee_bar::AbstractMatrix
+                       ) where {Tsol, Tres, Tmsh, Tdim}
+
+  if elnum % 2 == 1
+    getShockSensor_revm(params, sbp, sensor.sensor, q, elnum, coords, coords_bar,
+                        dxidx, dxidx_bar, jac, jac_bar, ee_bar)
+  end
+
+  return nothing
+end
 

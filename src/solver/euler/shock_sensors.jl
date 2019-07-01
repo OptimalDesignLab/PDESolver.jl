@@ -693,4 +693,37 @@ function isShockElement(params::ParamType, sbp::AbstractOperator,
   error("ShockSensorHApprox does not know which elements are shocked or not, don't ask it that.")
 end
 
+#------------------------------------------------------------------------------
+# ShockSensorOddBO
+
+function getShockSensor(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorOddBO{Tsol, Tres},
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh}
+
+  if elnum % 2 == 1
+    getShockSensor(params, sbp, sensor.sensor, q, elnum, coords, dxidx, jac,
+                   Se_mat, ee_mat)
+  else
+    fill!(Se_mat, 0)
+    fill!(ee_mat, 0)
+  end
+
+  return true
+end
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorOddBO{Tsol, Tres},
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ) where {Tsol, Tres, Tmsh}
+
+
+  return (elnum % 2 ) == 1
+end
+
 

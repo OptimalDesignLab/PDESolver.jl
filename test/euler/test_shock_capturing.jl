@@ -79,6 +79,7 @@ function test_shocksensorPP()
 
     test_shocksensor_revq(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensora, q, coords, dxidx, jac)
+    test_shocksensor_revq(eqn.params, sbp, sensor3, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
     test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
 
@@ -88,6 +89,7 @@ function test_shocksensorPP()
 
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor)
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensora)
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor3)
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
 
     # case 2: ee on sin wave
@@ -531,8 +533,11 @@ function test_ldg()
 
     mesh, sbp, eqn, opts = solvePDE(opts)
     mesh2, sbp2, eqn2, opts2 = solvePDE(opts2)
+    mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_curve.jl")
 
     testQx(mesh, sbp, eqn, opts)
+    # test on a curvilinear mesh
+    testQx(mesh3, sbp3, eqn3, opts3, check_poly=false)
 
     test_shockmesh(mesh, sbp, eqn, opts)
     #test_shockmesh2(mesh, sbp, eqn, opts)
@@ -582,7 +587,7 @@ function test_ldg()
 end
 
 
-add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST, TAG_TMP])
+add_func1!(EulerTests, test_ldg, [TAG_SHORTTEST])
 
 
 """
@@ -928,7 +933,10 @@ function applyE(mesh, i::Integer, iface_idx::AbstractVector,
 end
 
 
-function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
+                check_poly=true) where {Tsol, Tres}
+
+  _check_poly::Bool = check_poly
 
   degree = sbp.degree
 #  degree = 1
@@ -960,7 +968,9 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
 
   dx_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  dxT_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   qx_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  qxT_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
 
   qface = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -968,7 +978,10 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
   E_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   nel = 0  # number of elements tests
   for i=1:mesh.numEl
-    if iface_idx[end, i] == 0  # non-interior element
+    # the Ex calculation is only used for verifying polynomial exactness
+    # Don't skip the boundary elements (the ones that might be curved) when
+    # not checking polynomial exactness
+    if _check_poly && iface_idx[end, i] == 0  # non-interior element
       continue
     end
     nel += 1
@@ -984,19 +997,21 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
     # Do Ex: interpolate to face, apply normal vector (apply nbrperm and fac),
     #        reverse interpolate
-    applyE(mesh, i, sview(iface_idx, :, i), q_i, qface,  work2, E_term)
+    if _check_poly
+      applyE(mesh, i, sview(iface_idx, :, i), q_i, qface,  work2, E_term)
+    end
 
     # test apply Dx
     fill!(dx_term, 0)
-    EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, work, dx_term)
+    EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, work, dx_term, op)
 
     # test apply Qx
     fill!(qx_term, 0)
-    EulerEquationMod.applyQx(sbp, q_i, dxidx_i, work, qx_term)
+    EulerEquationMod.applyQx(sbp, q_i, dxidx_i, work, qx_term, op)
 
     # test apply Dx^T
     fill!(dxT_term, 0)
-    EulerEquationMod.applyDxTransposed(sbp, q_i, dxidx_i, jac_i, work, dxT_term)
+    EulerEquationMod.applyDxTransposed(sbp, q_i, dxidx_i, jac_i, work, dxT_term, op)
 
     # test explicitly computed operator matrices
     EulerEquationMod.calcDx(sbp, dxidx_i, jac_i, Dx)
@@ -1007,8 +1022,10 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
     for d1=1:mesh.dim
       for k=1:mesh.numDofPerNode
-        dx_term2[k, :, d1] = Dx[:, :, d1]*q_i[k, :]
-        qx_term2[k, :, d1] = Qx[:, :, d1]*q_i[k, :]
+        dx_term2[k, :, d1]  = -Dx[:, :, d1]*q_i[k, :]
+        dxT_term2[k, :, d1] = -Dx[:, :, d1].'*q_i[k, :]
+        qx_term2[k, :, d1]  = -Qx[:, :, d1]*q_i[k, :]
+        qxT_term2[k, :, d1] = -Qx[:, :, d1].'*q_i[k, :]
       end
       @test maximum(abs.(DxT[:, :, d1] - Dx[:, :, d1].')) < 1e-13
       @test maximum(abs.(QxT[:, :, d1] - Qx[:, :, d1].')) < 1e-13
@@ -1023,27 +1040,34 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
           val2 = dx_term[k, j, d]
           val3 = fac*qx_term[k, j, d]
           val4 = fac*qx_term2[k, j, d]
-          @test abs(val - qderiv[k, d, j, i]) < 1e-12
-          @test abs(val2 - qderiv[k, d, j, i]) < 1e-12
-          @test abs(val3 - qderiv[k, d, j, i]) < 1e-12
-          @test abs(dx_term2[k, j, d] - qderiv[k, d, j, i]) < 1e-12
-          @test abs(val4 - qderiv[k, d, j, i]) < 1e-12
+          if _check_poly
+            @test abs(val - qderiv[k, d, j, i]) < 1e-11
+            @test abs(val2 + qderiv[k, d, j, i]) < 1e-11
+            @test abs(val3 + qderiv[k, d, j, i]) < 1e-11
+            @test abs(dx_term2[k, j, d] + qderiv[k, d, j, i]) < 1e-11
+            @test abs(val4 + qderiv[k, d, j, i]) < 1e-11
+          end
           
-          @test abs(dx_term2[k, j, d] - dx_term[k, j, d]) < 1e-12
-          @test abs(qx_term2[k, j, d] - qx_term[k, j, d]) < 1e-12
+          # test agreement between applyDx and calcDx + mat-vec
+          @test abs(dx_term2[k, j, d] - dx_term[k, j, d]) < 1e-11
+          @test abs(dxT_term2[k, j, d] - dxT_term[k, j, d]) < 1e-11
+          @test abs(qx_term2[k, j, d] - qx_term[k, j, d]) < 1e-11
+          @test abs(qxT_term2[k, j, d] - qxT_term[k, j, d]) < 1e-11
 
         end
       end
     end
 
-    for d=1:mesh.dim
-      for k=1:mesh.numDofPerNode
-        # Dx^T is a bit weird because it isn't easily related to a polynomial.
-        # Instead do: v^T Dx^T u = (v^T Dx^T) u = dv/dx^T u
-        #                        = v^T (Dx^T u), where v is a polynomial
-        val4 = dot(dxT_term[k, :, d], q_i[k, :])
-        val5 = dot(qderiv[k, d, :, i], q_i[k, :])
-        @test abs(val4 - val5) < 5e-12
+    if _check_poly
+      for d=1:mesh.dim
+        for k=1:mesh.numDofPerNode
+          # Dx^T is a bit weird because it isn't easily related to a polynomial.
+          # Instead do: v^T Dx^T u = (v^T Dx^T) u = dv/dx^T u
+          #                        = v^T (Dx^T u), where v is a polynomial
+          val4 = dot(dxT_term[k, :, d], q_i[k, :])
+          val5 = dot(qderiv[k, d, :, i], q_i[k, :])
+          @test abs(val4 + val5) < 5e-11
+        end
       end
     end
 
@@ -1135,10 +1159,10 @@ function testQx2(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts)  where {Tsol, Tres
     EulerEquationMod.applyDx(sbp, wx, dxidx_i, jac_i, wxi, res2_dx)
     EulerEquationMod.applyDxTransposed(sbp, wx, dxidx_i, jac_i, wxi, res2_dxT)
 
-    @test maximum(abs.(res2_qxT - res1_qxT)) < 1e-13
-    @test maximum(abs.(res2_qx - res1_qx)) < 1e-13
-    @test maximum(abs.(res2_dx - res1_dx)) < 1e-13
-    @test maximum(abs.(res2_dxT - res1_dxT)) < 1e-12
+    @test maximum(abs.(res2_qxT - res1_qxT)) < 1e-12
+    @test maximum(abs.(res2_qx - res1_qx)) < 1e-12
+    @test maximum(abs.(res2_dx - res1_dx)) < 1e-12
+    @test maximum(abs.(res2_dxT - res1_dxT)) < 1e-11
   end  # end i
 
   return nothing

@@ -30,7 +30,7 @@ function test_jac_parallel_long()
     fname2 = "input_vals_jac_tmp.jl"
 
     myrank = MPI.Comm_rank(MPI.COMM_WORLD)
-#=
+
     # SBPGamma
     if myrank == 0
       opts_tmp = read_input_file(fname)
@@ -84,7 +84,7 @@ function test_jac_parallel_long()
     end
     MPI.Barrier(MPI.COMM_WORLD)
     mesh8, sbp8, eqn8, opts8 = run_solver(fname2)
-=#
+
 
     # SBPDiagonalE ES shock capturing
     if myrank == 0
@@ -101,11 +101,7 @@ function test_jac_parallel_long()
     MPI.Barrier(MPI.COMM_WORLD)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname2)
 
-    test_revm_product2(mesh9, sbp9, eqn9, opts9)
-    test_revq_product(mesh9, sbp9, eqn9, opts9)
-    test_jac_parallel_inner(mesh9, sbp9, eqn9, opts9)
 
-#=
     opts4_tmp = copy(opts4)
     test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
     test_jac_homotopy(mesh4, sbp4, eqn4, opts4_tmp)
@@ -129,6 +125,10 @@ function test_jac_parallel_long()
     
     test_revq_product(mesh7, sbp7, eqn7, opts7)
 
+    test_revm_product2(mesh9, sbp9, eqn9, opts9)
+    test_revq_product(mesh9, sbp9, eqn9, opts9)
+    test_jac_parallel_inner(mesh9, sbp9, eqn9, opts9)
+
 
     # test functional that require parallel communication
     func_test = ["lpsdissipation", "neglpsdissipation"]
@@ -148,7 +148,7 @@ function test_jac_parallel_long()
     end
 
     testEntropyDissFunctional2(mesh8, sbp8, eqn8, opts8)
-=#
+
   end
 
   return nothing

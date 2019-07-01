@@ -19,11 +19,11 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
 
   #println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
 
-  if shockmesh.isNeumann
-    computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
-  else
-    computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
-  end
+#  if shockmesh.isNeumann
+#    computeNeumannBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+#  else
+#    computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+#  end
 
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                               capture.diffusion, capture.penalty)

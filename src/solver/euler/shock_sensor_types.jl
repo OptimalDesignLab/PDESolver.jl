@@ -655,6 +655,30 @@ function setShockedElements(sensor::ShockSensorHApprox, mesh, sbp, eqn, opts,
 end
 
 
+#------------------------------------------------------------------------------
+# ShockSensorOddBO
+
+"""
+  This shock sensor is zero for even numbered elements and equivalent to
+  ShockSensorBO for odd numbered elements
+"""
+mutable struct ShockSensorOddBO{Tsol, Tres} <: AbstractShockSensor
+  sensor::ShockSensorBO{Tsol, Tres}
+
+  function ShockSensorOddBO{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractSBP,
+                                       opts) where {Tsol, Tres}
+ 
+    sensor2 = ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
+
+    return new(sensor2)
+  end
+end
+
+function setAlpha(obj::ShockSensorOddBO, alpha::Number)
+
+  setAlpha(obj.sensor, alpha)
+end
+
 
 
 #------------------------------------------------------------------------------
@@ -669,6 +693,7 @@ global const ShockSensorDict = Dict{String, Type{T} where T <: AbstractShockSens
 "SensorBO" => ShockSensorBO,
 "SensorHHO" => ShockSensorHHO,
 "SensorHHOConst" => ShockSensorHHOConst,
+"SensorOddBO" => ShockSensorOddBO,
 )
 
 

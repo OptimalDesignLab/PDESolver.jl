@@ -371,9 +371,11 @@ function test_jac_terms_long()
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
 
-
+    mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_jaccurve3d.jl")
+    test_sbp_cartesian_revm(mesh3, sbp3, eqn3, opts3)
+#=
     #TESTING
-    # SBPOmega, SparseMatrixCSC
+    # SBPDiagonalE, SparseMatrixCSC, SBPParabolicReducedSC
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
     opts_tmp["jac_type"] = 2  # was 2
@@ -382,29 +384,17 @@ function test_jac_terms_long()
     opts_tmp["use_lps"] = true
     opts_tmp["addShockCapturing"] = true
     opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
-    opts_tmp["shock_sensor_name"] = "SensorVelocity"
+    opts_tmp["shock_sensor_name"] = "SensorOddBO"
     opts_tmp["need_adjoint"] = true
 
     #opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh9, sbp9, eqn9, opts9 = run_solver(fname4)
 
-    #test_revm_product(mesh9, sbp9, eqn9, opts9)
-    #test_revq_product(mesh9, sbp9, eqn9, opts9)
-
-    Tsol = eltype(eqn9.q); Tres = eltype(eqn9.res)
-    sc = "SBPParabolicReduced"
-    sensor = EulerEquationMod.ShockSensorVelocity{Tsol, Tres}(mesh9, sbp9, opts9)
-    capture = EulerEquationMod.ShockCapturingDict[sc]{Tsol, Tres}(mesh9,
-                                                    sbp9, eqn9, opts9, sensor)
-
-    test_revm_product2(mesh9, sbp9, eqn9, opts9)
-    test_revq_product(mesh9, sbp9, eqn9, opts9)
-    test_shock_capturing_jac(mesh9, sbp9, eqn9, opts9, capture, freeze=true)
-    test_jac_general(mesh9, sbp9, eqn9, opts9)
+    testQx(mesh9, sbp9, eqn9, opts9)
+=#
 
 
-#=
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -497,6 +487,23 @@ function test_jac_terms_long()
     mesh12, sbp12, eqn12, opts12 = run_solver(fname4)
 
 
+    # SBPDiagonalE, SparseMatrixCSC, SBPParabolicReducedSC
+    fname4 = "input_vals_jac_tmp.jl"
+    opts_tmp = read_input_file(fname3)
+    opts_tmp["jac_type"] = 2  # was 2
+    opts_tmp["operator_type"] = "SBPDiagonalE"
+    opts_tmp["order"] = 1
+    opts_tmp["use_lps"] = true
+    opts_tmp["addShockCapturing"] = true
+    opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
+    opts_tmp["shock_sensor_name"] = "SensorOddBO"
+    opts_tmp["need_adjoint"] = true
+
+    #opts_tmp["use_lps"] = true
+    make_input(opts_tmp, fname4)
+    mesh13, sbp13, eqn13, opts13 = run_solver(fname4)
+
+
 
     # test various matrix and operator combinations
     println("testing mode 4")
@@ -539,6 +546,12 @@ function test_jac_terms_long()
  
     println("testing mode 12")
     test_jac_general(mesh12, sbp12, eqn12, opts12)
+
+
+    println("testing mode 13")
+    test_revm_product2(mesh13, sbp13, eqn13, opts13)
+    test_revq_product(mesh13, sbp13, eqn13, opts13)
+    test_jac_general(mesh13, sbp13, eqn13, opts13)
 
 
     # test shock capturing schemes
@@ -721,13 +734,13 @@ function test_jac_terms_long()
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    println("\nTesting revq frozen")
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
-=#
+
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP])
 
 
 #------------------------------------------------------------------------------
@@ -3212,6 +3225,30 @@ function test_BJacobiPC(mesh, sbp, eqn, opts)
   return nothing
 end
 
+"""
+  Check if two floating point values are approximately equal, using a
+  either an absolule or relative tolerance
+  
+  **Inputs**
+
+   * val1
+   * val2
+   * tol: the tolerance
+"""
+function checkvals(val1, val2, tol)
+
+  pass = abs(val1 - val2) < tol ||
+         abs(val1 - val2) < tol*min(abs(val1), abs(val2))
+
+  if !pass
+    println("val1 = ", val1)
+    println("val2 = ", val2)
+    println("diff = ", val1 - val2)
+  end
+
+  return pass
+end
+
 
 function test_sbp_cartesian(mesh::AbstractMesh, sbp, eqn, opts)
 
@@ -3219,8 +3256,8 @@ function test_sbp_cartesian(mesh::AbstractMesh, sbp, eqn, opts)
   pert = Complex128(0, h)
 
   # use a spatially varying solution
-  icfunc = EulerEquationMod.ICDict["ICExp"]
-  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  #icfunc = EulerEquationMod.ICDict["ICExp"]
+  #icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
   array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
   eqn.q .+= 0.01*rand(size(eqn.q))
 
@@ -3254,17 +3291,26 @@ function test_sbp_cartesian(mesh::AbstractMesh, sbp, eqn, opts)
     EulerEquationMod.applyOperatorJac(Dx, q_dot, t2_dot)
 
     for q=1:mesh.numNodesPerElement
+#      println("q = ", q)
       for j=1:mesh.numDofPerNode
+#        println("  j = ", j)
         q_i .+= pert*q_dot[:, j, :, q]
         fill!(res, 0)
+#        println("q = ", q_i)
+#        println("dxidx = ", dxidx_i)
+#        println("jac = ", jac_i)
         EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, wxi, res)
         q_i .-= pert*q_dot[:, j, :, q]
         for d=1:mesh.dim
-          @test maximum(abs.(t2_dot[:, j, d, :, q] - imag(res[:, :, d])./h)) < 1e-13
+#          println("    d = ", d)
+#          println("     t2_dot = \n", real(t2_dot[:, j, d, :, q]))
+#          println("     res_dot = \n", res[:, :, d])
+          @test maximum(abs.(t2_dot[:, j, d, :, q] - imag(res[:, :, d])./h)) < 5e-12
         end
       end
     end
 
+    
     # test the second method (5D -> 4D)
     q_dot2 = rand_realpart(mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
                            mesh.numNodesPerElement, mesh.numNodesPerElement)
@@ -3288,7 +3334,7 @@ function test_sbp_cartesian(mesh::AbstractMesh, sbp, eqn, opts)
           q2[:, :, d] .-= pert*q_dot2[:, j, d, :, q]
         end
 
-        @test maximum(abs.(t3_dot[:, j, :, q] - imag(res2)/h)) < 1e-13
+        @test maximum(abs.(t3_dot[:, j, :, q] - imag(res2)/h)) < 5e-12
       end
     end
 
@@ -3309,7 +3355,8 @@ function test_sbp_cartesian(mesh::AbstractMesh, sbp, eqn, opts)
     EulerEquationMod.applyOperatorJac(Dx, q_dot3, t4_dot)
     EulerEquationMod.applyOperatorJac(Dx, q_dot3b, t2_dot)
 
-    @test maximum(abs.(t4_dot - t2_dot)) < 1e-13
+    @test maximum(abs.(t4_dot - t2_dot)) < 5e-12
+    
   end
 
   return nothing
@@ -3337,10 +3384,9 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
   w_i = rand_realpart((mesh.numDofPerNode, mesh.numNodesPerElement))
   op = SummationByParts.Subtract()
 
-  println("w_i = ", w_i)
   h = 1e-20
   pert = Complex128(0, h)
-  for i=1:1  # mesh.numEl
+  for i=1: mesh.numEl
 
     #w_i = sview(eqn.q, :, :, i)
     dxidx = sview(mesh.dxidx, :, :, :, i)
@@ -3364,9 +3410,7 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar1 .* dxidx_dot) + sum(w_bar1 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
     # applyDx, first method
     EulerEquationMod.applyDx_revm(sbp, w_i, w_bar2, dxidx, dxidx_bar2, jac,
@@ -3375,11 +3419,8 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot) + sum(w_bar2 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
- 
     # applyDxTransposed, first method
     EulerEquationMod.applyDxTransposed_revm(sbp, w_i, w_bar3, dxidx, dxidx_bar3,
                                             jac, jac_bar3, work, wx_bar, op)
@@ -3387,10 +3428,9 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot) + sum(w_bar3 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
+    
     # applyQx, first method
     EulerEquationMod.applyQx_revm(sbp, w_i, w_bar4, dxidx, dxidx_bar4, work,
                                   wx_bar, op)
@@ -3398,10 +3438,8 @@ function test_sbp_cartesian_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar4 .* dxidx_dot) + sum(w_bar4 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
-
+    @test checkvals(val1, val2, 1e-12)
+    
   end
 
   test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
@@ -3436,7 +3474,7 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
 
   h = 1e-20
   pert = Complex128(0, h)
-  for i=1:1  # mesh.numEl
+  for i=1:mesh.numEl
 
     #w_i = sview(eqn.q, :, :, i)
     dxidx = sview(mesh.dxidx, :, :, :, i)
@@ -3461,9 +3499,7 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar1 .* dxidx_dot) + sum(w_bar1 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
     # applyDx, second method
     EulerEquationMod.applyDx_revm(sbp, w_i, w_bar2, dxidx, dxidx_bar2, jac,
@@ -3472,9 +3508,7 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar2 .* dxidx_dot) + sum(jac_bar2 .* jac_dot) + sum(w_bar2 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
     # applyDxTransposed, second method
     EulerEquationMod.applyDxTransposed_revm(sbp, w_i, w_bar3, dxidx, dxidx_bar3,
@@ -3483,9 +3517,7 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar3 .* dxidx_dot) + sum(jac_bar3 .* jac_dot) + sum(w_bar3 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
      # applyQx, second method
     EulerEquationMod.applyQx_revm(sbp, w_i, w_bar4, dxidx, dxidx_bar4, work, wx_bar, op)
@@ -3493,9 +3525,7 @@ function test_sbp_cartesian2_revm(mesh, sbp, eqn, opts)
     val1 = sum(wx_dot .* wx_bar)
     val2 = sum(dxidx_bar4 .* dxidx_dot) + sum(w_bar4 .* w_dot)
 
-    println("val1 = ", real(val1))
-    println("val2 = ", real(val2))
-    @test abs(val1 - val2) < 1e-13
+    @test checkvals(val1, val2, 1e-12)
 
 
   end
