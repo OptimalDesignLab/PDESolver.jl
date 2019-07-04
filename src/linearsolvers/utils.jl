@@ -20,7 +20,7 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
 
 #  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
 #  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
-  const mattype = PETSc2.MATBAIJ
+  const mattype = PETSc2.MATBAIJ  # was this
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
@@ -36,11 +36,11 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
     MatSetOption(A, PETSc2.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
 
-  if mattype == PETSc2.MATMPIAIJ
-    bs = 1
-  else
+#  if mattype == PETSc2.MATMPIAIJ
+#    bs = 1
+#  else
     bs = PetscInt(mesh.numDofPerNode)  # block size
-  end
+#  end
 
   @assert mesh.numDof % bs == 0
   nblocks = div(mesh.numDof, bs)

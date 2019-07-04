@@ -225,7 +225,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     end
 
     #TODO: DEBUGGING
-    println(BSTDOUT, "writing newton_q_vec_$i")
+    @mpi_master println(BSTDOUT, "writing newton_q_vec_$i")
     writeSolutionFiles(mesh, sbp, eqn, opts, "newton_q_vec_$i")
     flush(BSTDOUT)
 

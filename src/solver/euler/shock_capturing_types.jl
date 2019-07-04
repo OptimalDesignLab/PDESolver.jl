@@ -572,6 +572,35 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
   wL_dot::Array{Tsol, 3}
   wR_dot::Array{Tsol, 3}
 
+  # applyDgkTranspose
+  temp1L::Matrix{Tres}
+  temp1R::Matrix{Tres}
+  temp2L::Array{Tres, 3}
+  temp2R::Array{Tres, 3}
+  temp3L::Array{Tres, 3}
+  temp3R::Array{Tres, 3}
+  work::Array{Tres, 3}
+
+  # applyDgkTranspose_diff
+  Dx::Array{Float64, 3}
+  t3L_dotL::Array{Tres, 5}
+  t3L_dotR::Array{Tres, 5}
+  t3R_dotL::Array{Tres, 5}
+  t3R_dotR::Array{Tres, 5}
+
+  t4L_dotL::Array{Tres, 5}
+  t4L_dotR::Array{Tres, 5}
+  t4R_dotL::Array{Tres, 5}
+  t4R_dotR::Array{Tres, 5}
+
+  t5L_dotL::Array{Tres, 5}
+  t5L_dotR::Array{Tres, 5}
+  t5R_dotL::Array{Tres, 5}
+  t5R_dotR::Array{Tres, 5}
+
+
+
+
   # computeBoundaryTerm_diff
   w_dot::Array{Tsol, 3}
   t2_dot::Array{Tres, 5}
@@ -602,6 +631,47 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
     wL_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
     wR_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
 
+    # applyDgk transpose
+    temp1L = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp1R = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp2L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp2R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    work = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+
+    # applyDgk_transpose_diff
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+    t3L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+
+    t4L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+    t5L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+
+
+
     # computeBoundaryTerm_diff
     w_dot = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode,
                         mesh.numNodesPerElement)
@@ -621,6 +691,11 @@ mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
     return new(w_el, entropy_vars, diffusion, penalty, sensor, sensor_const,
                w_faceL, w_faceR,
                wL_dot, wR_dot,
+               temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work,
+               Dx,
+               t3L_dotL, t3L_dotR, t3R_dotL, t3R_dotR,
+               t4L_dotL, t4L_dotR, t4R_dotL, t4R_dotR,
+               t5L_dotL, t5L_dotR, t5R_dotL, t5R_dotR,
                w_dot, t2_dot, t3_dot, t4_dot)
   end
 end
@@ -886,7 +961,7 @@ function getSCVariables(opts)
   if name == "IR"
     return IRVariables()
   elseif name == "conservative"
-    return Conservative()
+    return ConservativeVariables()
   else
     error("unrecognized variables for shock capturing dissipation: $name")
   end

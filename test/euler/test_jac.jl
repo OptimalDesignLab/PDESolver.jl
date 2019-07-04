@@ -370,10 +370,10 @@ function test_jac_terms_long()
     # starting point for different configurations
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
-
+#=
     mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_jaccurve3d.jl")
     test_sbp_cartesian_revm(mesh3, sbp3, eqn3, opts3)
-#=
+
     #TESTING
     # SBPDiagonalE, SparseMatrixCSC, SBPParabolicReducedSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -394,7 +394,7 @@ function test_jac_terms_long()
     testQx(mesh9, sbp9, eqn9, opts9)
 =#
 
-
+#=
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -485,7 +485,7 @@ function test_jac_terms_long()
     opts_tmp["Flux_name"] = "IRSLFFlux"
     make_input(opts_tmp, fname4)
     mesh12, sbp12, eqn12, opts12 = run_solver(fname4)
-
+=#
 
     # SBPDiagonalE, SparseMatrixCSC, SBPParabolicReducedSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -495,16 +495,21 @@ function test_jac_terms_long()
     opts_tmp["order"] = 1
     opts_tmp["use_lps"] = true
     opts_tmp["addShockCapturing"] = true
+    #opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
+    #opts_tmp["shock_sensor_name"] = "SensorOddBO"
     opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
-    opts_tmp["shock_sensor_name"] = "SensorOddBO"
+    opts_tmp["shock_sensor_name"] = "SensorBO"
+
     opts_tmp["need_adjoint"] = true
 
     #opts_tmp["use_lps"] = true
     make_input(opts_tmp, fname4)
     mesh13, sbp13, eqn13, opts13 = run_solver(fname4)
+    
+    test_jac_general(mesh13, sbp13, eqn13, opts13)
 
 
-
+#=
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -734,7 +739,7 @@ function test_jac_terms_long()
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    println("\nTesting revq frozen")
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
-
+=#
   end
 
   return nothing
@@ -2434,7 +2439,9 @@ function test_jac_general(mesh, sbp, eqn, opts; is_prealloc_exact=true, set_prea
     applyLinearOperator(lo2, mesh, sbp, eqn, opts, ctx_residual, t, x, b2)
     evaldRdqProduct(mesh, sbp, eqn, opts, x, b3)
 
-#    println("maximum(abs.(b2 - b3)) = ", maximum(abs.(b2 - b3)))
+    println("b1 - b2 = ", maximum(abs.((b1 - b2))))
+    println("b2 - b3 = ", maximum(abs.((b2 - b3))))
+    println("b1 - b3 = ", maximum(abs.((b1 - b3))))
 #    println("b2[1] = ", b2[1])
 #    println("b3[1] = ", b3[1])
     @test isapprox( maximum(abs.((b1 - b2))), 0.0) atol=1e-11

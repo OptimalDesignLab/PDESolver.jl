@@ -446,6 +446,8 @@ end
 mutable struct NewtonDenseLO <: AbstractDenseLO
   lo_inner::DenseLO
   idata::ImplicitEulerData
+  myrank::Int
+  commsize::Int
 end
 
 """
@@ -457,7 +459,7 @@ function NewtonDenseLO(pc::PCNone, mesh::AbstractMesh,
   lo_inner = DenseLO(pc, mesh, sbp, eqn, opts)
   idata = ImplicitEulerData(mesh, opts)
 
-  return NewtonDenseLO(lo_inner, idata)
+  return NewtonDenseLO(lo_inner, idata, mesh.myrank, mesh.commsize)
 end
 
 """
@@ -467,6 +469,8 @@ end
 mutable struct NewtonSparseDirectLO <: AbstractSparseDirectLO
   lo_inner::SparseDirectLO
   idata::ImplicitEulerData
+  myrank::Int
+  commsize::Int
 end
 
 """
@@ -478,7 +482,7 @@ function NewtonSparseDirectLO(pc::PCNone, mesh::AbstractMesh,
   lo_inner = SparseDirectLO(pc, mesh, sbp, eqn, opts)
   idata = ImplicitEulerData(mesh, opts)
 
-  return NewtonSparseDirectLO(lo_inner, idata)
+  return NewtonSparseDirectLO(lo_inner, idata, mesh.myrank, mesh.commsize)
 end
 
 """
@@ -489,6 +493,8 @@ end
 mutable struct NewtonPetscMatLO <: AbstractPetscMatLO
   lo_inner::PetscMatLO
   idata::ImplicitEulerData
+  myrank::Int
+  commsize::Int
 end
 
 """
@@ -500,7 +506,7 @@ function NewtonPetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   lo_inner = PetscMatLO(pc, mesh, sbp, eqn, opts)
   idata = ImplicitEulerData(mesh, opts)
 
-  return NewtonPetscMatLO(lo_inner, idata)
+  return NewtonPetscMatLO(lo_inner, idata, mesh.myrank, mesh.commsize)
 end
 
 """
@@ -511,6 +517,8 @@ end
 mutable struct NewtonPetscMatFreeLO <: AbstractPetscMatFreeLO
   lo_inner::PetscMatFreeLO
   idata::ImplicitEulerData
+  myrank::Int
+  commsize::Int
 end
 
 """
@@ -531,7 +539,7 @@ function NewtonPetscMatFreeLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   lo_inner = PetscMatFreeLO(pc, mesh, sbp, eqn, opts)
   idata = ImplicitEulerData(mesh, opts)
 
-  return NewtonPetscMatFreeLO(lo_inner, idata)
+  return NewtonPetscMatFreeLO(lo_inner, idata, mesh.myrank, mesh.commsize)
 end
 
 """

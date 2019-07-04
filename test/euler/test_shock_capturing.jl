@@ -562,14 +562,22 @@ function test_ldg()
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=true)
       
-      ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
-      test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
+      #ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+      #test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
       
       ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
       test_br2reduced_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=true)
       
       ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
       test_br2reduced_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=false)
+
+      
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced2_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=true)
+ 
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced2_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=false)
+
 
     end
 
@@ -1879,6 +1887,29 @@ function test_br2reduced_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
 
   return nothing
 end
+
+
+#TODO: combine with the above
+function test_br2reduced2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
+                             fullmesh=false) where {Tsol, Tres}
+
+  # construct the shock mesh with all elements in it that are fully interior
+  if fullmesh
+    iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
+  else
+    iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+  end
+
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReduced2SC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+  EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
+
+  test_sc_ESS(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+  test_sc_conservation(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  return nothing
+end
+
 
 
 function test_sc_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,

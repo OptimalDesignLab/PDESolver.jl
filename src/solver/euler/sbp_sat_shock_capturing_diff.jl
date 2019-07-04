@@ -18,15 +18,15 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
 
-#  if shockmesh.isNeumann
-#    println("computing Neumann boundary condition")
-#    computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
-#                              capture.diffusion, capture.entropy_vars, assem)
-#  else
-#    println("computing Dirichlet boundary condition")
-#    computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
-#                                      assem)
-#  end
+  if shockmesh.isNeumann
+    println("computing Neumann boundary condition")
+    computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+                              capture.diffusion, capture.entropy_vars, assem)
+  else
+    println("computing Dirichlet boundary condition")
+    computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+                                      assem)
+  end
 
   #@time computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
   #                                 capture.diffusion, capture.penalty)
@@ -257,7 +257,7 @@ function computeNeumannBoundaryTerm_diff(mesh::AbstractMesh{Tmsh}, sbp, eqn,
                       ) where {Tsol, Tres, Tmsh}
 
   @assert eqn.params.use_Minv != 1
-  @assert mesh.coord_order == 1  # because of the normal vector
+#  @assert mesh.coord_order == 1  # because of the normal vector
 
   # for shock capturing, apply the Neumann boundary condition
   # Lambda * grad_w = 0.  The resulting term is -R^T * B * Dgk * u
@@ -288,6 +288,7 @@ function computeNeumannBoundaryTerm_diff(mesh::AbstractMesh{Tmsh}, sbp, eqn,
       end
 
     else
+      error("this doesn't work yet")
       #nrm_i = ro_sview(mesh.nrm_face, :, :, idx_orig)
       fac = shockmesh.bndryfaces[i].fac
       for j=1:mesh.numNodesPerFace

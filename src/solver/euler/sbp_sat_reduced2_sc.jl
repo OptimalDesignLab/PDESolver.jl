@@ -17,6 +17,7 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
+  computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   #println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
 
 #  if shockmesh.isNeumann
@@ -416,6 +417,228 @@ function getFaceVariables(capture::SBPParabolicReduced2SC{Tsol, Tres},
 
   return nothing
 end
+
+
+#------------------------------------------------------------------------------
+# Dirichlet boundary condition
+
+
+const ParabolicReduceds{Tsol, Tres} = Union{SBPParabolicReducedSC{Tsol, Tres},
+                                            SBPParabolicReduced2SC{Tsol, Tres}
+                                           }
+
+
+"""
+  Computes a Dirichlet BC that is consistent with the inviscid one
+"""
+@noinline function computeDirichletBoundaryTerm(mesh, sbp, eqn, opts,
+                      capture::ParabolicReduceds{Tsol, Tres},
+                      shockmesh::ShockedElements,
+                      ) where {Tsol, Tres}
+
+  for i=1:mesh.numBC
+    bc_range = (shockmesh.bndry_offsets[i]:(shockmesh.bndry_offsets[i+1]-1))
+    bc_func = mesh.bndry_funcs[i]
+
+    calcBoundaryFlux(mesh, sbp, eqn, opts, shockmesh, capture,
+                     capture.penalty, capture.diffusion, 
+                     capture.entropy_vars, bc_func, bc_range)
+  end
+
+  return nothing
+end
+
+@noinline function calcBoundaryFlux(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
+                      shockmesh::ShockedElements,
+                      capture::ParabolicReduceds{Tsol, Tres},
+                      penalty::AbstractDiffusionPenalty,
+                      diffusion::AbstractDiffusion,
+                      entropy_vars::AbstractVariables, bc_func::BCType,
+                      bc_range::AbstractVector,
+                      ) where {Tsol, Tres}
+
+
+  delta_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  op = SummationByParts.Subtract()  # the - sign is applied with B
+
+  for i in bc_range
+    bndry_i = shockmesh.bndryfaces[i].bndry
+    idx_orig = shockmesh.bndryfaces[i].idx_orig
+    elnum_orig = shockmesh.elnums_all[bndry_i.element]
+
+    w_i = ro_sview(capture.w_el, :, :, bndry_i.element)
+    q_i = ro_sview(eqn.q, :, :, elnum_orig)
+    coords_i = ro_sview(mesh.coords_bndry, :, :, idx_orig)
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+    #alpha = capture.alpha_b[i]
+    alpha = 1
+    dxidxL = ro_sview(mesh.dxidx, :, :, :, elnum_orig)
+    jacL = ro_sview(mesh.jac, :, elnum_orig)
+    res_i = sview(eqn.res, :, :, elnum_orig)
+
+    computeDirichletDelta(capture, eqn.params, mesh.sbpface, bndry_i,
+                          bc_func, entropy_vars, w_i, q_i, coords_i,
+                          nrm_i, delta_w)
+
+    applyDirichletPenalty(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
+                          bndry_i, delta_w, q_i, w_i, coords_i, nrm_i, alpha,
+                          dxidxL, jacL, res1)
+
+#    println("after pnealty, res1 = ", res1)
+    # apply R^T to T_D * delta_w
+    scale!(res1, -1)  # SAT has a - sign in front of it
+
+    boundaryFaceInterpolate_rev!(mesh.sbpface, bndry_i.face, res_i, res1)
+#    boundaryFaceInterpolate_rev!(mesh.sbpface, bndry_i.face, res_i, delta_w)
+
+    # apply B and then Dgk^T to delta_w
+    for j=1:mesh.numNodesPerFace
+      for i=1:mesh.numDofPerNode
+        delta_w[i, j] *= -mesh.sbpface.wface[j]  # the sat has a - sign in 
+                                                 # front of it
+      end
+    end
+
+    applyDgkTranspose(capture, sbp, eqn.params, mesh.sbpface, bndry_i,
+                      diffusion, delta_w, q_i, w_i, coords_i, nrm_i, dxidxL,
+                      jacL, res_i, op)  # the op is because the B_gamma has
+                                        # a negative sign
+
+#    println("after Dgk^T, res = ", res_i)
+  end
+
+  return nothing
+end
+
+"""
+  Method to apply Dgk^T * t2L only.
+"""
+function applyDgkTranspose(capture::ParabolicReduceds{Tsol, Tres}, sbp,
+                           params::ParamType,
+                           sbpface, bndry::Union{Interface, Boundary},
+                           diffusion::AbstractDiffusion,
+                           t2L::AbstractMatrix,
+                           qL::AbstractMatrix,
+                           wL::AbstractMatrix,
+                           coordsL::AbstractMatrix,
+                           nrm_face::AbstractMatrix,
+                           dxidxL::Abstract3DArray,
+                           jacL::AbstractVector,
+                           resL::AbstractMatrix,
+                           op::SummationByParts.UnaryFunctor=SummationByParts.Add()) where {Tsol, Tres}
+
+  dim, numNodesPerFace = size(nrm_face)
+  numNodesPerElement = size(resL, 2)
+  numDofPerNode = size(wL, 1)
+
+  @unpack capture temp1L temp2L temp3L work
+  fill!(temp2L, 0)
+
+  # apply N and R^T
+  @simd for d=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
+        temp1L[k, j] =  nrm_face[d, j]*t2L[k, j]
+      end
+    end
+
+    tmp2L = sview(temp2L, :, :, d);
+    boundaryFaceInterpolate_rev!(sbpface, getFaceL(bndry), tmp2L, temp1L)
+  end
+
+  # multiply by D^T Lambda
+  applyDiffusionTensor(diffusion, sbp, params, qL, wL, coordsL, dxidxL, jacL,
+                       getElementL(bndry), temp2L, temp3L)
+
+  applyDxTransposed(sbp, temp3L, dxidxL, jacL, work, resL, op)
+
+  return nothing
+end
+
+
+"""
+  Computes the difference between the solution at the face and the
+  prescribed Dirichlet boundary condition.  Specifically, computes the
+  difference between the entropy variables interpolated to the face
+  and the Dirichlet state computed from the interpolated conservative
+  variables (for consistency with the inviscid BC).
+
+  This only works for boundary conditions that define `getDirichletState`.
+
+  **Inputs**
+
+   * capture
+   * params
+   * sbpface
+   * bndry: `Boundary` object
+   * bndry_node: `BoundaryNode` object
+   * func: `BCType` for this boundary condition
+   * entropy_vars: an [`AbstractVariables`](@ref) 
+   * wL: entropy variables for the element, `numDofPerNode` x
+         `numNodesPerElement`
+   * qL: conservative variables for the element, same size as `wL`
+   * coords: `dim` x `numNodesPerFace` array containing the xyz coordinates
+             of the face nodes
+   * nrm_face: `dim` x `numNodesPerFace` containing the normal vector at the
+               face nodes (can be scaled or unscaled, `getDirichletState`
+               should not care).
+   
+  **Inputs/Outputs**
+
+   * delta_w: array to be overwritten with the result. `numDofPerNode` x
+              `numNodesPerFace`
+"""
+function computeDirichletDelta(capture::ParabolicReduceds{Tsol, Tres},
+                               params::ParamType,
+                               sbpface::AbstractFace, bndry::Boundary,
+                               func::BCType, entropy_vars::AbstractVariables,
+                               wL::AbstractMatrix, qL::AbstractMatrix,
+                               coords::AbstractMatrix, nrm_face::AbstractMatrix,
+                               delta_w::AbstractMatrix
+                              ) where {Tsol, Tres}
+
+  numDofPerNode, numNodesPerFace = size(delta_w)
+  numNodesPerElement = size(wL, 2)
+
+  #TODO: maybe interpolating the conservative variables and then converting
+  #      would be more consistent, but Eq. 31 requires the same interpolation
+  #      Rgk * w for both the interface and the boundary term.
+  #      For the boundary state qg we have more leeway because it is zero
+  #      for the energy stability analysis (-> entropy stability when u = w)
+  wface = zeros(Tsol, numDofPerNode, numNodesPerFace)
+  boundaryFaceInterpolate!(sbpface, bndry.face, wL, wface)
+
+  qface = zeros(Tsol, numDofPerNode, numNodesPerFace)
+  qgface = zeros(Tres, numDofPerNode)
+  wgface = zeros(Tres, numDofPerNode)
+  aux_vars = Tres[]
+
+  # the inviscid boundary conditions interpolate q to the face and then
+  # compute qg, so do that here as well for consistency
+  boundaryFaceInterpolate!(sbpface, bndry.face, qL, qface)
+  for i=1:numNodesPerFace
+    q_i = sview(qface, :, i)
+    coords_i = sview(coords, :, i)
+    nrm_i = sview(nrm_face, :, i)
+
+    getDirichletState(func, params, q_i, aux_vars, coords_i, nrm_i, qgface)
+
+    convertToEntropy(entropy_vars, params, qgface, wgface)
+#    fill!(wgface, 0)  #TODO: undo this
+#    println("wgface = ", wgface)
+
+    # compute the delta
+    for j=1:numDofPerNode
+      delta_w[j, i] = wface[j, i] - wgface[j]  
+    end
+  end
+
+  return nothing
+end
+
+
+
 
 
 #------------------------------------------------------------------------------

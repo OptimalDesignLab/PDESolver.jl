@@ -28,7 +28,7 @@ function updateKrylov(newton_data::NewtonData)
     #reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
     reltol = newton_data.ls.reltol
     setTolerances(newton_data.ls, reltol, -1, -1, -1)
-    println(BSTDOUT, "updating krylov reltol to ", reltol)
+    #println(BSTDOUT, "updating krylov reltol to ", reltol)
   end
 
   return nothing
@@ -190,7 +190,9 @@ function calcTauVec(mesh, opts, tau, tau_vec)
     end
   end
 
-  println(BSTDOUT, "average tau value = ", mean(tau_vec))
+  if mesh.myrank == 0
+    println(BSTDOUT, "average tau value = ", mean(tau_vec))
+  end
 
   return nothing
 
@@ -246,7 +248,11 @@ function updateEuler(lo::NewtonLinearObject)
   lo.idata.tau_l = lo.idata.tau_l * res_norm_i_1/res_norm_i
   
   tau_update = lo.idata.tau_l/tau_l_old
-  println(BSTDOUT, "tau_update factor = ", tau_update)
+
+  if lo.myrank == 0
+    println(BSTDOUT, "tau_update factor = ", tau_update)
+  end
+
   scale!(lo.idata.tau_vec, tau_update)
 
   return nothing
@@ -279,8 +285,10 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
     return nothing
   end
 
-  println(BSTDOUT, "applying Implicit Euler globalization")
-  println(BSTDOUT, "average tau value = ", mean(lo.idata.tau_vec))
+  if mesh.myrank == 0
+    println(BSTDOUT, "applying Implicit Euler globalization")
+    println(BSTDOUT, "average tau value = ", mean(lo.idata.tau_vec))
+  end
 
   
   lo2 = getBaseObject(lo)

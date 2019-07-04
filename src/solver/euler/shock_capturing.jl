@@ -156,7 +156,11 @@ function writeShockSensorField(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
     end
   end
 
-  println("wrote shock field with ", numEl_shock, " elements with non-zero viscoscity")
+  numEl_shock = MPI.Allreduce(numEl_shock, MPI.SUM, eqn.comm)
+
+  if mesh.myrank == 0
+    println("wrote shock field with ", numEl_shock, " elements with non-zero viscoscity")
+  end
 
   return nothing
 end

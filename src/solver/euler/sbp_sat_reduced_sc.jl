@@ -25,13 +25,14 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   setShockedElements(capture.sensor_const, mesh, sbp, eqn, opts,
                      getShockSensor(capture), shockmesh)
 
-#  computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.sensor_const,
-#                  capture.penalty)
+  computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.sensor_const,
+                  capture.penalty)
 
-  computeFaceTerm(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
-                  shockmesh, capture.sensor_const, capture.penalty)
+#  computeFaceTerm(mesh, sbp, eqn, opts, capture, capture.entropy_vars,
+#                  shockmesh, capture.sensor_const, capture.penalty)
 
 
+#  computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
 
   computeSharedFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh,
                         capture.sensor_const, capture.penalty)
@@ -61,6 +62,9 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                        capture.sensor_const, capture.entropy_vars,
                        capture.penalty, assem)
 
+#  computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+#                                    assem)
+ 
   computeSharedFaceTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
                                    capture.sensor_const, capture.entropy_vars,
                                    capture.penalty, assem)
@@ -448,7 +452,7 @@ end
 
 #------------------------------------------------------------------------------
 # Face terms
-#=
+
 """
   Computes the interior face term for any [`SBPParabolic`](@ref) shock
   capturing scheme.
@@ -495,7 +499,9 @@ end
 
   return nothing
 end
-=#
+
+
+#=
 @noinline function computeFaceTerm(mesh, sbp, eqn, opts,
                       capture::SBPParabolicReducedSC{Tsol, Tres},
                       entropy_vars::AbstractVariables,
@@ -534,10 +540,10 @@ end
 
   return nothing
 end
+=#
 
 
 
-#=
 @noinline function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                       capture::SBPParabolicReducedSC{Tsol, Tres},
                       shockmesh::ShockedElements, sensor::ShockSensorHApprox,
@@ -580,8 +586,9 @@ end
 
   return nothing
 end
-=#
 
+
+#=
 @noinline function computeFaceTerm_diff(mesh, sbp, eqn, opts,
                       capture::SBPParabolicReducedSC{Tsol, Tres},
                       shockmesh::ShockedElements, sensor::ShockSensorHApprox,
@@ -622,7 +629,7 @@ end
 
   return nothing
 end
-
+=#
 
 
 @noinline function computeFaceTerm_revq(mesh, sbp, eqn, opts,

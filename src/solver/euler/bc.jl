@@ -2186,6 +2186,57 @@ function (obj::ZeroFluxBC_revq)(params::ParamType,
 end
 
 
+
+@makeBC noSlipBC """
+### EulerEquationMod.noSlipBC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where the fluid velocity is set to zero
+
+  This is a low level functor
+"""
+
+# low level function
+function (obj::noSlipBC)(params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  qg = params.bcdata.qg
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+  v_vals = params.bcdata.v_vals
+  convertFromNaturalToWorkingVars(params, qg, v_vals)
+  # this is a problem: q is in conservative variables even if
+  # params says we are using entropy variables
+
+
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+#  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
+
+function getDirichletState(obj::noSlipBC, params::ParamType{Tdim},
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  fill!(qg, 0)
+  qg[1] = q[1]
+  qg[end] = q[end]
+
+  return nothing
+end
+
+
+
+
 # every time a new boundary condition is created,
 # add it to the dictionary
 
@@ -2216,6 +2267,7 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
 "zeroBC" => ZeroBC,
 "LaplaceBC" => LaplaceBC,
 "ZeroFluxBC" => ZeroFluxBC,
+"noSlipBC" => noSlipBC,
 "defaultBC" => defaultBC,
 )
 

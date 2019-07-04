@@ -18,6 +18,9 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
 
+  computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+                                    assem)
+ 
 #  if shockmesh.isNeumann
 #    println("computing Neumann boundary condition")
 #    computeNeumannBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
@@ -283,6 +286,316 @@ function getFaceVariables_diff(params::ParamType,
   return nothing
 end
 
+
+#------------------------------------------------------------------------------
+# Dirichlet boundary condition
+
+
+"""
+  Differentiated Dirichlet boundary term
+"""
+function computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts,
+                      capture::ParabolicReduceds{Tsol, Tres},
+                      shockmesh::ShockedElements,
+                      assem::AssembleElementData
+                      ) where {Tsol, Tres}
+
+  for i=1:mesh.numBC
+    bc_range = (shockmesh.bndry_offsets[i]:(shockmesh.bndry_offsets[i+1]-1))
+    bc_func = mesh.bndry_funcs[i]
+
+    calcBoundaryFlux_diff(mesh, sbp, eqn, opts, shockmesh, capture,
+                     capture.penalty, capture.diffusion, 
+                     capture.entropy_vars, bc_func, bc_range, assem)
+  end
+
+  return nothing
+end
+
+
+function calcBoundaryFlux_diff(mesh::AbstractMesh, sbp, eqn::EulerData, opts,
+                      shockmesh::ShockedElements,
+                      capture::ParabolicReduceds{Tsol, Tres},
+                      penalty::AbstractDiffusionPenalty,
+                      diffusion::AbstractDiffusion,
+                      entropy_vars::AbstractVariables, bc_func::BCType,
+                      bc_range::AbstractVector,
+                      assem::AssembleElementData,
+                      ) where {Tsol, Tres}
+
+
+  delta_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  delta_w_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                            mesh.numNodesPerFace, mesh.numNodesPerElement)
+  delta_w_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                             mesh.numNodesPerFace, mesh.numNodesPerElement)
+  res1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
+  res1_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+  res_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, 
+                        mesh.numNodesPerElement, mesh.numNodesPerElement)
+  res_dotR = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, 
+                        mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+  #op = SummationByParts.Subtract()
+  subtract = SummationByParts.Subtract()
+  op = SummationByParts.Add()
+
+  for i in bc_range
+    bndry_i = shockmesh.bndryfaces[i].bndry
+    idx_orig = shockmesh.bndryfaces[i].idx_orig
+    elnum_orig = shockmesh.elnums_all[bndry_i.element]
+    fill!(res_dot, 0)
+
+    w_i = ro_sview(capture.w_el, :, :, bndry_i.element)
+    q_i = ro_sview(eqn.q, :, :, elnum_orig)
+    coords_i = ro_sview(mesh.coords_bndry, :, :, idx_orig)
+    nrm_i = ro_sview(mesh.nrm_bndry, :, :, idx_orig)
+    #alpha = capture.alpha_b[i]
+    alpha = 1
+    dxidxL = ro_sview(mesh.dxidx, :, :, :, elnum_orig)
+    jacL = ro_sview(mesh.jac, :, elnum_orig)
+    res_i = sview(eqn.res, :, :, elnum_orig)
+
+    computeDirichletDelta_diff(capture, eqn.params, eqn.params_complex,
+                          mesh.sbpface, bndry_i,
+                          bc_func, entropy_vars, w_i, q_i, coords_i,
+                          nrm_i, delta_w, delta_w_dot)
+
+    applyDirichletPenalty_diff(penalty, sbp, eqn.params, mesh.sbpface, diffusion,
+                          bndry_i, delta_w, delta_w_dot, q_i, w_i, coords_i,
+                          nrm_i, alpha,
+                          dxidxL, jacL, res1_dot)
+
+    # apply R^T to T_D * delta_w
+    #fill!(res_dot, 0)
+    boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, res1_dot, res_dot,
+                               subtract, include_quadrature=false)
+#    boundaryFaceIntegrate_jac!(mesh.sbpface, bndry_i.face, delta_w_dot, res_dot,
+#                               op, include_quadrature=false)
+
+
+    # apply B and then Dgk^T to delta_w
+    for q=1:mesh.numNodesPerElement
+      for p=1:mesh.numNodesPerFace
+        for j=1:mesh.numDofPerNode
+          for i=1:mesh.numDofPerNode
+            delta_w_dot[i, j, p, q] *= -mesh.sbpface.wface[p]
+          end
+        end
+      end
+    end
+
+    for p=1:mesh.numNodesPerFace
+      for i=1:mesh.numDofPerNode
+        delta_w[i,p] *= -mesh.sbpface.wface[p]
+      end
+    end
+
+    # the dotR variables aren't needed for boundary terms
+    applyDgkTranspose_diff(capture, sbp, eqn.params, mesh.sbpface, bndry_i,
+                      diffusion,
+                      delta_w, delta_w_dot, delta_w_dotR, q_i, w_i, coords_i,
+                      nrm_i, dxidxL, jacL, res_dot, res_dotR, subtract)
+
+    assembleElement(assem, mesh, elnum_orig, res_dot)
+  end
+
+  return nothing
+end
+
+
+function computeDirichletDelta_diff(capture::ParabolicReduceds{Tsol, Tres},
+                               params::ParamType, params_c::ParamType,
+                               sbpface::AbstractFace, bndry::Boundary,
+                               func::BCType, entropy_vars::AbstractVariables,
+                               wL::AbstractMatrix, qL::AbstractMatrix,
+                               coords::AbstractMatrix, nrm_face::AbstractMatrix,
+                               delta_w::AbstractMatrix,
+                               delta_w_dot::Abstract4DArray
+                              ) where {Tsol, Tres}
+
+  numDofPerNode, numNodesPerFace = size(delta_w)
+  numNodesPerElement = size(wL, 2)
+
+  #TODO: maybe interpolating the conservative variables and then converting
+  #      would be more consistent, but Eq. 31 requires the same interpolation
+  #      Rgk * w for both the interface and the boundary term.
+  #      For the boundary state qg we have more leeway because it is zero
+  #      for the energy stability analysis (-> entropy stability when u = w)
+  wface = zeros(Tsol, numDofPerNode, numNodesPerFace)
+  boundaryFaceInterpolate!(sbpface, bndry.face, wL, wface)
+
+  # jacobian
+  wL_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+#  wface_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerFace,
+#                    numNodesPerElement)
+  for i=1:numNodesPerElement
+    wL_dot_i = sview(wL_dot, :, :, i)
+    qL_i = ro_sview(qL, :, i)
+    getA0inv(entropy_vars, params, qL_i, wL_dot_i)
+  end
+#  println("qL = \n", real(qL))
+#  println("wL_dot = \n", real(wL_dot))
+#  println("perm = ", sbpface.perm[:, bndry.face])
+  fill!(delta_w_dot, 0)
+  boundaryFaceInterpolate_jac!(sbpface, bndry.face, wL_dot, delta_w_dot)
+
+  qface = zeros(Tsol, numDofPerNode, numNodesPerFace)
+  qgface = zeros(Tres, numDofPerNode, numNodesPerFace)
+  wgface = zeros(Tres, numDofPerNode)
+  aux_vars = Tres[]
+
+  # the inviscid boundary conditions interpolate q to the face and then
+  # compute qg, so do that here as well for consistency
+  boundaryFaceInterpolate!(sbpface, bndry.face, qL, qface)
+  for i=1:numNodesPerFace
+    q_i = sview(qface, :, i)
+    qgface_i = sview(qgface, :, i)  # need this later
+    coords_i = sview(coords, :, i)
+    nrm_i = sview(nrm_face, :, i)
+
+    getDirichletState(func, params, q_i, aux_vars, coords_i, nrm_i, qgface_i)
+
+    convertToEntropy(entropy_vars, params, qgface_i, wgface)
+
+    # compute the delta
+    for j=1:numDofPerNode
+      delta_w[j, i] = wface[j, i] - wgface[j]
+    end
+  end
+
+  # jacobian
+  # Compute dqg/qface first, then R^T * dqg/qface to get dqg/dqvolume
+
+  op = SummationByParts.Subtract()
+  qg_dot = zeros(Tsol, numDofPerNode, numDofPerNode)
+  A0inv = zeros(Tsol, numDofPerNode, numDofPerNode)
+  wg_dotface = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerFace)
+  q_c = zeros(Complex128, numDofPerNode)
+  qg_c = zeros(Complex128, numDofPerNode)
+  h = 1e-20
+  pert = Complex128(0, h)
+  for i=1:numNodesPerFace
+    for j=1:numDofPerNode
+      q_c[j] = qface[j, i]
+    end
+    coords_i = sview(coords, :, i)
+    nrm_i = sview(nrm_face, :, i)
+
+    # compute jacobian of qgface wrt qface
+    for j=1:numDofPerNode
+      q_c[j] += pert
+
+      getDirichletState(func, params_c, q_c, aux_vars, coords_i, nrm_i, qg_c)
+      for k=1:numDofPerNode
+        qg_dot[k, j] = imag(qg_c[k])/h
+      end
+
+      q_c[j] -= pert
+    end
+
+    # jacobian of convertToEntropy
+    getA0inv(entropy_vars, params, sview(qgface, :, i), A0inv)
+    wg_dot_i = sview(wg_dotface, :, :, i)
+    smallmatmat!(A0inv, qg_dot, wg_dot_i)
+  end
+
+  # apply R^T to wg_dotface to get d wg/dqL, and subtract that from delta_w_dot
+  # interpolation is linear, so apply the regular operation repatedly
+  # It would be better if SBP had a jacobian operation for this
+  faceToVolume_jac!(sbpface, bndry.face, wg_dotface, delta_w_dot, op)
+
+  return nothing
+end
+
+
+
+
+"""
+  Jacobian of Dgk * t2L only
+"""
+function applyDgkTranspose_diff(capture::ParabolicReduceds{Tsol, Tres}, sbp,
+                       params::ParamType,
+                       sbpface, iface::Union{Interface, Boundary},
+                       diffusion::AbstractDiffusion,
+                       t2L::AbstractMatrix, t2L_dotL::Abstract4DArray,
+                       t2L_dotR::Abstract4DArray,
+                       qL::AbstractMatrix,
+                       wL::AbstractMatrix,
+                       coordsL::AbstractMatrix,
+                       nrm_face::AbstractMatrix,
+                       dxidxL::Abstract3DArray,
+                       jacL::AbstractVector,
+                       resL_dotL::Abstract4DArray, resL_dotR::Abstract4DArray,
+                       op::SummationByParts.UnaryFunctor=SummationByParts.Add()
+                      ) where {Tsol, Tres}
+
+  dim, numNodesPerFace = size(nrm_face)
+  numNodesPerElement = size(dxidxL, 3)
+  numDofPerNode = size(wL, 1)
+  add = SummationByParts.Add()
+  subtract = SummationByParts.Subtract()
+
+  @unpack capture temp1L temp2L
+  fill!(temp2L, 0);
+  @unpack capture t3L_dotL t3L_dotR Dx
+  @unpack capture t4L_dotL t4L_dotR
+  @unpack capture t5L_dotL t5L_dotR
+
+  # apply N and R^T
+  @simd for d=1:dim
+    @simd for j=1:numNodesPerFace
+      @simd for k=1:numDofPerNode
+        temp1L[k, j] =  nrm_face[d, j]*t2L[k, j]
+      end
+    end
+
+    tmp2L = sview(temp2L, :, :, d)
+    boundaryFaceInterpolate_rev!(sbpface, getFaceL(iface), tmp2L, temp1L)
+  end
+
+  # multiply by N
+  @simd for q=1:numNodesPerElement
+    @simd for p=1:numNodesPerFace
+      @simd for d=1:dim
+        @simd for j=1:numDofPerNode
+          @simd for i=1:numDofPerNode
+            t3L_dotL[i, j, d, p, q] = nrm_face[d, p]*t2L_dotL[i, j, p, q]
+            t3L_dotR[i, j, d, p, q] = nrm_face[d, p]*t2L_dotR[i, j, p, q]
+          end
+        end
+      end
+    end
+  end
+
+  # apply R^T
+  fill!(t4L_dotL, 0); fill!(t4L_dotR, 0)
+  #TODO: get rid of keyword arguments
+  boundaryFaceIntegrate_jac!(sbpface, getFaceL(iface), t3L_dotL, t4L_dotL,
+                             include_quadrature=false)
+  boundaryFaceIntegrate_jac!(sbpface, getFaceL(iface), t3L_dotR, t4L_dotR,
+                             include_quadrature=false)
+
+
+  # multiply by D^T Lambda
+  applyDiffusionTensor_diff(diffusion, sbp, params, qL, wL, coordsL, dxidxL,
+                            jacL, getElementL(iface), temp2L,
+                            t4L_dotL, t4L_dotR, t5L_dotL, t5L_dotR)
+
+  calcDxTransposed(sbp, dxidxL, jacL, Dx)
+  applyOperatorJac(Dx, t5L_dotL, resL_dotL, false, op)
+  applyOperatorJac(Dx, t5L_dotR, resL_dotR, false, op)
+
+  return nothing
+end
+
+
+
+
+#------------------------------------------------------------------------------
+# Penalty
 
 """
   Differentiated version of BR2 penalty
