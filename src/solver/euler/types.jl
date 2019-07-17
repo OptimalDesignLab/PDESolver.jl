@@ -246,7 +246,6 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     Ma = opts["Ma"]
     aoa = opts[ "aoa"]*pi/180
     sideslip_angle = opts["sideslip_angle"]
-    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
     rho_free = 1.0
     p_free = opts["p_free"]
     T_free = opts["T_free"]
