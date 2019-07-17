@@ -130,6 +130,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("volume integral @time printed above")
   end
 
+
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -163,6 +164,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("shock capturing @time printed above")
   end
 
+
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
   #println("source integral @time printed above")
 
@@ -171,7 +173,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
- 
   return nothing
 end  # end evalResidual
 

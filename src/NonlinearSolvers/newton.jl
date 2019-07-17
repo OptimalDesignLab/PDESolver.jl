@@ -425,7 +425,7 @@ function checkConvergence(newton_data::NewtonData)
   rel_norm = res_norm/res_norm_rel
   if rel_norm < newton_data.res_reltol
     is_converged = true
-    if itr == 0
+    @mpi_master if itr == 0
       println(BSTDOUT, "Initial condition satisfied res_reltol with relative residual ", rel_norm, " < ", newton_data.res_reltol)
     else
       println(BSTDOUT, "Newton iteration converged with relative residual norm ", rel_norm, " < ", newton_data.res_reltol)

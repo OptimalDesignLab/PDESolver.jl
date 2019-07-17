@@ -7,37 +7,56 @@ mutable struct pHomotopyData
   directory_names::Vector{String}
   directory_idx::Int
   directory_orig::String  # starting directory
+  comm::MPI.Comm
+  myrank::Int
+  commsize::Int
 
 
-  function pHomotopyData(opts)
+  function pHomotopyData(opts, comm=MPI.Comm)
 
+    myrank = MPI.Comm_rank(comm)
+    commsize = MPI.Comm_size(comm)
     solve_homotopy = opts["phomotopy_solve_homotopy"]
     p_min = opts["order"]
     p_max = opts["phomotopy_p_max"]
-    directory_names = makeDirectories(p_min, p_max)
+    directory_names = makeDirectories(p_min, p_max, myrank)
     directory_idx = 1
     directory_orig = pwd()
 
     @assert length(opts["phomotopy_euler_taus"]) == p_max
 
+    MPI.Barrier(comm)  # make sure all filesystem operations have finished
+
     return new(solve_homotopy, p_min, p_max, directory_names, directory_idx,
-               directory_orig)
+               directory_orig, comm, myrank, commsize)
   end
 end
 
 
-function makeDirectories(p_min::Integer, p_max::Integer)
+"""
+  Creates the directories for the "easy" solves.
+
+  **Inputs**
+
+   * p_min: degree of the first operator to solve
+   * p_max: degree of the last operator to solve
+   * myrank: the MPI rank of this process
+"""
+function makeDirectories(p_min::Integer, p_max::Integer, myrank::Int)
 
   names = Vector{String}(p_max)
   # make directories
   for i=p_min:p_max
     dname = "p$(i)_easy"
     dname_full = joinpath(pwd(), dname)
-    if isdir(dname_full)
-      println(BSTDOUT, "removing directory ", dname); flush(BSTDOUT)
-      rm(dname_full, recursive=true)
+
+    if myrank == 0  # only have root process create directories
+      if isdir(dname_full)
+        println(BSTDOUT, "removing directory ", dname); flush(BSTDOUT)
+        rm(dname_full, recursive=true)
+      end
+      mkdir(dname_full)
     end
-    mkdir(dname_full)
 
     names[i] = dname_full
   end
@@ -115,12 +134,13 @@ end
 """
 function createNewObjects(pdata::pHomotopyData, mesh, sbp, eqn, opts)
 
+  myrank = pdata.myrank
   updateOptsIntermediate(opts)
 
   writeSolutionFiles(mesh, sbp, eqn, opts, "solution_p$(sbp.degree)_easy.dat")
 
   cd(nextDirectory(pdata))
-  println(BSTDOUT, "\nworking directory is now ", pwd())
+  @mpi_master println(BSTDOUT, "\nworking directory is now ", pwd())
 
   mesh_h, sbp_h, eqn_h, opts_h = createEnrichedObjects(mesh, sbp, eqn, opts)
   writeSolutionFiles(mesh_h, sbp_h, eqn_h, opts_h, "solution_p$(sbp_h.degree)_interp.dat")
@@ -150,7 +170,7 @@ end
 
   The input file should be set for the conditions that will be used for the
   homotopy solve.  There are options below for changing certain options for
-  the subsequent solve. 
+  the subsequent solves. 
 
   **Options Keys**
 
@@ -207,10 +227,11 @@ function pHomotopy(mesh::AbstractMesh, sbp::AbstractSBP,
 # the eqn object should initially be configured with the easy flux function
 # and the easy shock sensor
 
-  pdata = pHomotopyData(opts)
+  pdata = pHomotopyData(opts, eqn.comm)
+  myrank = pdata.myrank
 
   cd(nextDirectory(pdata))
-  println(BSTDOUT, "\nworking directory is now ", pwd())
+  @mpi_master println(BSTDOUT, "\nworking directory is now ", pwd())
   # open new log files is current directory
   closeLoggingFiles(eqn, opts); closeLoggingFiles(eqn, opts)
 
@@ -231,7 +252,7 @@ function pHomotopy(mesh::AbstractMesh, sbp::AbstractSBP,
 
     mesh, sbp, eqn, opts = createNewObjects(pdata, mesh_old, sbp_old, eqn_old,
                                             opts_old)
-    println(BSTDOUT, "about to solve p = $p with sbp of degree $(sbp.degree)")
+    @mpi_master println(BSTDOUT, "about to solve p = $p")
     flush(BSTDOUT)
     newton(evalResidual, mesh, sbp, eqn, opts)
     mesh_old = mesh; sbp_old = sbp; eqn_old = eqn; opts_old = opts

@@ -243,12 +243,12 @@ function updateEuler(lo::NewtonLinearObject)
   if res_norm_i_1 == 0
     return nothing
   end
+  
+  tau_update = res_norm_i_1/res_norm_i
 
   # update tau
-  lo.idata.tau_l = lo.idata.tau_l * res_norm_i_1/res_norm_i
+  lo.idata.tau_l = lo.idata.tau_l * tau_update
   
-  tau_update = lo.idata.tau_l/tau_l_old
-
   if lo.myrank == 0
     println(BSTDOUT, "tau_update factor = ", tau_update)
   end

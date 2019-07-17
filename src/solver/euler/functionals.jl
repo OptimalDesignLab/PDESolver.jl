@@ -462,6 +462,24 @@ function NegBoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+# this is actually a volume integral, not a boundary integral, but it
+# doesn't make a difference
+"""
+  Computes the function from the Zahr and Perssons paper "An Optimization-based
+  approach for high-order accurate discretization of conservation laws with
+  discontinuous solutions", ie.
+
+  \\sum_k \\int || u - h_bar ||^2 dOmega_k
+"""
+mutable struct SolutionDeviation{Topt} <: AbstractBoundaryFunctional{Topt}
+end
+
+function SolutionDeviationConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  return SolutionDeviation{Topt}()
+end
+
+
 
 
 
@@ -541,6 +559,7 @@ global const FunctionalDict = Dict{String, Function}(
 "entropyjump" => EntropyJumpConstructor,
 "boundaryentropydiss" => BoundaryEntropyDissConstructor,
 "negboundaryentropydiss" => NegBoundaryEntropyDissConstructor,
+"solutiondeviation" => SolutionDeviationConstructor,
 )
 
 

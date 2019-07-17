@@ -64,7 +64,7 @@ mutable struct HomotopyData{Tsol, Tjac}
                            physics_func::Function, g_func::Function
                           ) where {Tsol, Tjac}
 
-    println("\nConstructing HomotopyData")
+    #println("\nConstructing HomotopyData")
     time = eqn.params.time
     lambda = 1.0  # homotopy parameter
     myrank = mesh.myrank
@@ -269,7 +269,7 @@ function predictorCorrectorHomotopy(physics_func::Function,
     # calculate homotopy residual
     #homotopy_norm = physicsRhs(mesh, sbp, eqn, opts, eqn.res_vec, (homotopyPhysics,))
 
-    # update tolerances (linear and nonlinar)
+    # update tolerances (linear and nonlinear)
     updateTolerances(hdata, opts)
 
    # calculate the PC and LO if needed
@@ -394,7 +394,7 @@ function updateTolerances(hdata::HomotopyData, opts)
     homotopy_tol = res_reltol
 
     reltol = krylov_reltol0 # smaller than newton tolerance
-    abstol = res_abstol*1e-3  # smaller than newton tolerance
+    abstol = 1e-50
 
     # enable globalization if required
     opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
@@ -409,8 +409,8 @@ function updateTolerances(hdata::HomotopyData, opts)
     changed_tols = true
     homotopy_tol = 1e-4
 
-    reltol = res_reltol*1e-3  # smaller than newton tolerance
-    abstol = res_abstol*1e-3  # smaller than newton tolerance
+    reltol = krylov_reltol0  # smaller than newton tolerance
+    abstol = 1e-50
 
     # enable globalization if required
     opts["newton_globalize_euler"] = opts["homotopy_globalize_euler"]
@@ -551,7 +551,7 @@ function takePredictorStep(hdata::HomotopyData, mesh, sbp, eqn, opts)
     delta_q[i] = eqn.q_vec[i] - q_vec0[i]
   end
   delta = calcNorm(eqn, delta_q)
-  println("L2 norm delta = ", delta)
+  #println("L2 norm delta = ", delta)
 
   psi = psi_max
   if hdata.iter > 1
@@ -569,16 +569,16 @@ function takePredictorStep(hdata::HomotopyData, mesh, sbp, eqn, opts)
 
   # calculate step size
   fac = max(real(psi/psi_max), sqrt(delta/delta_max))
-  println("psi/psi_max = ", psi/psi_max)
-  println("delta/delta_max = ", delta/delta_max)
-  println("fac = ", fac)
+  #println("psi/psi_max = ", psi/psi_max)
+  #println("delta/delta_max = ", delta/delta_max)
+  #println("fac = ", fac)
   h /= fac
   h = min(h, h_max)
   lambda = max(lambda_min, lambda - h)
   if lambda < eps()
     lambda = 0.0
   end
-  println("new h = ", h)
+  #println("new h = ", h)
 
   # take predictor step
   for i=1:length(eqn.q_vec)

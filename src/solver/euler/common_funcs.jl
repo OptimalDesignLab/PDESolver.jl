@@ -1165,3 +1165,44 @@ function calcLaplaceSolution(params::ParamType,
 
   return nothing
 end
+
+
+global const wedge20_tanbeta = tand(53.422940527228654)
+global const tan20 = tand(20)
+global const cos20 = cosd(20)
+global const sin20 = sind(20)
+
+"""
+  Compute the exact solution for a supersonic wedge where the semi-angle is
+  20 degrees.  The vertex of the wedge must be at x, y = (-1, 0), and the
+  free stream Mach number must be 2.0
+"""
+function calcWedge20(params::ParamType2,
+                     coords::AbstractArray{Tmsh,1},
+                     q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
+
+  @assert params.Ma == 2.0
+  @assert params.aoa == 0.0
+
+  # figure out if the given point is post-shock or pre-shock
+
+  x = coords[1]; y = coords[2]; tanbeta = wedge20_tanbeta
+
+  if (y > 0 && y > tanbeta*x + tanbeta) || (y < 0 && y < -tanbeta*x - tanbeta)
+    # pre-shock
+#    println("pre-shock")
+    calcFreeStream(params, coords, q)
+  else
+#    println("post-shock")
+    # computed from the oblique shock relations in Anderson's Aerodynamics
+    M2 = 1.2102184008268027
+    a2 = 1.1799115865336027
+
+    q[1] = 2.0420057206059625
+    q[2] = q[1]*M2*a2*cos20
+    q[3] = q[1]*M2*a2*sin20
+    q[4] = 7.1584095248438615
+  end
+
+  return nothing
+end

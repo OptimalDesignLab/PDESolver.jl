@@ -71,7 +71,8 @@ function test_functionals()
     println("testing functional ", funcname)
     obj = createFunctional(mesh, sbp, eqn, opts, funcname, [1, 3])
     if !(funcname in funcs_skip_zero) &&
-        typeof(obj) <: EulerEquationMod.EntropyPenaltyFunctional
+        typeof(obj) <: EulerEquationMod.EntropyPenaltyFunctional ||
+        funcname == "solutiondeviation"
 
       test_functional_zero(mesh, sbp, eqn, opts, obj)
     end
@@ -79,7 +80,6 @@ function test_functionals()
     test_functional_deriv_q(mesh, sbp, eqn, opts, obj, shock=true)
 
     if funcname in funcs_diage
-      println("testing DiagE")
       obj = createFunctional(mesh2, sbp2, eqn2, opts2, funcname, [1, 3])
       test_functional_deriv_q(mesh2, sbp2, eqn2, opts2, obj)
     end
@@ -113,7 +113,8 @@ function test_functionals()
                            "negentropydissipation2",
                            "negtotalentropydissipation",
                            "lift", "liftCoefficient",
-                           "drag", "dragCoefficient"]
+                           "drag", "dragCoefficient",
+                           "solutiondeviation"]
 
   for funcname in functional_revm_names
     println("testing revm of functional ", funcname)
@@ -397,4 +398,4 @@ function test_compositefunctional(mesh, sbp, eqn, opts,
   end
 end
 
-add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST])
+add_func1!(EulerTests, test_functionals, [TAG_FUNCTIONAL, TAG_SHORTTEST, TAG_TMP])

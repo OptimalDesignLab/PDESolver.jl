@@ -20,7 +20,8 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
 
 #  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
 #  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
-  const mattype = PETSc2.MATBAIJ  # was this
+  const mattype = PETSc2.MATAIJ
+#  const mattype = PETSc2.MATBAIJ  # was this
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
