@@ -139,12 +139,14 @@ end
 """
 function isEulerInitialized(lo::AbstractLO)
   lo2 = getInnerLO(lo, NewtonLinearObject)
-  return !(lo2.idata.res_norm_i == 0 && lo2.idata.res_norm_i_1 == 0)
+  return !(lo2.idata.res_norm_i == 0 && lo2.idata.res_norm_i_1 == 0) &&
+          lo2.idata.use_implicit_euler
 end
 
 function isEulerInitialized(pc::AbstractPC)
   pc2 = getInnerPC(pc, NewtonLinearObject)
-  return !(pc2.idata.res_norm_i == 0 && pc2.idata.res_norm_i_1 == 0)
+  return !(pc2.idata.res_norm_i == 0 && pc2.idata.res_norm_i_1 == 0) &&
+           pc2.idata.use_implicit_euler
 end
 
 function isEulerInitialized(pc::PCNone)
@@ -235,6 +237,10 @@ end
 function updateEuler(lo::NewtonLinearObject)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
+
+  if !lo.idata.use_implicit_euler
+    return nothing
+  end
 
   tau_l_old = lo.idata.tau_l
   res_norm_i_1, res_norm_i = useEulerConstants(lo)

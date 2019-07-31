@@ -23,11 +23,13 @@ function test_jac_terms()
 
   # list of boundary conditions to test revm method in 2D
   bclist_revm_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC",
-                    "isentropicVortexBC", "noPenetrationESBC", "ZeroFluxBC"]
+                    "isentropicVortexBC", "noPenetrationESBC", "ZeroFluxBC",
+                    "wedge20BC"]
   bclist_revm_3d = [                   "FreeStreamBC"]
   bclist_revq_2d = ["noPenetrationBC", "FreeStreamBC", "ExpBC",
-                    "isentropicVortexBC", "noPenetrationESBC", "ZeroFluxBC"]
-  bclist_revq_3d = [                   "FreeStreamBC",]
+                    "isentropicVortexBC", "noPenetrationESBC", "ZeroFluxBC",
+                    "wedge20BC"]
+  bclist_revq_3d = [                      "FreeStreamBC",]
   Tsol = eltype(eqn.q)
   Tres = eltype(eqn.res)
   Tmsh = eltype(mesh.jac)
@@ -357,7 +359,7 @@ function test_jac_terms()
 end
 
 
-add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC])
+add_func1!(EulerTests, test_jac_terms, [TAG_SHORTTEST, TAG_JAC, TAG_TMP])
 
 
 """
@@ -370,10 +372,10 @@ function test_jac_terms_long()
     # starting point for different configurations
     fname = "input_vals_jac2d.jl"
     fname3 = "input_vals_jac3d.jl"
-#=
+
     mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_jaccurve3d.jl")
     test_sbp_cartesian_revm(mesh3, sbp3, eqn3, opts3)
-
+#=
     #TESTING
     # SBPDiagonalE, SparseMatrixCSC, SBPParabolicReducedSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -394,7 +396,7 @@ function test_jac_terms_long()
     testQx(mesh9, sbp9, eqn9, opts9)
 =#
 
-#=
+
     # SBPGamma, Petsc Mat
     fname4 = "input_vals_jac_tmp.jl"
     opts_tmp = read_input_file(fname3)
@@ -485,7 +487,7 @@ function test_jac_terms_long()
     opts_tmp["Flux_name"] = "IRSLFFlux"
     make_input(opts_tmp, fname4)
     mesh12, sbp12, eqn12, opts12 = run_solver(fname4)
-=#
+
 
     # SBPDiagonalE, SparseMatrixCSC, SBPParabolicReducedSC
     fname4 = "input_vals_jac_tmp.jl"
@@ -509,7 +511,7 @@ function test_jac_terms_long()
     test_jac_general(mesh13, sbp13, eqn13, opts13)
 
 
-#=
+
     # test various matrix and operator combinations
     println("testing mode 4")
     test_jac_general(mesh4, sbp4, eqn4, opts4)
@@ -739,7 +741,7 @@ function test_jac_terms_long()
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5)
    println("\nTesting revq frozen")
    test_revq_product(mesh_r5, sbp_r5, eqn_r5, opts_r5; freeze=true)
-=#
+
   end
 
   return nothing

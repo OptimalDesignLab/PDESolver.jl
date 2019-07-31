@@ -2254,6 +2254,57 @@ function (obj::wedge20BC)(params::ParamType2,
   return nothing
 end
 
+
+@makeBC wedge20BC_revm """
+Reverse mode of wedge20BC
+"""
+
+function (obj::wedge20BC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward Sweep
+  @unpack params.bcdata qg
+
+  calcWedge20(params, coords, qg)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+
+  return nothing
+end
+
+
+@makeBC wedge20BC_revq """
+Reverse mode of wedge20BC
+"""
+
+
+function (obj::wedge20BC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward Sweep
+  @unpack params.bcdata qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcWedge20(params, coords, qg)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  return nothing
+end
+
+
+
+
+
 # every time a new boundary condition is created,
 # add it to the dictionary
 
@@ -2359,6 +2410,7 @@ global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
 "ExpBC" => ExpBC_revm,
 "isentropicVortexBC" => isentropicVortexBC_revm,
 "ZeroFluxBC" => ZeroFluxBC_revm,
+"wedge20BC" => wedge20BC_revm,
 )
 
 """
@@ -2426,6 +2478,7 @@ global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
 "ExpBC" => ExpBC_revq,
 "isentropicVortexBC" => isentropicVortexBC_revq,
 "ZeroFluxBC" => ZeroFluxBC_revq,
+"wedge20BC" => wedge20BC_revq,
 )
 
 

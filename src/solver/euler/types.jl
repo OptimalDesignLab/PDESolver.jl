@@ -251,6 +251,7 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     T_free = opts["T_free"]
     E_free = p_free/gamma_1 + 0.5*rho_free*Ma*Ma
     a_free = sqrt(p_free/rho_free)  # free stream speed of sound
+                                    # should be sqrt(p_free*gamma/rho_free) ?
     R_ND = R*a_free*a_free/T_free
 
     edgestab_gamma = opts["edgestab_gamma"]

@@ -18,8 +18,8 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                        capture.diffusion, capture.entropy_vars,
                        capture.penalty, assem)
 
-  computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
-                                    assem)
+#  computeDirichletBoundaryTerm_diff(mesh, sbp, eqn, opts, capture, shockmesh,
+#                                    assem)
  
 #  if shockmesh.isNeumann
 #    println("computing Neumann boundary condition")

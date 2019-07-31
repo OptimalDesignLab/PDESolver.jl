@@ -1181,8 +1181,8 @@ function calcWedge20(params::ParamType2,
                      coords::AbstractArray{Tmsh,1},
                      q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
 
-  @assert params.Ma == 2.0
-  @assert params.aoa == 0.0
+#  @assert params.Ma == 2.0
+#  @assert params.aoa == 0.0
 
   # figure out if the given point is post-shock or pre-shock
 

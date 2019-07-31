@@ -17,7 +17,8 @@ function calcShockCapturing(mesh::AbstractMesh, sbp::AbstractOperator,
   computeFaceTerm(mesh, sbp, eqn, opts, capture, shockmesh, capture.diffusion,
                   capture.penalty)
 
-  computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
+  # this doesn't seem to help
+#  computeDirichletBoundaryTerm(mesh, sbp, eqn, opts, capture, shockmesh)
   #println("after face term, residual norm = ", calcNorm(eqn, eqn.res))
 
 #  if shockmesh.isNeumann

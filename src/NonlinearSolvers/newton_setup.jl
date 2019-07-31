@@ -300,8 +300,12 @@ function createLinearSolver(mesh::AbstractMesh, sbp::AbstractOperator,
                             eqn::AbstractSolutionData, opts,
                             jac_type::Integer=opts["jac_type"])
 
+  # general linear solvers should not have globilization
+  val_orig = opts["setup_globalize_euler"]
+  opts["setup_globalize_euler"] = false
   pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts, jac_type)
   ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
+  opts["setup_globalize_euler"] = val_orig
   
   return ls
 end
@@ -331,6 +335,7 @@ abstract type NewtonMatFreePC <: AbstractPetscMatFreePC end
 
 """
 mutable struct ImplicitEulerData
+    use_implicit_euler::Bool  # whether or not use use implicit Euler
     res_norm_i::Float64  # current step residual norm
     res_norm_i_1::Float64  # previous step residual norm
     # Pseudo-transient continuation Euler
@@ -349,13 +354,15 @@ end
 """
 function ImplicitEulerData(mesh::AbstractMesh, opts, tau_l::Number)
 
+  use_implicit_euler = true
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
 
   tau_vec = zeros(mesh.numDof)
   calcTauVec(mesh, opts, tau_l, tau_vec)
 
-  return ImplicitEulerData(res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return ImplicitEulerData(use_implicit_euler, res_norm_i, res_norm_i_1,
+                           tau_l, tau_vec)
 end
 
 """
@@ -363,12 +370,14 @@ end
 """
 function ImplicitEulerData()
 
+  use_implicit_euler = false
   res_norm_i = 0.0
   res_norm_i_1 = 0.0
   tau_l = 0.0
   tau_vec = Array{Float64}(0)
 
-  return ImplicitEulerData(res_norm_i, res_norm_i_1, tau_l, tau_vec)
+  return ImplicitEulerData(use_implicit_euler, res_norm_i, res_norm_i_1,
+                           tau_l, tau_vec)
 end
 
 
