@@ -25,8 +25,8 @@ cache:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
-  - sudo apt-get install -y liblapack-dev liblapack3gf
-  - sudo apt-get install -y libblas-dev libblas3gf
+  - sudo apt-get install -y liblapack-dev liblapack3
+  - sudo apt-get install -y libblas-dev libblas3
   - sudo ./deps/travis-install-mpi.sh $MPI_IMPL
   # setting these variables will help cmake find MPI
   - export CC=mpicc
