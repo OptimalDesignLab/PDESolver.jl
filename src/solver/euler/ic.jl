@@ -511,6 +511,9 @@ end
 
 @makeIC Wedge20
 
+
+@makeIC Wedge20Potential
+
 # declare a const dictionary here that maps strings to function (used for input arguments)
 """
   Map IC names to functions.  Generally the name is the same as the function
@@ -562,6 +565,7 @@ global const ICDict = Dict{Any, Function}(
 "ICSedovExplosion" => ICSedovExplosion,
 "ICLaplace" => ICLaplaceSolution,
 "ICWedge20" => ICWedge20,
+"ICWedge20Potential" => ICWedge20Potential,
 )
 
 

@@ -2235,6 +2235,9 @@ function getDirichletState(obj::noSlipBC, params::ParamType{Tdim},
 end
 
 
+#------------------------------------------------------------------------------
+# Wedge20BC
+
 @makeBC wedge20BC """
   Boundary condition for the wedge with a 20 degree semi-angle.  Imposes the
   exact solution using the Roe solver
@@ -2303,6 +2306,30 @@ end
 
 
 
+#------------------------------------------------------------------------------
+# Wedge20Potential BC
+
+@makeBC wedge20PotentialBC """
+  Boundary condition for the wedge with a 20 degree semi-angle.  Imposes the
+  exact solution using the Roe solver
+"""
+function (obj::wedge20PotentialBC)(params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+  qg = params.bcdata.qg
+  calcWedge20Potential(params, coords, qg)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
+
+
+
 
 
 # every time a new boundary condition is created,
@@ -2337,6 +2364,7 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
 "ZeroFluxBC" => ZeroFluxBC,
 "noSlipBC" => noSlipBC,
 "wedge20BC" => wedge20BC,
+"wedge20PotentialBC" => wedge20PotentialBC,
 "defaultBC" => defaultBC,
 )
 

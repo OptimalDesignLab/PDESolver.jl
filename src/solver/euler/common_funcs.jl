@@ -1206,3 +1206,64 @@ function calcWedge20(params::ParamType2,
 
   return nothing
 end
+
+
+"""
+  Computes the potential flow solution for flow over a 20 degree wedge.
+  Potential flow assumes incompressible flow, so the Mach number should be
+  small when running this case
+"""
+function calcWedge20Potential(params::ParamType2,
+                     coords::AbstractArray{Tmsh,1},
+                     q::AbstractArray{Tsol,1}) where {Tmsh, Tsol}
+
+  n = 9/8  # this corresponds to a 20 degree semi-angle wedge
+  rprime = 2*sqrt(1 + 1.5*1.5)  # define pressure = free stream pressure at this
+                                # point
+  Vprime = n*params.Ma*rprime^(n-1)
+  Vprime2 = Vprime*Vprime
+
+  # Bernoulli's equation constant at rprime.  Use this for *all* streamlines
+  c1 = params.p_free/params.rho_free + 0.5*Vprime2
+
+  # the potential flow solution has the wedge geometry as:
+  #  \                                    /
+  #   \             rather than          /
+  #    \                                /
+  #     \________                ______/
+  # so we transform the coordinates at the beginning of the computation
+  # and then transform the velocity at the end.
+  # Also, the potential flow solution as the origin at the corner of the wedge,
+  # not the lower right corner
+
+  x = -(coords[1] + 1.0); y = coords[2]
+
+  # The potential flow solution si f(z) = z^n, where z = x + i*y, but computing
+  # it this way would not be complex-stepable,  Instead apply Eulers identity
+
+  # compute r-theta coordinates
+  r = sqrt(x*x + y*y); nrn = n*params.Ma*r^(n-1)
+  theta = atan2(y, x); nm1_theta = (n-1)*theta
+
+  # compute velocity
+  u = nrn*cos(nm1_theta); v = -nrn*sin(nm1_theta)
+
+  # transform velocity from the potential flow geometry to the real geometry
+  v = -v
+
+  # compute pressure using Bernoulli's equation, then energy from it (using
+  # ideal gas law)
+  v_squared = u*u + v*v
+  p = params.rho_free*(c1 - 0.5*v_squared)
+  E = p/params.gamma_1 + 0.5*params.rho_free*v_squared
+
+  q[1] = params.rho_free
+  q[2] = params.rho_free*u
+  q[3] = params.rho_free*v
+  q[4] = E
+
+  return nothing
+end
+
+
+
