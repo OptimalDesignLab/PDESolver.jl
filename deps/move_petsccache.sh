@@ -6,7 +6,7 @@
 # $1 = "remove": move files out of the way
 # $1 = "restore": move files back to original location
 
-PETSC_DIR1=$HOME/.julia/v0.6/PETSc2/deps/petsc-3.7.6
+PETSC_DIR1=$HOME/.julia/v0.6/PETSc2/deps/petsc-3.9.4
 PETSC_ARCH1=arch-linux2-c-debug
 pth=$PETSC_DIR1/$PETSC_ARCH1
 
