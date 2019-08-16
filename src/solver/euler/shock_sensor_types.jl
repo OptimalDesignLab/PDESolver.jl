@@ -106,6 +106,7 @@ mutable struct ShockSensorPP{Tsol, Tres} <: AbstractShockSensor
 
     # constants from Barter's thesis
     s0 = -(4 + 4.25*log10(sbp.degree))  # was -(4 + 4.25*log10(sbp.degree))
+    s0 += opts["sensor_pp_s0_offset"]
     kappa = 1.0  # was 0.5
     _e0 = 0.01
     e0 = _e0

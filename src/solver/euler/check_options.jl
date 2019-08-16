@@ -65,6 +65,7 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
   get!(opts, "freeze_viscosity", false)
   get!(opts, "shock_capturing_variables", "IR")
   get!(opts, "sensor_pp_use_filtered", false)
+  get!(opts, "sensor_pp_s0_offset", 0)
 
   return nothing
 end
