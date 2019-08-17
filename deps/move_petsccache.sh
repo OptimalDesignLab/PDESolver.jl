@@ -14,7 +14,7 @@ pth=$PETSC_DIR1/$PETSC_ARCH1
 if [[ $1 == "remove" ]];
 then
   
-  if file $pth/lib/libpetsc.so ;  # if cache loaded successfully
+  if [[ -e $pth/lib/libpetsc.so ]];  # if cache loaded successfully
   then
     echo "cache loaded, setting environment variables"
     export PETSC_DIR=$PETSC_DIR1
