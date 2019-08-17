@@ -20,7 +20,7 @@ env:
 
 cache:
   directories:
-  - $HOME/.julia/v0.6/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/
+  - $HOME/.julia/v0.6/PETSc2/deps/petsc-3.9.4/arch-linux2-c-debug/lib/
 
 before_install:
   - sudo apt-get update -qq

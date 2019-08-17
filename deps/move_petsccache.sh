@@ -16,6 +16,7 @@ then
   
   if file $pth/lib/libpetsc.so ;  # if cache loaded successfully
   then
+    echo "cache loaded, setting environment variables"
     export PETSC_DIR=$PETSC_DIR1
     export PETSC_ARCH=$PETSC_ARCH1
     ls $pth/lib
