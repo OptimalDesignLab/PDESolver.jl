@@ -43,6 +43,8 @@ script:
   - source ./deps/move_petsccache.sh remove
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
   - source ./deps/move_petsccache.sh restore  # move files back
+  - ls ~/.julia/v0.6/PETSc2/
+  - ls ~/.julia/v0.6/PETSc2/deps
 #  - cd ~/.julia/v0.6/PumiInterface/src
 #  - source ./use_julialib.sh
   - cd ~/.julia/v0.6/PDESolver/test
