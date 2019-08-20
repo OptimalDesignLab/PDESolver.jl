@@ -1188,12 +1188,10 @@ function calcWedge20(params::ParamType2,
 
   x = coords[1]; y = coords[2]; tanbeta = wedge20_tanbeta
 
-  if (y > 0 && y > tanbeta*x + tanbeta) || (y < 0 && y < -tanbeta*x - tanbeta)
+  if (y > 0 && y > tanbeta*x + tanbeta) || (y <= 0 && y < -tanbeta*x - tanbeta)
     # pre-shock
-#    println("pre-shock")
     calcFreeStream(params, coords, q)
   else
-#    println("post-shock")
     # computed from the oblique shock relations in Anderson's Aerodynamics
     M2 = 1.2102184008268027
     a2 = 1.1799115865336027
@@ -1202,6 +1200,10 @@ function calcWedge20(params::ParamType2,
     q[2] = q[1]*M2*a2*cos20
     q[3] = q[1]*M2*a2*sin20
     q[4] = 7.1584095248438615
+
+    if y < 0
+      q[3] = -q[3]
+    end
   end
 
   return nothing

@@ -9,6 +9,16 @@
    * free_mesh: if true, the old mesh object will be freed after adaptation
                 is complete, Only set this to false if you know what you
                 are doing.  Default true.
+   * callback: a function that will be called by [`solveAdapative`](@ref)
+               every for each new mesh.  The solution in `eqn.q` will be
+               the solution to the PDE on that mesh.  The callback must have
+               the signature:
+
+               ```
+                 function callback(mesh, sbp, eqn, opts, iter)
+               ```
+
+               where `iter` is the current iteration number
 
    * fixed_fraction: a number between 0 and 1 that determines what fraction
                      of the elements are refined for fixed-fraction based
@@ -39,6 +49,7 @@ mutable struct AdaptOpts
   strategy::Int
   #TODO: wrap more MeshAdapt options
   free_mesh::Bool
+  callback::Function  # callback for solveAdapative
 
   # options used by different strategies
   fixed_fraction::Float64
@@ -58,6 +69,7 @@ function AdaptOpts()
   # mesh adaptation options
   strategy = 1
   free_mesh = true
+  callback = defaultCallback
 
   fixed_fraction = 0.1
   #TODO: need to figure out about load balancing post adaptation
@@ -69,8 +81,20 @@ function AdaptOpts()
   # private options
   free_ls = false
 
-  return AdaptOpts(strategy, free_mesh, fixed_fraction, solve_itermax,
+  return AdaptOpts(strategy, free_mesh, callback, fixed_fraction, solve_itermax,
                    element_limit, free_ls)
+end
+
+
+"""
+  Default (do-nothing) callback
+"""
+function defaultCallback(mesh::AbstractMesh, sbp::AbstractOperator,
+                         eqn::AbstractSolutionData, opts, idx::Integer)
+
+  # do nothing
+
+  return nothing
 end
 
 
@@ -512,10 +536,6 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
                        err_target::Number)
   # we assume the PDE was *not* previously solved, unlike doHAdaptation
   myrank = mesh.myrank
-  if opts["write_adapt_vis"]
-    writeVisFiles(mesh, "adapt_0")
-  end
-
 
   # keep solving until tolerance met or some other criteria
   ic_orig = opts["IC_name"]
@@ -526,16 +546,23 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
     # for all future solves, use the previous solution
     opts["IC_name"] = "ICPassThrough"
 
+    if opts["write_adapt_vis"]
+      saveSolutionToMesh(mesh, eqn.q_vec)
+      writeVisFiles(mesh, "adapt_$i")
+    end
+
+    # call the user-defined callback
+    adapt_opts.callback(mesh, sbp, eqn, opts, i)
+
+    # do another round of h-adaptation (or return the current objects if the
+    # error meets the tolerance)
     old_numEl = mesh.numEl
     h_old = calcMeshH(mesh, sbp, eqn, opts)
     mesh, sbp, eqn, opts, err = doHAdaptation(adapt_opts, mesh, sbp, eqn,
                                               opts, func, err_target)
 
+    # printing and convergence checks
     println("\n\nOn iteration ", i, ", error estimate = ", err, ", numEl = ", old_numEl, ", avg mesh size = ", h_old)
-
-    if opts["write_adapt_vis"]
-      writeVisFiles(mesh, "adapt_$i")
-    end
 
     numel_global = MPI.Allreduce(mesh.numEl, MPI.SUM, eqn.comm)
     if err < err_target
@@ -552,7 +579,7 @@ function solveAdaptive(adapt_opts::AdaptOpts, mesh::AbstractMesh,
 
   end  # end loop i
 
-  if exit_code == 0
+  if exit_code == 1
     @mpi_master println(BSTDOUT, "solveAdaptive exited due to itermax, number of elements = ", mesh.numGlobalEl)
   end
   flush(BSTDOUT)

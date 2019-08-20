@@ -177,6 +177,7 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AbstractEulerD
       convertFromNaturalToWorkingVars(eqn.params, q_view, q_view)
     end
   end
+  println("\n\nFinished evaluating initial condition")
 
   #TODO: TESTING
   if opts["freeze_viscosity"]
