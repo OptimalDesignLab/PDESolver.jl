@@ -33,7 +33,7 @@ fi
 if [[ $1 == "restore" ]];
 then
 
-  if [[ -e $HOME/petsc_lib/libpetsc.so]];  # if cache loaded successfully
+  if [[ -e $HOME/petsc_lib/libpetsc.so ]];  # if cache loaded successfully
   then
     mkdir -vp $pth
     mv -v $HOME/petsc_lib/ $pth/lib
