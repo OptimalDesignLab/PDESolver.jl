@@ -3874,6 +3874,84 @@ function calcLFFlux_diff(
   return nothing
 end
 
+
+function calcLFFlux_revm(params::ParamType,
+                   qL::AbstractArray{Tsol,1},
+                   qR::AbstractArray{Tsol, 1},
+                   aux_vars::AbstractArray{Tres, 1},
+                   dir::AbstractArray{Tmsh,1},
+                   dir_bar::AbstractArray{Tmsh, 1},
+                   F_bar::AbstractArray{Tres, 1},
+                   ) where {Tmsh, Tsol, Tres}
+
+  # compute Euler flux of left and right states
+  data = params.lffluxdata
+  @unpack data fluxL fluxR
+
+  #calcEulerFlux(params, qL, aux_vars, dir, fluxL)
+  #calcEulerFlux(params, qR, aux_vars, dir, fluxR)
+  #lambda_max = getLambdaMaxSimple(params, qL, qR, dir)
+
+  #for i=1:length(F)
+  #  F[i] = 0.5*(fluxL[i] + fluxR[i] - lambda_max*(qR[i] - qL[i]))
+  #end
+
+  #------------------------------------------
+  # reverse sweep
+  numDofPerNode = length(qL)
+  fluxL_bar = zeros(Tres, numDofPerNode)
+  fluxR_bar = zeros(Tres, numDofPerNode)
+  lambda_max_bar = zero(Tres)
+
+  for i=1:numDofPerNode
+    fluxL_bar[i] += 0.5*F_bar[i]
+    fluxR_bar[i] += 0.5*F_bar[i]
+    lambda_max_bar -= 0.5(qR[i] - qL[i])*F_bar[i]
+  end
+
+  getLambdaMaxSimple_revm(params, qL, qR, dir, dir_bar, lambda_max_bar)
+  calcEulerFlux_revm(params, qL, aux_vars, dir, dir_bar, fluxL_bar)
+  calcEulerFlux_revm(params, qR, aux_vars, dir, dir_bar, fluxR_bar)
+
+  return nothing
+end
+
+
+function calcLFFlux_revq(params::ParamType{2, :conservative},
+                    qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                    qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                    aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh, 1},  
+                    F_bar::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+
+  lambda_max = getLambdaMaxSimple(params, qL, qR, dir)
+  
+  #------------------------------------------
+  # reverse sweep
+  numDofPerNode = length(qL)
+  fluxL_bar = zeros(Tres, numDofPerNode)
+  fluxR_bar = zeros(Tres, numDofPerNode)
+  lambda_max_bar = zero(Tres)
+
+  for i=1:numDofPerNode
+    fluxL_bar[i] += 0.5*F_bar[i]
+    fluxR_bar[i] += 0.5*F_bar[i]
+    lambda_max_bar -= 0.5*(qR[i] - qL[i])*F_bar[i]
+    qR_bar[i] -= 0.5*lambda_max*F_bar[i]
+    qL_bar[i] += 0.5*lambda_max*F_bar[i]
+  end
+
+  getLambdaMaxSimple_revq(params, qL, qL_bar, qR, qR_bar, dir, lambda_max_bar)
+  calcEulerFlux_revq(params, qL, qL_bar, aux_vars, dir, fluxL_bar)
+  calcEulerFlux_revq(params, qR, qR_bar, aux_vars, dir, fluxR_bar)
+
+  return nothing
+end
+
+
+
+
+
 #------------------------------------------------------------------------------
 # IR flux differentiated
 # there are a total of 12 versions: (2d vs 3d) x (single direction vs multi

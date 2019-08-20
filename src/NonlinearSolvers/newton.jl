@@ -215,23 +215,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # recalculate PC and Jacobian if needed
     doRecalculation(newton_data.recalc_policy, i,
                     ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    #=             
-    recalc_type = decideRecalculation(newton_data.recalc_policy, i)
-    if recalc_type == RECALC_BOTH
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_PC
-      calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_LO
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =# 
-    #=
-    if ((i % recalc_prec_freq)) == 0 || i == 1
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    else  # only recalculate the linear operator
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =#
 
     # compute eigs, condition number, etc.
     doMatrixCalculations(newton_data, opts)
@@ -242,7 +225,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     end
 
     #TODO: DEBUGGING
-    println(BSTDOUT, "writing newton_q_vec_$i")
+    @mpi_master println(BSTDOUT, "writing newton_q_vec_$i")
     writeSolutionFiles(mesh, sbp, eqn, opts, "newton_q_vec_$i")
     flush(BSTDOUT)
 
@@ -442,7 +425,7 @@ function checkConvergence(newton_data::NewtonData)
   rel_norm = res_norm/res_norm_rel
   if rel_norm < newton_data.res_reltol
     is_converged = true
-    if itr == 0
+    @mpi_master if itr == 0
       println(BSTDOUT, "Initial condition satisfied res_reltol with relative residual ", rel_norm, " < ", newton_data.res_reltol)
     else
       println(BSTDOUT, "Newton iteration converged with relative residual norm ", rel_norm, " < ", newton_data.res_reltol)

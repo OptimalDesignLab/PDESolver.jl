@@ -154,12 +154,13 @@ function max_deriv_rev(x::Tval, y::Tval, max_val_bar::Tval) where Tval
 end # End function max_rev
 
 
+global const ABSVALUE3_DELTA = 1e-7
 """
   Smooth abs() function based on Harten's second entropy fix
 """
 function absvalue3(val::Number)
 
-  delta = -1
+  delta = ABSVALUE3_DELTA
   val1 = absvalue(val)
   if val1 > delta
     return val1
@@ -172,7 +173,7 @@ end
 
 function absvalue3_deriv(val::T) where {T <: Number}
 
-  delta = -1
+  delta = ABSVALUE3_DELTA
 
   val1 = absvalue(val)
   if val1 > delta

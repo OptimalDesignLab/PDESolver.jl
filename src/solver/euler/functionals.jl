@@ -201,6 +201,9 @@ mutable struct EntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
   func_sparseface::FluxType
   func_sparseface_revq::FluxType_revq
   func_sparseface_revm::FluxType_revm
+  do_face_term::Bool
+  do_lps::Bool
+  do_sc::Bool
 end
 
 """
@@ -217,8 +220,50 @@ function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   func_sparseface_revq = LFPenalty_revq()
   func_sparseface_revm = LFPenalty_revm()
 
-  return EntropyDissipationData{Topt}(func, func_sparseface, func_sparseface_revq, func_sparseface_revm)
+  do_face_term = true
+  do_lps = false
+  do_sc = false
+
+  return EntropyDissipationData{Topt}(func, func_sparseface,
+          func_sparseface_revq, func_sparseface_revm,
+          do_face_term, do_lps, do_sc)
 end
+
+
+function LPSDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                   bcnums) where Topt
+
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+  func_sparseface = ZeroFlux()
+  func_sparseface_revq = ZeroFlux_revq()
+  func_sparseface_revm = ZeroFlux_revm()
+
+  do_face_term = false
+  do_lps = true
+  do_sc = false
+
+  return EntropyDissipationData{Topt}(func, func_sparseface,
+          func_sparseface_revq, func_sparseface_revm, do_face_term,
+          do_lps, do_sc)
+end
+
+function SCDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                   bcnums) where Topt
+
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+  func_sparseface = ZeroFlux()
+  func_sparseface_revq = ZeroFlux_revq()
+  func_sparseface_revm = ZeroFlux_revm()
+
+  do_face_term = false
+  do_lps = false
+  do_sc = true
+
+  return EntropyDissipationData{Topt}(func, func_sparseface,
+          func_sparseface_revq, func_sparseface_revm, do_face_term,
+          do_lps, do_sc)
+end
+
 
 
 """
@@ -241,6 +286,21 @@ function NegEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+function NegLPSDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = LPSDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
+function NegSCDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = SCDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
+
 """
   Functional that computes function `w^T d(u)`, where `w` are the entropy
   variables and `d(u)` is the entropy stable dissipation computed by
@@ -249,6 +309,9 @@ end
 """
 mutable struct EntropyJumpData{Topt} <: EntropyPenaltyFunctional{Topt}
   func::EntropyJumpPenaltyFaceIntegral
+  do_face_term::Bool
+  do_lps::Bool
+  do_sc::Bool
 end
 
 """
@@ -261,8 +324,11 @@ function EntropyJumpConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        bcnums) where Topt
 
   func = EntropyJumpPenaltyFaceIntegral(mesh, eqn)
+  do_face_term = true
+  do_lps = false
+  do_sc = false
 
-  return EntropyJumpData{Topt}(func)
+  return EntropyJumpData{Topt}(func, do_face_term, do_lps, do_sc)
 end
 
 
@@ -301,6 +367,25 @@ function EntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        potential_flux_revq, potential_flux_revm)
 end
 
+mutable struct TotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  bcnums::Vector{Int}
+end
+
+"""
+  Computes the entropy dissipation of the entire residual (not just face
+  terms), except for the boundaries sepcified by bcnums:
+
+  w^T R - other boundary terms
+
+
+"""
+function TotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  return TotalEntropyDissipationData{Topt}(copy(bcnums))
+end
+
+
 """
   Computes negative of EntropyDissipation2
 """
@@ -315,12 +400,36 @@ function NegEntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
 end
 
 
+mutable struct NegTotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::TotalEntropyDissipationData{Topt}
+end
+
+function NegTotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                           bcnums) where Topt
+  func = TotalEntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegTotalEntropyDissipationData{Topt}(func)
+end
+
+
 function getParallelData(obj::EntropyPenaltyFunctional)
   return PARALLEL_DATA_ELEMENT
 end
 
+function getParallelData(obj::Union{EntropyDissipationData, EntropyJumpData})
+  if obj.do_face_term
+    return PARALLEL_DATA_ELEMENT
+  else
+    return PARALLEL_DATA_NONE
+  end
+end
+
 const NegEntropyDissipations = Union{NegEntropyDissipationData,
-                                     NegEntropyDissipation2Data}
+                                     NegEntropyDissipation2Data,
+                                     NegTotalEntropyDissipationData}
+
+function getParallelData(obj::NegEntropyDissipations)
+  return getParallelData(obj.func)
+end
 
 
 """
@@ -351,6 +460,25 @@ function NegBoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   obj = BoundaryEntropyDissConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
   return NegBoundaryEntropyDiss{Topt}(obj)
 end
+
+
+# this is actually a volume integral, not a boundary integral, but it
+# doesn't make a difference
+"""
+  Computes the function from the Zahr and Perssons paper "An Optimization-based
+  approach for high-order accurate discretization of conservation laws with
+  discontinuous solutions", ie.
+
+  \\sum_k \\int || u - h_bar ||^2 dOmega_k
+"""
+mutable struct SolutionDeviation{Topt} <: AbstractBoundaryFunctional{Topt}
+end
+
+function SolutionDeviationConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  return SolutionDeviation{Topt}()
+end
+
 
 
 
@@ -419,12 +547,19 @@ global const FunctionalDict = Dict{String, Function}(
 "massflow" => MassFlowDataConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
+"lpsdissipation" => LPSDissipationConstructor,
+"scdissipation" => SCDissipationConstructor,
 "entropydissipation2" => EntropyDissipation2Constructor,
+"totalentropydissipation" => TotalEntropyDissipationConstructor,
 "negentropydissipation" => NegEntropyDissipationConstructor,
+"neglpsdissipation" => NegLPSDissipationConstructor,
+"negscdissipation" => NegSCDissipationConstructor,
+"negtotalentropydissipation" => NegTotalEntropyDissipationConstructor,
 "negentropydissipation2" => NegEntropyDissipation2Constructor,
 "entropyjump" => EntropyJumpConstructor,
 "boundaryentropydiss" => BoundaryEntropyDissConstructor,
 "negboundaryentropydiss" => NegBoundaryEntropyDissConstructor,
+"solutiondeviation" => SolutionDeviationConstructor,
 )
 
 

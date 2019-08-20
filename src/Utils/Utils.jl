@@ -42,8 +42,8 @@ export applyPermRow, applyPermRowInplace, applyPermColumn
 export applyPermColumnInplace, inversePerm, permMatrix, permMatrix!
 export arrToVecAssign
 export fastzero!, fastscale!, removeComplex
-export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @printit,
-       assertArraysUnique, assertFieldsConcrete
+export @verbose1, @verbose2, @verbose3, @verbose4, @verbose5, @unpack, @pack,
+       @printit, assertArraysUnique, assertFieldsConcrete
 # projections.jl functions
 export getProjectionMatrix, projectToXY, projectToNT, calcLength, normalize_vec,
        calcLength_rev
@@ -1010,6 +1010,32 @@ macro unpack(obj, varnames...)
 
   return esc(ex)
 end
+
+
+macro pack(obj, varnames...)
+
+  @assert length(varnames) > 0
+
+  # check varnames are unique
+  for i=1:length(varnames)
+    for j=1:(i-1)
+      if varnames[i] == varnames[j]
+        error("attempting to unpack duplicate variable name: $(varnames[i])")
+      end
+    end
+  end
+
+  # build the expression
+  ex = :($(obj).$(varnames[1]) = $(varnames[1]))
+  for i=2:length(varnames)
+    ex = :($ex; $(obj).$(varnames[i]) = $(varnames[i]))
+  end
+
+  return esc(ex)
+end
+
+
+
 
 """
   Given a list of variables, prints them out, one per line

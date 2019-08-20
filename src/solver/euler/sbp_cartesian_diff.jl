@@ -490,27 +490,39 @@ function applyQxTransposed_revm(sbp, w::AbstractMatrix, w_bar::AbstractMatrix,
                              wxi::Abstract3DArray, wx_bar::Abstract3DArray,
                              op::SummationByParts.UnaryFunctor=SummationByParts.Add())
 
-  # The idea is to compute dw/dxi first, and then use dxi/dx to rotate those
-  # arrays to be d/dx
-
   # compute dw/dxi
   numDofPerNode, numNodesPerElement, dim = size(wxi)
-  for d=1:dim
-    smallmatmat!(w, sview(sbp.Q, :, :, d), sview(wxi, :, :, d))
-  end
 
-  # dw/dx = dw/dxi * dxi/dx + dw/dy * dy/dxi
-  @simd for d1=1:dim
-    @simd for i=1:numNodesPerElement
-      @simd for d2=1:dim
-        @simd for j=1:numDofPerNode
-          #wx[j, i, d1] += op(wxi[j, i, d2]*dxidx[d2, d1, i])
-          dxidx_bar[d2, d1, i] += op(wxi[j, i, d2]*wx_bar[j, i, d1])
+  wxi_d_bar = sview(wxi, :, :, 1)
+  for d1=1:dim  # cartesian direction
+
+    for d2=1:dim  # parametric dimension (summed)
+      #for j=1:numNodesPerElement
+      #  for k=1:numDofPerNode
+      #    wxi_d[k, j] = op(dxidx[d2, d1, j]*w[k, j])
+      #  end
+      #end
+
+      #Q_d = sview(sbp.Q, :, :, d2)
+      #wx_d = sview(wx, :, :, d1)
+      #smallmatmat_kernel!(wxi_d, Q_d, wx_d, 1, 1)
+
+      #----------------------
+      # reverse sweep
+      Q_d = sview(sbp.Q, :, :, d2)
+      wx_d_bar = ro_sview(wx_bar, :, :, d1)
+      smallmatmatT!(wx_d_bar, Q_d, wxi_d_bar)
+
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          dxidx_bar[d2, d1, j] += op(w[k, j]*wxi_d_bar[k, j])
         end
       end
+
     end
   end
 
+  # back propigate to w_bar
   applyQxTransposed_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
 
   return nothing
@@ -659,6 +671,7 @@ function applyQxTransposed_revm(sbp, w::Abstract3DArray, w_bar::Abstract3DArray,
 
 
   numDofPerNode, numNodesPerElement, dim = size(wxi)
+#=
   for d1=1:dim  # compute Q_d * w_d
     for d2=1:dim
       smallmatmat!(ro_sview(w, :, :, d1), ro_sview(sbp.Q, :, :, d2), sview(wxi, :, :, d2))
@@ -674,6 +687,41 @@ function applyQxTransposed_revm(sbp, w::Abstract3DArray, w_bar::Abstract3DArray,
     end
 
   end  # end d1
+
+  applyQxTransposed_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
+=#
+
+  for d=1:dim
+    Q_d = sview(sbp.Q, :, :, d)
+    wxi_d_bar = sview(wxi, :, :,d)
+    smallmatmatT!(wx_bar, Q_d, wxi_d_bar)
+  end
+
+#  wxi_d_bar = sview(wxi, :, :, 1)
+  for d1=1:dim  # cartesian direction
+    for d2=1:dim  # parametric dimension (summed)
+#=
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          wxi_d[k, j] = op(dxidx[d2, d1, j]*w[k, j, d1])
+        end
+      end
+
+      Q_d = sview(sbp.Q, :, :, d2)
+      smallmatmat_kernel!(wxi_d, Q_d, wx, 1, 1)
+=#
+      #--------------------------_
+      # reverse sweep
+
+      for j=1:numNodesPerElement
+        for k=1:numDofPerNode
+          dxidx_bar[d2, d1, j] += op(wxi[k, j, d2]*w[k, j, d1])
+        end
+      end
+
+    end
+  end
+
 
   applyQxTransposed_revq(sbp, w_bar, dxidx, wxi, wx_bar, op)
 

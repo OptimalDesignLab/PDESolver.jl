@@ -242,9 +242,11 @@ end
 # Diffusion penalties
 
 include("br2_penalty.jl")
+include("inviscid_penalty.jl")
 
 global const DiffusionPenaltyDict = Dict{String, Type{T} where T <: AbstractDiffusionPenalty}(
 "BR2" => BR2Penalty,
+"Inviscid" => InviscidPenalty,
 )
 
 """

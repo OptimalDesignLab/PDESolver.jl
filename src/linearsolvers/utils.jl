@@ -20,7 +20,8 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
 
 #  const mattype = PETSc2.MATMPIAIJ # should this be BAIJ?
 #  const mattype = PETSc2.MATMPIBAIJ # should this be BAIJ?
-  const mattype = PETSc2.MATBAIJ
+  const mattype = PETSc2.MATAIJ
+#  const mattype = PETSc2.MATBAIJ  # was this
   numDofPerNode = mesh.numDofPerNode
 
   comm = eqn.comm
@@ -36,11 +37,11 @@ function createPetscMat(mesh::AbstractMesh, sbp::AbstractOperator,
     MatSetOption(A, PETSc2.MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE)
   end
 
-  if mattype == PETSc2.MATMPIAIJ
-    bs = 1
-  else
+#  if mattype == PETSc2.MATMPIAIJ
+#    bs = 1
+#  else
     bs = PetscInt(mesh.numDofPerNode)  # block size
-  end
+#  end
 
   @assert mesh.numDof % bs == 0
   nblocks = div(mesh.numDof, bs)
@@ -242,7 +243,7 @@ function writeSparsityPattern(mesh, sbp, eqn, opts, A::PetscMat, disc_type)
     if disc_type == INVISCID
       assembleInterface(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
     elseif disc_type == VISCOUSTIGHT
-      assembleIinterfaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
+      assembleInterfaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac, jac, jac)
     elseif disc_type == COLORING
       assembleInterfaceFull(assem, mesh, iface_i, jac, jac, jac, jac)
     end  # else disc_type == VISCOUS: don't currently have assembly functions
@@ -260,7 +261,7 @@ function writeSparsityPattern(mesh, sbp, eqn, opts, A::PetscMat, disc_type)
       elseif disc_type == VISCOUSTIGHT
         assembleSharedFaceVisc(assem, mesh.sbpface, mesh, iface_i, jac, jac)
       elseif disc_type == COLORING
-        assembleSharedInterfaceFull(assem, mesh, iface_i, jac, jac)
+        assembleSharedFaceFull(assem, mesh, iface_i, jac, jac)
       end
     end
   end

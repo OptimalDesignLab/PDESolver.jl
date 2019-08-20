@@ -20,6 +20,8 @@ end
 
   @assert eqn.params.use_Minv != 1
 
+  Dx = zeros(mesh.numNodesPerElement, mesh.numNodesPerElement, mesh.dim)
+
   work = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   lambda_gradw = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
@@ -46,7 +48,6 @@ end
 
     fill!(grad_w, 0)
     applyDx(sbp, w_i, dxidx_i, jac_i, work, grad_w)
-
     # apply diffusion tensor
     applyDiffusionTensor(diffusion, sbp, eqn.params, q_i, w_i, coords, dxidx_i,
                          jac_i, i, grad_w, lambda_gradw)
@@ -130,6 +131,12 @@ end
     # apply the diffusion tensor to all nodes of the element
     applyDiffusionTensor_diff(diffusion, sbp, eqn.params, q_i, w_i, coords_i,
                               dxidx_i, jac_i, i, gradq_i, t1_dot, t2_dot)
+
+    fill!(res_jac, 0)
+#    for d=1:mesh.dim
+#      res_jac .+= t2_dot[:, :, d, :, :]
+#    end
+
 
     # apply Qx^T
     calcQxTransposed(sbp, dxidx_i, Dx)

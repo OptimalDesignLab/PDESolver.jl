@@ -367,12 +367,14 @@ end
 """
 struct GetLambdaMaxSimpleData{Tsol}
   q_avg::Vector{Tsol}
+  q_avg_bar::Vector{Tsol}
 
   function GetLambdaMaxSimpleData{Tsol}(numDofPerNode::Integer) where {Tsol}
 
     q_avg = zeros(Tsol, numDofPerNode)
+    q_avg_bar = zeros(Tsol, numDofPerNode)
 
-    obj = new(q_avg)
+    obj = new(q_avg, q_avg_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 

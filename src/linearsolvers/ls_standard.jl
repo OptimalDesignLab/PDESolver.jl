@@ -338,7 +338,6 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
 
   # do the solve
   ksp = ls.ksp
-  println("doing solve, setting reltol = ", ls.reltol, ", abstol = ", ls.abstol)
   SetTolerances(ksp, ls.reltol, ls.abstol, ls.dtol, PetscInt(ls.itermax))
 
   if trans
@@ -354,7 +353,7 @@ b::AbstractVector, x::AbstractVector; trans=false) where {Tlo <: PetscLO , Tpc}
     reason = GetConvergedReason(ksp)
     println(BSTDOUT, "KSP converged reason = ", KSPConvergedReasonDict[reason])
     rnorm = GetResidualNorm(ksp)
-    @mpi_master println("Linear residual = ", rnorm)
+    println("Linear residual = ", rnorm)
   end
 
   # copy result back to x

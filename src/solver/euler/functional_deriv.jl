@@ -133,6 +133,81 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+"""
+  Method for SolutionDeviation
+"""
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::EulerData{Tsol}, opts,
+                           func::SolutionDeviation,
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
+
+
+  val_bar = 1
+  u_bar = zeros(Tsol, mesh.numDofPerNode)
+  u_bar_bar = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+
+    # compute u_bar
+    vol = zero(Tmsh)  # area/volume of the element
+    fill!(u_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      vol += w_j
+      for k=1:mesh.numDofPerNode
+        u_bar[k] += eqn.q[k, j, i]*w_j
+      end
+    end
+
+    for k=1:mesh.numDofPerNode
+      u_bar[k] /= vol
+    end
+#=
+    # compute \int || u - u_bar ||
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+        val += delta_u*w_j*delta_u
+      end
+    end
+=#
+    #----------------------------------
+    # reverse sweep
+    fill!(u_bar_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+        #val += delta_u*w_j*delta_u
+
+        delta_u_bar = 2*delta_u*w_j*val_bar
+        func_deriv_arr[k, j, i] += delta_u_bar
+        u_bar_bar[k]       -= delta_u_bar
+      end
+    end
+
+    vol_bar = zero(Tmsh)
+    for k=1:mesh.numDofPerNode
+      u_bar[k] *= vol  # restore primal value
+      u_bar_bar[k] /= vol
+    end
+
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        func_deriv_arr[k, j, i] += u_bar_bar[k]*w_j
+      end
+    end
+
+  end  # end i
+
+  return nothing
+end
+
+
+
+
 #------------------------------------------------------------------------------
 # generic fallback: complex step it
 

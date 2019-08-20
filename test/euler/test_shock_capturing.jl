@@ -79,6 +79,7 @@ function test_shocksensorPP()
 
     test_shocksensor_revq(eqn.params, sbp, sensor, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensora, q, coords, dxidx, jac)
+    test_shocksensor_revq(eqn.params, sbp, sensor3, q, coords, dxidx, jac)
     test_shocksensor_revq(eqn.params, sbp, sensor4, q, coords, dxidx, jac)
     test_ansiofactors_revm(mesh, sbp, eqn, opts, sensor4)
 
@@ -88,6 +89,7 @@ function test_shocksensorPP()
 
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor)
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensora)
+    test_shocksensor_revm(mesh, sbp, eqn, opts, sensor3)
     test_shocksensor_revm(mesh, sbp, eqn, opts, sensor4)
 
     # case 2: ee on sin wave
@@ -503,7 +505,7 @@ function test_ldg()
     "BC2" => [2],
     "BC2_name" => "isentropicVortexBC", # inlet
     "BC3" => [1, 3],
-    "BC3_name" => "noPenetrationBC",  # was noPenetrationBC
+    "BC3_name" => "isentropicVortexBC",  # was noPenetrationBC
     "aoa" => 0.0,
     "smb_name" => "SRCMESHES/vortex_3x3_.smb",
     "dmg_name" => ".null",
@@ -520,12 +522,22 @@ function test_ldg()
     "addBoundaryIntegrals" => false,
     )
 
+  opts2 = copy(opts)
+  opts2["operator_type"] = "SBPDiagonalE"
+  opts2["face_integral_type"] = 1
+  opts2["flux_name"] = "IRSLFFlux"
+  opts2["use_lps"] = true
 
-  @testset "Local DG shock capturing" begin
+
+  @testset "DG shock capturing" begin
 
     mesh, sbp, eqn, opts = solvePDE(opts)
+    mesh2, sbp2, eqn2, opts2 = solvePDE(opts2)
+    mesh3, sbp3, eqn3, opts3 = solvePDE("input_vals_curve.jl")
 
     testQx(mesh, sbp, eqn, opts)
+    # test on a curvilinear mesh
+    testQx(mesh3, sbp3, eqn3, opts3, check_poly=false)
 
     test_shockmesh(mesh, sbp, eqn, opts)
     #test_shockmesh2(mesh, sbp, eqn, opts)
@@ -545,19 +557,37 @@ function test_ldg()
     test_br2_face(mesh, sbp, eqn, opts)
     test_br2_Dgk(mesh, sbp, eqn, opts)
 
+    ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     for i=1:10
-      ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
       ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
       test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=true)
       
-      ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
-      ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
-      test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
+      #ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
+      #test_br2_ESS(mesh, sbp, eqn, opts; fullmesh=false)
+      
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=true)
+      
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=false)
+
+      
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced2_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=true)
+ 
+      ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+      test_br2reduced2_ESS(mesh2, sbp2, eqn2, opts2; fullmesh=false)
+
+
     end
 
     ic_func = EulerEquationMod.ICDict[opts["IC_name"]]
     ic_func(mesh, sbp, eqn, opts, eqn.q_vec)
     test_br2_serialpart(mesh, sbp, eqn, opts)
+      
+    
+    ic_func(mesh2, sbp2, eqn2, opts2, eqn2.q_vec)
+    test_br2reduced_serialpart(mesh2, sbp2, eqn2, opts2)
 
   end
 
@@ -911,7 +941,10 @@ function applyE(mesh, i::Integer, iface_idx::AbstractVector,
 end
 
 
-function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
+function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
+                check_poly=true) where {Tsol, Tres}
+
+  _check_poly::Bool = check_poly
 
   degree = sbp.degree
 #  degree = 1
@@ -943,7 +976,9 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
 
   dx_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  dxT_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   qx_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+  qxT_term2 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
 
 
   qface = zeros(Tsol, mesh.numDofPerNode, mesh.numNodesPerFace)
@@ -951,7 +986,10 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
   E_term = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
   nel = 0  # number of elements tests
   for i=1:mesh.numEl
-    if iface_idx[end, i] == 0  # non-interior element
+    # the Ex calculation is only used for verifying polynomial exactness
+    # Don't skip the boundary elements (the ones that might be curved) when
+    # not checking polynomial exactness
+    if _check_poly && iface_idx[end, i] == 0  # non-interior element
       continue
     end
     nel += 1
@@ -967,19 +1005,21 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
     # Do Ex: interpolate to face, apply normal vector (apply nbrperm and fac),
     #        reverse interpolate
-    applyE(mesh, i, sview(iface_idx, :, i), q_i, qface,  work2, E_term)
+    if _check_poly
+      applyE(mesh, i, sview(iface_idx, :, i), q_i, qface,  work2, E_term)
+    end
 
     # test apply Dx
     fill!(dx_term, 0)
-    EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, work, dx_term)
+    EulerEquationMod.applyDx(sbp, q_i, dxidx_i, jac_i, work, dx_term, op)
 
     # test apply Qx
     fill!(qx_term, 0)
-    EulerEquationMod.applyQx(sbp, q_i, dxidx_i, work, qx_term)
+    EulerEquationMod.applyQx(sbp, q_i, dxidx_i, work, qx_term, op)
 
     # test apply Dx^T
     fill!(dxT_term, 0)
-    EulerEquationMod.applyDxTransposed(sbp, q_i, dxidx_i, jac_i, work, dxT_term)
+    EulerEquationMod.applyDxTransposed(sbp, q_i, dxidx_i, jac_i, work, dxT_term, op)
 
     # test explicitly computed operator matrices
     EulerEquationMod.calcDx(sbp, dxidx_i, jac_i, Dx)
@@ -990,8 +1030,10 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
 
     for d1=1:mesh.dim
       for k=1:mesh.numDofPerNode
-        dx_term2[k, :, d1] = Dx[:, :, d1]*q_i[k, :]
-        qx_term2[k, :, d1] = Qx[:, :, d1]*q_i[k, :]
+        dx_term2[k, :, d1]  = -Dx[:, :, d1]*q_i[k, :]
+        dxT_term2[k, :, d1] = -Dx[:, :, d1].'*q_i[k, :]
+        qx_term2[k, :, d1]  = -Qx[:, :, d1]*q_i[k, :]
+        qxT_term2[k, :, d1] = -Qx[:, :, d1].'*q_i[k, :]
       end
       @test maximum(abs.(DxT[:, :, d1] - Dx[:, :, d1].')) < 1e-13
       @test maximum(abs.(QxT[:, :, d1] - Qx[:, :, d1].')) < 1e-13
@@ -1006,27 +1048,34 @@ function testQx(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts) where {Tsol, Tres}
           val2 = dx_term[k, j, d]
           val3 = fac*qx_term[k, j, d]
           val4 = fac*qx_term2[k, j, d]
-          @test abs(val - qderiv[k, d, j, i]) < 1e-12
-          @test abs(val2 - qderiv[k, d, j, i]) < 1e-12
-          @test abs(val3 - qderiv[k, d, j, i]) < 1e-12
-          @test abs(dx_term2[k, j, d] - qderiv[k, d, j, i]) < 1e-12
-          @test abs(val4 - qderiv[k, d, j, i]) < 1e-12
+          if _check_poly
+            @test abs(val - qderiv[k, d, j, i]) < 1e-11
+            @test abs(val2 + qderiv[k, d, j, i]) < 1e-11
+            @test abs(val3 + qderiv[k, d, j, i]) < 1e-11
+            @test abs(dx_term2[k, j, d] + qderiv[k, d, j, i]) < 1e-11
+            @test abs(val4 + qderiv[k, d, j, i]) < 1e-11
+          end
           
-          @test abs(dx_term2[k, j, d] - dx_term[k, j, d]) < 1e-12
-          @test abs(qx_term2[k, j, d] - qx_term[k, j, d]) < 1e-12
+          # test agreement between applyDx and calcDx + mat-vec
+          @test abs(dx_term2[k, j, d] - dx_term[k, j, d]) < 1e-11
+          @test abs(dxT_term2[k, j, d] - dxT_term[k, j, d]) < 1e-11
+          @test abs(qx_term2[k, j, d] - qx_term[k, j, d]) < 1e-11
+          @test abs(qxT_term2[k, j, d] - qxT_term[k, j, d]) < 1e-11
 
         end
       end
     end
 
-    for d=1:mesh.dim
-      for k=1:mesh.numDofPerNode
-        # Dx^T is a bit weird because it isn't easily related to a polynomial.
-        # Instead do: v^T Dx^T u = (v^T Dx^T) u = dv/dx^T u
-        #                        = v^T (Dx^T u), where v is a polynomial
-        val4 = dot(dxT_term[k, :, d], q_i[k, :])
-        val5 = dot(qderiv[k, d, :, i], q_i[k, :])
-        @test abs(val4 - val5) < 5e-12
+    if _check_poly
+      for d=1:mesh.dim
+        for k=1:mesh.numDofPerNode
+          # Dx^T is a bit weird because it isn't easily related to a polynomial.
+          # Instead do: v^T Dx^T u = (v^T Dx^T) u = dv/dx^T u
+          #                        = v^T (Dx^T u), where v is a polynomial
+          val4 = dot(dxT_term[k, :, d], q_i[k, :])
+          val5 = dot(qderiv[k, d, :, i], q_i[k, :])
+          @test abs(val4 + val5) < 5e-11
+        end
       end
     end
 
@@ -1118,10 +1167,10 @@ function testQx2(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts)  where {Tsol, Tres
     EulerEquationMod.applyDx(sbp, wx, dxidx_i, jac_i, wxi, res2_dx)
     EulerEquationMod.applyDxTransposed(sbp, wx, dxidx_i, jac_i, wxi, res2_dxT)
 
-    @test maximum(abs.(res2_qxT - res1_qxT)) < 1e-13
-    @test maximum(abs.(res2_qx - res1_qx)) < 1e-13
-    @test maximum(abs.(res2_dx - res1_dx)) < 1e-13
-    @test maximum(abs.(res2_dxT - res1_dxT)) < 1e-12
+    @test maximum(abs.(res2_qxT - res1_qxT)) < 1e-12
+    @test maximum(abs.(res2_qx - res1_qx)) < 1e-12
+    @test maximum(abs.(res2_dx - res1_dx)) < 1e-12
+    @test maximum(abs.(res2_dxT - res1_dxT)) < 1e-11
   end  # end i
 
   return nothing
@@ -1814,6 +1863,58 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
   capture = EulerEquationMod.SBPParabolicSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
   EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
 
+  test_sc_ESS(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  return nothing
+end
+
+function test_br2reduced_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
+                             fullmesh=false) where {Tsol, Tres}
+
+  # construct the shock mesh with all elements in it that are fully interior
+  if fullmesh
+    iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
+  else
+    iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+  end
+
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReducedSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+  EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
+
+  test_sc_ESS(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+  test_sc_conservation(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  return nothing
+end
+
+
+#TODO: combine with the above
+function test_br2reduced2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts;
+                             fullmesh=false) where {Tsol, Tres}
+
+  # construct the shock mesh with all elements in it that are fully interior
+  if fullmesh
+    iface_idx, shockmesh = getEntireMesh(mesh, sbp, eqn, opts)
+  else
+    iface_idx, shockmesh = getInteriorMesh(mesh, sbp, eqn, opts)
+  end
+
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReduced2SC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+  EulerEquationMod.allocateArrays(capture, mesh, shockmesh)
+
+  test_sc_ESS(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+  test_sc_conservation(mesh, sbp, eqn, opts, sensor, capture, shockmesh)
+
+  return nothing
+end
+
+
+
+function test_sc_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                     sensor, capture, shockmesh) where {Tsol, Tres}
+
   # add random component to q
   # test entropy stability
   q_pert = 0.1*rand(size(eqn.q_vec))
@@ -1832,6 +1933,32 @@ function test_br2_ESS(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts; fullmesh=fal
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
+
+
+  return nothing
+end
+
+function test_sc_conservation(mesh, sbp, eqn::EulerData{Tsol, Tres},
+                              _opts, sensor, capture, shockmesh) where {Tsol, Tres}
+
+  opts = copy(_opts)
+  opts["addVolumeIntegrals"] = false
+  opts["addBoundaryIntegrals"] = false
+  opts["addFaceIntegrals"] = false
+  opts["addStabilization"] = false
+
+  # add random component to q
+  # test entropy stability
+  q_pert = 0.1*rand(size(eqn.q_vec))
+  eqn.q_vec .+= q_pert
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  fill!(eqn.res, 0)
+
+  EulerEquationMod.calcShockCapturing(mesh, sbp, eqn, opts, capture, shockmesh)
+
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val = abs(sum(eqn.res_vec))
+  @test val < 1e-13
 
   return nothing
 end
@@ -1859,24 +1986,58 @@ function test_br2_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where
   end
   EulerEquationMod.getBCFunctors(mesh, sbp, eqn, opts)
 
+  test_serialpart(mesh, sbp, eqn, opts, capture, "br2")
+
+  return nothing
+end
+
+
+function test_br2reduced_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, _opts) where {Tsol, Tres}
+
+
+  opts = copy(_opts)
+  sensor = EulerEquationMod.ShockSensorEverywhere{Tsol, Tres}(mesh, sbp, opts)
+  capture = EulerEquationMod.SBPParabolicReducedSC{Tsol, Tres}(mesh, sbp, eqn, opts, sensor)
+
+  # solve the PDE to get a solution with non-zero jump between elements
+  # that can be reproduced in parallel
+  opts["solve"] = true
+  opts["addVolumeIntegrals"] = true
+  opts["addFaceIntegrals"] = true
+  opts["addBoundaryIntegrals"] = true
+
+  solvePDE(mesh, sbp, eqn, opts)
+
+  test_serialpart(mesh, sbp, eqn, opts, capture, "br2reduced")
+
+  return nothing
+end
+
+
+
+function test_serialpart(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
+                         capture, prefix::String) where {Tsol, Tres}
+
   w_vec = zeros(Tsol, mesh.numDof)
   copy!(w_vec, eqn.q_vec)
   EulerEquationMod.convertToIR(mesh, sbp, eqn, opts, w_vec)
 
   fill!(eqn.res, 0)
   EulerEquationMod.applyShockCapturing(mesh, sbp, eqn, opts, capture)
+  println("isnan eqn.q = ", any(isnan.(eqn.q)))
+  println("isnan eqn.res_vec = ", any(isnan.(eqn.res_vec)))
 
   val = dot(w_vec, eqn.res_vec)
   println("val = ", val)
   @test val < 0
 
   # save this for parallel tests
-  f = open("br2_entropy_serial.dat", "w")
+  f = open("$(prefix)_entropy_serial.dat", "w")
   println(f, real(val))
   close(f)
 
   saveSolutionToMesh(mesh, eqn.q_vec)
-  writeVisFiles(mesh, "br2_serial")
+  writeVisFiles(mesh, "$(prefix)_serial")
 
   return nothing
 end

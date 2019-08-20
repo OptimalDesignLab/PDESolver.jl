@@ -519,6 +519,419 @@ function allocateArrays(capture::SBPParabolicSC{Tsol, Tres}, mesh::AbstractMesh,
 end
 
 
+
+
+#------------------------------------------------------------------------------
+# SBPParabolicReducedSC
+
+"""
+  Computes a reduced form of the scheme from the SBPParabolic paper.
+
+  Note that the sizes for the arrays are the *minimum* sizes.  In practice
+  they may be larger.  Do not call `size()` on these arrays, use the appropriate
+  integer field of `mesh` or `shockmesh`.
+
+  **Fields**
+
+   * w_el: entropy variables at each volume node of each element,
+           `numDofPerNode` x `numNodesPerElement` x `shockmesh.numEl`
+   * entropy_vars: an [`AbstractVariables`](@ref) specifying which entropy
+                   variables to use.
+   * diffusion: an [`AbstractDiffusion`](@ref) object that specifies the
+               diffusion tensor. Defaults to `ShockDiffusion`
+   * penalty: an [`AbstractDiffusionPenalty`](@ref) object that specifies which
+             scheme to use.  Defaults to opts["DiffusionPenalty"]
+   * alpha: a 2 x `shockmesh.numInterfaces` array containing alpha_gk and
+           alpha_gn for each interface.
+
+  Note that `convert_entropy`, `diffusion` and `penalty` are abstract types
+  and should only be accessed through a function barrier in performance
+  critical functions.  The user is allowed to change these fields at any
+  time to customize the behavior of the scheme.
+
+  Note that this function is not fully constructed by the constructor,
+  see the `allocateArrays` function.
+
+"""
+mutable struct SBPParabolicReducedSC{Tsol, Tres} <: AbstractFaceShockCapturing
+  w_el::Array{Tsol, 3}
+  entropy_vars::AbstractVariables
+  diffusion::AbstractDiffusion
+  penalty::AbstractDiffusionPenalty
+  sensor::AbstractShockSensor
+  sensor_const::ShockSensorHApprox{Tsol, Tres}  # shock sensor used for
+                                                   # face terms
+  #------------------
+  # temporary arrays
+  
+  # getFaceVariables
+  w_faceL::Matrix{Tsol}
+  w_faceR::Matrix{Tsol}
+
+  # getFaceVariables_diff
+  wL_dot::Array{Tsol, 3}
+  wR_dot::Array{Tsol, 3}
+
+  # applyDgkTranspose
+  temp1L::Matrix{Tres}
+  temp1R::Matrix{Tres}
+  temp2L::Array{Tres, 3}
+  temp2R::Array{Tres, 3}
+  temp3L::Array{Tres, 3}
+  temp3R::Array{Tres, 3}
+  work::Array{Tres, 3}
+
+  # applyDgkTranspose_diff
+  Dx::Array{Float64, 3}
+  t3L_dotL::Array{Tres, 5}
+  t3L_dotR::Array{Tres, 5}
+  t3R_dotL::Array{Tres, 5}
+  t3R_dotR::Array{Tres, 5}
+
+  t4L_dotL::Array{Tres, 5}
+  t4L_dotR::Array{Tres, 5}
+  t4R_dotL::Array{Tres, 5}
+  t4R_dotR::Array{Tres, 5}
+
+  t5L_dotL::Array{Tres, 5}
+  t5L_dotR::Array{Tres, 5}
+  t5R_dotL::Array{Tres, 5}
+  t5R_dotR::Array{Tres, 5}
+
+
+
+
+  # computeBoundaryTerm_diff
+  w_dot::Array{Tsol, 3}
+  t2_dot::Array{Tres, 5}
+  t3_dot::Array{Tres, 5}
+  t4_dot::Array{Tres, 4}
+
+  function SBPParabolicReducedSC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator,
+                                      eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerFace dim numNodesPerElement
+
+    # we don't know the right sizes yet, so make them zero size
+    w_el = Array{Tsol}(0, 0, 0)
+
+    # default values
+    entropy_vars = getSCVariables(opts)
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
+    penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
+    sensor_const = ShockSensorHApprox{Tsol, Tres}(mesh, sbp, opts)
+
+    # temporary arrays
+
+    # getFaceVariables
+    w_faceL = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    w_faceR = zeros(Tsol, numDofPerNode, numNodesPerFace)
+
+    # getFaceVariables_diff
+    wL_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    wR_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+
+    # applyDgk transpose
+    temp1L = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp1R = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp2L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp2R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    work = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+
+    # applyDgk_transpose_diff
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+    t3L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+
+    t4L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+    t5L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+
+
+
+    # computeBoundaryTerm_diff
+    w_dot = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode,
+                        mesh.numNodesPerElement)
+    #t1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    #t1_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+    #                     mesh.numNodesPerElement, mesh.numNodesPerElement)
+    t2_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    t3_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+    t4_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+
+    return new(w_el, entropy_vars, diffusion, penalty, sensor, sensor_const,
+               w_faceL, w_faceR,
+               wL_dot, wR_dot,
+               temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work,
+               Dx,
+               t3L_dotL, t3L_dotR, t3R_dotL, t3R_dotR,
+               t4L_dotL, t4L_dotR, t4R_dotL, t4R_dotR,
+               t5L_dotL, t5L_dotR, t5R_dotL, t5R_dotR,
+               w_dot, t2_dot, t3_dot, t4_dot)
+  end
+end
+
+
+"""
+  Sets up the shock capturing object for use, using the fully initialized
+  `shockmesh`.  Also does some other misc. setup stuff that needs `shockmesh`.
+"""
+function allocateArrays(capture::SBPParabolicReducedSC{Tsol, Tres},
+                        mesh::AbstractMesh,
+                        shockmesh::ShockedElements) where {Tsol, Tres}
+
+  if size(capture.w_el, 3) < shockmesh.numEl
+    capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
+                               shockmesh.numEl)
+  end
+
+  return nothing
+end
+
+function getSparsityPattern(capture::SBPParabolicReducedSC)
+
+  return INVISCID
+end
+
+
+#------------------------------------------------------------------------------
+# SBPParabolicReduced2
+
+
+
+mutable struct SBPParabolicReduced2SC{Tsol, Tres} <: AbstractFaceShockCapturing
+  w_el::Array{Tsol, 3}
+  grad_w::Array{Tres, 4}
+  entropy_vars::AbstractVariables
+  diffusion::AbstractDiffusion
+  penalty::AbstractDiffusionPenalty
+  sensor::AbstractShockSensor
+  alpha::Array{Float64, 2}  # 2 x numInterfaces
+  alpha_b::Array{Float64, 1}  # numBoundaryFaces
+  alpha_parallel::Array{Array{Float64, 2}, 1}  # one array for each peer
+
+  #------------------
+  # temporary arrays
+  
+  # getFaceVariables
+  w_faceL::Matrix{Tsol}
+  w_faceR::Matrix{Tsol}
+  grad_faceL::Matrix{Tres}
+  grad_faceR::Matrix{Tres}
+
+  # getFaceVariables_diff
+  wL_dot::Array{Tsol, 3}
+  wR_dot::Array{Tsol, 3}
+  Dx::Array{Float64, 3}
+  t1::Array{Tres, 3}
+  t1_dot::Array{Tres, 5}
+  t2L_dot::Array{Tres, 5}
+  t2R_dot::Array{Tres, 5}
+  t3L_dot::Array{Tres, 5}
+  t3R_dot::Array{Tres, 5}
+
+  # applyDgkTranspose
+  temp1L::Matrix{Tres}
+  temp1R::Matrix{Tres}
+  temp2L::Array{Tres, 3}
+  temp2R::Array{Tres, 3}
+  temp3L::Array{Tres, 3}
+  temp3R::Array{Tres, 3}
+  work::Array{Tres, 3}
+
+  # applyDgkTranspose_diff
+  t3L_dotL::Array{Tres, 5}
+  t3L_dotR::Array{Tres, 5}
+  t3R_dotL::Array{Tres, 5}
+  t3R_dotR::Array{Tres, 5}
+
+  t4L_dotL::Array{Tres, 5}
+  t4L_dotR::Array{Tres, 5}
+  t4R_dotL::Array{Tres, 5}
+  t4R_dotR::Array{Tres, 5}
+
+  t5L_dotL::Array{Tres, 5}
+  t5L_dotR::Array{Tres, 5}
+  t5R_dotL::Array{Tres, 5}
+  t5R_dotR::Array{Tres, 5}
+
+  # computeBoundaryTerm_diff
+  w_dot::Array{Tsol, 3}
+  t2_dot::Array{Tres, 5}
+  t3_dot::Array{Tres, 5}
+  t4_dot::Array{Tres, 4}
+
+  alpha_comm::AlphaComm # MPI communications for alpha
+
+  function SBPParabolicReduced2SC{Tsol, Tres}(mesh::AbstractMesh, sbp::AbstractOperator,
+                                      eqn, opts, sensor::AbstractShockSensor) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerFace dim numNodesPerElement
+
+    # we don't know the right sizes yet, so make them zero size
+    w_el = Array{Tsol}(0, 0, 0)
+    grad_w = Array{Tres}(0, 0, 0, 0)
+
+    # default values
+    entropy_vars = getSCVariables(opts)
+    diffusion = ShockDiffusion{Tres}(mesh, sensor)
+    penalty = getDiffusionPenalty(mesh, sbp, eqn, opts)
+    alpha = zeros(Float64, 0, 0)
+    alpha_b = zeros(Float64, 0)
+    alpha_parallel = Array{Array{Float64, 2}}(0)
+
+
+    # temporary arrays
+
+    # getFaceVariables
+    w_faceL = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    w_faceR = zeros(Tsol, numDofPerNode, numNodesPerFace)
+    grad_faceL = zeros(Tres, numDofPerNode, numNodesPerFace)
+    grad_faceR = zeros(Tres, numDofPerNode, numNodesPerFace)
+
+    # getFaceVariables_diff
+    wL_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    wR_dot = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    Dx = zeros(numNodesPerElement, numNodesPerElement, dim)
+    t1 = zeros(Tres, numDofPerNode, numNodesPerElement, dim)
+    t1_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    t2L_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    t2R_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                         numNodesPerElement)
+    t3L_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                          numNodesPerElement)
+    t3R_dot = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                          numNodesPerElement)
+
+
+    # applyDgk transpose
+    temp1L = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp1R = zeros(Tres, numDofPerNode, numNodesPerFace)
+    temp2L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp2R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3L = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    temp3R = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+    work = zeros(Tres, numDofPerNode, numNodesPerElement, mesh.dim)
+
+    # applyDgk_transpose_diff
+    t3L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+    t3R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerFace,
+                           numNodesPerElement)
+
+    t4L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t4R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+    t5L_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5L_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotL = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+    t5R_dotR = zeros(Tres, numDofPerNode, numDofPerNode, dim, numNodesPerElement,
+                           numNodesPerElement)
+
+
+    # computeBoundaryTerm_diff
+    w_dot = zeros(Tsol, mesh.numDofPerNode, mesh.numDofPerNode,
+                        mesh.numNodesPerElement)
+    #t1 = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement, mesh.dim)
+    #t1_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+    #                     mesh.numNodesPerElement, mesh.numNodesPerElement)
+    t2_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerElement, mesh.numNodesPerElement)
+
+    t3_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode, mesh.dim,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+    t4_dot = zeros(Tres, mesh.numDofPerNode, mesh.numDofPerNode,
+                         mesh.numNodesPerFace, mesh.numNodesPerElement)
+
+
+    alpha_comm = AlphaComm(mesh.comm, mesh.peer_parts)
+
+    return new(w_el, grad_w, entropy_vars, diffusion, penalty, sensor, alpha,
+               alpha_b, alpha_parallel, w_faceL, w_faceR, grad_faceL,
+               grad_faceR,
+               wL_dot, wR_dot, Dx, t1, t1_dot, t2L_dot, t2R_dot, t3L_dot,
+               t3R_dot,
+               temp1L, temp1R, temp2L, temp2R, temp3L, temp3R, work,
+               t3L_dotL, t3L_dotR, t3R_dotL, t3R_dotR,
+               t4L_dotL, t4L_dotR, t4R_dotL, t4R_dotR,
+               t5L_dotL, t5L_dotR, t5R_dotL, t5R_dotR,
+               w_dot, t2_dot, t3_dot, t4_dot,
+               alpha_comm)
+  end
+end
+
+"""
+  Sets up the shock capturing object for use, using the fully initialized
+  `shockmesh`.  Also does some other misc. setup stuff that needs `shockmesh`.
+"""
+function allocateArrays(capture::SBPParabolicReduced2SC{Tsol, Tres}, mesh::AbstractMesh,
+                        shockmesh::ShockedElements) where {Tsol, Tres}
+
+  # can't resize multi-dimension arrays, so reallocate
+  if size(capture.grad_w, 4) < shockmesh.numEl
+    capture.grad_w = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerElement,
+                                 mesh.dim, shockmesh.numEl)
+  end
+
+  if size(capture.w_el, 3) < shockmesh.numEl
+    capture.w_el = Array{Tsol}(mesh.numDofPerNode, mesh.numNodesPerElement,
+                               shockmesh.numEl)
+  end
+
+  return nothing
+end
+
+
+
+
+
+
+
 #------------------------------------------------------------------------------
 # VolumeShockCapturing
 
@@ -548,7 +961,7 @@ function getSCVariables(opts)
   if name == "IR"
     return IRVariables()
   elseif name == "conservative"
-    return Conservative()
+    return ConservativeVariables()
   else
     error("unrecognized variables for shock capturing dissipation: $name")
   end
@@ -563,6 +976,8 @@ global const ShockCapturingDict = Dict{String, Type{T} where T <: AbstractShockC
 "ElementProjection" => ProjectionShockCapturing,
 "LDG" => LDGShockCapturing,
 "SBPParabolic" => SBPParabolicSC,
+"SBPParabolicReduced" => SBPParabolicReducedSC,
+"SBPParabolicReduced2" => SBPParabolicReduced2SC,
 "Volume" => VolumeShockCapturing,
 )
 
@@ -584,4 +999,4 @@ function getShockCapturing(mesh, sbp, eqn::EulerData{Tsol, Tres}, opts,
 end
 
 
- 
+

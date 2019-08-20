@@ -18,13 +18,17 @@
 """->
 function updateKrylov(newton_data::NewtonData)
 
+  # this function provides the opportunity to update the krylov tolerances.
+  # Currently we don't change the tolerances, because leaving the relative
+  # tolerance in place seems to work ok
   if newton_data.use_inexact_nk
     norm_i = newton_data.res_norm_i
     norm_i_1 = newton_data.res_norm_i_1
     gamma = newton_data.krylov_gamma
-    reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    #reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    reltol = newton_data.ls.reltol
     setTolerances(newton_data.ls, reltol, -1, -1, -1)
-    #println("updating krylov reltol to ", reltol)
+    #println(BSTDOUT, "updating krylov reltol to ", reltol)
   end
 
   return nothing
@@ -116,7 +120,7 @@ end
 """
 function useEulerConstants(pc::AbstractPC)
   pc2 = getInnerPC(pc, NewtonLinearObject)
-  t1 = pc2.data.res_norm_i_1
+  t1 = pc2.idata.res_norm_i_1
   t2 = pc2.idata.res_norm_i
   pc2.idata.res_norm_i_1 = t2
   return t1, t2
@@ -135,12 +139,14 @@ end
 """
 function isEulerInitialized(lo::AbstractLO)
   lo2 = getInnerLO(lo, NewtonLinearObject)
-  return !(lo2.idata.res_norm_i == 0 && lo2.idata.res_norm_i_1 == 0)
+  return !(lo2.idata.res_norm_i == 0 && lo2.idata.res_norm_i_1 == 0) &&
+          lo2.idata.use_implicit_euler
 end
 
 function isEulerInitialized(pc::AbstractPC)
   pc2 = getInnerPC(pc, NewtonLinearObject)
-  return !(pc2.idata.res_norm_i == 0 && pc2.idata.res_norm_i_1 == 0)
+  return !(pc2.idata.res_norm_i == 0 && pc2.idata.res_norm_i_1 == 0) &&
+           pc2.idata.use_implicit_euler
 end
 
 function isEulerInitialized(pc::PCNone)
@@ -186,7 +192,9 @@ function calcTauVec(mesh, opts, tau, tau_vec)
     end
   end
 
-  println(BSTDOUT, "average tau value = ", mean(tau_vec))
+  if mesh.myrank == 0
+    println(BSTDOUT, "average tau value = ", mean(tau_vec))
+  end
 
   return nothing
 
@@ -230,6 +238,10 @@ function updateEuler(lo::NewtonLinearObject)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
 
+  if !lo.idata.use_implicit_euler
+    return nothing
+  end
+
   tau_l_old = lo.idata.tau_l
   res_norm_i_1, res_norm_i = useEulerConstants(lo)
 
@@ -237,12 +249,16 @@ function updateEuler(lo::NewtonLinearObject)
   if res_norm_i_1 == 0
     return nothing
   end
+  
+  tau_update = res_norm_i_1/res_norm_i
 
   # update tau
-  lo.idata.tau_l = lo.idata.tau_l * res_norm_i_1/res_norm_i
+  lo.idata.tau_l = lo.idata.tau_l * tau_update
   
-  tau_update = lo.idata.tau_l/tau_l_old
-  println(BSTDOUT, "tau_update factor = ", tau_update)
+  if lo.myrank == 0
+    println(BSTDOUT, "tau_update factor = ", tau_update)
+  end
+
   scale!(lo.idata.tau_vec, tau_update)
 
   return nothing
@@ -275,8 +291,10 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
     return nothing
   end
 
-  println(BSTDOUT, "applying Implicit Euler globalization")
-  println(BSTDOUT, "average tau value = ", mean(lo.idata.tau_vec))
+  if mesh.myrank == 0
+    println(BSTDOUT, "applying Implicit Euler globalization")
+    println(BSTDOUT, "average tau value = ", mean(lo.idata.tau_vec))
+  end
 
   
   lo2 = getBaseObject(lo)

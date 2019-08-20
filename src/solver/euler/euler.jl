@@ -130,6 +130,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("volume integral @time printed above")
   end
 
+
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -139,25 +140,30 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("boundary integral @time printed above")
   end
 
+
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
     #println("stabilizing @time printed above")
   end
+
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
     #println("face integral @time printed above")
   end
 
+
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
     #println("evalSharedFaceIntegrals @time printed above")
   end
 
+
   time.t_shock += @elapsed if opts["addShockCapturing"]
     evalShockCapturing(mesh, sbp, eqn, opts)
     #println("shock capturing @time printed above")
   end
+
 
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
   #println("source integral @time printed above")
@@ -167,7 +173,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
- 
   return nothing
 end  # end evalResidual
 
@@ -485,22 +490,22 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
 
 
   if mesh.isDG
-    if opts["precompute_q_face"]
+    if opts["precompute_q_face"] && opts["addFaceIntegrals"]
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       # println("  interpolateFace @time printed above")
     end
 
-    if opts["precompute_face_flux"]
+    if opts["precompute_face_flux"] && opts["addFaceIntegrals"]
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
       #  println("  interpolateFace @time printed above")
     end
-    if opts["precompute_q_bndry"]
+    if opts["precompute_q_bndry"] && opts["addBoundaryIntegrals"]
       interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
       # println("  interpolateFace @time printed above")
     end
   end
 
-  if opts["precompute_boundary_flux"]
+  if opts["precompute_boundary_flux"] && opts["addBoundaryIntegrals"]
     fill!(eqn.bndryflux, 0.0)
     getBCFluxes(mesh, sbp, eqn, opts)
     # println("  getBCFluxes @time printed above")

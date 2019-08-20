@@ -19,8 +19,6 @@ function calcFaceIntegral_nopre_diff(
   data = params.calc_face_integrals_data
   @unpack data q_faceL q_faceR flux_dotL flux_dotR res_jacLL res_jacLR res_jacRL res_jacRR
 
-#  flux_face = zeros(Tres, mesh.numDofPerNode, mesh.numNodesPerFace)
-
   for i=1:nfaces
     iface_i = interfaces[i]
     fill!(flux_dotL, 0)
@@ -48,6 +46,14 @@ function calcFaceIntegral_nopre_diff(
     end  # end loop j
 
     # compute dR/dq
+    #TODO: for sparse faces, only zero out the needed entries, to avoid loading
+    #      the entire array into cache
+    # Tests show this doesn't make a difference
+    fill!(res_jacLL, 0.0)
+    fill!(res_jacLR, 0.0)
+    fill!(res_jacRL, 0.0)
+    fill!(res_jacRR, 0.0)
+
     interiorFaceCombined_jac!(mesh.sbpface, iface_i, flux_dotL, flux_dotR,
                              res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                              SummationByParts.Subtract())
@@ -76,14 +82,6 @@ function calcFaceIntegral_nopre_diff(
     # assemble into the Jacobian
     assembleInterface(assembler, mesh.sbpface, mesh, iface_i, res_jacLL,
                       res_jacLR, res_jacRL, res_jacRR)
-
-    #TODO: for sparse faces, only zero out the needed entries, to avoid loading
-    #      the entire array into cache
-    # Tests show this doesn't make a difference
-    fill!(res_jacLL, 0.0)
-    fill!(res_jacLR, 0.0)
-    fill!(res_jacRL, 0.0)
-    fill!(res_jacRR, 0.0)
   end  # end loop i
 
   return nothing
@@ -287,9 +285,6 @@ function getFaceElementIntegral_diff(
  
   end
 
-  fill!(res_jacLL, 0); fill!(res_jacLR, 0)
-  fill!(res_jacRL, 0); fill!(res_jacRR, 0)
-
   return nothing
 end
 
@@ -413,6 +408,7 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
 
   start_elnum = mesh.shared_element_offsets[idx]
 
+
   for j=1:length(interfaces)
     iface_j = interfaces[j]
     bndryL_j = bndries_local[j]
@@ -445,6 +441,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
 
      # this is excessive because we don't need jacRL, jacRR, but
      # boundaryFaceCombined_jac can't handle jacLR
+     fill!(res_jacLL, 0.0)
+     fill!(res_jacLR, 0.0)
      interiorFaceCombined_jac!(mesh.sbpface, iface_j, flux_dotL, flux_dotR,
                                 res_jacLL, res_jacLR, res_jacRL, res_jacRR,
                                 SummationByParts.Subtract())
@@ -465,16 +463,8 @@ function calcSharedFaceIntegrals_nopre_element_inner_diff(
       end
     end
     
-
-
-     assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
-     fill!(res_jacLL, 0.0)
-     fill!(res_jacLR, 0.0)
-
+    assembleSharedFace(assembler, mesh.sbpface, mesh, iface_j, res_jacLL, res_jacLR)
    end  # end loop over interfaces
-
-   fill!(res_jacRL, 0.0)
-   fill!(res_jacRR, 0.0)
 
   return nothing
 end
@@ -872,9 +862,6 @@ function calcSharedFaceElementIntegrals_element_inner_diff(
     end
  
   end  # end loop j
-
-  fill!(res_jacLL, 0); fill!(res_jacLR, 0)
-  fill!(res_jacRL, 0); fill!(res_jacRR, 0)
 
   return nothing
 end

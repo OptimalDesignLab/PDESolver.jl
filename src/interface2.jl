@@ -297,6 +297,7 @@ end
    * `coords_bndry_bar`
    * `coords_bar`
    * `nrm_sharedface_bar`
+   * `remote_metrics_bar`
 
   It is the caller's responsibility to zero out these arrays before calling
   this function, if required.  Mesh implementations should provide a
@@ -323,8 +324,7 @@ end
                  As a side-effect, if this argument is false then the
                  derivative will be evaluated at the state in `eqn.q` not
                  `eqn.q_vec` (because the parallel communication was done using
-                 `eqn.q`.  Parallel communication is started for `eqn.res_bar`
-                 in either case.
+                 `eqn.q`.
 """
 function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator,
                      eqn::AbstractSolutionData, opts::Dict,
@@ -342,9 +342,6 @@ function evalResidual_revm(mesh::AbstractMesh, sbp::AbstractOperator,
     end
   end
 
-
-
-  @which evalResidual_revm(mesh, sbp, eqn, opts, t)
   evalResidual_revm(mesh, sbp, eqn, opts, t)
 
   # verify evalResidual_revm finished communication

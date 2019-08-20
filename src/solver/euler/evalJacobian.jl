@@ -7,7 +7,7 @@ function evalJacobian(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
                       opts::Dict, assembler::AssembleElementData, t=0.0;
                       start_comm=false)
 
-  println("\nEntered evalJacobian")
+  #println("\nEntered evalJacobian")
   time = eqn.params.time
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank

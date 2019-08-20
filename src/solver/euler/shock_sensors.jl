@@ -422,6 +422,7 @@ function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
 
   fill!(Se_mat, lambda_max)
   fill!(ee_mat, sensor.alpha*lambda_max*h_avg/sbp.degree)
+#  println("element ", elnum, " SensorBO value = ", real(ee_mat[1, 1]))
 
   return true
 end
@@ -646,7 +647,83 @@ function calcAnisoFactors(mesh::AbstractMesh, sbp, opts,
 end
 
 
+#------------------------------------------------------------------------------
+# SensorHApprox
+
+# even though this shared the name with all the other getShockSensor methods,
+# it signature and outputs are different.  This is sort-of ok because this
+# is a special shock sensor and should never be used as the main shock sensor.
+function getShockSensor(params::ParamType{Tdim}, sbp::AbstractOperator,
+                        sensor::ShockSensorHApprox{Tsol, Tres},
+                        elnum::Integer, jac::AbstractVector{Tmsh},
+                       ) where {Tsol, Tres, Tmsh, Tdim}
 
 
+  numNodesPerElement = length(jac)
+
+  shared_idx = elnum - first(sensor.shared_els) + 1  # index of shared element
+  if (elnum in sensor.local_els) ||
+     (elnum in sensor.shared_els && sensor.shared_isShocked[shared_idx])
+
+    # compute element size h for both elements
+    h = zero(Tmsh)
+    @simd for i=1:numNodesPerElement
+      h += sbp.w[i]/jac[i]
+    end
+
+    # compute estimates viscosity
+    lambda_max = sensor.lambda_max
+    eps_L = sensor.alpha*lambda_max*(h^(1/Tdim))/sbp.degree
+
+#    println("element ", elnum, " HApprox value = ", real(eps_L), ", with h = ")
+    return Tres(eps_L)
+  else
+    return zero(Tres)
+  end
+
+end
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                          sensor::ShockSensorHApprox,
+                          q::AbstractMatrix{Tsol}, elnum::Integer,
+                          coords::AbstractMatrix,
+                          dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                         ) where {Tsol, Tmsh}
+
+  error("ShockSensorHApprox does not know which elements are shocked or not, don't ask it that.")
+end
+
+#------------------------------------------------------------------------------
+# ShockSensorOddBO
+
+function getShockSensor(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorOddBO{Tsol, Tres},
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        Se_mat::AbstractMatrix, ee_mat::AbstractMatrix
+                        ) where {Tsol, Tres, Tmsh}
+
+  if elnum % 2 == 1
+    getShockSensor(params, sbp, sensor.sensor, q, elnum, coords, dxidx, jac,
+                   Se_mat, ee_mat)
+  else
+    fill!(Se_mat, 0)
+    fill!(ee_mat, 0)
+  end
+
+  return true
+end
+
+function isShockElement(params::ParamType, sbp::AbstractOperator,
+                        sensor::ShockSensorOddBO{Tsol, Tres},
+                        q::AbstractMatrix, elnum::Integer,
+                        coords::AbstractMatrix,
+                        dxidx::Abstract3DArray, jac::AbstractVector{Tmsh},
+                        ) where {Tsol, Tres, Tmsh}
+
+
+  return (elnum % 2 ) == 1
+end
 
 

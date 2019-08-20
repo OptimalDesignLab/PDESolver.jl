@@ -159,7 +159,7 @@ aoa = get!(arg_dict, "aoa", 0.0)
 sideslip_angle = get!(arg_dict, "sideslip_angle", 0.0)
 #rho_free = get!(arg_dict, "rho_free", -1)
 #E_free = get!(arg_dict, "E_free", -1)
-get!(arg_dict, "p_free", 1.0)
+get!(arg_dict, "p_free", 1/arg_dict["gamma"])
 get!(arg_dict, "T_free", 1.0)
 get!(arg_dict, "vortex_x0", 0.0)
 get!(arg_dict, "vortex_strength", 1.0)
@@ -490,7 +490,7 @@ get!(arg_dict, "real_time", false)
 
 # Krylov options
 get!(arg_dict, "krylov_reltol", 1e-2)
-get!(arg_dict, "krylov_abstol", 1e-12)
+get!(arg_dict, "krylov_abstol", 1e-50)
 get!(arg_dict, "krylov_dtol", 1e5)
 get!(arg_dict, "krylov_itermax", 1000)
 # testing options
@@ -730,9 +730,9 @@ end
     error("cannot precondition non-iterative method")
   end
 
-  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
-    error("cannot use volume preconditioner with any method except CN")
-  end
+#  if arg_dict["use_volume_preconditioner"] && arg_dict["run_type"] != 20
+#    error("cannot use volume preconditioner with any method except CN")
+#  end
 
   if arg_dict["isViscous"] && commsize > 1
     error("Viscous terms not working in parallel.")

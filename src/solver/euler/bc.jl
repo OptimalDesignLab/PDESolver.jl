@@ -482,7 +482,7 @@ end
 
 function (obj::errorBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -497,7 +497,7 @@ end
 """
 function getDirichletState(obj::errorBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -512,7 +512,7 @@ end
 """
 function (obj::errorBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1},
               nrm_bar::AbstractVector{Tmsh},
@@ -528,7 +528,7 @@ end
 """
 function (obj::errorBC_revq)(params::ParamType2,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -553,7 +553,7 @@ end
 # low level function
 function (obj::isentropicVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -577,7 +577,7 @@ Reverse mode for isentropicVortexBC.
 
 function (obj::isentropicVortexBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1},
               nrm_bar::AbstractVector{Tmsh},
@@ -614,7 +614,7 @@ Reverse mode for isentropicVortexBC.
 
 function (obj::isentropicVortexBC_revq)(params::ParamType2,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -640,7 +640,7 @@ const isentropicVortexBCs = Union{isentropicVortexBC, isentropicVortexBC_revq,
                                   isentropicVortexBC_revm}
 function getDirichletState(obj::isentropicVortexBCs, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -651,7 +651,7 @@ end
 
 function getDirichletState_revq(obj::isentropicVortexBC_revq, params::ParamType2,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tsol, 1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               qg_bar::AbstractArray{Tres, 1},
@@ -664,7 +664,7 @@ end
 
 function getDirichletState_revm(obj::isentropicVortexBC_revm, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1},
               nrm_bar::AbstractVector{Tmsh},
@@ -690,7 +690,7 @@ end
 function (obj::isentropicVortexBC_physical)(
               params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -716,7 +716,7 @@ end # end function isentropicVortexBC_physical
 # low level function
 function (obj::noPenetrationBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -739,7 +739,7 @@ end
 
 function (obj::noPenetrationBC)(params::ParamType3,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -773,15 +773,96 @@ end
 """
 
 # low level function
-function (obj::noPenetrationESBC)(params::ParamType2,
+function (obj::noPenetrationESBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 # a clever optimizing compiler will clean this up
 # there might be a way to do this with fewer flops using the tangent vector
 
+
+  qg = params.bcdata.qg
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+  #calcHLLFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+
+  return nothing
+end
+
+
+# revm
+@makeBC noPenetrationESBC_revm """
+Reverse mode for noPenetrationESBC.
+
+"""
+function (obj::noPenetrationESBC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  @unpack params.bcdata qg q_bar qg_bar
+  fill!(q_bar, 0); fill!(qg_bar, 0)
+
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+
+  # Reverse sweep
+  calcLFFlux_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+  calcLFFlux_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, 
+                  bndryflux_bar)
+
+  getDirichletState_revm(obj, params, q, aux_vars, coords, coords_bar, nrm_xy,
+                         nrm_bar, qg_bar, bndry)
+
+  return nothing
+end
+
+
+
+# revq
+
+@makeBC noPenetrationESBC_revq """
+  Reverse mode wrt q of `noPenetrationESBC`
+"""
+
+function (obj::noPenetrationESBC_revq)(params::ParamType{2, :conservative},
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  @unpack params.bcdata qg qg_bar
+  fill!(qg_bar, 0)
+
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+
+  # Reverse sweep
+  calcLFFlux_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, 
+                  bndryflux_bar)
+
+  getDirichletState_revq(obj, params, q, q_bar, aux_vars, coords, nrm_xy,
+                         qg_bar, bndry)
+
+  return nothing
+end
+
+
+# getDirichletState
+
+const noPenetrationESBCs = Union{noPenetrationESBC, noPenetrationESBC_revm,
+                                 noPenetrationESBC_revq}
+
+function getDirichletState(obj::noPenetrationESBCs, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # calculate normal vector in xy space
   nx = nrm_xy[1]
@@ -798,27 +879,21 @@ function (obj::noPenetrationESBC)(params::ParamType2,
   #   1. computing the normal and tangential components
   #   2. negating the normal component
   #   3. combining the negative normal and non-negated tangent component
-  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
   qg[4] = q[4]
 
-  #calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
-  calcHLLFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
-
   return nothing
 end
 
-function (obj::noPenetrationESBC)(params::ParamType3,
-              q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
-              nrm_xy::AbstractArray{Tmsh,1},
-              bndryflux::AbstractArray{Tres, 1},
-              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
-# a clever optimizing compiler will clean this up
-# there might be a way to do this with fewer flops using the tangent vector
 
+function getDirichletState(obj::noPenetrationESBCs, params::ParamType3,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
 
   # calculate normal vector in xy space
   nx = nrm_xy[1]
@@ -833,14 +908,108 @@ function (obj::noPenetrationESBC)(params::ParamType3,
   # this is momentum, not velocity?
   Unrm = nx*q[2] + ny*q[3] + nz*q[4]
 
-  qg = params.bcdata.qg
   qg[1] = q[1]
   qg[2] = -2*Unrm*nx + q[2]
   qg[3] = -2*Unrm*ny + q[3]
   qg[4] = -2*Unrm*nz + q[4]
   qg[5] = q[5]
 
-  calcLFFlux(params, q, qg, aux_vars,nrm_xy, bndryflux)
+  return nothing
+end
+
+
+function getDirichletState_revm(obj::noPenetrationESBC_revm, params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              qg_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  # this is equivalent to:
+  #   1. computing the normal and tangential components
+  #   2. negating the normal component
+  #   3. combining the negative normal and non-negated tangent component
+  #qg[1] = q[1]
+  #qg[2] = -2*Unrm*nx + q[2]
+  #qg[3] = -2*Unrm*ny + q[3]
+  #qg[4] = q[4]
+
+  #-----------------
+  # reverse sweep
+  nx_bar = -2*Unrm*qg_bar[2]
+  ny_bar = -2*Unrm*qg_bar[3]
+  Unrm_bar = -2*nx*qg_bar[2] + -2*ny*qg_bar[3]
+
+  nx_bar += q[2]*Unrm_bar
+  ny_bar += q[3]*Unrm_bar
+
+  # restore primal state
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac_bar = nx*nx_bar + ny*ny_bar
+  nx_bar *= fac
+  ny_bar *= fac
+
+  den = (nx*nx + ny*ny)^1.5
+  nx_bar -= fac_bar*nx/den
+  ny_bar -= fac_bar*ny/den
+
+  nrm_bar[1] += nx_bar
+  nrm_bar[2] += ny_bar
+
+  return nothing
+end
+
+function getDirichletState_revq(obj::noPenetrationESBC_revq, 
+              params::ParamType{2, :conservative},
+              q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              qg_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # calculate normal vector in xy space
+  nx = nrm_xy[1]
+  ny = nrm_xy[2]
+  fac = 1.0/(sqrt(nx*nx + ny*ny))
+  # normalize normal vector
+  nx *= fac
+  ny *= fac
+
+  # Get the normal momentum
+  Unrm = nx*q[2] + ny*q[3]
+
+  # this is equivalent to:
+  #   1. computing the normal and tangential components
+  #   2. negating the normal component
+  #   3. combining the negative normal and non-negated tangent component
+  #qg[1] = q[1]
+  #qg[2] = -2*Unrm*nx + q[2]
+  #qg[3] = -2*Unrm*ny + q[3]
+  #qg[4] = q[4]
+
+  #-----------------
+  # reverse sweep
+  q_bar[1] += qg_bar[1]
+  q_bar[2] += qg_bar[2]
+  q_bar[3] += qg_bar[3]
+  q_bar[4] += qg_bar[4]
+
+  Unrm_bar = -2*nx*qg_bar[2] + -2*ny*qg_bar[3]
+  q_bar[2] += nx*Unrm_bar
+  q_bar[3] += ny*Unrm_bar
 
   return nothing
 end
@@ -855,7 +1024,7 @@ Reverse mode for noPenetrationBC.
 """
 function (obj::noPenetrationBC_revm)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -889,7 +1058,7 @@ end
 
 function (obj::noPenetrationBC_revq)(params::ParamType{2, :conservative},
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -912,7 +1081,7 @@ end
 const noPenetrationBCs = Union{noPenetrationBC, noPenetrationBC_revq, noPenetrationBC_revm}
 function getDirichletState(obj::noPenetrationBCs, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -947,7 +1116,7 @@ end
 
 function getDirichletState(obj::noPenetrationBCs, params::ParamType3,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -986,7 +1155,7 @@ end
 
 function getDirichletState_revm(obj::noPenetrationBC_revm, params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               qg_bar::AbstractArray{Tres, 1},
@@ -1037,7 +1206,7 @@ end
 function getDirichletState_revq(obj::noPenetrationBC_revq, 
               params::ParamType{2, :conservative},
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               qg_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1069,7 +1238,7 @@ end
 #=
 function (obj::noPenetrationBC_revm)(params::ParamType3,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               dxidx::AbstractArray{Tmsh,2}, dxidx_bar::AbstractArray{Tmsh, 2},
               nrm::AbstractArray{Tmsh,1}, bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1175,7 +1344,7 @@ end # End noPenetrationBC_revm 3D
 # low level function
 function (obj::unsteadyVortexBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1198,7 +1367,7 @@ end # ends the function unsteadyVortex BC
 # low level function
 function (obj::unsteadyVortex2BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1231,7 +1400,7 @@ end # ends the function unsteadyVortex BC
 """
 function (obj::Rho1E2U1VW0BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
@@ -1262,7 +1431,7 @@ end
 """
 function (obj::Rho1E2BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
@@ -1293,7 +1462,7 @@ end
 """
 function (obj::Rho1E2U3BC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
@@ -1317,7 +1486,7 @@ end
 """
 function (obj::Rho1E2U3BC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -1337,7 +1506,7 @@ end
 """
 function (obj::Rho1E2U3BC_revq)(params::ParamType,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1356,7 +1525,7 @@ end
 const Rho1E2U3BCs = Union{Rho1E2U3BC, Rho1E2U3BC_revm, Rho1E2U3BC_revq}
 function getDirichletState(obj::Rho1E2U3BCs, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
@@ -1369,7 +1538,7 @@ end
 
 function getDirichletState_revq(obj::Rho1E2U3BC_revq, params::ParamType,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               qg_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1380,7 +1549,7 @@ end
 
 function getDirichletState_revm(obj::Rho1E2U3BC_revm, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               qg_bar::AbstractArray{Tres, 1},
@@ -1403,7 +1572,7 @@ end
 """
 function (obj::FreeStreamBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1425,7 +1594,7 @@ Reverse mode for FreeStreamBC.
 """
 function (obj::FreeStreamBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -1448,7 +1617,7 @@ end
 
 function (obj::FreeStreamBC_revq)(params::ParamType,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1466,7 +1635,7 @@ end
 const FreeStreamBCs = Union{FreeStreamBC, FreeStreamBC_revq, FreeStreamBC_revm}
 function getDirichletState(obj::FreeStreamBCs, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1479,7 +1648,7 @@ end
 
 function getDirichletState_revm(obj::FreeStreamBC_revm, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -1494,7 +1663,7 @@ end
 
 function getDirichletState_revq(obj::FreeStreamBC_revq, params::ParamType,
               q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1516,7 +1685,7 @@ end
 """
 function (obj::FreeStreamBC_dAlpha)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1540,7 +1709,7 @@ end
 """
 function (obj::allOnesBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1565,7 +1734,7 @@ end # end function call
 
 function (obj::allZerosBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1585,7 +1754,7 @@ end # end function
 """
 
 function (obj::ExpBC)(params::ParamType, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1604,7 +1773,7 @@ Reverse mode of ExpBC
 
 function (obj::ExpBC_revm)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
               nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -1636,7 +1805,7 @@ Reverse mode of ExpBC
 function (obj::ExpBC_revq)(params::ParamType,
               q::AbstractArray{Tsol,1},
               q_bar::AbstractArray{Tres, 1},
-              aux_vars::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
               coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux_bar::AbstractArray{Tres, 1},
@@ -1666,7 +1835,7 @@ end
 
 function (obj::PeriodicMMSBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1688,7 +1857,7 @@ end # end function
 
 function (obj::ChannelMMSBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1710,7 +1879,7 @@ end # end function
 
 function (obj::defaultBC)(params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1730,7 +1899,7 @@ end
 
 function (obj::SubsonicInflowBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1807,7 +1976,7 @@ end
 
 function(obj::SubsonicOutflowBC)(params::ParamType2,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1846,7 +2015,7 @@ end
 function(obj::inviscidChannelFreeStreamBC)(             
               params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1891,7 +2060,7 @@ end
 
 function (obj::reanalysisBC)(params::AbstractParamType{Tdim},
         q::AbstractArray{Tsol, 1},
-        aux_vars::AbstractArray{Tres, 1},
+        aux_vars::AbstractVector,
         coords::AbstractVector{Tmsh},
         nrm_xy::AbstractVector{Tmsh},
         bndryflux::AbstractArray{Tres},
@@ -1912,7 +2081,7 @@ end
 
 function getDirichletState(obj::ZeroBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1924,7 +2093,7 @@ end
 
 
 function (obj::ZeroBC)(params::ParamType, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1943,7 +2112,7 @@ end # end function
 
 function getDirichletState(obj::LaplaceBC, params::ParamType,
               q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm::AbstractArray{Tmsh,1},
               qg::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1955,7 +2124,7 @@ end
 
 
 function (obj::LaplaceBC)(params::ParamType, q::AbstractArray{Tsol,1},
-              aux_vars::AbstractArray{Tres, 1}, coords::AbstractArray{Tmsh,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
               nrm_xy::AbstractArray{Tmsh,1},
               bndryflux::AbstractArray{Tres, 1},
               bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -1966,6 +2135,199 @@ function (obj::LaplaceBC)(params::ParamType, q::AbstractArray{Tsol,1},
 
   return nothing
 end # end function
+
+
+@makeBC ZeroFluxBC """
+  Sets the boundary flux to be zero
+"""
+
+
+function (obj::ZeroFluxBC)(params::ParamType, q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  fill!(bndryflux, 0)
+end
+
+
+@makeBC ZeroFluxBC_revm """
+Reverse mode of ZeroFluxBC
+"""
+
+function (obj::ZeroFluxBC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+
+@makeBC ZeroFluxBC_revq """
+Reverse mode of ZeroFluxBC
+"""
+
+
+function (obj::ZeroFluxBC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+
+
+@makeBC noSlipBC """
+### EulerEquationMod.noSlipBC <: BCTypes
+
+  This functor uses the Roe solver to calculate the flux for a boundary
+  state where the fluid velocity is set to zero
+
+  This is a low level functor
+"""
+
+# low level function
+function (obj::noSlipBC)(params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  qg = params.bcdata.qg
+  getDirichletState(obj, params, q, aux_vars, coords, nrm_xy, qg, bndry)
+  v_vals = params.bcdata.v_vals
+  convertFromNaturalToWorkingVars(params, qg, v_vals)
+  # this is a problem: q is in conservative variables even if
+  # params says we are using entropy variables
+
+
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+#  calcLFFlux(params, q, v_vals, aux_vars, nrm_xy, bndryflux)
+#  calcEulerFlux(params, v_vals, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
+
+function getDirichletState(obj::noSlipBC, params::ParamType{Tdim},
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector, coords::AbstractArray{Tmsh,1},
+              nrm::AbstractArray{Tmsh,1},
+              qg::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  fill!(qg, 0)
+  qg[1] = q[1]
+  qg[end] = q[end]
+
+  return nothing
+end
+
+
+#------------------------------------------------------------------------------
+# Wedge20BC
+
+@makeBC wedge20BC """
+  Boundary condition for the wedge with a 20 degree semi-angle.  Imposes the
+  exact solution using the Roe solver
+"""
+function (obj::wedge20BC)(params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+  qg = params.bcdata.qg
+  calcWedge20(params, coords, qg)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
+
+
+@makeBC wedge20BC_revm """
+Reverse mode of wedge20BC
+"""
+
+function (obj::wedge20BC_revm)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1}, coords_bar::AbstractArray{Tmsh, 1},
+              nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward Sweep
+  @unpack params.bcdata qg
+
+  calcWedge20(params, coords, qg)
+  RoeSolver_revm(params, q, qg, aux_vars, nrm_xy, nrm_bar, bndryflux_bar)
+
+  return nothing
+end
+
+
+@makeBC wedge20BC_revq """
+Reverse mode of wedge20BC
+"""
+
+
+function (obj::wedge20BC_revq)(params::ParamType,
+              q::AbstractArray{Tsol,1},
+              q_bar::AbstractArray{Tres, 1},
+              aux_vars::AbstractVector,
+              coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux_bar::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+  # Forward Sweep
+  @unpack params.bcdata qg qg_bar
+  fill!(qg_bar, 0)
+
+  calcWedge20(params, coords, qg)
+  RoeSolver_revq(params, q, q_bar, qg, qg_bar, aux_vars, nrm_xy, bndryflux_bar)
+
+  return nothing
+end
+
+
+
+#------------------------------------------------------------------------------
+# Wedge20Potential BC
+
+@makeBC wedge20PotentialBC """
+  Boundary condition for the wedge with a 20 degree semi-angle.  Imposes the
+  exact solution using the Roe solver
+"""
+function (obj::wedge20PotentialBC)(params::ParamType2,
+              q::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
+              nrm_xy::AbstractArray{Tmsh,1},
+              bndryflux::AbstractArray{Tres, 1},
+              bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
+
+
+  qg = params.bcdata.qg
+  calcWedge20Potential(params, coords, qg)
+  RoeSolver(params, q, qg, aux_vars, nrm_xy, bndryflux)
+
+  return nothing
+end
+
 
 
 
@@ -1999,6 +2361,10 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
 "reanalysisBC" => reanalysisBC,
 "zeroBC" => ZeroBC,
 "LaplaceBC" => LaplaceBC,
+"ZeroFluxBC" => ZeroFluxBC,
+"noSlipBC" => noSlipBC,
+"wedge20BC" => wedge20BC,
+"wedge20PotentialBC" => wedge20PotentialBC,
 "defaultBC" => defaultBC,
 )
 
@@ -2015,7 +2381,7 @@ global const BCDict = Dict{String, Type{T} where T <: BCType}(  # BCType
   ```
     func(params::ParamType,
          q::AbstractArray{Tsol,1},
-         aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+         aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
          nrm_xy::AbstractArray{Tmsh,1},
          bndryflux::AbstractArray{Tres, 1},
          bndry::BoundaryNode=NullBoundaryNode)
@@ -2065,11 +2431,14 @@ end # End function getBCFunctors
 
 global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
 "errorBC" => errorBC_revm,
+"noPenetrationESBC" => noPenetrationESBC_revm,
 "noPenetrationBC" => noPenetrationBC_revm,
 "Rho1E2U3BC" => Rho1E2U3BC_revm,
 "FreeStreamBC" => FreeStreamBC_revm,
 "ExpBC" => ExpBC_revm,
 "isentropicVortexBC" => isentropicVortexBC_revm,
+"ZeroFluxBC" => ZeroFluxBC_revm,
+"wedge20BC" => wedge20BC_revm,
 )
 
 """
@@ -2084,7 +2453,7 @@ global const BCDict_revm = Dict{String, Type{T} where T <: BCType_revm}(
   ```
   func(params::ParamType,
         q::AbstractArray{Tsol,1},
-        aux_vars::AbstractArray{Tres, 1},  coords::AbstractArray{Tmsh,1},
+        aux_vars::AbstractVector,  coords::AbstractArray{Tmsh,1},
         nrm_xy::AbstractArray{Tmsh,1}, nrm_bar::AbstractVector{Tmsh},
         bndryflux_bar::AbstractArray{Tres, 1},
         bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}
@@ -2130,11 +2499,14 @@ end # End function getBCFunctors_revm
 
 global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
 "errorBC" => errorBC_revq,
+"noPenetrationESBC" => noPenetrationESBC_revq,
 "noPenetrationBC" => noPenetrationBC_revq,
 "Rho1E2U3BC" => Rho1E2U3BC_revq,
 "FreeStreamBC" => FreeStreamBC_revq,
 "ExpBC" => ExpBC_revq,
 "isentropicVortexBC" => isentropicVortexBC_revq,
+"ZeroFluxBC" => ZeroFluxBC_revq,
+"wedge20BC" => wedge20BC_revq,
 )
 
 
@@ -2150,7 +2522,7 @@ global const BCDict_revq = Dict{String, Type{T} where T <: BCType_revq}(
   ```
   func(params::ParamType,
         q::AbstractArray{Tsol,1}, q_bar::AbstractArray{Tres, 1}
-        aux_vars::AbstractArray{Tres, 1},
+        aux_vars::AbstractVector,
         nrm_xy::AbstractArray{Tmsh,1},
         bndryflux_bar::AbstractArray{Tres, 1},
         bndry::BoundaryNode=NullBoundaryNode) where {Tmsh, Tsol, Tres}

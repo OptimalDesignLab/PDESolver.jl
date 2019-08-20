@@ -399,6 +399,8 @@ include("projection_shock_capturing.jl")
 include("volume_shock_capturing.jl")
 include("ldg_shock_capturing.jl")
 include("sbp_sat_shock_capturing.jl")
+include("sbp_sat_reduced_sc.jl")
+include("sbp_sat_reduced2_sc.jl")
 include("sbp_cartesian.jl")
 include("lp_stab.jl")
 include("face_functional_integrate.jl")
@@ -414,6 +416,7 @@ include("shock_sensors_diff.jl")
 include("shock_capturing_diff.jl")
 include("sbp_cartesian_diff.jl")
 include("sbp_sat_shock_capturing_diff.jl")
+include("sbp_sat_reduced2_sc_diff.jl")
 
 
 

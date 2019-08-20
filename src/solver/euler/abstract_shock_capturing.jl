@@ -87,6 +87,12 @@ end
     calcShockCapturing
     calcShockCapturing_diff
   ```
+
+  and may optionally implement
+
+  ```
+    getSparsityPattern
+  ```
 """
 abstract type AbstractVolumeShockCapturing <: AbstractShockCapturing end
 
@@ -137,6 +143,29 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
                                  assem::AssembleElementData)
 
   error("abstract fallback for calcShockCapturing_diff() called. Did you forget to extend it with a new method for your AbstractFaceShockCapturing?")
+end
+
+
+"""
+  This function returns an enum specifying the sparsity pattern of the
+  Jacobian required by this shock capturing scheme.  By default,
+  `AbstractVolumeShockCapturing` has an `INVISCID` sparsity pattern and
+  `AbstractFaceShockCApturing` has a `VISCOUSTIGHT` sparsity pattern.
+
+  Shock capturing scheme can introduce a specailized method if the defaults
+  do not work for them.
+
+  **Inputs**
+
+   * capture: an `AbstractShockCapturing`
+
+  **Outputs**
+
+   * enum specifying sparsity pattern
+"""
+function getSparsityPattern(capture::AbstractVolumeShockCapturing)
+
+  return INVISCID
 end
 
 
@@ -223,3 +252,11 @@ function calcShockCapturing_diff(mesh::AbstractMesh, sbp::AbstractOperator,
 
   error("abstract fallback for calcShockCapturing_diff() called. Did you forget to extend it with a new method for your AbstractFaceShockCapturing?")
 end
+
+
+function getSparsityPattern(capture::AbstractFaceShockCapturing)
+
+  return VISCOUSTIGHT
+end
+
+

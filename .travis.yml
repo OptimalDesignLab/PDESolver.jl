@@ -20,13 +20,13 @@ env:
 
 cache:
   directories:
-  - $HOME/.julia/v0.6/PETSc2/deps/petsc-3.7.6/arch-linux2-c-debug/lib/
+  - $HOME/.julia/v0.6/PETSc2/deps/petsc-3.9.4/arch-linux2-c-debug/lib/
 
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install build-essential gfortran perl g++ gcc cmake m4 git
-  - sudo apt-get install -y liblapack-dev liblapack3gf
-  - sudo apt-get install -y libblas-dev libblas3gf
+  - sudo apt-get install -y liblapack-dev liblapack3
+  - sudo apt-get install -y libblas-dev libblas3
   - sudo ./deps/travis-install-mpi.sh $MPI_IMPL
   # setting these variables will help cmake find MPI
   - export CC=mpicc
@@ -43,6 +43,8 @@ script:
   - source ./deps/move_petsccache.sh remove
   - julia --check-bounds=yes -e 'Pkg.build("PDESolver")'
   - source ./deps/move_petsccache.sh restore  # move files back
+  - ls ~/.julia/v0.6/PETSc2/
+  - ls ~/.julia/v0.6/PETSc2/deps
 #  - cd ~/.julia/v0.6/PumiInterface/src
 #  - source ./use_julialib.sh
   - cd ~/.julia/v0.6/PDESolver/test

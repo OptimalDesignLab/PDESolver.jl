@@ -118,7 +118,6 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
   end  # end loop el
 
 
-  fill!(res_jac, 0.0)
   fill!(t2_dot, 0.0)
 
 
@@ -190,12 +189,6 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 
   end  # end loop i
 
-  fill!(res_jacLL, 0.0)
-  fill!(res_jacLR, 0.0)
-  fill!(res_jacRL, 0.0)
-  fill!(res_jacRR, 0.0)
-
-
   #----------------------------------------------------------------------------
   # skipping boundary integrals
   # use nrm2, flux_jfacL from interface terms above
@@ -245,8 +238,6 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
 
       assembleBoundary(assembler, mesh.sbpface, mesh, bndry_i, res_jac)
     end  # end loop i
-
-    fill!(res_jac, 0.0)
   end
 
 
@@ -311,14 +302,6 @@ function calcHomotopyDiss_jac(mesh::AbstractDGMesh{Tmsh}, sbp,
     end  # end loop i
   end  # end loop peer
   
-  fill!(res_jacLL, 0.0)
-  fill!(res_jacLR, 0.0)
-  fill!(res_jacRL, 0.0)
-  fill!(res_jacRR, 0.0)
-
-
-
-
   return nothing
 end
 

@@ -6,7 +6,7 @@
 # $1 = "remove": move files out of the way
 # $1 = "restore": move files back to original location
 
-PETSC_DIR1=$HOME/.julia/v0.6/PETSc2/deps/petsc-3.7.6
+PETSC_DIR1=$HOME/.julia/v0.6/PETSc2/deps/petsc-3.9.4
 PETSC_ARCH1=arch-linux2-c-debug
 pth=$PETSC_DIR1/$PETSC_ARCH1
 
@@ -14,8 +14,9 @@ pth=$PETSC_DIR1/$PETSC_ARCH1
 if [[ $1 == "remove" ]];
 then
   
-  if file $pth/lib/libpetsc.so ;  # if cache loaded successfully
+  if [[ -e $pth/lib/libpetsc.so ]];  # if cache loaded successfully
   then
+    echo "cache loaded, setting environment variables"
     export PETSC_DIR=$PETSC_DIR1
     export PETSC_ARCH=$PETSC_ARCH1
     ls $pth/lib
@@ -32,7 +33,7 @@ fi
 if [[ $1 == "restore" ]];
 then
 
-  if file $HOME/petsc_lib/libpetsc.so ;  # if cache loaded successfully
+  if [[ -e $HOME/petsc_lib/libpetsc.so ]];  # if cache loaded successfully
   then
     mkdir -vp $pth
     mv -v $HOME/petsc_lib/ $pth/lib

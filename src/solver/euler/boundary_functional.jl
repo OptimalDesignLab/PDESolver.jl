@@ -191,6 +191,45 @@ function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+function calcBndryFunctional(mesh::AbstractDGMesh{Tmsh},
+     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+     opts, func::SolutionDeviation) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  u_bar = zeros(Tsol, mesh.numDofPerNode)
+  val = zero(Tres)
+  for i=1:mesh.numEl
+
+    # compute u_bar
+    vol = zero(Tmsh)  # area/volume of the element
+    fill!(u_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      vol += w_j
+      for k=1:mesh.numDofPerNode
+        u_bar[k] += eqn.q[k, j, i]*w_j
+      end
+    end
+
+    for k=1:mesh.numDofPerNode
+      u_bar[k] /= vol
+    end
+
+    # compute \int || u - u_bar ||
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+        val += delta_u*w_j*delta_u
+      end
+    end
+  end  # end i
+
+  return val
+end
+
+
+
 function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
                        sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
                        opts, func::AeroCoefficients, val_bar::Number=1,
@@ -205,6 +244,78 @@ function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
 end
 
 #TODO: reverse mode for revq
+
+
+function calcBndryFunctional_revm(mesh::AbstractDGMesh{Tmsh},
+                       sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                       opts, func::SolutionDeviation, val_bar::Number=1,
+                       ) where {Tmsh, Tsol, Tres, Tdim}
+
+
+  u_bar = zeros(Tsol, mesh.numDofPerNode)
+  u_bar_bar = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
+
+    # compute u_bar
+    vol = zero(Tmsh)  # area/volume of the element
+    fill!(u_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      vol += w_j
+      for k=1:mesh.numDofPerNode
+        u_bar[k] += eqn.q[k, j, i]*w_j
+      end
+    end
+
+    for k=1:mesh.numDofPerNode
+      u_bar[k] /= vol
+    end
+#=
+    # compute \int || u - u_bar ||
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+        val += delta_u*w_j*delta_u
+      end
+    end
+=#
+    #-------------------------------
+    # reverse sweep
+    fill!(u_bar_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      w_j_bar = zero(Tmsh)
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+
+        u_bar_bar[k] += 2*delta_u*w_j*val_bar
+        w_j_bar      += delta_u*delta_u*val_bar
+      end
+      mesh.jac_bar[j, i] += -sbp.w[j]*w_j_bar/(mesh.jac[j, i]*mesh.jac[j, i])
+    end
+
+    vol_bar = zero(Tmsh)
+    for k=1:mesh.numDofPerNode
+      u_bar[k] *= vol  # restore primal value
+      vol_bar      += -u_bar[k]*u_bar_bar[k]/(vol*vol)
+      u_bar_bar[k] /= vol
+    end
+
+    for j=1:mesh.numNodesPerElement
+      #w_j = sbp.w[j]/mesh.jac[j, i]
+      w_j_bar = zero(Tmsh)
+      for k=1:mesh.numDofPerNode
+        w_j_bar += eqn.q[k, j, i]*u_bar_bar[k]
+      end
+      w_j_bar += vol_bar
+      mesh.jac_bar[j, i] += -sbp.w[j]*w_j_bar/(mesh.jac[j, i]*mesh.jac[j, i])
+    end
+
+  end  # end i
+
+  return nothing
+end
 
 
 @doc """

@@ -212,6 +212,7 @@ end
             the result
 
 """
+#=
 function applyDirichletPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
                       diffusion::AbstractDiffusion, bndry::Boundary,
                       delta_w::AbstractMatrix{Tsol},
@@ -221,6 +222,20 @@ function applyDirichletPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
                       jacL::AbstractVector,
                       res1L::AbstractMatrix,
                      ) where {Tsol, Tres}
+=#
+function applyDirichletPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp,
+                      params::AbstractParamType, sbpface,
+                      diffusion::AbstractDiffusion, bndry::Boundary,
+                      delta_w::AbstractMatrix,
+                      uL::AbstractMatrix,
+                      wL::AbstractMatrix,
+                      coordsL::AbstractMatrix,
+                      nrm_face::AbstractMatrix,
+                      alpha::Number,
+                      dxidxL::Abstract3DArray,
+                      jacL::AbstractVector,
+                      res1L::AbstractMatrix)  where {Tsol, Tres}
+
 
   fill!(res1L, 0)
   numDofPerNode, numNodesPerFace = size(delta_w)
@@ -244,7 +259,8 @@ function applyDirichletPenalty(penalty::BR2Penalty{Tsol, Tres}, sbp, sbpface,
   end
 
   # apply Lambda matrix
-  applyDiffusionTensor(diffusion, wL, bndry.element, sbpface, bndry.face,
+  applyDiffusionTensor(diffusion, sbp, params, uL, wL, coordsL, dxidxL, jacL,
+                       bndry.element, sbpface, bndry.face,
                        qL, t1L)
 
   # apply inverse mass matrix, then apply B*Nx*R*t2L_x + B*Ny*R*t2L_y
@@ -491,6 +507,7 @@ end
   Differentiated version of BR2 penalty
 """
 function applyDirichletPenalty_diff(penalty::BR2Penalty{Tsol, Tres}, sbp,
+                      params::AbstractParamType,
                       sbpface, diffusion::AbstractDiffusion, bndry::Boundary,
                       delta_w::AbstractMatrix{Tsol},
                       delta_w_dot::Abstract4DArray,

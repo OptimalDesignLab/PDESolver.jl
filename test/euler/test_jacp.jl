@@ -86,6 +86,21 @@ function test_jac_parallel_long()
     mesh8, sbp8, eqn8, opts8 = run_solver(fname2)
 
 
+    # SBPDiagonalE ES shock capturing
+    if myrank == 0
+      opts_tmp = read_input_file(fname)
+      opts_tmp["operator_type"] = "SBPDiagonalE"
+      opts_tmp["volume_integral_type"] = 2
+      opts_tmp["Volume_flux_name"] = "IRFlux"
+      opts_tmp["Flux_name"] = "IRSLFFlux"
+      opts_tmp["addShockCapturing"] = true
+      opts_tmp["shock_capturing_name"] = "SBPParabolicReduced"
+      opts_tmp["shock_sensor_name"] = "SensorVelocity"
+      make_input(opts_tmp, fname2)
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    mesh9, sbp9, eqn9, opts9 = run_solver(fname2)
+
 
     opts4_tmp = copy(opts4)
     test_jac_parallel_inner(mesh4, sbp4, eqn4, opts4)
@@ -110,11 +125,16 @@ function test_jac_parallel_long()
     
     test_revq_product(mesh7, sbp7, eqn7, opts7)
 
+    test_revm_product2(mesh9, sbp9, eqn9, opts9)
+    test_revq_product(mesh9, sbp9, eqn9, opts9)
+    test_jac_parallel_inner(mesh9, sbp9, eqn9, opts9)
+
 
     # test functional that require parallel communication
-    for func_ctor in values(EulerEquationMod.FunctionalDict)
-      func = func_ctor(Complex128, mesh4, sbp4, eqn4, opts4, [1, 2, 3])
-      if getParallelData(func) != PARALLEL_DATA_NONE
+    func_test = ["lpsdissipation", "neglpsdissipation"]
+    for (name, func_ctor) in EulerEquationMod.FunctionalDict
+      func = func_ctor(Complex128, mesh4, sbp4, eqn4, opts4, [1])
+      if getParallelData(func) != PARALLEL_DATA_NONE || name in func_test
         if mesh4.myrank == 0
           println("testing functional ", func_ctor)
         end
@@ -128,13 +148,13 @@ function test_jac_parallel_long()
     end
 
     testEntropyDissFunctional2(mesh8, sbp8, eqn8, opts8)
-    
+
   end
 
   return nothing
 end
 
-add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC, TAG_TMP]) 
+add_func1!(EulerTests, test_jac_parallel_long, [TAG_LONGTEST, TAG_JAC]) 
 
 #------------------------------------------------------------------------------
 # functions that run individual tests
@@ -182,21 +202,31 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
   assembler = Jacobian._AssembleElementData(getBaseLO(lo2).A, mesh, sbp, eqn, opts)
 
   # compute jacobian via coloring
+  println("\n\nComputing Jacobian via coloring")
   opts["calc_jac_explicit"] = false
   ctx_residual = (evalResidual,)
   NonlinearSolvers.physicsJac(mesh, sbp, eqn, opts, jac1, ctx_residual)
 
   # compute jacobian explicitly
+  println("\n\nComputing Jacobian explicitly")
   opts["calc_jac_explicit"] = true
   evalJacobian(mesh, sbp, eqn, opts, assembler)
-
+  println("finished computing jacobian explicitly")
   assembly_begin(jac1, MAT_FINAL_ASSEMBLY)
   assembly_begin(jac2, MAT_FINAL_ASSEMBLY)
 
+  assembly_end(jac1, MAT_FINAL_ASSEMBLY)
+  assembly_end(jac2, MAT_FINAL_ASSEMBLY)
+
+
   # multiply against a random vector to make sure the jacobian is
   # the same
-  for i=1:10
-    x = rand(PetscScalar, mesh.numDof)
+  for i=1:1
+#    x = rand(PetscScalar, mesh.numDof)
+    x = zeros(PetscScalar, mesh.numDof)
+    if mesh.myrank == 0
+      x[111] = 1
+    end
     b1 = zeros(PetscScalar, mesh.numDof)
     b2 = zeros(PetscScalar, mesh.numDof)
     b3 = zeros(PetscScalar, mesh.numDof)
@@ -208,6 +238,7 @@ function test_jac_parallel_inner(mesh, sbp, eqn, opts; is_prealloc_exact=true, s
 
     @test isapprox( norm(b1 - b2), 0.0) atol=1e-12
     @test isapprox( norm(b1 - b3), 0.0) atol=1e-12
+    println("norm(b1 - b2) = ", norm(b1 - b2))
   end
 
   A = getBaseLO(lo2).A
@@ -415,6 +446,70 @@ function test_revm_product(mesh, sbp, eqn, opts)
 
   return nothing
 end
+
+"""
+  Tests the reverse mode product by perturbing mesh.vert_coords and
+  recalculating the metrics from that.  This has the benefit of testing
+  the `mesh.remote_metrics_bar`
+"""
+function test_revm_product2(mesh, sbp, eqn, opts)
+
+  h = 1e-20
+  pert = Complex128(0, h)
+
+  icfunc = EulerEquationMod.ICDict["ICExp"]
+  icfunc(mesh, sbp, eqn, opts, eqn.q_vec)
+  array1DTo3D(mesh, sbp, eqn, opts, eqn.q_vec, eqn.q)
+  eqn.q .+= 0.01.*rand(size(eqn.q))  # add a little noise, to make jump across
+                                     # interfaces non-zero
+  
+  vert_coords_dot = rand_realpart(size(mesh.vert_coords))
+
+  res_bar = rand_realpart(mesh.numDof)
+
+  # complex step  
+  mesh.vert_coords .+= pert*vert_coords_dot
+  recalcCoordinatesAndMetrics(mesh, sbp, opts)
+  println("after recalculating metrics:")
+  println("has nan dxidx = ", any(isnan.(mesh.dxidx)))
+  println("has nan jac = ", any(isnan.(mesh.jac)))
+  for peer=1:mesh.npeers
+    println("  peer ", peer)
+    obj = mesh.remote_metrics[peer]
+    println("  has nan dxidx = ", any(isnan.(obj.dxidx)))
+    println("  has nan jac = ", any(isnan.(obj.jac)))
+  end
+
+  startSolutionExchange(mesh, sbp, eqn, opts)
+  evalResidual(mesh, sbp, eqn, opts)
+  println("after evalResidual, isnan eqn.res = ", any(isnan.(eqn.res)))
+  array3DTo1D(mesh, sbp, eqn, opts, eqn.res, eqn.res_vec)
+  val1 = sum(imag(eqn.res_vec)/h .* res_bar)
+
+  # undo perturbation
+  for i=1:length(mesh.vert_coords)
+    mesh.vert_coords[i] = real(mesh.vert_coords[i])
+  end
+  recalcCoordinatesAndMetrics(mesh, sbp, opts)
+
+  # reverse mode
+
+  zeroBarArrays(mesh)
+  evalResidual_revm(mesh, sbp, eqn, opts, res_bar)
+  getAllCoordinatesAndMetrics_rev(mesh, sbp, opts)
+
+  val2 = sum(mesh.vert_coords_bar .* vert_coords_dot)
+
+  val1 = MPI.Allreduce(val1, MPI.SUM, eqn.comm)
+  val2 = MPI.Allreduce(val2, MPI.SUM, eqn.comm)
+  println("val1 = ", val1)
+  println("val2 = ", val2)
+
+  @test abs(val1 - val2) < max( min(abs(val1), abs(val2))*1e-12, 1e-12)
+
+  return nothing
+end
+
 
 
 function test_revq_product(mesh, sbp, eqn, opts)

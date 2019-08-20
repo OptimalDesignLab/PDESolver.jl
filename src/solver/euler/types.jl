@@ -7,8 +7,8 @@ include("abstract_diffusion.jl")
 include("abstract_diffusion_penalty.jl")
 include("shock_mesh_types.jl")
 include("abstract_shock_capturing.jl")
-include("shock_capturing_types.jl")
 include("shock_sensor_types.jl")
+include("shock_capturing_types.jl")
 
 @doc """
 ### EulerEquationMod.ParamType
@@ -246,12 +246,12 @@ mutable struct ParamType{Tdim, var_type, Tsol, Tres, Tmsh} <: AbstractParamType{
     Ma = opts["Ma"]
     aoa = opts[ "aoa"]*pi/180
     sideslip_angle = opts["sideslip_angle"]
-    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
     rho_free = 1.0
     p_free = opts["p_free"]
     T_free = opts["T_free"]
-    E_free = 1/(gamma*gamma_1) + 0.5*Ma*Ma
+    E_free = p_free/gamma_1 + 0.5*rho_free*Ma*Ma
     a_free = sqrt(p_free/rho_free)  # free stream speed of sound
+                                    # should be sqrt(p_free*gamma/rho_free) ?
     R_ND = R*a_free*a_free/T_free
 
     edgestab_gamma = opts["edgestab_gamma"]
