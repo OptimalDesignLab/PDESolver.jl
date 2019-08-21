@@ -249,6 +249,23 @@ function (obj::SRCPeriodicMMS)(q::AbstractVector, coords::AbstractVector,
 end
 
 
+"""
+  Source term for testing shock capturing terms
+"""
+mutable struct SRCLaplace <: SRCType
+end
+
+function (obj::SRCLaplace)(q::AbstractVector, coords::AbstractVector, 
+              params::ParamType{2}, t)
+
+  x = coords[1]; y = coords[2]
+  val = 5*sin(x)*sin(2*y)
+  for i=1:length(q)
+    q[i] = val
+  end
+end
+
+
 @doc """
 ### EulerEquationMod.SRCDict
 
@@ -266,6 +283,7 @@ end
 global const SRCDict = Dict{String, SRCType}(
 "SRCExp" => SRCExp(),
 "SRCPeriodicMMS" => SRCPeriodicMMS(),
+"SRCLaplace" => SRCLaplace(),
 "SRC0" => SRC0(),
 )
 

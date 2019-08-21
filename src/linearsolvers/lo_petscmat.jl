@@ -47,7 +47,7 @@ function PetscMatLO(pc::AbstractPetscPC, mesh::AbstractMesh,
   pc2 = getBasePC(pc)
 
   # share matrix if possible
-  if !opts["use_jac_precond"] && !(typeof(pc) <: PetscMatFreeLO) 
+  if !opts["use_jac_precond"] && !(typeof(pc2) <: PetscMatFreePC) 
     A = pc2.A
     is_setup = pc2.is_assembled  # share the indicator array
     is_shared = true

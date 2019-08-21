@@ -101,14 +101,14 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AdvectionData,
   @mpi_master println("ICfunc = ", ICfunc)
   ICfunc(mesh, sbp, eqn, opts, q_vec)
 
-  writedlm("solution_ic.dat", eqn.q_vec)
+  #writeSolutionFiles(mesh, sbp, eqn, opts, "solution_ic")
 
   if opts["calc_error"]
     @mpi_master println("\ncalculating error of file ", opts["calc_error_infname"],
             " compared to initial condition")
     # read in this processors portion of the solution
-    vals = readdlm(get_parallel_fname(opts["calc_error_infname"], mesy.myrank))
-    @assert length(vals) == mesh.numDof
+    vals = copy(eqn.q_vec)
+    readSolutionFiles(mesh, sbp, eqn, opts, opts["calc_error_infname"], vals)
 
     err_vec = vals - eqn.q_vec
     err_local = calcNorm(eqn, err_vec)
@@ -153,11 +153,8 @@ function solvePDE(mesh::AbstractMesh, sbp::AbstractOperator, eqn::AdvectionData,
 
   res_vec_exact = deepcopy(q_vec)
 
-  #rmfile("IC_$myrank.dat")
-  #writedlm("IC_$myrank.dat", real(q_vec))
   saveSolutionToMesh(mesh, q_vec)
   writeVisFiles(mesh, "solution_ic")
-  global int_advec = 1  # ???
 
   if opts["calc_dt"]
     alpha_net = sqrt(eqn.params.alpha_x^2 + eqn.params.alpha_y^2)

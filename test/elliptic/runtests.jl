@@ -19,6 +19,7 @@ using Utils
 using MPI
 using Input
 using PETSc2
+using Jacobian
 
 #------------------------------------------------------------------------------
 # define tests and tags

@@ -954,3 +954,41 @@ function logavg(aL, aR)
 
   return (aL + aR)/(2*F)
 end
+
+
+function calcHLLFlux(params::ParamType,
+                 q::AbstractArray{Tsol,1},
+                 qg::AbstractArray{Tsol, 1},
+                 aux_vars::AbstractArray{Tres, 1},
+                 nrm::AbstractArray{Tmsh,1},
+                 flux::AbstractArray{Tres, 1}) where {Tmsh, Tsol, Tres}
+
+  @unpack params.hllfluxdata fL fR
+
+  numDofPerNode = length(q)
+  sL, sR = calc2RWaveSpeeds(params, q, qg, nrm)
+
+  if sL >= 0
+    calcEulerFlux(params, q, aux_vars, nrm, flux)
+  elseif sR <= 0
+    calcEulerFlux(params, qg, aux_vars, nrm, flux)
+  else
+    fL = zeros(Tres, numDofPerNode)
+    fR = zeros(Tres, numDofPerNode)
+    calcEulerFlux(params, q, aux_vars, nrm, fL)
+    calcEulerFlux(params, qg, aux_vars, nrm, fR)
+
+    fac = calcLength(params, nrm)
+    fac2 = fac*sL*sR
+    
+    for i=1:numDofPerNode
+      flux[i] = (sR*fL[i] - sL*fR[i] + fac2*(qg[i] - q[i]))/(sR - sL)
+    end
+    
+  end
+
+  return nothing
+end
+
+
+

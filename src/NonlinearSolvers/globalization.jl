@@ -18,13 +18,17 @@
 """->
 function updateKrylov(newton_data::NewtonData)
 
+  # this function provides the opportunity to update the krylov tolerances.
+  # Currently we don't change the tolerances, because leaving the relative
+  # tolerance in place seems to work ok
   if newton_data.use_inexact_nk
     norm_i = newton_data.res_norm_i
     norm_i_1 = newton_data.res_norm_i_1
     gamma = newton_data.krylov_gamma
-    reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    #reltol = newton_data.ls.reltol*(norm_i/norm_i_1)^gamma
+    reltol = newton_data.ls.reltol
     setTolerances(newton_data.ls, reltol, -1, -1, -1)
-    #println("updating krylov reltol to ", reltol)
+    #println(BSTDOUT, "updating krylov reltol to ", reltol)
   end
 
   return nothing
@@ -35,19 +39,29 @@ end
 # Psuedo-Transient Continuation (aka. Implicit Euler)
 #------------------------------------------------------------------------------
 
-# res_norm_i_1 and res_norm_i, updated inside newton's method
-# This is a bad way to pass parameters to updateEuler(), but I can't find a
-# better way that retains the composability of the linear operator abstraction.
-global const EulerConstants_LO = Float64[0, 0]
-global const EulerConstants_PC = Float64[0, 0]
-
 """
   Reinitailize the underlying data.  This function should be called every
   time newtonInner() is entered
 """
-function clearEulerConstants()
-  fill!(EulerConstants_LO, 0.0)
-  fill!(EulerConstants_PC, 0.0)
+function clearEulerConstants(ls::LinearSolver)
+
+  lo = getInnerLO(ls.lo, NewtonLinearObject)
+  clearEulerConstants(lo)
+
+  if !(typeof(ls.pc) <: PCNone)
+    pc = getInnerPC(ls.pc, NewtonLinearObject)
+    clearEulerConstants(pc)
+  end
+
+  return nothing
+end
+
+function clearEulerConstants(lo::NewtonLinearObject)
+
+  lo.idata.res_norm_i = 0
+  lo.idata.res_norm_i_1 = 0
+
+  return nothing
 end
 
 """
@@ -55,13 +69,20 @@ end
 
   **Inputs**
 
+   * ls: a [`LinearSolver`](@ref) object
    * res_norm_i: must be a real number
 """
-function recordEulerResidual(res_norm_i)
-#  EulerConstants[1] = EulerConstants[2]
-  EulerConstants_LO[2] = res_norm_i
-  EulerConstants_PC[2] = res_norm_i
+function recordEulerResidual(ls::LinearSolver, res_norm_i)
+
+  lo = getInnerLO(ls.lo, NewtonLinearObject)
+  lo.idata.res_norm_i = res_norm_i
+
+  if !(typeof(ls.pc) <: PCNone)
+    pc = getInnerPC(ls.pc, NewtonLinearObject)
+    pc.idata.res_norm_i = res_norm_i
+  end
 end
+
 
 """
   Get the most recent residual norm and the residual norm the last time
@@ -79,12 +100,18 @@ end
    * res_norm_i: most recent residual norm
 """
 function getEulerConstants(pc::AbstractPC)
-  return EulerConstants_PC[1], EulerConstants_PC[2]
+
+  pc2 = getInnerPC(pc, NewtonLinearObject)
+  return pc2.idata.res_norm_i_1, pc2.idata.res_norm_i
 end
 
+
 function getEulerConstants(lo::AbstractLO)
-  return EulerConstants_LO[1], EulerConstants_LO[2]
+
+  lo = getInnerLO(lo, NewtonLinearObject)
+  return lo.idata.res_norm_i_1, lo.idata.res_norm_i
 end
+
 
 """
   Similar to [`getEulerConstants`](@ref), this function both returns the
@@ -92,90 +119,66 @@ end
   be correct.
 """
 function useEulerConstants(pc::AbstractPC)
-  t1 = EulerConstants_PC[1]
-  t2 = EulerConstants_PC[2]
-  EulerConstants_PC[1] = EulerConstants_PC[2]
+  pc2 = getInnerPC(pc, NewtonLinearObject)
+  t1 = pc2.idata.res_norm_i_1
+  t2 = pc2.idata.res_norm_i
+  pc2.idata.res_norm_i_1 = t2
   return t1, t2
 end
 
-function useEulerConstants(pc::AbstractLO)
-  t1 = EulerConstants_LO[1]
-  t2 = EulerConstants_LO[2]
-  EulerConstants_LO[1] = EulerConstants_LO[2]
+function useEulerConstants(lo::AbstractLO)
+  lo2 = getInnerLO(lo, NewtonLinearObject)
+  t1 = lo2.idata.res_norm_i_1
+  t2 = lo2.idata.res_norm_i
+  lo2.idata.res_norm_i_1 = t2
   return t1, t2
 end
-
 
 """
   Check if Euler globalization is initialized
 """
-function isEulerInitialized()
-  if EulerConstants_LO[1] == EulerConstants_LO[2] == 0
-    return false
-  else
-    return true
-  end
+function isEulerInitialized(lo::AbstractLO)
+  lo2 = getInnerLO(lo, NewtonLinearObject)
+  return !(lo2.idata.res_norm_i == 0 && lo2.idata.res_norm_i_1 == 0) &&
+          lo2.idata.use_implicit_euler
+end
+
+function isEulerInitialized(pc::AbstractPC)
+  pc2 = getInnerPC(pc, NewtonLinearObject)
+  return !(pc2.idata.res_norm_i == 0 && pc2.idata.res_norm_i_1 == 0) &&
+           pc2.idata.use_implicit_euler
+end
+
+function isEulerInitialized(pc::PCNone)
+  return false  # can't globalize what doesn't exist
 end
 
 
-@doc """
-### NonlinearSolvers.initEuler
 
-  This function initializes the data needed to do Psudo-Transient Continuation 
-  globalization (aka. Implicit Euler) of Newton's method, using a spatially 
-  varying pseudo-timestep.
-
-  Updates the jacobian with a diagonal term, as though the jac was the 
-  jacobian of this function:
-  (u - u_i_1)/delta_t + f(u)
-  where f is the original residual and u_i_1 is the previous step solution
-
-  The timestep varies according to tau/(1 + sqrt(det(jac))).
-
-  This globalization is activated using the option `newton_globalize_euler`.
-  The initial value of the scaling factor tau is specified by the option 
-  `euler_tau`.
-
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-
-  Outputs:
-    tau_l: the timestep factor
-    tau_vec: the vector (of length numDof) that is added to the diagonal 
-             of the jacobian.
-
-"""->
-function initEuler(mesh, sbp, eqn, opts)
-
-  tau_l = opts["euler_tau"]  # initailize tau to something
-  tau_vec = zeros(mesh.numDof)
-  calcTauVec(mesh, sbp, eqn, opts, tau_l, tau_vec)
-
-  return tau_l, tau_vec
-end
 
 @doc """
 ### NonlinearSolver.calcTauVec
 
   This function calculates the spatially varying vector for the timestep.
 
-  Inputs:
-    mesh
-    sbp
-    eqn
-    opts
-    tau:  timestep factor
+  The timestep varies according to tau/(1 + |J|^(1/d) ), where `|J|` is the
+  determinant of the mapping jacobian and `d` is the dimensionality (2D ord
+  3D).
 
-  Inputs/Outputs: 
-    tau_vec: vector (of length numDof) populated with tau*spatially varying
+  **Inputs**
+
+  *  mesh
+  *  opts
+  *  tau:  timestep factor
+
+  **Inputs/Outputs**
+
+   * tau_vec: vector (of length numDof) populated with tau*spatially varying
              factor
 
   Aliasing restrictions:  none
 """->
-function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
+function calcTauVec(mesh, opts, tau, tau_vec)
 # calculate the spatially varying pseudo-timestep
   #TODO: make tau_vec = 1/tau_vec, so we don't have to do fp division when
   #      applying it
@@ -183,16 +186,41 @@ function calcTauVec(mesh, sbp, eqn, opts, tau, tau_vec)
     for j=1:mesh.numNodesPerElement
       for k=1:mesh.numDofPerNode
         dof = mesh.dofs[k, j, i]
-        tau_vec[dof] = tau/(1 + sqrt(real(mesh.jac[j, i])))
+        tau_vec[dof] = tau/(1 + sqrt(real(mesh.jac[j, i])))  #TODO: should be |J|^1/dim
 #        tau_vec[dof] = tau
       end
     end
   end
 
-  println(BSTDOUT, "average tau value = ", mean(tau_vec))
+  if mesh.myrank == 0
+    println(BSTDOUT, "average tau value = ", mean(tau_vec))
+  end
 
   return nothing
 
+end
+
+
+"""
+  Reinitilize an `ImplicitEulerData` object (for example, when calling
+  `newtonInner` a second time).
+
+  Uses opts["euler_tau"] to reset the pseudo-time step
+
+  **Inputs**
+
+   * mesh
+   * opts
+   * idata: `ImplicitEulerData`
+"""
+function reinitImplicitEuler(mesh, opts, idata::ImplicitEulerData)
+
+  idata.res_norm_i = 0
+  idata.res_norm_i_1 = 0
+  idata.tau_l = opts["euler_tau"]
+  calcTauVec(mesh, opts, idata.tau_l, idata.tau_vec)
+
+  return nothing
 end
 
 
@@ -210,23 +238,28 @@ function updateEuler(lo::NewtonLinearObject)
   # updates the tau parameter for the Implicit Euler globalization
   # norm_i is the residual step norm, norm_i_1 is the previous residual norm
 
-  println(BSTDOUT, "typeof(lo) = ", typeof(lo))
-  tau_l_old = lo.tau_l
+  if !lo.idata.use_implicit_euler
+    return nothing
+  end
+
+  tau_l_old = lo.idata.tau_l
   res_norm_i_1, res_norm_i = useEulerConstants(lo)
 
   # on the first Jacobian calculate, don't update
   if res_norm_i_1 == 0
     return nothing
   end
+  
+  tau_update = res_norm_i_1/res_norm_i
 
   # update tau
-  lo.tau_l = lo.tau_l * res_norm_i_1/res_norm_i
+  lo.idata.tau_l = lo.idata.tau_l * tau_update
   
-  tau_update = lo.tau_l/tau_l_old
-  println(BSTDOUT, "tau_update factor = ", tau_update)
-  for i=1:length(lo.tau_vec)
-    lo.tau_vec[i] *= tau_update
+  if lo.myrank == 0
+    println(BSTDOUT, "tau_update factor = ", tau_update)
   end
+
+  scale!(lo.idata.tau_vec, tau_update)
 
   return nothing
 end
@@ -254,26 +287,28 @@ function applyEuler(mesh, sbp, eqn, opts, lo::NewtonHasMat)
 # maybe something in lo?
 # for explicitly stored jacobian only
 
-  if !isEulerInitialized()
+  if !isEulerInitialized(lo)
     return nothing
   end
 
-  println(BSTDOUT, "applying Implicit Euler globalization")
-  println(BSTDOUT, "average tau value = ", mean(lo.tau_vec))
+  if mesh.myrank == 0
+    println(BSTDOUT, "applying Implicit Euler globalization")
+    println(BSTDOUT, "average tau value = ", mean(lo.idata.tau_vec))
+  end
 
   
   lo2 = getBaseObject(lo)
 #  println("euler globalization tau = ", lo.tau_l)
   # create the indices
 
-  val = [1/lo.tau_l]
+  val = [1/lo.idata.tau_l]
   idx = PetscInt[0]
   idy = PetscInt[0]
   #TODO: replace this with MatDiagonalSet
   for i=1:mesh.numDof
     idx[1] = i + mesh.dof_offset
     idy[1] = i + mesh.dof_offset
-    val[1] = -eqn.M[i]/lo.tau_vec[i]
+    val[1] = -eqn.M[i]/lo.idata.tau_vec[i]
     set_values1!(lo2.A, idx, idy, val, ADD_VALUES)
 #    PetscMatSetValues(jac, idx, idy, val, ADD_VALUES)
   end
@@ -299,16 +334,16 @@ end
    * b: result vector, updated
 """
 function applyEuler(mesh, sbp, eqn, opts, vec::AbstractArray, 
-                    lo, b::AbstractArray)
+                    lo::NewtonLinearObject, b::AbstractArray)
 # apply the diagonal update term to the jacobian vector product
 
-  if !isEulerInitialized()
+  if !isEulerInitialized(lo)
     return nothing
   end
 
 
   for i=1:mesh.numDof
-    b[i] -= eqn.M[i]*(1/lo.tau_vec[i])*vec[i]
+    b[i] -= eqn.M[i]*(1/lo.idata.tau_vec[i])*vec[i]
   end
 
   return nothing

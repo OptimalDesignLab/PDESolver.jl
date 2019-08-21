@@ -31,6 +31,13 @@ where input_file_name.jl is in your current directory.
 
 "IC_name" : initial condition function name (string)
 
+"get_parallel_fname": if IC_name = ICFile, this key is required to identify
+                      the file name to load (string). If the files on disk are
+                      named
+                      foo_0.dat, foo_1.dat ... (one file per MPI process),
+                      then the value associated with this key should be
+                      foo.dat. 
+
 "operator_type" : name of discretization operator to use for DG, currently
                   either SBPOmega or SBPGamma , (String), default SBPOmega
 
@@ -82,6 +89,7 @@ where input_file_name.jl is in your current directory.
 "addVolumeIntegrals" : enable volume term, (Bool), default true
 "addBoundaryIntegrals" : enable the boundary integral term, (Bool), default true
 "addFaceIntegrals" : enable the face integral term for DG, (Bool), default true
+"addShockCapturing": enable shock capturing, (Bool), default false
 "addStabilization" : enable any stabilization,  individual types of stabilization
                      are controlled by their individual keys, (Bool), default true
 
@@ -178,6 +186,8 @@ where input_file_name.jl is in your current directory.
 "use_GLS" : use Galerkin Least-Squares stabilization, (Bool), default false
 "use_GLS2": use Hughes' formulation of Galerkin Least-Squares, (Bool), default false
 "tau_type" : which definition of tau to use of GLS, (Int), default 1
+"use_lps" : use local projection stabilization, (Bool), default false
+
 # stabilization preconditioning options
 "use_edgestab_prec" : use edge stabilization for preconditioning matrix, (Bool), default false
 "use_filter_prec" : use filter for preconditioning matrix, (Bool), default false
@@ -268,6 +278,9 @@ Note that any values associated with these options are shared with the regular
 "use_linear_metrics": use the metric calculation for straight-sided elements,
                        (Bool), default false (ie. the curvilinear calculation is
                        used even for straight-sided meshes
+"error_undefined_bc": throw an error if a geometric entity does not have a
+                      boundary condition assigned to it, (Bool), default true
+
 # mesh options
 "reordering_algorithm" : which node reordering algorithm to use, options are
                          "adjacency" for the adjacency based reordering by Zhou
@@ -350,6 +363,35 @@ Note that any values associated with these options are shared with the regular
 "homotopy_globalize_euler": use the method described by "newton_globalize_euler"
                             on the final step of homotopy (when lambda == 0),
                             (Bool), default false
+"homotopy_function": specify which homotopy function to use, (String),
+                     not all physics modules support this option
+"homotopy_tighten_early": tighten the Newton solve tolerance when
+                          lambda < 0.005, (Bool), default false
+"homotopy_shock_capturing": do homotopy from one shock capturing scheme
+                            to another, (Bool), default false
+"homotopy_shock_sensor": the easy shock sensor to use with
+                         "homotopy_shock_capturing", (String), default
+                         "ShockSensorNone"
+"homotopy_psi_max": the maximum angle between tangent vectors, in radians,
+                    (Float64), default 10*pi/180                        
+
+
+# pHomotopy options
+
+"phomotopy_solve_homotopy": solve the first case with homotopy, (Bool),
+                            default true,
+"phomotopy_p_max": maximum degree operator to solve, (Bool), required
+                   if using pHomotopy
+"phomotopy_flux_regular": flux function to use for all solves after first,
+                          (String), default same as "Flux_name",
+"phomotopy_shock_sensor_hard": shock sensor to use for final solve, (String),
+                               default same as "shock_sensor_name",
+"phomotopy_euler_taus": implicit Euler timestep size to use for each degree
+                        operator, (Vector{Float64}, length "phomotopy_p_max"),
+                        default same as "euler_tau"
+"phomotopy_euler_tau_final": implicit Euler timestep size for final solve,
+                             (Float64), default same as "euler_tau"
+
 # Crank-Nicolson options
 "CN_recalculation_policy": jacbian recalculation policy for CN, (String),
                            default "RecalculateNever"
@@ -449,3 +491,21 @@ Note that any values associated with these options are shared with the regular
 # Input duplicate checking option
 "no_input_duplicates_check" : Bool. If set, do not check the input dictionary for duplicates. 
                               Default: false
+
+
+# Euler-specific options
+
+"freeze_viscosity": freeze the shock capturing viscosity at the initial
+                    condition (Bool), default false
+"shock_capturing_variables": which variables to use for the shock capturing
+                             dissipation (String), default "IR"
+"sensor_pp_use_filtered": for shock SensorPP, if true use the energy of the
+                          degree p modes to compute the shock sensor, if false
+                          use the energy of all modes greater than or equal
+                          to p, (Bool), default false
+
+# h-adaptation options
+"write_error_estimate": write a Paraview file of the element-wise error
+                        estimate when it is computed, (Bool), default true
+"write_adapt_vis": write a Paraview file of the adapted mesh when adapting
+                   to a target error, (Bool), default false

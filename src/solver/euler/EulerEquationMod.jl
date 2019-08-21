@@ -10,7 +10,8 @@ using SolverCommon
 using ODLCommonTools  # abstract type definitions + common functions
 using SummationByParts
 using PdePumiInterface  # common mesh interface implementation - pumi
-using NonlinearSolvers
+#using NonlinearSolvers
+using Jacobian
 using LinearSolvers
 using Utils
 import ODLCommonTools.sview
@@ -336,6 +337,15 @@ abstract type AbstractEntropyKernel end
 abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt} end
 
 
+
+"""
+  Abstract type for Local Discontinuous Galerkin flux functions
+"""
+abstract type AbstractLDGFlux end
+
+
+
+
 # high level functions should take in an AbstractEulerData, remaining
 # agnostic to the dimensionality of the equation
 # Mid level function should take in an EulerData{Tsol, Tdim}, so they
@@ -344,6 +354,13 @@ abstract type EntropyPenaltyFunctional{Topt} <: AbstractIntegralFunctional{Topt}
 
 # low level functions should take in EulerData{Tsol, 2} or EulerData{Tsol, 3}
 # this allows them to have different methods for different dimension equations.
+
+# TEMPORARY
+const Abstract4DArray{T} = AbstractArray{T, 4}
+const Abstract5DArray{T} = AbstractArray{T, 5}
+
+import PDESolver: getShockSensor, setShockSensor, setShockSensorAlpha
+
 
 include("types.jl")  # type definitions
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
@@ -374,6 +391,19 @@ include("startup_func.jl")  # function for invoking the solver
 include("evaldRdm.jl")
 include("evaldRdq.jl")
 include("homotopy.jl")
+include("shock_capturing_mesh.jl")
+include("shock_diffusion.jl")
+include("shock_capturing.jl")
+include("shock_sensors.jl")
+include("projection_shock_capturing.jl")
+include("volume_shock_capturing.jl")
+include("ldg_shock_capturing.jl")
+include("sbp_sat_shock_capturing.jl")
+include("sbp_sat_reduced_sc.jl")
+include("sbp_sat_reduced2_sc.jl")
+include("sbp_cartesian.jl")
+include("lp_stab.jl")
+include("face_functional_integrate.jl")
 
 # Jacobian calculation
 include("evalJacobian.jl")
@@ -382,6 +412,12 @@ include("flux_diff.jl")
 include("bc_solvers_diff.jl")
 include("bc_diff.jl")
 include("homotopy_diff.jl")
+include("shock_sensors_diff.jl")
+include("shock_capturing_diff.jl")
+include("sbp_cartesian_diff.jl")
+include("sbp_sat_shock_capturing_diff.jl")
+include("sbp_sat_reduced2_sc_diff.jl")
+
 
 
 """

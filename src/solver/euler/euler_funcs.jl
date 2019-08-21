@@ -1872,19 +1872,21 @@ end  # end function
 """
   Calculate the maximum wave speed for a given state
 
-  Inputs:
-    params: a ParamType
-    qL: a vector of conservative variables at a node
-    dir: a direction vector, length 2 in 2D and 3 in 3D
+  **Inputs**
 
-  Outputs:
-    lambda_max: the maximum wave speed
+   * params: a ParamType
+   * qL: a vector of conservative variables at a node
+   * dir: a direction vector, length 2 in 2D and 3 in 3D
+
+  **Outputs**
+
+   * lambda_max: the maximum wave speed
 
   Aliasing restrictions: none
 """
 function getLambdaMax(params::ParamType{Tdim}, 
-    qL::AbstractVector{Tsol}, 
-    dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
+                      qL::AbstractVector{Tsol}, 
+                      dir::AbstractVector{Tmsh}) where {Tsol, Tmsh, Tdim}
 
   Tres = promote_type(Tsol, Tmsh)
   gamma = params.gamma
@@ -1902,9 +1904,109 @@ function getLambdaMax(params::ParamType{Tdim},
 
   dA = sqrt(dA)
 
-  lambda_max = absvalue(Un) + dA*aL
+  lambda_max = absvalue3(Un) + dA*aL
 
   return lambda_max
+end
+
+"""
+  Method to compute the max wave speed in the volume (ie not in any
+  particular direction: sqrt(u*u + w*w) + sqrt(gamma*p/rho)
+
+  **Inputs**
+
+   * params: ParamType
+   * qL; vector of conservative variables at a node
+
+  **Outputs**
+
+   * lambda_max
+"""
+function getLambdaMax(params::ParamType{Tdim}, 
+                      qL::AbstractVector{Tsol}) where {Tsol, Tdim}
+
+
+  gamma = params.gamma
+  Un = zero(Tsol)
+  rhoLinv = 1/qL[1]
+
+  pL = calcPressure(params, qL)
+  aL = sqrt(gamma*pL*rhoLinv)  # speed of sound
+
+  for i=1:Tdim
+    u_i = qL[i+1]*rhoLinv
+    Un += u_i*u_i
+  end
+
+  lambda_max = sqrt(Un) + aL
+
+  return lambda_max
+end
+
+"""
+  Compute approximate wave speeds for a Riemann problem using the 2 rarefaction
+  model (see Toro's Riemann Solvers book).
+  These values are upper bounds for the true wave speeds for 1 <= gamma <= 5/3.
+
+  Note that the wave speeds are *not* scaled by the length of the normal
+  vector.
+
+  **Inputs**
+
+   * params
+   * qL
+   * qR
+   * nrm: normal vector
+
+  **Outputs**
+
+   * sL: slowest wave speed
+   * sR: fastest wave speed
+"""
+function calc2RWaveSpeeds(params::ParamType{Tdim}, qL::AbstractVector{Tsol},
+                          qR::AbstractVector, nrm::AbstractVector{Tmsh}
+                         ) where {Tdim, Tsol, Tmsh}
+
+  Tres = promote_type(Tsol, Tmsh)
+
+  pL = calcPressure(params, qL); pR = calcPressure(params, qR)
+  aL = sqrt(params.gamma*pL/qL[1]); aR = sqrt(params.gamma*pR/qR[1])
+  z = params.gamma_1/(2*params.gamma)
+
+  # compute velocity in face normal direction
+  u_nrmL = zero(Tres); u_nrmR = zero(Tres)
+  fac = calcLength(params, nrm)
+  for i=1:Tdim
+    u_nrmL += qL[i+1]*nrm[i]
+    u_nrmR += qR[i+1]*nrm[i]
+  end
+  u_nrmL /= fac*qL[1]; u_nrmR /= fac*qR[1]
+
+  num = aL + aR - 0.5*params.gamma_1*(u_nrmR - u_nrmL)
+  den = aL/(pL^z) + aR/(pR^z)
+
+  p_tr = (num/den)^(1/z)
+
+  # compute q values
+  if p_tr <= pL
+    qfL = Tres(1.0)
+  else
+    qfL = sqrt(1 + (params.gamma + 1)*(p_tr/pL - 1)/(2*params.gamma))
+  end
+
+  if p_tr <= pR
+    qfR = Tres(1.0)
+  else
+    qfR = sqrt(1 + (params.gamma + 1)*(p_tr/pR - 1)/(2*params.gamma))
+  end
+
+#  qfL = 1.3
+#  qfR = 1.02
+
+  sL = u_nrmL - aL*qfL
+  sR = u_nrmR + aR*qfR
+
+  return sL, sR
 end
 
 

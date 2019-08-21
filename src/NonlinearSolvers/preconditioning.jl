@@ -1,123 +1,49 @@
 # functions for calculating various preconditioners
+using Base.LinAlg.BLAS  # trmv!
 
+### NewtonBDiagPC
 #------------------------------------------------------------------------------
 # AbstractPC Interface
-function calcPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
+function calcPC(pc::NewtonBDiagPC, mesh::AbstractMesh, sbp::AbstractOperator,
                 eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
 
-  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)
-  pert = Complex128(0, opts["epsilon"])
-  func = ctx_residual[1]
-  calcVolumePreconditioner(pc, mesh, sbp, eqn, opts, pert, func, t)
-  factorVolumePreconditioner(pc, mesh, sbp, eqn, opts)
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)  # unnecessary?
+
+  pc.evalJacobian(mesh, sbp, eqn, opts, pc.assem)
+  factorBDiagPC(pc, mesh, sbp, eqn, opts)
 end
 
-function applyPC(pc::NewtonVolumePC, mesh::AbstractMesh, sbp::AbstractOperator,
+function applyPC(pc::NewtonBDiagPC, mesh::AbstractMesh, sbp::AbstractOperator,
                  eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
                  x::AbstractVector)
 
-  applyVolumePreconditioner(pc, mesh, sbp, eqn, opts, b, x)
+  applyBDiagPC(pc, mesh, sbp, eqn, opts, b, x)
 
   return nothing
 end
+
+
+function applyPCTranspose(pc::NewtonBDiagPC, mesh::AbstractMesh, sbp::AbstractOperator,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector)
+
+  applyBDiagPC(pc, mesh, sbp, eqn, opts, b, x, trans=true)
+
+  return nothing
+end
+
+
 
 # we could define applyPCTranspose, but this PC is ineffective so don't bother
 
 #------------------------------------------------------------------------------
-# Volume preconditioner implementation
+# block diagonal preconditioner implementation
 
-"""
-  This function computes the jacobian of the volume integrals for use as a
-  preconditioner.  Boundary integrals are also included because it is easy
-  to do so.
-
-  This function uses eqn.q and eqn.res as temporary arrays.  On exit, 
-  eqn.q will have the same value as on entry, and the real part of eqn.res will
-  be consistent with the real part of eqn.q (but the complex part is undefined).
-  On entry, the imaginary part of eqn.q must be zero.
-
-  Complex step method only!
-
-  **Inputs**
-
-   * mesh
-   * sbp
-   * eqn
-   * opts
-   * pert: the perturbation to use
-   * func: evalResidual-like function (eqn.q -> eqn.res), same signature
-    * t: current time
-
-  **Inputs/Outputs**
-
-   * newton_data: vol_prec is modified
-
-  **Implementation Notes:**
-
-  This function is actually doing a distance-0 coloring.  The number of residual
-  evaluations is mesh.numDofPerNode*mesh.numNodesPerElement
-"""
-function calcVolumePreconditioner(newton_data::NewtonData, mesh, sbp, eqn, opts, pert, func::Function, t=0.0)
-
-  println("computing volume PC")
-  if opts["jac_method"] != 2
-    throw(ErrorException("jac method must be 2 for calcVolumePreconditioner"))
-  end
-
-  # get original values of keys
-#  addVolumeIntegrals = opts["add_volume_integrals"]
-#  addBoundaryIntegrals = opts["add_boundaryIntegrals"]  #TODO: include this?
-  addFaceIntegrals = opts["addFaceIntegrals"]
-  # leave addStabilization alone
-
-  opts["addFaceIntegrals"] = false
-  newton_data.vol_prec.is_factored = false
-
-  h = imag(pert)
-
-  volume_jac = newton_data.vol_prec.volume_jac
-
-  col = 1  # column of each element jacobian
-  for i=1:mesh.numNodesPerElement
-    for j=1:mesh.numDofPerNode
-
-      # apply perturbation
-      # volume integrals are local, so no need ot perturb parallel buffers
-      for k=1:mesh.numEl
-        eqn.q[j, i, k] += pert
-      end
-
-      func(mesh, sbp, eqn, opts, t)
-
-      # extract jacobian of each element
-      # also undo the perturbation
-      for k=1:mesh.numEl
-        pos = 1
-        eqn.q[j, i, k] -= pert
-
-        for p=1:mesh.numNodesPerElement
-          for m=1:mesh.numDofPerNode
-            volume_jac[pos, col, k] = imag(eqn.res[m, p, k])/h
-            pos += 1
-          end
-        end
-      end  # end loop k
-
-      col += 1  # advance to next column
-    end  # end loop j
-  end  # end loop i
-
-  # re-enable the face integrals
-
-  opts["addFaceIntegrals"] = addFaceIntegrals
-
-  return nothing
-end
 
 """
   This function factors the volume preconditioner.  It uses Lapack to do an
   LU factorization with partial pivoting.  The user is allowed to modify
-  newton_data.vol_prec.volume_jac after calling [`calcVolumePreconditioner`](@ref)
+  `pc.diag_jac`_jac after calling [`calcBDiagPC`](@ref)
   but before calling this routine.
 
   **Inputs**
@@ -129,40 +55,38 @@ end
 
   **Inputs/Outputs**
 
-   * newton_data: vol_prec is updated.  volume_jac is factored in-place and
-                  ipiv is overwritten with the permutation
+   * newton_data: vol_prec is updated. `pc.diag_jac` is factored in-place and
+                 `pc.ipiv` is overwritten with the permutation
 
 """
-function factorVolumePreconditioner(newton_data::NewtonData, mesh, sbp, eqn, opts)
+function factorBDiagPC(pc::NewtonBDiagPC, mesh, sbp, eqn, opts)
 
 
-  volume_prec = newton_data.vol_prec
 
   for i=1:mesh.numEl
-    jac_i = sview(volume_prec.volume_jac, :, :, i)
-    ipiv_i = sview(volume_prec.ipiv, :, i)
+    jac_i = sview(pc.diag_jac.A, :, :, i)
+    ipiv_i = sview(pc.ipiv, :, i)
 
     # call Lapack here
     info = getrf!(jac_i, ipiv_i)
     @assert info == 0
   end
 
-  volume_prec.is_factored = true
+  pc.is_factored = true
 
   return nothing
 end
 
 """
   Apply the preconditioner, ie. do inv(A)*x = b, where A is calculated by
-  [`calcVolumePreconditioner`](@ref).
+  [`calcBDiagPC`](@ref).
 
   This is not likely to be a sensible preconditioner for Contiuous Galerkin
   discretizations.
 
   **Inputs**
 
-   * newton_data: NewtonData object containing a [`VolumePreconditioner `](@ref)
-                  object, already factored by [`factorVolumePreconditioner`](@ref).
+   * pc: a [`BDiagPC `](@ref) object, already factored by [`factorBDiagPC`](@ref).
    * mesh
    * sbp
    * eqn
@@ -171,56 +95,244 @@ end
 
   **Inputs/Outputs**
 
-   * b: the output vector
+   * b: the output vector (overwritten)
+
+  **Keyword Arguments**
+
+   * trans: if true, apply the transposed operation, default false
 
 """
-function applyVolumePreconditioner(newton_data::NewtonData, mesh, sbp, eqn, opts, x::AbstractVector, b::AbstractVector)
+function applyBDiagPC(pc::NewtonBDiagPC, mesh, sbp, eqn, opts, x::AbstractVector, b::AbstractVector; trans::Bool=false)
 
   # we need to do inv(A)*x = b --> solve A*b = x using the factorization A.
 
-  volume_prec = newton_data.vol_prec
-  @assert volume_prec.is_factored
+  @assert pc.is_factored
+  if trans
+    tchar = 'T'
+  else
+    tchar = 'N'
+  end
 
-  jac_size = size(volume_prec.volume_jac, 1)
-  workvec = zeros(Float64, jac_size)  # hold values passed into LAPACK
+
+  bs = pc.bs
+  workvec = zeros(Float64, bs)  # hold values passed into LAPACK
+
+  fill!(b, 0)
 
   for i=1:mesh.numEl
-    jacf_i = sview(volume_prec.volume_jac, :, :, i)
-    ipiv_i = sview(volume_prec.ipiv, :, i)
-#    println("jacf = \n", jacf_i)
+    jacf_i = sview(pc.diag_jac.A, :, :, i)
+    ipiv_i = sview(pc.ipiv, :, i)
 
-    # get the x values
-    # this could be faster if we assume the dofs on each element are numbered
-    # sequentially
-    pos = 1
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        dof_i = mesh.dofs[k, j, i]
-        workvec[pos] = x[dof_i]
-        pos += 1
-      end
-    end
-
-    # use mesh.dofs to get the right entries from b
-    # the order has to be consistent with the order in which the dofs were
-    # perturbed when calculating the jacobian.
+    getValues(mesh, x, i, workvec)
 
     # call Lapack GETRS to solve for b (in-place)
-    getrs2!('N', jacf_i, ipiv_i, workvec)
+    getrs2!(tchar, jacf_i, ipiv_i, workvec)
 
-    # put entries back into b using mesh.dofs
-    pos = 1
-    for j=1:mesh.numNodesPerElement
-      for k=1:mesh.numDofPerNode
-        dof_i = mesh.dofs[k, j, i]
-        b[dof_i] = workvec[pos]
-        pos += 1
-      end
-    end
-
-
+    setValues(mesh, workvec, i, b)
 
   end  # end loop i
 
+  return nothing
+end
+
+# these names are too generic to export
+import Jacobian: getValues, setValues
+
+
+"""
+  Computes the action of the inverse of the preconditioner on a vector.
+  This is not required by the AbstractPC interface, but is useful for
+  constructing smoothers.
+
+  Note that the preconditioner is defined as the inverse of some
+  some approximation to the Jacobian. so the inverse of the preconditioner
+  is the approximate Jacobian itself.
+
+  **Inputs**
+
+   * pc: [`NewtonBDiagPC`](@ref).  Can be factored or not
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * x: vector to multiply against
+
+  **Inputs/Outputs**
+
+   * b: vector to overwrite with the result.
+
+  **Keyword Arguments**
+
+   * trans: if true, apply the transpose, default false
+
+   Aliasing Restrictions: `x` and `b` cannot alias
+"""
+function applyBDiagPCInv(pc::NewtonBDiagPC, mesh, sbp, eqn, opts,
+                         x::AbstractVector, b::AbstractVector;
+                         zero_output=true, trans::Bool=false)
+
+
+  if !pc.is_factored
+    diagMatVec(pc.diag_mat, mesh, x, b, zero_output=zero_output, trans=trans)
+  else
+
+    if zero_output
+      fill!(b, 0)
+    end
+
+    _trans::Bool = trans
+
+    bs = pc.bs
+    workvec = zeros(Float64, bs)  # hold values passed into LAPACK
+
+    for i=1:mesh.numEl
+      jacf_i = sview(pc.diag_jac.A, :, :, i)
+      ipiv_i = sview(pc.ipiv, :, i)
+
+      getValues(mesh, x, i, workvec)
+
+      if trans
+        laswp!(workvec, 1, bs, ipiv_i)
+        trmv!('L', 'T', 'U', jacf_i, workvec)
+        trmv!('U', 'T', 'N', jacf_i, workvec)
+      else
+        # do b = P*L*U*x
+        trmv!('U', 'N', 'N', jacf_i, workvec)
+        trmv!('L', 'N', 'U', jacf_i, workvec)
+        applyIpiv!(ipiv_i, workvec)
+      end
+
+      setValues(mesh, workvec, i, b)
+    end  # end loop i
+
+  end  # end if
+
+  return nothing
+end
+
+
+### NewtonBJacobiPC
+#------------------------------------------------------------------------------
+# AbstractPC Interface
+function calcPC(pc::NewtonBJacobiPC, mesh::AbstractMesh, sbp::AbstractOperator,
+                eqn::AbstractSolutionData, opts::Dict, ctx_residual, t)
+
+  calcPC(pc.diag_pc, mesh, sbp, eqn, opts, ctx_residual, t)
+  setPCCtx(pc, mesh, sbp, eqn, opts, ctx_residual, t)  # unnecessary?
+end
+
+
+"""
+  Applies the `NewtonBJacobiPC`.  Note that the initial value of `x` is
+  used as the initial guess.
+"""
+function applyPC(pc::NewtonBJacobiPC, mesh::AbstractMesh, sbp::AbstractOperator,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector{T}; trans::Bool=false) where {T}
+
+  @assert length(x) == length(b)
+  @assert length(x) == mesh.numDof
+
+  t1 = zeros(T, length(x))
+  t2 = zeros(T, length(x))
+  _trans::Bool = trans
+
+  exit_status = 1  # 1 = itermax, 2 = res_tol
+  for i=1:pc.itermax
+
+    # t1 = R*x
+    fill!(t1, 0)
+    computeRProduct(pc, mesh, sbp, eqn, opts, x, t1, trans=_trans)
+
+    # t1 = b - R*x
+    @simd for j=1:length(t1)
+      t1[j] = b[j] - t1[j]
+    end
+    
+    if pc.res_tol > 0 || pc.verbose  # save the expense of the mat-vec if residual will
+                       # not be checked
+      # compute residual: b - A*x = t1 - D*x
+      applyBDiagPCInv(pc.diag_pc, mesh, sbp, eqn, opts, x, t2; trans=_trans)
+      @simd for j=1:length(t2)
+        t2[j] = t1[j] - t2[j]
+      end
+
+      res_norm = calcEuclidianNorm(eqn.comm, t2)
+      if pc.verbose
+        println(BSTDOUT, "  iteration ", i, " linear residual norm: ", res_norm)
+        println(BSTDOUT,  "    max res = ", maximum(abs.(t2)))
+      end
+
+      if res_norm < pc.res_tol
+        exit_status = 2
+        break
+      end
+    end  # end if res_tol > 0
+
+    # x = D^-1 * (b - R*x) = D^-1 * t1
+    if _trans
+      applyPCTranspose(pc.diag_pc, mesh, sbp, eqn, opts, 0.0, t1, x)
+    else
+      applyPC(pc.diag_pc, mesh, sbp, eqn, opts, 0.0, t1, x)
+    end
+  end
+
+  if pc.verbose
+    if exit_status == 1
+      println(BSTDOUT, "exited Block Jacobi smoother due to itermax")
+      # res_norm is one iteration old, so don't print it here
+    else
+      println(BSTDOUT, "exited Block Jacobi smoother due to residual norm")
+
+    end
+  end
+
+  flush(BSTDOUT)
+
+  return nothing
+end
+
+
+function applyPCTranspose(pc::NewtonBJacobiPC, mesh::AbstractMesh,
+                 sbp::AbstractOperator,
+                 eqn::AbstractSolutionData, opts::Dict, t, b::AbstractVector, 
+                 x::AbstractVector{T}) where {T}
+
+  applyPC(pc, mesh, sbp, eqn, opts, t, b, x, trans=true)
+end
+
+
+"""
+  Multiply R (= A - D), where A is the Jacobian and D is the block diagonal), by
+  a vector.
+
+  **Inputs**
+
+   * pc
+   * mesh
+   * sbp
+   * eqn
+   * opts
+   * x: vector to multiply against
+
+  **Inputs/Outputs**
+
+   * b: vector to overwrite with result
+
+  **Inputs/Outputs**
+
+   * trans: if true, compute R.'x, default false
+"""
+function computeRProduct(pc::NewtonBJacobiPC, mesh, sbp, eqn, opts, x, b; trans::Bool=false)
+
+  # compute R*x as A*x - D*x
+  if trans
+    pc.evalJacTVecProduct(mesh, sbp, eqn, opts, x, b)
+  else
+    pc.evalJacVecProduct(mesh, sbp, eqn, opts, x, b)
+  end
+  scale!(b, -1)
+  applyBDiagPCInv(pc.diag_pc, mesh, sbp, eqn, opts, x, b, zero_output=false, trans=trans)
+  scale!(b, -1)
   return nothing
 end

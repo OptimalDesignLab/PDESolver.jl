@@ -1,7 +1,7 @@
 module NonlinearSolvers
 
-pde_pumi_interface_path = joinpath(Pkg.dir("PumiInterface"), "src")
-push!(LOAD_PATH, pde_pumi_interface_path)
+#pde_pumi_interface_path = joinpath(Pkg.dir("PumiInterface"), "src")
+#push!(LOAD_PATH, pde_pumi_interface_path)
 using ArrayViews
 import ArrayViews.view
 using PDESolver
@@ -10,9 +10,9 @@ using ODLCommonTools
 using Utils
 import ODLCommonTools.sview
 import MPI
-using PETSc2
-using Utils
+using PETSc2  #TODO: see if this can be removed
 using SummationByParts
+using Jacobian
 using LinearSolvers
 
 import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
@@ -22,17 +22,18 @@ import LinearSolvers: calcPC, applyPC, applyPCTranspose, calcLinearOperator,
 include(joinpath(Pkg.dir("PDESolver"), "src/solver/debug.jl"))  # debug macro
 include("rk4.jl")
 include("lserk.jl")
-  export lserk54
+export lserk54
 
 include("jac_recalc.jl")
-include("preconditioning_types.jl")
 include("newton.jl")
 export getNewtonPCandLO
+include("preconditioning_types.jl")
 
 include("crank_nicolson.jl")
 include("preconditioning.jl")
 include("globalization.jl")
 include("predictor_corrector.jl")
+include("p_homotopy.jl")
 #include("newton_fd_old.jl")
 
 #-----------------------------------------------------------
@@ -47,8 +48,7 @@ include("crank_nicolson_uadj/crank_nicolson_uadj_checkpointstraight.jl")
 # predictor_corrector.jl
 export predictorCorrectorHomotopy
 
-# jacobian.jl
-export AssembleElementData, assembleElement, assembleInterface,
-       assembleSharedFace, assembleBoundary, NullAssembleElementData
+# p_homotopy.jl
+export pHomotopy
 
 end

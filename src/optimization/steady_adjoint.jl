@@ -18,7 +18,7 @@ using PETSc2
    
   **Inputs/Outputs**
 
-   * adjoint_vec: Array{Tsol, 1} of length mesh.numDof
+   * adjoint_vec: Array{Tsol, 1} of length mesh.numDof, (overwritten)
 
   **Keyword Arguments**
 
@@ -115,9 +115,7 @@ function calcAdjoint(mesh::AbstractDGMesh{Tmsh},
                   functionalData::AbstractFunctional,
                   adjoint_vec::Array{Tsol,1}; start_comm=true) where {Tmsh, Tsol, Tres}
 
-  pc, lo = getNewtonPCandLO(mesh, sbp, eqn, opts)
-  ls = StandardLinearSolver(pc, lo, eqn.comm, opts)
-
+  ls = createLinearSolver(mesh, sbp, eqn, opts)
   calcAdjoint(mesh, sbp, eqn, opts, ls, functionalData, adjoint_vec;
               recalc_pc=true, recalc_jac=true, start_comm=start_comm)
 

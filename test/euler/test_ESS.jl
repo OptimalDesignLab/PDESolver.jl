@@ -1099,6 +1099,9 @@ function test_ESS()
     runESTest_diagE(mesh, sbp, eqn, opts, irflux_diagE, isEC=true)
     penalty_lf_diagE = EulerEquationMod.FluxDict["LFPenalty"]
     runESTest_diagE(mesh, sbp, eqn, opts, penalty_lf_diagE, isEC=false)
+    hllflux_diagE = EulerEquationMod.FluxDict["HLLFlux"]
+    runESTest_diagE(mesh, sbp, eqn, opts, hllflux_diagE, isEC=false)
+
 
 
   end  # end facts block

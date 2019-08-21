@@ -694,6 +694,49 @@ function (obj::ErrorFlux_revq)(params::ParamType,
 end
 
 
+mutable struct ZeroFlux <: FluxType
+end
+
+function (obj::ZeroFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractArray,
+              F::AbstractArray{Tres}) where {Tsol, Tres}
+
+  fill!(F, 0)
+
+  return nothing
+end
+
+
+mutable struct ZeroFlux_revm <: FluxType_revm
+end
+
+function (obj::ZeroFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+mutable struct ZeroFlux_revq <: FluxType_revq
+end
+
+function (obj::ZeroFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  return nothing
+end
+
+
+
+
 
 """
   This flux function sets F = q.  Useful for testing
@@ -796,6 +839,40 @@ function (obj::LFFlux)(params::ParamType,
   calcLFFlux(params, uL, uR, aux_vars, nrm, F)
   return nothing
 end
+
+"""
+  calls [`calcEulerFlux_IR_revm`](@ref)
+"""
+mutable struct LFFlux_revm <: FluxType_revm
+end
+
+function (obj::LFFlux_revm)(params::ParamType,
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcLFFlux_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+  return nothing
+end
+
+
+mutable struct LFFlux_revq <: FluxType_revq
+end
+
+function (obj::LFFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, dir::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcLFFlux_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, dir,
+                        F_bar)
+
+  return nothing
+end
+
 
 
 mutable struct StandardFlux <: FluxType
@@ -988,6 +1065,127 @@ function (obj::LFPenalty_revq)(params::ParamType,
 end
 
 
+"""
+  Calls [`calcHLLFlux`](@ref)
+"""
+mutable struct HLLFlux <: FluxType
+end
+
+function (obj::HLLFlux)(params::ParamType,
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tsol, Tres}
+
+  calcHLLFlux(params, uL, uR, aux_vars, nrm, F)
+
+  return nothing
+end
+
+
+mutable struct HLLFlux_revq <: FluxType_revq
+end
+
+function (obj::HLLFlux_revq)(params::ParamType,
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tmsh, Tsol, Tres}
+
+  calcHLLFlux_revq(params, qL, qL_bar, qR, qR_bar, aux_vars, nrm, F_bar)
+
+  return nothing
+end
+
+
+mutable struct HLLFlux_revm <: FluxType_revm
+end
+
+function (obj::HLLFlux_revm)(params::ParamType{Tdim},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tdim, Tmsh, Tsol, Tres}
+
+  calcHLLFlux_revm(params, qL, qR, aux_vars, nrm, nrm_bar, F_bar)
+
+  return nothing
+end
+
+
+
+
+"""
+  A special flux function for computing the face integral of (psi_L - psi_R),
+  where psi is the potential flux.  F[1] = psiL - psiR, all other components
+  zero.
+"""
+mutable struct PotentialFlux <: FluxType
+end
+
+function (obj::PotentialFlux)(params::ParamType{Tdim},
+              uL::AbstractArray{Tsol,1},
+              uR::AbstractArray{Tsol,1},
+              aux_vars::AbstractVector{Tres},
+              nrm::AbstractVector,
+              F::AbstractVector{Tres}) where {Tdim, Tsol, Tres}
+
+
+  # psi = rho*U_n
+  psiL = zero(Tres); psiR = zero(Tres)
+  for i=1:Tdim
+    psiL += uL[i+1]*nrm[i]
+    psiR += uR[i+1]*nrm[i]
+  end
+
+  fill!(F, 0)
+  F[1] = psiL - psiR
+
+  return nothing
+end
+
+
+mutable struct PotentialFlux_revq <: FluxType_revq
+end
+
+function (obj::PotentialFlux_revq)(params::ParamType{Tdim},
+                      qL::AbstractArray{Tsol,1}, qL_bar::AbstractArray{Tsol, 1},
+                      qR::AbstractArray{Tsol, 1}, qR_bar::AbstractArray{Tsol, 1},
+                      aux_vars::AbstractArray{Tres}, nrm::AbstractArray{Tmsh},  
+                      F_bar::AbstractArray{Tres}) where {Tdim, Tmsh, Tsol, Tres}
+
+  psiL_bar = F_bar[1]; psiR_bar = -F_bar[1]
+
+  for i=1:Tdim
+    qL_bar[i+1] += psiL_bar*nrm[i]
+    qR_bar[i+1] += psiR_bar*nrm[i]
+  end
+
+  return nothing
+end
+
+mutable struct PotentialFlux_revm <: FluxType_revm
+end
+
+function (obj::PotentialFlux_revm)(params::ParamType{Tdim},
+                  qL::AbstractArray{Tsol,1}, qR::AbstractArray{Tsol, 1},
+                  aux_vars::AbstractArray{Tres},
+                  nrm::AbstractArray{Tmsh}, nrm_bar::AbstractArray{Tmsh},
+                  F_bar::AbstractArray{Tres}) where {Tdim, Tmsh, Tsol, Tres}
+
+  psiL_bar = F_bar[1]; psiR_bar = -F_bar[1]
+
+  for i=1:Tdim
+    nrm_bar[i] += qL[i+1]*psiL_bar + qR[i+1]*psiR_bar
+  end
+
+  return nothing
+end
+
+
+
+
 
 @doc """
 ### EulerEquationMod.FluxDict
@@ -1030,6 +1228,7 @@ end
 """->
 global const FluxDict = Dict{String, FluxType}(
 "ErrorFlux" => ErrorFlux(),
+"ZeroFlux" => ZeroFlux(),
 "IdentityFlux" => IdentityFlux(),
 "RoeFlux" => RoeFlux(),
 "LFFlux" => LFFlux(),
@@ -1038,6 +1237,8 @@ global const FluxDict = Dict{String, FluxType}(
 "IRFlux" => IRFlux(),
 "IRSLFFlux" => IRSLFFlux(),
 "LFPenalty" => LFPenalty(),
+"HLLFlux" => HLLFlux(),
+"PotentialFlux" => PotentialFlux(),
 )
 
 @doc """
@@ -1087,10 +1288,14 @@ end
 """
 global const FluxDict_revm = Dict{String, FluxType_revm}(
 "ErrorFlux" => ErrorFlux_revm(),
+"ZeroFlux" => ZeroFlux_revm(),
 "RoeFlux" => RoeFlux_revm(),
+"LFFlux" => LFFlux_revm(),
 "IRFlux" => IRFlux_revm(),
 "IRSLFFlux" => IRSLFFlux_revm(),
 "LFPenalty" => LFPenalty_revm(),
+"HLLFlux" => HLLFlux_revm(),
+"PotentialFlux" => PotentialFlux_revm(),
 )
 
 """
@@ -1142,10 +1347,14 @@ end # End function getFluxFunctors_revm
 """
 global const FluxDict_revq = Dict{String, FluxType_revq}(
 "ErrorFlux" => ErrorFlux_revq(),
+"ZeroFlux" => ZeroFlux_revq(),
 "RoeFlux" => RoeFlux_revq(),
+"LFFlux" => LFFlux_revq(),
 "IRFlux" => IRFlux_revq(),
 "IRSLFFlux" => IRSLFFlux_revq(),
 "LFPenalty" => LFPenalty_revq(),
+"HLLFlux" => HLLFlux_revq(),
+"PotentialFlux" => PotentialFlux_revq(),
 )
 
 """
@@ -1178,9 +1387,25 @@ function getFluxFunctors_revq(mesh::AbstractDGMesh, sbp, eqn, opts)
   assertFieldsConcrete(eqn.flux_func_revq)
   assertFieldsConcrete(eqn.volume_flux_func_revq)
 
-
-
   return nothing
 end # End function getFluxFunctors_revq
 
+import PDESolver.setFluxFunction
 
+function setFluxFunction(mesh::AbstractDGMesh, sbp::AbstractOperator,
+                         eqn::EulerData, opts,
+                         name::String=opts["Flux_name"])
+
+  eqn.flux_func = FluxDict[name]
+  if !opts["need_adjoint"]
+    name = "ErrorFlux"
+  end
+  eqn.flux_func_revm = FluxDict_revm[name]
+  eqn.flux_func_revq = FluxDict_revq[name]
+
+  assertFieldsConcrete(eqn.flux_func)
+  assertFieldsConcrete(eqn.flux_func_revm)
+  assertFieldsConcrete(eqn.flux_func_revq)
+
+  return nothing
+end

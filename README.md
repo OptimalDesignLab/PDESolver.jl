@@ -80,6 +80,9 @@ mesh.
 
  * v0.6: upgrade from Julia 0.4 to 0.6
  * v0.7: functional and residual reverse mode, serial and parallel
+ * v0.8: add shock capturing, adjoint based error estimation, preliminary 
+         h-adaptation, Local Projection stabilization, p-homotopy method for
+         solving high order shock problems, several steady examples
 
 Master branch:
 [![Build Status](https://travis-ci.org/OptimalDesignLab/PDESolver.jl.svg?branch=master)](https://travis-ci.org/OptimalDesignLab/PDESolver.jl)

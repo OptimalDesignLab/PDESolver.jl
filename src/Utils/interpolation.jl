@@ -38,6 +38,40 @@ function interpField(sbp_old::AbstractOperator, q_old::Abstract3DArray,
   return nothing
 end
 
+"""
+  This function interpolates a vector from one mesh to another.  The two
+  meshes must have the elements numbered in the same order.
+
+  Currently, the vector must have `mesh.numDofPerNode` degrees of freedom
+  per node.
+
+  **Inputs**
+
+   * mesh_old: the old mesh
+   * sbp_old: the old SBP operator
+   * q_old: the vector containing the data, length `mesh_old.numDof`
+   * mesh_new: the new mesh
+   * sbp_new: the new SBP operator
+
+  **Inputs/Outputs**
+  
+   * q_new: vector to overwrite with the interpolated values
+"""
+function interpField(mesh_old::AbstractMesh, sbp_old::AbstractOperator,
+                     q_old::AbstractVector, mesh_new::AbstractMesh,
+                     sbp_new::AbstractOperator, q_new::AbstractVector)
+
+  @assert length(q_old) == mesh_old.numDof
+  @assert length(q_new) == mesh_new.numDof
+  # construct interpolation operator
+  node_coords = calcnodes(sbp_new)
+  interp_op = SummationByParts.buildinterpolation(sbp_old, node_coords)
+
+  applyInterpolation(interp_op, mesh_old, q_old, mesh_new, q_new)
+
+  return nothing
+end
+
 
 function applyInterpolation(interp_op::AbstractMatrix, q_old::Abstract3DArray,
                             q_new::Abstract3DArray)
@@ -58,3 +92,39 @@ function applyInterpolation(interp_op::AbstractMatrix, q_old::Abstract3DArray,
 
   return nothing
 end
+
+function applyInterpolation(interp_op::AbstractMatrix,
+                        mesh_old::AbstractMesh, q_old::AbstractVector{Told},
+                        mesh_new::AbstractMesh, q_new::AbstractVector{Tnew}
+                        ) where {Told, Tnew}
+
+  q_el_old = zeros(Told, mesh_old.numDofPerNode, mesh_old.numNodesPerElement)
+  q_el_new = zeros(Tnew, mesh_new.numDofPerNode, mesh_new.numNodesPerElement)
+  for i=1:mesh_old.numEl
+
+    @simd for j=1:mesh_old.numNodesPerElement
+      @simd for k=1:mesh_old.numDofPerNode
+        q_el_old[k, j] = q_old[mesh_old.dofs[k, j, i]]
+      end
+    end
+
+    smallmatmatT!(q_el_old, interp_op, q_el_new)
+
+    @simd for j=1:mesh_new.numNodesPerElement
+      @simd for k=1:mesh_new.numDofPerNode
+        q_new[mesh_new.dofs[k, j, i]] = q_el_new[k, j]
+      end
+    end
+
+  end  # end i
+
+  return nothing
+end
+
+
+
+
+
+
+
+

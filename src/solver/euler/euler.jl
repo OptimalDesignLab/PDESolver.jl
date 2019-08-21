@@ -115,7 +115,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
   eqn.params.t = t  # record t to params
   myrank = mesh.myrank
 
-#  println("entered evalResidual")
+  #println("\nentered evalResidual")
   time.t_send += @elapsed if opts["parallel_type"] == 1
     setParallelData(eqn.shared_data, opts["parallel_data"])
     startSolutionExchange(mesh, sbp, eqn, opts)
@@ -130,6 +130,7 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("volume integral @time printed above")
   end
 
+
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -139,10 +140,12 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("boundary integral @time printed above")
   end
 
+
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)
-#    println("stabilizing @time printed above")
+    #println("stabilizing @time printed above")
   end
+
 
   time.t_face += @elapsed if mesh.isDG && opts["addFaceIntegrals"]
     evalFaceIntegrals(mesh, sbp, eqn, opts)
@@ -150,21 +153,26 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
   end
 
 
-
   time.t_sharedface += @elapsed if mesh.commsize > 1
     evalSharedFaceIntegrals(mesh, sbp, eqn, opts)
-#    println("evalSharedFaceIntegrals @time printed above")
+    #println("evalSharedFaceIntegrals @time printed above")
   end
 
+
+  time.t_shock += @elapsed if opts["addShockCapturing"]
+    evalShockCapturing(mesh, sbp, eqn, opts)
+    #println("shock capturing @time printed above")
+  end
+
+
   time.t_source += @elapsed evalSourceTerm(mesh, sbp, eqn, opts)
-#  println("source integral @time printed above")
+  #println("source integral @time printed above")
 
   # apply inverse mass matrix to eqn.res, necessary for CN
   if opts["use_Minv"]
     applyMassMatrixInverse3D(mesh, sbp, eqn, opts, eqn.res)
   end
 
- 
   return nothing
 end  # end evalResidual
 
@@ -280,6 +288,11 @@ function majorIterationCallback(itr::Integer,
   if opts["write_vis"] && (((itr % opts["output_freq"])) == 0 || itr == 1)
     vals = real(eqn.q_vec)  # remove unneded imaginary part
 
+    #TODO: testing
+    if opts["addShockCapturing"]
+      writeShockSensorField(mesh, sbp, eqn, opts, getShockSensor(eqn.shock_capturing))
+    end
+
     saveSolutionToMesh(mesh, vals)
     fname = string("solution_", itr)
     writeVisFiles(mesh, fname)
@@ -292,15 +305,12 @@ function majorIterationCallback(itr::Integer,
       writeVisFiles(mesh, fname)
     end
 
+
     vals = real(eqn.res_vec)  # remove unneded imaginary part
     saveSolutionToMesh(mesh, vals)
     fname = string("residual_", itr)
-    println(BSTDOUT, "writing files ", fname)
-    println(BSTDOUT, "res_norm of vals = ", calcNorm(eqn, vals, strongres=true))
-    println(BSTDOUT, "res_norm of res_vec = ", calcNorm(eqn, eqn.res_vec, strongres=true))
     writeVisFiles(mesh, fname)
-    writedlm(string(fname, ".dat"), vals)
-    writedlm("Minv.dat", real(eqn.Minv))
+
 
 
 #=
@@ -316,98 +326,9 @@ function majorIterationCallback(itr::Integer,
   end
 
   if opts["callback_write_qvec"] && (itr % opts["output_freq"] == 0)
-    fname = string("callback_q_vec", itr, "_", myrank, ".dat")
-    writedlm(fname, real(eqn.q_vec))
+    writeSolutionFiles(mesh, sbp, eqn, opts, "callback_q_vec_$itr")
   end
 
-  #=
-  # compute norms of individual components, both max and L2
-  max_vars = zeros(Tres, mesh.numDofPerNode)
-  L2_vars = zeros(Tres, mesh.numDofPerNode)
-
-  for i=1:mesh.numDofPerNode:mesh.numDof
-    for j=1:mesh.numDofPerNode
-      val = eqn.res_vec[i + j - 1]
-
-      if abs(val) > max_vars[j]
-        max_vars[j] = abs(val)
-      end
-
-      L2_vars[j] += eqn.M[i + j - 1]*val*val
-    end
-  end
-
-  
-  # don't forget the square root
-  for j=1:mesh.numDofPerNode
-    L2_vars[j] = sqrt(L2_vars[j])
-    println("var $i: max residual = ", max_vars[j], ", L2 residual = ", L2_vars[j])
-  end
-  =#
-
-
-
-  #=
-  # compute max residual of rho and E
-  max_rho = 0.0
-  max_E = 0.0
-  for i=1:mesh.numDofPerNode:mesh.numDof
-    if abs(eqn.res_vec[i]) > max_rho
-      max_rho = abs(eqn.res_vec[i])
-    end
-  end
-
-  for i=4:mesh.numDofPerNode:mesh.numDof
-    if abs(eqn.res_vec[i]) > max_E
-      max_E = abs(eqn.res_vec[i])
-    end
-  end
-
-  println(BSTDOUT, "iteration", itr, " Res[Rho] = ", max_rho, " Res[E] = ", max_E)
-  =#
-  
-    # add an option on control this or something.  Large blocks of commented
-    # out code are bad
-#=
-  if itr == 0
-    #----------------------------------------------------------------------------
-    # Storing the initial density value at all the nodes
-    global const vRho_act = zeros(mesh.numNodes)
-    k = 1
-    for counter1 = 1:4:length(eqn.q_vec)
-      vRho_act[k] = eqn.q_vec[counter1]
-      k += 1
-    end
-    println("Actual Density value succesfully extracted")
-    #--------------------------------------------------------------------------
-  else
-    #--------------------------------------------------------------------------
-    # Calculate the error in density
-    vRho_calc = zeros(vRho_act)
-    k = 1
-    for counter1 = 1:4:length(eqn.q_vec)
-      vRho_calc[k] = eqn.q_vec[counter1]
-      k += 1
-    end
-    ErrDensityVec = vRho_calc - vRho_act
-    # ErrDensity1 = norm(ErrDensityVec, 1)/mesh.numNodes
-    # ErrDensity2_discrete = norm(ErrDensityVec, 2)/mesh.numNodes
-    # println("DensityErrorNormL1 = ", ErrDensity1)
-    ErrDensity2 = 0.0
-    k = 1
-    for counter1 = 1:length(ErrDensityVec)
-      ErrDensity2 += real(ErrDensityVec[counter1])*eqn.M[k]*real(ErrDensityVec[counter1])
-      k += 4
-    end
-    ErrDensity2 = sqrt(ErrDensity2)
-    println("DensityErrorNormL2 = ", ErrDensity2)
-    # println("Discrete density error norm L2 = ", ErrDensity2_discrete)
-
-
-
-    #--------------------------------------------------------------------------
-  end
-=#
   if opts["write_entropy"]
     if mesh.isDG
       # undo multiplication by inverse mass matrix
@@ -424,13 +345,6 @@ function majorIterationCallback(itr::Integer,
 
       # compute w^T * res_vec
       val2 = real(contractResEntropyVars(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
-#      val3 = real(contractResEntropyVars2(mesh, sbp, eqn, opts, eqn.q_vec, res_vec_orig))
-
-      # DEBUGGING: compute the potential flux from q
-      #            directly, to verify the boundary terms are the problem
-  #    val3 = calcInterfacePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
-  #    val3 += calcVolumePotentialFlux(mesh, sbp, eqn, opts, eqn.q)
-
       @mpi_master println(f, itr, " ", eqn.params.t, " ",  val, " ", val2)
     end
 
@@ -510,11 +424,6 @@ function majorIterationCallback(itr::Integer,
     =#
   end
 
-  #=
-  #DEBUGGING: write q_vec to file
-  fname = get_parallel_fname("qvec_$itr.dat", mesh.myrank)
-  writedlm(fname, eqn.q_vec)
-  =#
 
   return nothing
 
@@ -581,22 +490,22 @@ function dataPrep(mesh::AbstractMesh{Tmsh}, sbp::AbstractOperator,
 
 
   if mesh.isDG
-    if opts["precompute_q_face"]
+    if opts["precompute_q_face"] && opts["addFaceIntegrals"]
       interpolateFace(mesh, sbp, eqn, opts, eqn.q, eqn.q_face)
       # println("  interpolateFace @time printed above")
     end
 
-    if opts["precompute_face_flux"]
+    if opts["precompute_face_flux"] && opts["addFaceIntegrals"]
       calcFaceFlux(mesh, sbp, eqn, eqn.flux_func, mesh.interfaces, eqn.flux_face)
       #  println("  interpolateFace @time printed above")
     end
-    if opts["precompute_q_bndry"]
+    if opts["precompute_q_bndry"] && opts["addBoundaryIntegrals"]
       interpolateBoundary(mesh, sbp, eqn, opts, eqn.q, eqn.q_bndry, eqn.aux_vars_bndry)
       # println("  interpolateFace @time printed above")
     end
   end
 
-  if opts["precompute_boundary_flux"]
+  if opts["precompute_boundary_flux"] && opts["addBoundaryIntegrals"]
     fill!(eqn.bndryflux, 0.0)
     getBCFluxes(mesh, sbp, eqn, opts)
     # println("  getBCFluxes @time printed above")
@@ -830,6 +739,9 @@ function addStabilization(mesh::AbstractMesh{Tmsh},
 #    test_GLS(mesh, sbp, eqn, opts)
   end
 
+  if opts["use_lps"]
+    applyLPStab(mesh, sbp, eqn, opts)
+  end
 #  println("==== end of addStabilization ====")
 
 
@@ -990,6 +902,37 @@ function evalSourceTerm(mesh::AbstractMesh{Tmsh},
   return nothing
 end  # end function
 
+
+"""
+  This function adds the shock capturing terms (if requested) to the residual.
+
+  **Inputs**:
+
+   * mesh : Abstract mesh type
+   * sbp  : Summation-by-parts operator
+   * eqn  : Euler equation object
+   * opts : options dictonary
+
+  Outputs: none
+
+  Aliasing restrictions: none
+"""
+function evalShockCapturing(mesh::AbstractMesh{Tmsh},
+                     sbp::AbstractOperator, eqn::EulerData{Tsol, Tres, Tdim},
+                     opts) where {Tmsh, Tsol, Tres, Tdim}
+
+  # currently there is only one choice for the shock capturing scheme.
+  # If there are more, need something more sophisiticated to choose.
+  # Perhaps add an abstract typed field to eqn containing the structs
+
+  capture = eqn.shock_capturing
+  applyShockCapturing(mesh, sbp, eqn, opts, capture)
+
+  return nothing
+end
+
+
+#TODO: put this in Utils?
 @doc """
 ### EulerEquationMod.applyMassMatrixInverse3D
 

@@ -176,4 +176,17 @@ mutable struct NSData_{Tsol, Tres, Tdim, Tmsh} <: NSData{Tsol, Tres, Tdim}
 end  # end NSData_ type definition
 
 
+import PDESolver: copyParameters
+
+function copyParameters(eqn_old::NSData, eqn_new::NSData)
+
+  EulerEquationMod.copyParameters(eqn_old.euler_params, eqn_new.euler_params)
+  eqn_new.params.order = eqn_old.params.order
+  eqn_new.params.isViscous = eqn_old.params.isViscous
+  eqn_new.params.penalty_relaxation = eqn_old.params.penalty_relaxation
+  eqn_new.params.const_tii = eqn_old.params.const_tii
+  eqn_new.params.Re = eqn_old.params.Re
+
+  return nothing
+end
 

@@ -35,3 +35,5 @@ change argument order for common_funcs.jl, BCs, flux functions to be
               versions of shared face integrals.
   11/18 - JC: add dJ/dq and dR/dm products.  Make better interface for
               functions to support parallel communication
+  2/19 - JC: move Jacobian stuff to separate module, move sparsity stuff from
+             ODLCommonTools to new module

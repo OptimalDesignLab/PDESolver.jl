@@ -1,8 +1,12 @@
 # functional definitions
 
-import PDESolver.createFunctional
-import ODLCommonTools.getParallelData
+import PDESolver: createFunctional, _evalFunctional, _evalFunctionalDeriv_m,
+                 _evalFunctionalDeriv_q
+import ODLCommonTools: getParallelData, setupFunctional
 
+
+#------------------------------------------------------------------------------
+# Lift and drag
 
 @doc """
 ###EulerEquationMod.BoundaryForceData
@@ -13,14 +17,13 @@ lift and drag values
 """->
 
 mutable struct BoundaryForceData{Topt, fname} <: AbstractBoundaryFunctional{Topt}
-  bcnums::Array{Int,1}  #TODO: make this non-abstract
-  ndof::Int
-  bndry_force::Array{Topt,1}
-  isLift::Bool
-  lift_val::Topt
-  drag_val::Topt
-  dLiftdaoa::Topt # Partial derivative of lift w.r.t. angle of attack
-  dDragdaoa::Topt # Partial derivative of drag w.r.t. angle of attack
+  bcnums::Array{Int,1}
+
+  # factors to multiply x, y, z momenta by, determines if lift or drag is
+  # calculated
+  facx::Topt
+  facy::Topt
+  facz::Topt
 
   # things needed for the calculation
   qg::Vector{Topt}
@@ -32,20 +35,15 @@ end
 """
 function LiftForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, bcnums) where Topt
 
-  ndof = mesh.dim
-  bndry_force = zeros(Topt, mesh.dim)
-  isLift = true
-  lift_val = 0.0
-  drag_val = 0.0
-  dLiftdaoa = 0.0
-  dDragdaoa = 0.0
+  facx = 0
+  facy = 0
+  facz = 0
 
   qg = zeros(Topt, mesh.numDofPerNode)
   euler_flux = zeros(Topt, mesh.numDofPerNode)
 
-  return BoundaryForceData{Topt, :lift}(bcnums, ndof,
-                           bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
-                           dDragdaoa, qg, euler_flux)
+  return BoundaryForceData{Topt, :lift}(bcnums, facx, facy, facz, qg,
+                                        euler_flux)
 end
 
 """
@@ -54,20 +52,48 @@ end
 function DragForceDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                              bcnums) where Topt
 
-  ndof = mesh.dim
-  bndry_force = zeros(Topt, mesh.dim)
-  isLift = false
-  lift_val = 0.0
-  drag_val = 0.0
-  dLiftdaoa = 0.0
-  dDragdaoa = 0.0
+  facx = 0
+  facy = 0
+  facz = 0
+
   qg = zeros(Topt, mesh.numDofPerNode)
   euler_flux = zeros(Topt, mesh.numDofPerNode)
 
-  return BoundaryForceData{Topt, :drag}(bcnums, ndof,
-                           bndry_force, isLift, lift_val, drag_val, dLiftdaoa,
-                           dDragdaoa, qg, euler_flux)
+  return BoundaryForceData{Topt, :drag}(bcnums, facx, facy, facz, qg,
+                                        euler_flux)
 end
+
+
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::BoundaryForceData{Topt, :lift}) where {Topt}
+
+  if mesh.dim == 2
+    func.facx = -sin(eqn.params.aoa)
+    func.facy =  cos(eqn.params.aoa)
+  else
+    func.facx = -sin(eqn.params.aoa)
+    func.facy =  0
+    func.facz =  cos(eqn.params.aoa)
+  end
+
+  return nothing
+end
+
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::BoundaryForceData{Topt, :drag}) where {Topt}
+
+  if mesh.dim == 2
+    func.facx = cos(eqn.params.aoa)
+    func.facy = sin(eqn.params.aoa)
+  else
+    func.facx = cos(eqn.params.aoa)
+    func.facy = 0
+    func.facz = sin(eqn.params.aoa)
+  end
+
+  return nothing
+end
+
 
 """
   Functional for computing lift coefficient.  Uses the lift functional to
@@ -75,8 +101,7 @@ end
   0.5*rho_free*Ma^2.  Note that this assumes the chord length (in 2d) is 1
 """
 mutable struct LiftCoefficient{Topt} <: AbstractBoundaryFunctional{Topt}
-  lift::BoundaryForceData{Topt, :lift}
-  val::Topt
+  func::BoundaryForceData{Topt, :lift}
   bcnums::Array{Int, 1}
 end
 
@@ -87,12 +112,48 @@ function LiftCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                     bcnums) where Topt
 
   lift = LiftForceDataConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
-  val = 0.0
 
-  return LiftCoefficient{Topt}(lift, val, bcnums)
+  return LiftCoefficient{Topt}(lift, bcnums)
 end
 
 
+
+"""
+  Functional for computing drag coefficient.  See [`LiftCoefficient`](@ref)
+  for the non-dimensionalization.
+"""
+mutable struct DragCoefficient{Topt} <: AbstractBoundaryFunctional{Topt}
+  func::BoundaryForceData{Topt, :drag}
+  bcnums::Array{Int, 1}
+end
+
+"""
+  Constructor for DragCoefficient functional
+"""
+function DragCoefficientConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                    bcnums) where Topt
+
+  drag = DragForceDataConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+
+  return DragCoefficient{Topt}(drag, bcnums)
+end
+
+
+"""
+  Typedef for functionals that compute aerodynamic coefficients (lift, drag)
+"""
+const AeroCoefficients{Topt} = Union{LiftCoefficient{Topt}, DragCoefficient{Topt}}
+
+function setupFunctional(mesh::AbstractMesh, sbp, eqn::AbstractSolutionData,
+                         opts::Dict, func::AeroCoefficients)
+
+  setupFunctional(mesh, sbp, eqn, opts, func.func)
+
+end
+
+
+#------------------------------------------------------------------------------
+# other functionals
 
 
 """
@@ -101,8 +162,6 @@ end
 """
 mutable struct MassFlowData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
-  ndof::Int
-  val::Topt
 end
 
 """
@@ -111,7 +170,7 @@ end
 """
 function MassFlowDataConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
                             bcnums) where Topt
-  return MassFlowData{Topt}(bcnums, 1, 0.0)
+  return MassFlowData{Topt}(bcnums)
 end
 
 """
@@ -120,8 +179,6 @@ end
 """
 mutable struct EntropyFluxData{Topt} <: AbstractBoundaryFunctional{Topt}
   bcnums::Array{Int, 1}
-  ndof::Int
-  val::Topt
 end
 
 """
@@ -130,7 +187,7 @@ end
 """
 function EntropyFluxConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
                             bcnums) where Topt
-  return EntropyFluxData{Topt}(bcnums, 1, 0.0)
+  return EntropyFluxData{Topt}(bcnums)
 end
 
 """
@@ -141,9 +198,12 @@ end
 """
 mutable struct EntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
   func::ELFPenaltyFaceIntegral
-  func_sparseface::LFPenalty
-  func_sparseface_revq::LFPenalty_revq
-  func_sparseface_revm::LFPenalty_revm
+  func_sparseface::FluxType
+  func_sparseface_revq::FluxType_revq
+  func_sparseface_revm::FluxType_revm
+  do_face_term::Bool
+  do_lps::Bool
+  do_sc::Bool
 end
 
 """
@@ -160,8 +220,86 @@ function EntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
   func_sparseface_revq = LFPenalty_revq()
   func_sparseface_revm = LFPenalty_revm()
 
-  return EntropyDissipationData{Topt}(func, func_sparseface, func_sparseface_revq, func_sparseface_revm)
+  do_face_term = true
+  do_lps = false
+  do_sc = false
+
+  return EntropyDissipationData{Topt}(func, func_sparseface,
+          func_sparseface_revq, func_sparseface_revm,
+          do_face_term, do_lps, do_sc)
 end
+
+
+function LPSDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                   bcnums) where Topt
+
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+  func_sparseface = ZeroFlux()
+  func_sparseface_revq = ZeroFlux_revq()
+  func_sparseface_revm = ZeroFlux_revm()
+
+  do_face_term = false
+  do_lps = true
+  do_sc = false
+
+  return EntropyDissipationData{Topt}(func, func_sparseface,
+          func_sparseface_revq, func_sparseface_revm, do_face_term,
+          do_lps, do_sc)
+end
+
+function SCDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                   bcnums) where Topt
+
+  func = ELFPenaltyFaceIntegral(mesh, eqn)
+  func_sparseface = ZeroFlux()
+  func_sparseface_revq = ZeroFlux_revq()
+  func_sparseface_revm = ZeroFlux_revm()
+
+  do_face_term = false
+  do_lps = false
+  do_sc = true
+
+  return EntropyDissipationData{Topt}(func, func_sparseface,
+          func_sparseface_revq, func_sparseface_revm, do_face_term,
+          do_lps, do_sc)
+end
+
+
+
+"""
+  Returns the negative of [`EntropyDissipationData`](@ref).  That functional
+  is always negative, so this one is always positive.
+"""
+mutable struct NegEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::EntropyDissipationData{Topt}
+end
+
+"""
+  Constructor for [`NegEntropyDissipationData`](@ref).  `bcnums` argument is
+  unused.
+"""
+function NegEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = EntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
+
+function NegLPSDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = LPSDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
+function NegSCDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  func = SCDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipationData{Topt}(func)
+end
+
 
 """
   Functional that computes function `w^T d(u)`, where `w` are the entropy
@@ -171,6 +309,9 @@ end
 """
 mutable struct EntropyJumpData{Topt} <: EntropyPenaltyFunctional{Topt}
   func::EntropyJumpPenaltyFaceIntegral
+  do_face_term::Bool
+  do_lps::Bool
+  do_sc::Bool
 end
 
 """
@@ -183,14 +324,166 @@ function EntropyJumpConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
                                        bcnums) where Topt
 
   func = EntropyJumpPenaltyFaceIntegral(mesh, eqn)
+  do_face_term = true
+  do_lps = false
+  do_sc = false
 
-  return EntropyJumpData{Topt}(func)
+  return EntropyJumpData{Topt}(func, do_face_term, do_lps, do_sc)
+end
+
+
+"""
+  Computes entropy dissipation by computing
+  
+  -W^T * R_face + \int_\Gamma_interior (psi_L - psi_R)
+
+  This works for flux functions that do not have the EC + dissipation form,
+  and should be < 0 for any entropy stable scheme.
+"""
+mutable struct EntropyDissipation2Data{Topt} <: EntropyPenaltyFunctional{Topt}
+  flux_functional::EntropyDissipationData{Topt}
+  potential_flux::PotentialFlux
+  potential_flux_revq::PotentialFlux_revq
+  potential_flux_revm::PotentialFlux_revm
+end
+
+function EntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  flux_functional = EntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts,
+                                                  bcnums)
+
+  # configure the functional to compute (wL - wR)^T F, where F is the flux
+  # currently used by the discretization
+  flux_functional.func_sparseface = eqn.flux_func
+  flux_functional.func_sparseface_revq = eqn.flux_func_revq
+  flux_functional.func_sparseface_revm = eqn.flux_func_revm
+
+  potential_flux = FluxDict["PotentialFlux"]
+  potential_flux_revq = FluxDict_revq["PotentialFlux"]
+  potential_flux_revm = FluxDict_revm["PotentialFlux"]
+
+  return EntropyDissipation2Data{Topt}(flux_functional, potential_flux,
+                                       potential_flux_revq, potential_flux_revm)
+end
+
+mutable struct TotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  bcnums::Vector{Int}
+end
+
+"""
+  Computes the entropy dissipation of the entire residual (not just face
+  terms), except for the boundaries sepcified by bcnums:
+
+  w^T R - other boundary terms
+
+
+"""
+function TotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                       bcnums) where Topt
+
+  return TotalEntropyDissipationData{Topt}(copy(bcnums))
+end
+
+
+"""
+  Computes negative of EntropyDissipation2
+"""
+mutable struct NegEntropyDissipation2Data{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::EntropyDissipation2Data{Topt}
+end
+
+function NegEntropyDissipation2Constructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                           bcnums) where Topt
+  func = EntropyDissipation2Constructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegEntropyDissipation2Data{Topt}(func)
+end
+
+
+mutable struct NegTotalEntropyDissipationData{Topt} <: EntropyPenaltyFunctional{Topt}
+  func::TotalEntropyDissipationData{Topt}
+end
+
+function NegTotalEntropyDissipationConstructor(::Type{Topt}, mesh, sbp, eqn, opts,
+                                           bcnums) where Topt
+  func = TotalEntropyDissipationConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegTotalEntropyDissipationData{Topt}(func)
 end
 
 
 function getParallelData(obj::EntropyPenaltyFunctional)
   return PARALLEL_DATA_ELEMENT
 end
+
+function getParallelData(obj::Union{EntropyDissipationData, EntropyJumpData})
+  if obj.do_face_term
+    return PARALLEL_DATA_ELEMENT
+  else
+    return PARALLEL_DATA_NONE
+  end
+end
+
+const NegEntropyDissipations = Union{NegEntropyDissipationData,
+                                     NegEntropyDissipation2Data,
+                                     NegTotalEntropyDissipationData}
+
+function getParallelData(obj::NegEntropyDissipations)
+  return getParallelData(obj.func)
+end
+
+
+"""
+  Functional that computes -delta_w^T lambda_max Y^T Y delta_w for
+  boundary faces.  delta_w is the difference between the (entropy variable)
+  numerical solution and the boundary state.  This only works for boundary
+  conditions that have [`getDirichletState`](@ref) defined.
+"""
+mutable struct BoundaryEntropyDiss{Topt} <: AbstractBoundaryFunctional{Topt}
+  bcnums::Array{Int, 1}
+end
+
+function BoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  return BoundaryEntropyDiss{Topt}(bcnums)
+end
+
+"""
+  Negative of [`BoundaryEntropyDiss`](@ref).  That one is always negative
+  so this one is always positive.
+"""
+mutable struct NegBoundaryEntropyDiss{Topt} <: AbstractBoundaryFunctional{Topt}
+  func::BoundaryEntropyDiss{Topt}
+end
+
+function NegBoundaryEntropyDissConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  obj = BoundaryEntropyDissConstructor(Topt, mesh, sbp, eqn, opts, bcnums)
+  return NegBoundaryEntropyDiss{Topt}(obj)
+end
+
+
+# this is actually a volume integral, not a boundary integral, but it
+# doesn't make a difference
+"""
+  Computes the function from the Zahr and Perssons paper "An Optimization-based
+  approach for high-order accurate discretization of conservation laws with
+  discontinuous solutions", ie.
+
+  \\sum_k \\int || u - h_bar ||^2 dOmega_k
+"""
+mutable struct SolutionDeviation{Topt} <: AbstractBoundaryFunctional{Topt}
+end
+
+function SolutionDeviationConstructor(::Type{Topt}, mesh, sbp, eqn, opts, 
+                            bcnums) where Topt
+  return SolutionDeviation{Topt}()
+end
+
+
+
+
+
+
 
 
 """
@@ -249,11 +542,24 @@ end
 global const FunctionalDict = Dict{String, Function}(
 "lift" => LiftForceDataConstructor,
 "drag" => DragForceDataConstructor,
-"massflow" => MassFlowDataConstructor,
 "liftCoefficient" => LiftCoefficientConstructor,
+"dragCoefficient" => DragCoefficientConstructor,
+"massflow" => MassFlowDataConstructor,
 "entropyflux" => EntropyFluxConstructor,
 "entropydissipation" => EntropyDissipationConstructor,
+"lpsdissipation" => LPSDissipationConstructor,
+"scdissipation" => SCDissipationConstructor,
+"entropydissipation2" => EntropyDissipation2Constructor,
+"totalentropydissipation" => TotalEntropyDissipationConstructor,
+"negentropydissipation" => NegEntropyDissipationConstructor,
+"neglpsdissipation" => NegLPSDissipationConstructor,
+"negscdissipation" => NegSCDissipationConstructor,
+"negtotalentropydissipation" => NegTotalEntropyDissipationConstructor,
+"negentropydissipation2" => NegEntropyDissipation2Constructor,
 "entropyjump" => EntropyJumpConstructor,
+"boundaryentropydiss" => BoundaryEntropyDissConstructor,
+"negboundaryentropydiss" => NegBoundaryEntropyDissConstructor,
+"solutiondeviation" => SolutionDeviationConstructor,
 )
 
 

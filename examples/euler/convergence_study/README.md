@@ -2,7 +2,7 @@
 
 This directory contains an sample convergence study.  The convergence study
 uses the 2D isentropic vortex on meshes that are 20 x 20 elements to 60 x 60
-elements, by 5s (69meshes).
+elements, by 5s (9 meshes).
 
 # Organization:
 

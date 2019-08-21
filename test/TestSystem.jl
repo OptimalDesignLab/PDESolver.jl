@@ -244,6 +244,9 @@ end
                  name of hte input file associated with the test function
    * tags: an array of tags (optional)
 
+  **Outputs**
+
+   * ntests: number of tests that were run.
 """
 function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{String}=String[TAG_DEFAULT])
 
@@ -261,6 +264,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
 
   ftiming = open("timing.dat", "w")
   input_name_prev = ""  # holds the previous input name
+  n_run_tests = 0
   for i=1:ntests
     func_i = testlist.funcs[i]
     func_tags_i = testlist.func_tags[i]
@@ -271,6 +275,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
     for j=1:length(func_tags_i)
       tag_j = func_tags_i[j]
       if tag_j in tags_set
+        n_run_tests += 1
         println("running function ", func_i)
         println("function type = ", functype_i)
         # run this test
@@ -309,6 +314,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
         end
 
         println(ftiming, func_i, ": ", t_test, " seconds")
+        println("time for test function ", func_i, " = ", t_test)
 
         break  # don't run this test more than once even if it matches
                   # multiple tags
@@ -320,7 +326,7 @@ function run_testlist(testlist::TestList, prep_func::Function, tags::Vector{Stri
 
   close(ftiming)
 
-  return nothing
+  return n_run_tests
 end
 
 """
@@ -345,7 +351,11 @@ function runTestSystem(testlist::TestList, prep_func::Function, tags::Vector{Str
     copy!(tags2, tags)
   end
 
-  run_testlist(testlist, prep_func, tags2)
+  n = run_testlist(testlist, prep_func, tags2)
+
+  if n == 0
+    error("No tests run matching tags: ", tags2)
+  end
 
   return nothing
 end

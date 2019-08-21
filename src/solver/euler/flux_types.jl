@@ -270,6 +270,42 @@ struct IRFluxData{Tsol}
   end
 end
 
+"""
+  Temporary storage for [`calcHLLFlux`](@ref)
+"""
+struct HLLFluxData{Tres}
+  fL::Vector{Tres}
+  fR::Vector{Tres}
+
+  sL_dot::Matrix{Tres}
+  sR_dot::Matrix{Tres}
+  fL_jac::Matrix{Tres}
+  fR_jac::Matrix{Tres}
+
+  fL_bar::Vector{Tres}
+  fR_bar::Vector{Tres}
+
+  function HLLFluxData{Tres}(numDofPerNode::Integer) where {Tres}
+
+    fL = zeros(Tres, numDofPerNode)
+    fR = zeros(Tres, numDofPerNode)
+
+    sL_dot = zeros(Tres, numDofPerNode, 2)
+    sR_dot = zeros(Tres, numDofPerNode, 2)
+    fL_jac = zeros(Tres, numDofPerNode,numDofPerNode)
+    fR_jac = zeros(Tres, numDofPerNode, numDofPerNode)
+
+    fL_bar = zeros(Tres, numDofPerNode)
+    fR_bar = zeros(Tres, numDofPerNode)
+
+
+
+    return new(fL, fR,
+              sL_dot, sR_dot, fL_jac, fR_jac,
+              fL_bar, fR_bar)
+  end
+end
+
 
 """
   Temporary arrays for [`applyEntropyKernel_diagE`](@ref)
@@ -331,12 +367,14 @@ end
 """
 struct GetLambdaMaxSimpleData{Tsol}
   q_avg::Vector{Tsol}
+  q_avg_bar::Vector{Tsol}
 
   function GetLambdaMaxSimpleData{Tsol}(numDofPerNode::Integer) where {Tsol}
 
     q_avg = zeros(Tsol, numDofPerNode)
+    q_avg_bar = zeros(Tsol, numDofPerNode)
 
-    obj = new(q_avg)
+    obj = new(q_avg, q_avg_bar)
 
     assertArraysUnique(obj); assertFieldsConcrete(obj)
 
@@ -357,6 +395,39 @@ struct GetLambdaMaxData{Tsol}
     return new(p_dot)
   end
 end
+
+
+"""
+  Temporary storage for [`calc2RWaveSpeed`](@ref)
+"""
+struct TwoRWaveSpeedData{Tsol, Tres}
+
+  pL_dot::Vector{Tsol}
+  pR_dot::Vector{Tsol}
+  aL_dot::Vector{Tsol}
+  aR_dot::Vector{Tsol}
+  u_nrmL_dot::Vector{Tres}
+  u_nrmR_dot::Vector{Tres}
+  p_tr_dot::Matrix{Tres}
+  qfL_dot::Matrix{Tres}
+  qfR_dot::Matrix{Tres}
+
+  function TwoRWaveSpeedData{Tsol, Tres}(numDofPerNode::Integer) where {Tsol, Tres}
+    pL_dot = zeros(Tsol, numDofPerNode)
+    pR_dot = zeros(Tsol, numDofPerNode)
+    aL_dot = zeros(Tsol, numDofPerNode)
+    aR_dot = zeros(Tsol, numDofPerNode)
+    u_nrmL_dot = zeros(Tres, numDofPerNode)
+    u_nrmR_dot = zeros(Tres, numDofPerNode)
+    p_tr_dot = zeros(Tres, 2, numDofPerNode)
+    qfL_dot = zeros(Tres, 2, numDofPerNode)
+    qfR_dot = zeros(Tres, 2, numDofPerNode)
+
+    return new(pL_dot, pR_dot, aL_dot, aR_dot, u_nrmL_dot, u_nrmR_dot, p_tr_dot,
+               qfL_dot, qfR_dot)
+  end
+end
+
 
 
 struct CalcVorticityData{Tsol, Tres, Tmsh}
@@ -910,4 +981,94 @@ struct CalcVolumeIntegralsData{Tres, Tmsh}
     return obj
   end
 end
+
+
+#------------------------------------------------------------------------------
+# Stabilization structs
+
+"""
+  Data for Local Projection Stabiization (LPS).
+
+  **Fields**
+
+   * P: the projection matrix that captures the high frequency modes
+        (I - L L^T H) in the paper
+   * alpha: coefficient in front of the stabilization term
+   * entropy_vars: specifies what variables to apply the stabiization to.
+                   This is an abstractly-typed field, so it should be access
+                   through a function barrier.
+  
+"""
+struct LPSData{Tsol, Tres}
+  P::Matrix{Float64}
+  alpha::Float64
+  entropy_vars::AbstractVariables
+
+  t1::Matrix{Tsol}
+  t2::Matrix{Tres}
+  A0::Matrix{Tsol}
+  dir::Vector{Tres}
+
+  t1_jac::Array{Tsol, 3}
+  t2_jac::Array{Tsol, 3}
+  t3_jac::Array{Tres, 3}
+  A0_diff::Array{Tsol, 3}
+  q_dot::Matrix{Float64}
+  lambdas::Vector{Tres}
+  lambdas_jac::Matrix{Tres}
+  lambda_dot_p::Vector{Tres}
+
+  t1_bar::Matrix{Tres}
+  t2_bar::Matrix{Tres}
+  tmp::Vector{Tres}
+  tmp_bar::Vector{Tres}
+  A0_bar::Matrix{Tres}
+
+  dir_bar::Vector{Tres}
+  function LPSData{Tsol, Tres}(mesh, sbp, opts) where {Tsol, Tres}
+
+    @unpack mesh numDofPerNode numNodesPerElement dim
+    P = getLPSMatrix(sbp)
+    alpha = 1.0
+    #entropy_vars = ConservativeVariables()
+    entropy_vars = IRVariables()
+
+    t1 = zeros(Tsol, numDofPerNode, numNodesPerElement)
+    t2 = zeros(Tres, numDofPerNode, numNodesPerElement)
+    A0 = zeros(Tsol, numDofPerNode, numDofPerNode)
+    dir = zeros(Tres, dim)
+
+    
+    t1_jac = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    t2_jac = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    t3_jac = zeros(Tsol, numDofPerNode, numDofPerNode, numNodesPerElement)
+    A0_diff = zeros(Tsol, numDofPerNode, numDofPerNode, numDofPerNode)
+    q_dot = zeros(numDofPerNode, numDofPerNode)
+    for i=1:numDofPerNode
+      q_dot[i, i] = 1
+    end
+
+    lambdas = zeros(Tres, numNodesPerElement)
+    lambdas_jac = zeros(Tres, numDofPerNode, numNodesPerElement)
+    lambda_dot_p = zeros(Tres, numDofPerNode)
+
+
+    t1_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+    t2_bar = zeros(Tres, numDofPerNode, numNodesPerElement)
+    tmp = zeros(Tres, numDofPerNode)
+    tmp_bar = zeros(Tres, numDofPerNode)
+    A0_bar = zeros(Tres, numDofPerNode, numDofPerNode)
+
+  
+    dir_bar = zeros(Tres, dim)
+
+    return new(P, alpha, entropy_vars,
+               t1, t2, A0, dir,
+               t1_jac, t2_jac, t3_jac, A0_diff, q_dot, lambdas, lambdas_jac,
+               lambda_dot_p,
+               t1_bar, t2_bar, tmp, tmp_bar, A0_bar,
+               dir_bar)
+  end
+end
+
 

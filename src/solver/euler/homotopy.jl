@@ -8,10 +8,24 @@ import PDESolver.evalHomotopy
 """
   This function calls the appropriate homotopy function for the Euler module.
 """
-function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData, opts::Dict, res::Abstract3DArray, t = 0.0)
+function evalHomotopy(mesh::AbstractMesh, sbp::AbstractOperator,
+                      eqn::EulerData{Tsol, Tres},
+                      opts::Dict, res::Abstract3DArray, t = 0.0) where {Tsol, Tres}
 
+  fill!(res, 0)
+  if opts["homotopy_function"] == "ViscousBO"
+    sensor = ShockSensorBO{Tsol, Tres}(mesh, sbp, opts)
+    capture = eqn.shock_capturing
+    res_orig = eqn.res
+    eqn.res = res
+    applyShockCapturing(mesh, sbp, eqn, opts, sensor, capture)
+    eqn.res = res_orig
+  elseif opts["homotopy_function"] == "FirstOrderDissipation"
   
-  calcHomotopyDiss(mesh, sbp, eqn, opts, res)
+    calcHomotopyDiss(mesh, sbp, eqn, opts, res)
+  else
+    error("unrecognized homotop_function: $(opts["homotopy_function"])")
+  end
 
   return nothing
 end

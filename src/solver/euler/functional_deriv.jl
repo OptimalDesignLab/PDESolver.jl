@@ -71,7 +71,9 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
                            func::AbstractBoundaryFunctional,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  integrand = zeros(eqn.q_bndry)
+  integrand = zeros(eqn.q_bndry)  #TODO: only allocate enough space for
+                                  #      the boundaries the functional is using
+  node_info = Array{Int}(3)
 
   # Populate integrand
   for itr = 1:length(func.bcnums)
@@ -94,7 +96,7 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
         aux_vars = ro_sview(eqn.aux_vars_bndry, :, j, global_facenum)
         x = ro_sview(mesh.coords_bndry, :, j, global_facenum)
         nrm = ro_sview(mesh.nrm_bndry, :, j, global_facenum)
-        node_info = Int[itr,j,i]
+        node_info[1] = itr; node_info[2] = j; node_info[3] = i
         integrand_i = sview(integrand, :, j, global_facenum)
 
         calcIntegrandDeriv(opts, eqn.params, q, aux_vars, nrm, integrand_i, node_info,
@@ -117,10 +119,10 @@ end  # End function calcFunctionalDeriv
 function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
                            sbp::AbstractOperator,
                            eqn::EulerData{Tsol}, opts,
-                           func::LiftCoefficient,
+                           func::AeroCoefficients,
                            func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-  calcFunctionalDeriv(mesh, sbp, eqn, opts, func.lift, func_deriv_arr)
+  calcFunctionalDeriv(mesh, sbp, eqn, opts, func.func, func_deriv_arr)
 
   Ma = eqn.params.Ma
   fac = 0.5*eqn.params.rho_free*Ma*Ma
@@ -131,96 +133,79 @@ function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh},
 end
 
 
+"""
+  Method for SolutionDeviation
+"""
+function calcFunctionalDeriv(mesh::AbstractDGMesh{Tmsh}, 
+                           sbp::AbstractOperator,
+                           eqn::EulerData{Tsol}, opts,
+                           func::SolutionDeviation,
+                           func_deriv_arr::Abstract3DArray) where {Tmsh, Tsol}
 
-@doc """
-### EulerEquationMod.calcIntegrandDeriv
 
-Compute the derivative of the functional Integrand at a node w.r.t all the
-degrees of freedom at the node.
+  val_bar = 1
+  u_bar = zeros(Tsol, mesh.numDofPerNode)
+  u_bar_bar = zeros(Tsol, mesh.numDofPerNode)
+  for i=1:mesh.numEl
 
-**Inputs**
+    # compute u_bar
+    vol = zero(Tmsh)  # area/volume of the element
+    fill!(u_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      vol += w_j
+      for k=1:mesh.numDofPerNode
+        u_bar[k] += eqn.q[k, j, i]*w_j
+      end
+    end
 
-*  `opts`   : Options dictionary
-*  `params` : parameter type
-*  `q`      : Solution variable at a node
-*  `aux_vars` : Auxiliary variables
-*  `nrm`    : normal vector in the physical space
-*  `integrand_deriv` : Derivative of the integrand at that particular node
-*  `node_info` : Tuple containing information about the node
-*  `func` : Functional object that is a subtype of AbstractBoundaryFunctional.
+    for k=1:mesh.numDofPerNode
+      u_bar[k] /= vol
+    end
+#=
+    # compute \int || u - u_bar ||
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+        val += delta_u*w_j*delta_u
+      end
+    end
+=#
+    #----------------------------------
+    # reverse sweep
+    fill!(u_bar_bar, 0)
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        delta_u = eqn.q[k, j, i] - u_bar[k]
+        #val += delta_u*w_j*delta_u
 
-**Outputs**
+        delta_u_bar = 2*delta_u*w_j*val_bar
+        func_deriv_arr[k, j, i] += delta_u_bar
+        u_bar_bar[k]       -= delta_u_bar
+      end
+    end
 
-*  None
+    vol_bar = zero(Tmsh)
+    for k=1:mesh.numDofPerNode
+      u_bar[k] *= vol  # restore primal value
+      u_bar_bar[k] /= vol
+    end
 
-"""->
+    for j=1:mesh.numNodesPerElement
+      w_j = sbp.w[j]/mesh.jac[j, i]
+      for k=1:mesh.numDofPerNode
+        func_deriv_arr[k, j, i] += u_bar_bar[k]*w_j
+      end
+    end
 
-function calcIntegrandDeriv(opts, params::ParamType{2},
-          q::AbstractArray{Tsol,1},
-          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          func::BoundaryForceData{Tsol,:lift}) where {Tsol, Tres, Tmsh}
-
-  pert = complex(0, 1e-20)
-  aoa = params.aoa
-  momentum = zeros(Tsol,2)
-
-  for i = 1:length(q)
-    q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, func, momentum)
-    val = -momentum[1]*sin(aoa) + momentum[2]*cos(aoa)
-    integrand_deriv[i] = imag(val)/norm(pert)
-    q[i] -= pert
-  end # End for i = 1:length(q)
-
-  return nothing
-end
-
-function calcIntegrandDeriv(opts, params::ParamType{2},
-          q::AbstractArray{Tsol,1},
-          aux_vars::AbstractArray{Tres, 1}, nrm::AbstractArray{Tmsh},
-          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          func::BoundaryForceData{Tsol,:drag}) where {Tsol, Tres, Tmsh}
-
-  pert = complex(0, 1e-20)
-  aoa = params.aoa
-  momentum = zeros(Tsol,2)
-
-  for i = 1:length(q)
-    q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info, func, momentum)
-    val = momentum[1]*cos(aoa) + momentum[2]*sin(aoa)
-    integrand_deriv[i] = imag(val)/norm(pert)
-    q[i] -= pert
-  end # End for i = 1:length(q)
-
-  return nothing
-end
-
-function calcIntegrandDeriv(opts, params::ParamType{2},
-          q::AbstractArray{Tsol,1},
-          aux_vars::AbstractArray{Tres, 1},
-          nrm::AbstractArray{Tmsh},
-          integrand_deriv::AbstractArray{Tsol, 1}, node_info,
-          func::MassFlowData) where {Tsol, Tres, Tmsh}
-
-  node_info = [1, 2, 3]  #TODO: what is this doing??? node_info is an argument
-  h = 1e-20
-  pert = Complex128(0, h)
-  val = zeros(Complex128, 1)
-  for i=1:length(q)
-    q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
-                                          func, val)
-    integrand_deriv[i] = imag(val[1])/h
-    q[i] -= pert
-  end
-  # functional integrand rho*v
-#  integrand_deriv[2] = 1*nrm[1]
-#  integrand_deriv[3] = 1*nrm[2]
+  end  # end i
 
   return nothing
 end
+
+
 
 
 #------------------------------------------------------------------------------
@@ -235,12 +220,11 @@ function calcIntegrandDeriv(opts, params::ParamType{2},
 
   h = 1e-20
   pert = Complex128(0, h)
-  val = zeros(Complex128, 1)
   for i=1:length(q)
     q[i] += pert
-    calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
-                                          func, val)
-    integrand_deriv[i] = imag(val[1])/h
+    val = calcBoundaryFunctionalIntegrand(params, q, aux_vars, nrm, node_info,
+                                          func)
+    integrand_deriv[i] = imag(val)/h
     q[i] -= pert
   end
 

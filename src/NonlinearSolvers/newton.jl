@@ -1,5 +1,4 @@
 # newton.jl: function to do Newtons method, including calculating the Jacobian
-# includes residual_evaluation.jl
 
 export newton
 import Utils.free
@@ -148,7 +147,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   @debug1 flush(eqn.params.f)
 
   myrank = mesh.myrank
-  reinitNewtonData(newton_data)
+  reinitNewtonData(newton_data, mesh, sbp, eqn, opts)
   verbose = newton_data.verbose
 
   # options
@@ -216,23 +215,6 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     # recalculate PC and Jacobian if needed
     doRecalculation(newton_data.recalc_policy, i,
                     ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    #=             
-    recalc_type = decideRecalculation(newton_data.recalc_policy, i)
-    if recalc_type == RECALC_BOTH
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_PC
-      calcPC(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    elseif recalc_type == RECALC_LO
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =# 
-    #=
-    if ((i % recalc_prec_freq)) == 0 || i == 1
-      calcPCandLO(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    else  # only recalculate the linear operator
-      calcLinearOperator(ls, mesh, sbp, eqn, opts, ctx_residual, t)
-    end
-    =#
 
     # compute eigs, condition number, etc.
     doMatrixCalculations(newton_data, opts)
@@ -241,6 +223,12 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     for j=1:m
       res_0[j] = -res_0[j]
     end
+
+    #TODO: DEBUGGING
+    @mpi_master println(BSTDOUT, "writing newton_q_vec_$i")
+    writeSolutionFiles(mesh, sbp, eqn, opts, "newton_q_vec_$i")
+    flush(BSTDOUT)
+
 
     # calculate Newton step
     flush(BSTDOUT)
@@ -253,17 +241,26 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
     for j=1:m
       eqn.q_vec[j] += newton_data.step_fac*delta_q_vec[j]
     end
-  
+ 
+    flush(BSTDOUT)
     saveSolutionToMesh(mesh, real(eqn.q_vec))
     fname = string("newton_", i)
     writeVisFiles(mesh, fname)
+    flush(BSTDOUT)
 
 
 
     # calculate residual at updated location, used for next iteration rhs
     res_0_norm = rhs_func(mesh, sbp, eqn, opts, rhs_vec, ctx_residual, t)
     recordResNorm(newton_data, res_0_norm)
-    
+ 
+    flush(BSTDOUT)
+    saveSolutionToMesh(mesh, real(eqn.res_vec))
+    fname = string("newton_res_", i)
+    writeVisFiles(mesh, fname)
+    flush(BSTDOUT)
+
+   
     # extract real component to res_0
     for j=1:m
       res_0[j] = real(rhs_vec[j])
@@ -301,7 +298,7 @@ function newtonInner(newton_data::NewtonData, mesh::AbstractMesh,
   for j=1:m
     rhs_vec[j] = real(rhs_vec[j])
   end
-  clearEulerConstants()
+  clearEulerConstants(newton_data.ls)
 
   return nothing
 end               # end of function newton()
@@ -351,7 +348,7 @@ function writeFiles(newton_data::NewtonData, mesh, sbp, eqn, opts)
   # write starting values for next iteration to file
   if write_sol
     fname = string("q_vec", itr, "_", myrank, ".dat")
-    writedlm(fname, real(eqn.q_vec))
+    writeSolutionFiles(mesh, sbp, eqn, opts, "q_vec_itr")
   end
 
   if write_q
@@ -375,7 +372,6 @@ function writeFiles(newton_data::NewtonData, mesh, sbp, eqn, opts)
   #TODO: have an option to control this
 #    saveSolutionToMesh(mesh, eqn.q_vec)
 #    writeVisFiles(mesh, "newton_$i")
-
 
   @verbose5 eqn.majorIterationCallback(itr, mesh, sbp, eqn, opts, BSTDOUT)
 
@@ -429,7 +425,7 @@ function checkConvergence(newton_data::NewtonData)
   rel_norm = res_norm/res_norm_rel
   if rel_norm < newton_data.res_reltol
     is_converged = true
-    if itr == 0
+    @mpi_master if itr == 0
       println(BSTDOUT, "Initial condition satisfied res_reltol with relative residual ", rel_norm, " < ", newton_data.res_reltol)
     else
       println(BSTDOUT, "Newton iteration converged with relative residual norm ", rel_norm, " < ", newton_data.res_reltol)
@@ -451,7 +447,7 @@ function checkConvergence(newton_data::NewtonData)
       println(BSTDOUT, "Iteration count: ", itr)
     end
 
-    clearEulerConstants()
+    clearEulerConstants(newton_data.ls)
   end
 
   flush(BSTDOUT)
@@ -546,6 +542,7 @@ function doMatrixCalculations(newton_data::NewtonData, opts)
     println(BSTDERR, "Warning: not performing eigen decomposition for jacobian of type $jac_type")
 
   end
+
 
   return nothing
 end

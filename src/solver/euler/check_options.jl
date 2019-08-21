@@ -44,7 +44,8 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
   #TODO: what to do for jac_type 4?
   if opts["use_DG"] && 
      opts["Flux_name"] in keys(FluxDict_diff) && 
-     (run_type == 5 || run_type == 40 || run_type == 20) && opts["jac_type"] >= 2 #&& 
+     (run_type == 5 || run_type == 40 || run_type == 20 || run_type == 50) &&
+     opts["jac_type"] >= 2 #&& 
 #     !opts["use_src_term"]
     get!(opts, "calc_jac_explicit", true)
   else
@@ -60,5 +61,24 @@ function checkOptions(opts, comm=MPI.COMM_WORLD)
     get!(opts, "preallocate_jacobian_coloring", true)
   end
 
+  get!(opts, "homotopy_function", "FirstOrderDissipation")
+  get!(opts, "freeze_viscosity", false)
+  get!(opts, "shock_capturing_variables", "IR")
+  get!(opts, "sensor_pp_use_filtered", false)
+  get!(opts, "sensor_pp_s0_offset", 0)
+
   return nothing
+end
+
+import PDESolver: _getSparsityPattern
+
+function _getSparsityPattern(mesh::AbstractMesh, sbp::AbstractOperator,
+                             eqn::EulerData, opts)
+
+  if !opts["addShockCapturing"]
+    return INVISCID
+  else
+    return getSparsityPattern(eqn.shock_capturing)
+  end
+
 end

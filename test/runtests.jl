@@ -5,19 +5,16 @@ args_orig = copy(ARGS)
 
 cd("./advection")
 include(joinpath(pwd(), "runtests.jl"))
-println("after advection tests, pwd = ", pwd())
 
 cd("../euler")
 resize!(ARGS, length(args_orig))  # reset to default
 copy!(ARGS, args_orig)
 include(joinpath(pwd(), "runtests.jl"))
-println("after Euler tests, pwd = ", pwd())
 
 cd("../navier_stokes")
 resize!(ARGS, length(args_orig))  # reset to default
 copy!(ARGS, args_orig)
 include(joinpath(pwd(), "runtests.jl"))
-println("after NS tests, pwd = ", pwd())
 
 cd("../simpleODE")
 resize!(ARGS, length(args_orig))  # reset to default
