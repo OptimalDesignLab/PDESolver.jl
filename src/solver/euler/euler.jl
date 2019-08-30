@@ -130,7 +130,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     #println("volume integral @time printed above")
   end
 
-
   if opts["use_GLS"]
     GLS(mesh,sbp,eqn)
   end
@@ -139,7 +138,6 @@ function evalResidual(mesh::AbstractMesh, sbp::AbstractOperator, eqn::EulerData,
     evalBoundaryIntegrals(mesh, sbp, eqn, opts)
     #println("boundary integral @time printed above")
   end
-
 
   time.t_stab += @elapsed if opts["addStabilization"]
     addStabilization(mesh, sbp, eqn, opts)

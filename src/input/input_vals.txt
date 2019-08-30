@@ -341,6 +341,15 @@ Note that any values associated with these options are shared with the regular
              Euler globalization, (FloatingPoint), default 1.0,
              smaller values -> stronger globalization
 
+"newton_scale_euler": determines how "euler_tau" should be interpreted, Bool,
+                      default false.  If false, "euler"tau" is the initial
+                      pseudo timestep for Newton's method.  If true,
+                      "euler_tau" is the pseudo timestep when the residual
+                       norm = 1 (therefore the timestep will be scaled up or
+                       down depending on the norm of the initial residual.
+                       This is useful for adaptive solves when the old
+                       solution will be interpolated onto a new mesh.
+
 "use_volume_preconditioner" : use the jacobian of the volume integrals as a
                               preconditioner (Bool), default false.  Note that
                               this is done matrix-free

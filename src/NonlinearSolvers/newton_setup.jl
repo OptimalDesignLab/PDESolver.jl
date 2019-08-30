@@ -170,6 +170,9 @@ end   # end of setupNewton
 
   Note that this does not reset the linear solver, which might be a problem
   if inexact newton-krylov was used for the previous solve
+
+  Uses `opts["newton_scale_euler"]` to determine how the `opts["euler_tau"]`
+  value should be interpreted
 """
 function reinitNewtonData(newton_data::NewtonData, mesh, sbp, eqn, opts)
 
@@ -193,6 +196,22 @@ function reinitNewtonData(newton_data::NewtonData, mesh, sbp, eqn, opts)
       # no need to do anything for PCNone
       pc = getInnerPC(newton_data.ls.pc, NewtonPC)
       reinitImplicitEuler(mesh, opts, lo.idata)
+    end
+
+
+    if opts["newton_scale_euler"]
+      # in this mode, we say that the euler wants the pseudo time step to
+      # be opts["euler_tau"] when the residual norm = 1 (therefore the residual
+      # norm of the initial condition causes the time step to get scaled
+      # up or down depending on the residual).
+      recordEulerResidual(newton_data.ls, 1)
+      # shift the residuals so they are in the i-1 position
+      # This is caused by a bad interface to ImplicitEulerData:
+      # recordEulerResidual should do this shifting, not useEulerConstants
+      useEulerConstants(lo)
+      if !(typeof(newton_data.ls.pc) <: PCNone)
+        useEulerConstants(Pc)
+      end
     end
   end
 
